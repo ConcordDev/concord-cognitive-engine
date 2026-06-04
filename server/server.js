@@ -2373,79 +2373,33 @@ async function gracefulShutdown(signal) {
 // Register shutdown handlers
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-const _uncaughtTimestamps = [];
 process.on("uncaughtException", (err) => {
   structuredLog("fatal", "uncaught_exception", { error: err.message, stack: err.stack });
-
-  // Give repair cortex ONE chance before dying
+  // ALWAYS exit. After an uncaught exception the process state is undefined; this is a
+  // stateful SQLite economy monolith, so continuing risks silent data corruption. The
+  // repair cortex still RECORDS the error (diagnostics for the next clean boot) but never
+  // keeps the process alive. The orchestrator (docker restart:unless-stopped / k8s)
+  // restarts cleanly. gracefulShutdown flushes state + drains, then exits.
   try {
     observe(err, "uncaughtException");
-
     const diagnosis = matchErrorPattern(err.message);
-    if (diagnosis?.fixes?.[0]?.confidence >= 0.9) {
-      addToRepairMemory(err.message, diagnosis.fixes[0]);
-      structuredLog("warn", "uncaught_repair_attempted", {
-        error: err.message,
-        pattern: diagnosis.key,
-      });
-
-      // Only exit if this is the 3rd uncaught in 60 seconds
-      // (rapid-fire uncaughts = system is truly broken)
-      const now = Date.now();
-      _uncaughtTimestamps.push(now);
-      while (_uncaughtTimestamps.length > 0 && _uncaughtTimestamps[0] < now - 60000) {
-        _uncaughtTimestamps.shift();
-      }
-
-      if (_uncaughtTimestamps.length >= 3) {
-        structuredLog("fatal", "uncaught_cascade", {
-          count: _uncaughtTimestamps.length,
-          message: "3+ uncaught exceptions in 60s — exiting for clean restart",
-        });
-        gracefulShutdown("uncaughtException_cascade");
-      }
-      return; // Survive this one — repair cycle will attempt fix
-    }
-  } catch {
-    // Repair cortex itself failed — fall through to shutdown
-  }
-
+    if (diagnosis?.fixes?.[0]) addToRepairMemory(err.message, diagnosis.fixes[0]);
+  } catch { /* the repair cortex must never crash the crash handler */ }
   gracefulShutdown("uncaughtException");
 });
-process.on("unhandledRejection", async (reason, _promise) => {
+process.on("unhandledRejection", (reason, _promise) => {
   const errorStr = reason?.message || String(reason);
   structuredLog("fatal", "unhandled_rejection", { reason: errorStr, stack: String(reason?.stack || "") });
-
-  // Consult Repair Cortex Surgeon before dying
+  // Record for diagnostics, but NEVER run an executor that keeps a corrupt process
+  // alive. In production, always exit for a clean restart; in dev, log + continue so
+  // local rejection bugs surface without killing the dev loop.
   try {
     const diagnosis = matchErrorPattern(errorStr);
-    if (diagnosis?.fixes?.length) {
-      structuredLog("warn", "surgeon_intervention", {
-        error: errorStr,
-        fixes: diagnosis.fixes.map(f => f.name || f.pattern || "unknown"),
-        confidence: diagnosis.fixes[0]?.confidence,
-      });
-      addToRepairMemory(errorStr, diagnosis.fixes[0]);
-
-      // If high-confidence fix exists with an executor, apply and don't exit
-      if (diagnosis.fixes[0]?.confidence >= 0.9 && typeof diagnosis.fixes[0]?.executor === "function") {
-        try {
-          await diagnosis.fixes[0].executor();
-          recordRepairSuccess(errorStr);
-          structuredLog("info", "surgeon_fix_applied", { error: errorStr });
-          return; // Don't exit — fix was applied
-        } catch (fixErr) {
-          recordRepairFailure(errorStr);
-          structuredLog("error", "surgeon_fix_failed", { error: errorStr, fixError: String(fixErr?.message || fixErr) });
-        }
-      }
-    }
-  } catch (_e) { logger.debug('server', 'repair cortex itself must never crash the crash handler', { error: _e?.message }); }
-
-  // No fix or low confidence — exit as before
+    if (diagnosis?.fixes?.length) addToRepairMemory(errorStr, diagnosis.fixes[0]);
+  } catch (_e) { logger.debug('server', 'repair cortex must never crash the crash handler', { error: _e?.message }); }
   if ((process.env.NODE_ENV || "development") === "production") {
-    console.error("[FATAL] Unhandled promise rejection in production — exiting to allow clean restart.");
-    process.exit(1);
+    console.error("[FATAL] Unhandled promise rejection in production — exiting for clean restart.");
+    gracefulShutdown("unhandledRejection");
   }
 });
 
@@ -4981,6 +4935,13 @@ if (db) {
     structuredLog("info", "schema_migration_complete", { currentVersion: migrationResult.currentVersion, appliedCount: migrationResult.appliedCount });
   } catch (e) {
     console.error("[Concord] Migration failed:", e.message);
+    // M6: in production, a failed migration is fatal — serving on a partially-migrated
+    // schema risks data corruption / wrong-shape writes. Exit so the orchestrator
+    // restarts and surfaces the failure instead of silently running on stale schema.
+    if (NODE_ENV === "production") {
+      structuredLog("fatal", "migration_failed_boot", { error: e.message });
+      process.exit(1);
+    }
   }
 
   // #F1 — materialise lazily-created runtime tables so a FRESH install has a
@@ -6475,7 +6436,11 @@ function requireRole(...roles) {
 
 // Production write-auth: enforce authentication on all mutating requests in production
 // unless AUTH_MODE=public, where anonymous writes are intentionally allowed.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/chat", "/api/lens"];
+// Only genuinely-public endpoints bypass the production write-auth gate. /api/chat and
+// /api/lens were removed (H1 + its follow-up): anonymous POST to them is an unauthenticated
+// write/LLM-cost surface. AUTH_MODE=public deploys still allow anonymous writes — the gate
+// skips entirely in that mode — so local-first/demo setups are unaffected.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics"];
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -6490,6 +6455,21 @@ function productionWriteAuthMiddleware(req, res, next) {
     return res.status(401).json({ ok: false, error: "Authentication required for write operations in production", code: "PROD_WRITE_AUTH" });
   }
   return next();
+}
+
+// H1 — lens-action authz gate. /api/lens/run + the lens.run macro dispatch
+// registerLensAction macros by calling the handler DIRECTLY, bypassing the runMacro
+// ACL — and that ACL is itself a no-op for anonymous HTTP (the "anon" actor's userId
+// is truthy so _isAuthenticatedUser passes, and _isHumanRequest skips canRunMacro).
+// So for a secured production deploy this is the only reliable gate on lens-action
+// execution. Mirrors productionWriteAuthMiddleware: enforced in production unless
+// AUTH_MODE=public (local-first). Independent of that gate's header-presence fallback,
+// since a garbage Authorization header still yields actor.userId === "anon" here.
+function _lensActionForbiddenForAnon(ctx) {
+  if (NODE_ENV !== "production") return false;
+  if (AUTH_MODE === "public") return false;
+  const uid = ctx?.actor?.userId;
+  return !uid || uid === "anon";
 }
 
 // ---- Validation Schemas (Zod) ----
@@ -7961,15 +7941,10 @@ async function tryInitWebSockets(server) {
       origin: _wsAllowedOrigins !== null
         ? _wsAllowedOrigins
         : (origin, callback) => {
-            // same-host fallback when ALLOWED_ORIGINS is not configured in production
+            // M2: fail CLOSED when ALLOWED_ORIGINS is unset in production — no same-host
+            // inference (it silently relaxes WS CORS with credentials:true). Allow only
+            // no-Origin (non-browser / same-origin) clients; reject cross-origin.
             if (!origin) return callback(null, true);
-            try {
-              const serverHost = process.env.SERVER_HOST || process.env.HOSTNAME || process.env.DOMAIN || "";
-              const originHost = new URL(origin).hostname;
-              if (serverHost && originHost === serverHost) return callback(null, true);
-              const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "";
-              if (apiUrl && new URL(apiUrl).hostname === originHost) return callback(null, true);
-            } catch { /* invalid origin */ }
             return callback(new Error("Origin not allowed"));
           },
       methods: ["GET", "POST"],
@@ -10820,7 +10795,10 @@ async function runMacro(domain, name, input, ctx) {
     // history domain already has other publicReadDomains entries elsewhere;
     // we only need the live_wiki_otd here.
     // atlas domain too; merged via Set spread below if it exists.
-    lens: new Set(["list", "get", "export", "run", "create", "update", "delete", "bulkCreate", "spatial_at"]),
+    // Read-only only — writes (create/update/delete/bulkCreate) and the `run`
+    // action-dispatch vector are NOT public (H1). `run` is gated in its handler +
+    // macro by _lensActionForbiddenForAnon.
+    lens: new Set(["list", "get", "export", "spatial_at"]),
     system: new Set(["status", "getStatus", "health", "analogize"]),
     settings: new Set(["get", "status"]),
     scope: new Set(["metrics", "status", "dtus", "promote", "checkCitations", "royaltyPreview", "overrides"]),
@@ -11188,7 +11166,7 @@ async function runMacro(domain, name, input, ctx) {
     "/api/concord-link", "/api/black-market", "/api/creature", "/api/emergent-skills",
   ];
   // Safe POST paths: chat and brain endpoints that must bypass Chicken2 for unauthenticated users
-  const _safePostPaths = ["/api/chat", "/api/brain/conscious", "/api/repair", "/api/creative/registry", "/api/lens", "/api/forge", "/api/ask", "/api/dtus", "/api/social", "/api/economy", "/api/marketplace", "/api/collab", "/api/goals", "/api/media",
+  const _safePostPaths = ["/api/chat", "/api/brain/conscious", "/api/repair", "/api/creative/registry", "/api/forge", "/api/ask", "/api/dtus", "/api/social", "/api/economy", "/api/marketplace", "/api/collab", "/api/goals", "/api/media",
     // Messaging webhooks (have own signature verification)
     "/api/messaging/whatsapp/webhook", "/api/messaging/telegram/webhook",
     "/api/messaging/discord/interactions", "/api/messaging/signal/webhook",
@@ -21163,6 +21141,77 @@ register("dtu", "list", (ctx, input) => {
   return { ok: true, dtus: items, limit, offset, total };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+// List a viewer's visible DTUs filtered to specific machine.kind value(s). Thin
+// filter over the same userVisibleDTUs set as dtu.list (shadow/internal excluded).
+// Surfaces the studio session browser's DTU/Forge tabs (SessionBrowserRail), which
+// called dtu.listByKind before it existed (the call .catch'd to an empty list).
+register("dtu", "listByKind", (ctx, input = {}) => {
+  try {
+    const kinds = Array.isArray(input.kind) ? input.kind.map(String)
+      : input.kind ? [String(input.kind)] : [];
+    if (kinds.length === 0) return { ok: false, error: "kind required" };
+    const kindSet = new Set(kinds);
+    const limit = clamp(Number(input.limit || 50), 1, 500);
+    const offset = clamp(Number(input.offset || 0), 0, 1e9);
+    const userId = ctx?.actor?.id || ctx?.actor?.odId || null;
+    let items = userVisibleDTUs(userId)
+      .filter(d => !isShadowDTU(d) && d.tier !== "shadow")
+      .filter(d => kindSet.has(d.machine?.kind));
+    const total = items.length;
+    items = items.slice(offset, offset + limit);
+    return { ok: true, dtus: items, total, limit, offset };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+// music.browse — community loop/stem library for the studio SessionBrowserRail.
+// Deterministic: surfaces real loop/stem DTUs that exist in the substrate (db-backed),
+// no external source, no fabrication. Empty when none have been published yet. The
+// `dtu`/`forge` browser tabs use dtu.listByKind directly; this backs the loops/stems tabs.
+register("music", "browse", (ctx, input = {}) => {
+  try {
+    const kind = String(input.kind || "loops");
+    const limit = clamp(Number(input.limit || 50), 1, 200);
+    const db = ctx?.db;
+    if (!db) return { ok: true, result: { items: [], count: 0, kind } };
+    // Stems are published as `adaptive_music`-tagged DTUs (music.publish-as-stem).
+    // Loops are loop-typed/tagged DTUs (DAW exports, community loop packs).
+    const like = kind === "stems" ? "%adaptive_music%" : "%loop%";
+    const rows = db.prepare(`
+      SELECT id, owner_user_id, title, body_json, tags_json, created_at
+      FROM dtus
+      WHERE tags_json LIKE ? AND visibility != 'private'
+      ORDER BY created_at DESC
+      LIMIT ?
+    `).all(like, limit);
+    const items = [];
+    for (const row of rows) {
+      let tags = [], body = {};
+      try { tags = JSON.parse(row.tags_json || "[]"); } catch { tags = []; }
+      try { body = JSON.parse(row.body_json || "{}"); } catch { body = {}; }
+      if (!Array.isArray(tags)) tags = [];
+      if (kind === "stems") {
+        if (body?.type !== "adaptive_stem") continue;
+      } else {
+        // loops tab: accept loop-typed bodies or loop-tagged DTUs
+        const isLoop = body?.type === "loop" || body?.type === "music_loop"
+          || tags.some((t) => typeof t === "string" && /(^|:)loop/i.test(t));
+        if (!isLoop) continue;
+      }
+      items.push({
+        id: row.id,
+        title: row.title || "(untitled)",
+        kind,
+        ownerUserId: row.owner_user_id,
+        bpm: typeof body?.bpm === "number" ? body.bpm : null,
+        key: typeof body?.key === "string" ? body.key : null,
+        durationBeats: typeof body?.durationBeats === "number" ? body.durationBeats : null,
+        color: typeof body?.color === "string" ? body.color : undefined,
+        createdAt: row.created_at,
+      });
+    }
+    return { ok: true, result: { items, count: items.length, kind } };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
 register("dtu", "listShadow", (ctx, input) => {
   // Shadow DTUs are internal - only admins can view them
   const role = ctx?.actor?.role || "guest";
@@ -25362,7 +25411,10 @@ register("legal", "sign", (ctx, input = {}) => {
     issuedAt: new Date().toISOString(),
     machineHash: crypto.createHash("sha256").update(JSON.stringify(machine)).digest("hex"),
   };
-  const secret = process.env.JWT_SECRET || "concord-default-signing";
+  // Use the canonical resolved secret — never a hardcoded literal (a predictable
+  // fallback makes these DTU signatures forgeable). EFFECTIVE_JWT_SECRET is the same
+  // value JWT signing uses, and boot fails fast if it's unset in production.
+  const secret = EFFECTIVE_JWT_SECRET;
   const token = crypto
     .createHmac("sha256", secret)
     .update(JSON.stringify(payload))
@@ -35191,13 +35243,17 @@ const OPENAPI_SPEC = {
 // OpenAPI spec remains inline since it references OPENAPI_SPEC defined above
 app.get("/api/openapi.json", (req, res) => res.json(OPENAPI_SPEC));
 app.get("/api/docs", (req, res) => {
+  // Carry the CSP nonce on the inline init script so it runs under the nonce-enforced
+  // policy (M3: scriptSrc no longer allows 'unsafe-inline'). The external unpkg scripts
+  // require allowlisting unpkg.com in scriptSrc/styleSrc to render — out of scope here.
+  const nonce = res.locals?.cspNonce || "";
   res.send(`<!DOCTYPE html>
 <html><head><title>Concord API Docs</title>
 <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
 </head><body>
 <div id="swagger-ui"></div>
 <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-<script>SwaggerUIBundle({ url: "/api/openapi.json", dom_id: "#swagger-ui" });</script>
+<script nonce="${nonce}">SwaggerUIBundle({ url: "/api/openapi.json", dom_id: "#swagger-ui" });</script>
 </body></html>`);
 });
 
@@ -36988,6 +37044,10 @@ register("lens", "delete", async (ctx, input={}) => {
 register("lens", "run", async (ctx, input={}) => {
   const { id, action, params={} } = input;
   if (!id || !action) return { ok: false, error: "id and action required" };
+  // H1: same anon gate as the /api/lens/run handler — the lens-action dispatch below
+  // bypasses the runMacro ACL, so block anonymous callers in secured production.
+  // Internal/system callers have a real (non-"anon") actor.userId and pass through.
+  if (_lensActionForbiddenForAnon(ctx)) return { ok: false, error: "forbidden: authentication required" };
   const artifact = STATE.lensArtifacts.get(id);
   if (!artifact) return { ok: false, error: "not found" };
   // Domain-specific action handlers can be registered via lens.registerAction
@@ -38134,6 +38194,20 @@ app.get("/api/lens/stats", (req, res) => {
 
 // Domain-level action runner (no artifact ID required) — used by frontend runDomain()
 // Must be defined before wildcard :domain routes so Express doesn't match "run" as :domain
+// The HTTP /api/lens/run response is always { ok, result }. A handler that itself
+// returns an { ok, result } envelope (the registerLensAction convention — and many
+// register() macros) would otherwise DOUBLE-nest, so a raw `api.post` caller reading
+// `data.result.<field>` gets the inner wrapper, not the payload (blank calc
+// workbenches, dropped results — the systemic bug found by running the app, 2026-06-03).
+// Unwrap exactly ONE envelope layer here so the response is single-nested:
+//   - lensRun() tolerates single OR double, so its callers are unaffected;
+//   - defensive `data.result.X ?? data.X` readers resolve on the single-nest;
+//   - an { ok:false, error } shape (no `result` key) passes through so errors surface;
+//   - a bare payload (no `ok`+`result`) passes through unchanged.
+function _unwrapLensEnvelope(r) {
+  if (r && typeof r === "object" && "ok" in r && "result" in r) return r.result;
+  return r;
+}
 app.post("/api/lens/run", async (req, res) => {
   try {
     const body = req.body || {};
@@ -38149,18 +38223,24 @@ app.post("/api/lens/run", async (req, res) => {
         })();
     if (!domain || !action) return res.status(400).json({ ok: false, error: "domain and action required" });
     const ctx = makeCtx(req);
+    // H1: gate the whole dispatch (lens-action AND macro paths) for anonymous callers
+    // in secured production — the runMacro ACL doesn't protect this surface (see
+    // _lensActionForbiddenForAnon). Reads use the GET /api/lens/:domain[/:id] routes.
+    if (_lensActionForbiddenForAnon(ctx)) {
+      return res.status(401).json({ ok: false, error: "authentication required", code: "LENS_AUTH" });
+    }
     // Prefer LENS_ACTIONS (legacy lens-action style: registerLensAction(...)).
     const lensHandler = LENS_ACTIONS.get(`${domain}.${action}`);
     if (lensHandler) {
       const virtualArtifact = { id: null, domain, type: "domain_action", data: rest, meta: {} };
-      const result = await lensHandler(ctx, virtualArtifact, rest);
+      const result = _unwrapLensEnvelope(await lensHandler(ctx, virtualArtifact, rest));
       return res.json({ ok: true, result });
     }
     // Fall back to MACROS (canonical macro registry: register(domain, name, ...)).
     // Many domains (detectors, dtu, lens, scope, agents, etc.) only register
     // here — the legacy LENS_ACTIONS path can't see them.
     if (MACROS.get(domain)?.get(action)) {
-      const result = await runMacro(domain, action, rest, ctx);
+      const result = _unwrapLensEnvelope(await runMacro(domain, action, rest, ctx));
       return res.json({ ok: true, result });
     }
     // AI-powered catch-all: route unregistered domain actions to the utility

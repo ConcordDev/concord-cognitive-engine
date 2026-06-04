@@ -16,15 +16,58 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  NODE_VERSION: '20'
   BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/concord-backend
   FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/concord-frontend
 
 jobs:
   # ═══════════════════════════════════════════════════════════════════════
+  # CI gate — a red commit MUST NOT build or deploy. This is the in-repo
+  # backstop (H5); GitHub branch-protection required-status-checks (CI / Audits /
+  # Detectors) is the authoritative gate and MUST also be enabled on `main` —
+  # nothing in-repo can enforce that repo setting, and it's how a red main shipped
+  # before. This job runs the fast, high-signal blocking checks (lint, type-check,
+  # the depth-honesty gate, the depth test suite, and the security-detector ratchet),
+  # and every downstream job `needs` it. It also includes the prophet-check build
+  # gate (M5) that the frontend Docker image skips.
+  gate:
+    name: CI gate (block deploy on red)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install server deps
+        working-directory: ./server
+        run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
+      - name: Install frontend deps
+        working-directory: ./concord-frontend
+        run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
+      - name: Server lint (0 warnings)
+        working-directory: ./server
+        run: npm run lint:ci
+      - name: Frontend type-check
+        working-directory: ./concord-frontend
+        run: npm run type-check
+      - name: Prophet-check (build-blocker analysis — M5; skipped by the frontend image)
+        working-directory: ./concord-frontend
+        run: node ../server/scripts/prophet-check.js
+      - name: Depth-honesty gate
+        run: node scripts/check-depth-tests.mjs --ci
+      - name: Depth behavioral tests
+        working-directory: ./server
+        run: node --test --test-force-exit 'tests/depth/*.test.js'
+      - name: Security detector ratchet
+        working-directory: ./server
+        run: node scripts/run-detectors.js --consumer security --diff --ci
+
+  # ═══════════════════════════════════════════════════════════════════════
   # Build Docker images and push to GitHub Container Registry
   # ═══════════════════════════════════════════════════════════════════════
   build-and-push:
     name: Build & Push Images
+    needs: [gate]
     runs-on: ubuntu-latest
     permissions:
       contents: read

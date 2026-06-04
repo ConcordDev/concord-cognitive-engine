@@ -25,10 +25,10 @@
  */
 export default function securityHeaders(req, res, next) {
   // ---- Content-Security-Policy ------------------------------------------------
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws:; object-src 'none'; frame-ancestors 'none'"
-  );
+  // M3: CSP is owned solely by the Helmet config in middleware/index.js (which adds the
+  // per-request nonce). Setting it here too was dead (Helmet runs after and overwrites)
+  // and a second, conflicting source of truth — removed. This middleware keeps the other
+  // hardening headers below.
 
   // ---- Strict-Transport-Security ---------------------------------------------
   res.setHeader(
@@ -45,9 +45,15 @@ export default function securityHeaders(req, res, next) {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
 
   // ---- Permissions-Policy ----------------------------------------------------
+  // Explicitly allow same-origin WebXR (immersive-ar/vr): per the WebXR spec, the
+  // `xr-spatial-tracking` policy gates navigator.xr — Chromium rejects
+  // isSessionSupported/requestSession with a SecurityError where it's disallowed.
+  // It defaults to `self`, but being explicit future-proofs the AR/VR lenses against a
+  // tightened policy. camera/mic/geolocation stay restricted (immersive-ar passthrough
+  // is handled by the XR compositor, not getUserMedia, so camera=() doesn't block it).
   res.setHeader(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=()"
+    "camera=(), microphone=(), geolocation=(), xr-spatial-tracking=(self)"
   );
 
   next();

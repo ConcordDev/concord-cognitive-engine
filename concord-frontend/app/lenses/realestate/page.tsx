@@ -359,13 +359,13 @@ const TRANSACTION_PIPELINE: string[] = [
 
 const DOMAIN_ACTIONS = [
   {
-    id: 'cap_rate_calc',
+    id: 'capRate',
     label: 'Cap Rate Calc',
     icon: Percent,
     description: 'Calculate capitalization rate',
   },
   {
-    id: 'cash_flow_analysis',
+    id: 'cashFlow',
     label: 'Cash Flow Analysis',
     icon: PiggyBank,
     description: 'Analyze monthly/annual cash flow',
@@ -377,13 +377,13 @@ const DOMAIN_ACTIONS = [
     description: 'Generate comparative market analysis',
   },
   {
-    id: 'closing_timeline',
+    id: 'closingTimeline',
     label: 'Closing Timeline',
     icon: Clock,
     description: 'Generate closing timeline',
   },
   {
-    id: 'vacancy_report',
+    id: 'vacancyReport',
     label: 'Vacancy Report',
     icon: Building2,
     description: 'Generate vacancy & occupancy report',
@@ -1947,7 +1947,7 @@ export default function RealEstateLensPage() {
                               Edit Details
                             </button>
                             <button
-                              onClick={() => handleAction('closing_timeline', item.id)}
+                              onClick={() => handleAction('closingTimeline', item.id)}
                               className={cn(ds.btnSmall, ds.btnGhost)}
                             >
                               <Clock className="w-3 h-3" /> Generate Timeline
@@ -2188,7 +2188,7 @@ export default function RealEstateLensPage() {
                   ))}
                 </select>
                 <button
-                  onClick={() => handleAction('vacancy_report')}
+                  onClick={() => handleAction('vacancyReport')}
                   className={cn(ds.btnSmall, ds.btnGhost)}
                 >
                   <FileText className="w-3 h-3" /> Vacancy Report
@@ -2484,7 +2484,7 @@ export default function RealEstateLensPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleAction('cap_rate_calc', item.id);
+                            handleAction('capRate', item.id);
                           }}
                           className={cn(ds.btnSmall, ds.btnGhost)}
                         >
@@ -2493,7 +2493,7 @@ export default function RealEstateLensPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleAction('cash_flow_analysis', item.id);
+                            handleAction('cashFlow', item.id);
                           }}
                           className={cn(ds.btnSmall, ds.btnGhost)}
                         >

@@ -92,7 +92,7 @@ export function ResearchCollectionsPanel({ onChange }: { onChange: () => void })
                   <span className="text-sm font-semibold text-zinc-100">{c.name}</span>
                   <span className="text-[11px] text-zinc-400">{c.referenceCount} references</span>
                 </button>
-                <button type="button" onClick={() => del(c.id)} className="px-3 text-zinc-600 hover:text-rose-400">
+                <button type="button" onClick={() => del(c.id)} aria-label={`Delete collection ${c.name}`} className="px-3 text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

@@ -1984,7 +1984,7 @@ export default function ManufacturingLensPage() {
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => handleAction('scheduleMaintenance', item.id)}
+                    onClick={() => handleAction('maintenance-schedule', item.id)}
                     className={cn(ds.btnSecondary, ds.btnSmall)}
                   >
                     <Wrench className="w-3.5 h-3.5" /> Schedule PM
@@ -2434,16 +2434,16 @@ export default function ManufacturingLensPage() {
       {/* Domain Actions */}
       {mode !== 'dashboard' && (
         <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={() => handleAction('scheduleOptimizer')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('scheduleOptimize')} className={ds.btnSecondary}>
             <TrendingUp className="w-4 h-4" /> Schedule Optimizer
           </button>
-          <button onClick={() => handleAction('bomCostCalc')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('bomCost')} className={ds.btnSecondary}>
             <Calculator className="w-4 h-4" /> BOM Cost Calc
           </button>
-          <button onClick={() => handleAction('oeeCalculator')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('oeeCalculate')} className={ds.btnSecondary}>
             <Gauge className="w-4 h-4" /> OEE Calculator
           </button>
-          <button onClick={() => handleAction('safetyRateReport')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('safetyRate')} className={ds.btnSecondary}>
             <Shield className="w-4 h-4" /> Safety Rate Report
           </button>
           <button onClick={() => handleAction('defectAnalysis')} className={ds.btnSecondary}>
@@ -2471,6 +2471,44 @@ export default function ManufacturingLensPage() {
             </button>
           </div>
           <div className="space-y-3">
+            {/* advanceStep */}
+            {actionResult.totalSteps !== undefined && actionResult.percentComplete !== undefined && (
+              <div className="space-y-1">
+                <div className="flex gap-4 flex-wrap text-sm">
+                  <span className="text-gray-400">Step: <span className="text-neon-cyan font-mono">{String(actionResult.currentStep)}/{String(actionResult.totalSteps)}</span></span>
+                  <span className="text-gray-400">Status: <span className="text-white">{String(actionResult.status).replace(/_/g, ' ')}</span></span>
+                  <span className="text-gray-400">Progress: <span className="text-neon-green font-mono">{String(actionResult.percentComplete)}%</span></span>
+                </div>
+                {!!actionResult.currentStepName && <p className="text-xs text-gray-300">Now: {String(actionResult.currentStepName)}{actionResult.nextStepName ? ` → next: ${String(actionResult.nextStepName)}` : ''}</p>}
+              </div>
+            )}
+            {/* defectAnalysis */}
+            {actionResult.defectRatePct !== undefined && (
+              <div className="space-y-1">
+                <div className="flex gap-4 flex-wrap text-sm">
+                  <span className="text-gray-400">Defects: <span className="text-white font-mono">{String(actionResult.defectCount)}</span> / {String(actionResult.inspected)}</span>
+                  <span className="text-gray-400">Rate: <span className={`font-mono ${Number(actionResult.defectRatePct) > 5 ? 'text-red-400' : Number(actionResult.defectRatePct) > 1 ? 'text-amber-400' : 'text-green-400'}`}>{String(actionResult.defectRatePct)}%</span></span>
+                  <span className="text-gray-400">Risk: <span className="text-white">{String(actionResult.riskLevel)}</span></span>
+                </div>
+                {!!actionResult.topDefect && <p className="text-xs text-gray-300">Top defect: {String(actionResult.topDefect)}</p>}
+              </div>
+            )}
+            {/* generateTraveler */}
+            {actionResult.travelerId !== undefined && (
+              <div className="space-y-1">
+                <p className="text-xs text-gray-400">Traveler <span className="text-neon-cyan font-mono">{String(actionResult.travelerId)}</span> · part {String(actionResult.partNumber)} · {String(actionResult.stepCount)} step(s)</p>
+                <pre className="text-[10px] text-gray-300 font-mono bg-lattice-surface rounded p-2 overflow-auto max-h-48 whitespace-pre">{String(actionResult.content)}</pre>
+              </div>
+            )}
+            {/* logDowntime */}
+            {actionResult.downtimeId !== undefined && (
+              <div className="flex gap-4 flex-wrap text-sm">
+                <span className="text-gray-400">Logged <span className="text-neon-cyan font-mono">{String(actionResult.downtimeId)}</span></span>
+                <span className="text-gray-400">{String(actionResult.machine)} · {String(actionResult.reason)}</span>
+                <span className="text-gray-400">{String(actionResult.durationMinutes)} min</span>
+                <span className="text-gray-400">Avail impact: <span className="text-amber-400 font-mono">{String(actionResult.availabilityImpactPct)}%</span></span>
+              </div>
+            )}
             {/* scheduleOptimize */}
             {actionResult.sequence !== undefined && Array.isArray(actionResult.sequence) && (
               <div className="space-y-2">

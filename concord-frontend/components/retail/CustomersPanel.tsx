@@ -70,7 +70,7 @@ export function CustomersPanel() {
         <Users className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Customers</span>
         <span className="ml-auto text-[10px] text-gray-400">{customers.length} total</span>
-        <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
+        <button onClick={() => setCreating(v => !v)} aria-label="New customer" className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       {segments && (
@@ -134,7 +134,7 @@ export function CustomersPanel() {
                     <div className="text-sm font-mono tabular-nums text-white">${c.totalSpent.toFixed(0)}</div>
                     <div className="text-[10px] text-gray-400">{c.orderCount} order{c.orderCount === 1 ? '' : 's'}</div>
                   </div>
-                  <button onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => remove(c.id)} aria-label="Delete customer" className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </li>
               );
             })}

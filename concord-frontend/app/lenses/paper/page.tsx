@@ -442,6 +442,16 @@ export default function PaperLensPage() {
         setSynthesisResult(`Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}`);
       } else if (action === 'generate_abstract' || action === 'synthesize') {
         setSynthesisResult(typeof result.result === 'string' ? result.result : JSON.stringify(result.result, null, 2));
+      } else if (action === 'export_pdf') {
+        const exp = result.result as { filename?: string; content?: string } | undefined;
+        if (exp?.content) {
+          const blob = new Blob([exp.content], { type: 'text/plain;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = exp.filename || 'paper.txt'; a.click();
+          URL.revokeObjectURL(url);
+          setSynthesisResult(`Exported ${exp.filename || 'paper.txt'} (${exp.content.length} chars).`);
+        }
       }
     } catch (e) { console.error(`Paper action ${action} failed:`, e); }
   }, [selectedItemId, runArtifact]);
@@ -678,13 +688,13 @@ export default function PaperLensPage() {
       {selectedItemId && (
         <div className={cn(ds.panel, 'flex flex-wrap items-center gap-2')}>
           <span className={ds.textMuted}>Actions:</span>
-          <button onClick={() => handleDomainAction('validate_claims')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
+          <button onClick={() => handleDomainAction('validate')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
             <FlaskConical className="w-3.5 h-3.5" /> Validate Claims
           </button>
-          <button onClick={() => handleDomainAction('check_consistency')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
+          <button onClick={() => handleDomainAction('detect-contradictions')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
             <ShieldCheck className="w-3.5 h-3.5" /> Check Consistency
           </button>
-          <button onClick={() => handleDomainAction('generate_abstract')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
+          <button onClick={() => handleDomainAction('abstractSummarize')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
             <Sparkles className="w-3.5 h-3.5" /> Generate Abstract
           </button>
           <button onClick={() => handleDomainAction('export_pdf')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>

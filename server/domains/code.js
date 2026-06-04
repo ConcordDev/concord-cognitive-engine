@@ -16,6 +16,17 @@ const EXEC_TIMEOUT_MS = 4_000;
 const EXEC_MEMORY_HINT_BYTES = 32 * 1024 * 1024;
 const SEARCH_RESULT_CAP = 500;
 
+// node:vm is NOT a security boundary — sandbox escapes (constructor reach-back, async
+// prototype chains, etc.) are a known class. Live code execution is therefore gated:
+// default OFF in production, ON in dev/test. Set CONCORD_CODE_EXEC_ENABLED=1 to enable in
+// prod (only after fronting it with isolated-vm / a worker-or-container sandbox).
+export function codeExecEnabled() {
+  const v = process.env.CONCORD_CODE_EXEC_ENABLED;
+  if (v === "1" || v === "true") return true;
+  if (v === "0" || v === "false") return false;
+  return (process.env.NODE_ENV || "development") !== "production";
+}
+
 export default function registerCodeActions(registerLensAction) {
   /**
    * complexityAnalysis — Cyclomatic, cognitive, maintainability index per
@@ -485,11 +496,17 @@ export default function registerCodeActions(registerLensAction) {
    * runner pipeline.
    */
   registerLensAction("code", "exec", (_ctx, _artifact, params = {}) => {
-    const code = String(params.code || "");
+    // Accept `source` as an alias for `code` (the productivity notebook + some callers
+    // use `source`). node:vm here is the accepted boundary for a personal JS notebook —
+    // no I/O globals + a 4s timeout — not a hardened multi-tenant sandbox.
+    const code = String(params.code ?? params.source ?? "");
     const language = String(params.language || "javascript").toLowerCase();
     if (!code.trim()) return { ok: true, result: { stdout: "", stderr: "", exitCode: 0, supported: true } };
 
     if (language === "javascript" || language === "js" || language === "typescript" || language === "ts") {
+      if (!codeExecEnabled()) {
+        return { ok: false, error: "code_exec_disabled", result: { supported: false, stdout: "", stderr: "Live code execution is disabled in this environment. Enable with CONCORD_CODE_EXEC_ENABLED=1 (node:vm is not a hardened sandbox — front it with isolated-vm/process isolation before enabling in production).", exitCode: -1 } };
+      }
       return execJavaScript(code, language);
     }
 

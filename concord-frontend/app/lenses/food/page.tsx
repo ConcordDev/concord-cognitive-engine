@@ -679,7 +679,7 @@ export default function FoodLensPage() {
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 p-6 border-t border-lattice-border">
-              <button onClick={() => handleAction('scale_recipe', recipeScaleId)} className={ds.btnPrimary}>
+              <button onClick={() => handleAction('scaleRecipe', recipeScaleId)} className={ds.btnPrimary}>
                 <Zap className="w-4 h-4" /> Run AI Scale
               </button>
               <button onClick={() => setRecipeScaleId(null)} className={ds.btnSecondary}>Close</button>
@@ -879,7 +879,7 @@ export default function FoodLensPage() {
             <ClipboardList className="w-5 h-5 text-cyan-400" /> Inventory Count Sheet
           </h2>
           <div className="flex items-center gap-2">
-            <button onClick={() => handleAction('generate_po')} className={ds.btnPrimary}><FileText className="w-4 h-4" /> Generate PO</button>
+            <button onClick={() => handleAction('generatePo')} className={ds.btnPrimary}><FileText className="w-4 h-4" /> Generate PO</button>
             <button onClick={() => setShowCountSheet(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
           </div>
         </div>
@@ -1010,7 +1010,7 @@ export default function FoodLensPage() {
               <label className={ds.label}>Expected Covers:</label>
               <input type="number" value={expectedCovers} onChange={e => setExpectedCovers(e.target.value)} className={cn(ds.input, 'w-24')} />
             </div>
-            <button onClick={() => handleAction('generate_prep_list')} className={ds.btnPrimary}><Zap className="w-4 h-4" /> Auto-Generate</button>
+            <button onClick={() => handleAction('generatePrepList')} className={ds.btnPrimary}><Zap className="w-4 h-4" /> Auto-Generate</button>
             <button onClick={() => setShowPrepList(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
           </div>
         </div>
@@ -1346,7 +1346,7 @@ export default function FoodLensPage() {
             <CalendarDays className="w-5 h-5 text-neon-cyan" /> Weekly Meal Plan
           </h2>
           <div className="flex items-center gap-2">
-            <button onClick={() => handleAction('suggest_meals')} className={ds.btnSecondary}>
+            <button onClick={() => handleAction('suggestMeals')} className={ds.btnSecondary}>
               <Zap className="w-4 h-4" /> AI Suggest
             </button>
             <button onClick={openCreate} className={ds.btnPrimary}><Plus className="w-4 h-4" /> Add Meal</button>
@@ -1903,8 +1903,8 @@ export default function FoodLensPage() {
           {/* Domain action buttons */}
           {activeTab === 'recipes' && filtered.length > 0 && (
             <>
-              <button onClick={() => handleAction('cost_plate')} className={ds.btnSecondary}><DollarSign className="w-4 h-4" /> Cost Plate</button>
-              <button onClick={() => handleAction('menu_analysis')} className={ds.btnSecondary}><BarChart3 className="w-4 h-4" /> Menu Analysis</button>
+              <button onClick={() => handleAction('costPlate')} className={ds.btnSecondary}><DollarSign className="w-4 h-4" /> Cost Plate</button>
+              <button onClick={() => handleAction('menuAnalysis')} className={ds.btnSecondary}><BarChart3 className="w-4 h-4" /> Menu Analysis</button>
             </>
           )}
         </div>
@@ -2435,7 +2435,7 @@ export default function FoodLensPage() {
               <div className="flex items-center gap-2">
                 {activeTab === 'recipes' && editingItem && (
                   <>
-                    <button onClick={() => { setEditorOpen(false); handleAction('cost_plate', editingItem.id); }} className={ds.btnSecondary}>
+                    <button onClick={() => { setEditorOpen(false); handleAction('costPlate', editingItem.id); }} className={ds.btnSecondary}>
                       <DollarSign className="w-4 h-4" /> Cost Plate
                     </button>
                     <button onClick={() => { setEditorOpen(false); setScaleFactor(1); setRecipeScaleId(editingItem.id); }} className={ds.btnSecondary}>
@@ -2444,7 +2444,7 @@ export default function FoodLensPage() {
                   </>
                 )}
                 {activeTab === 'inventory' && editingItem && (
-                  <button onClick={() => { setEditorOpen(false); handleAction('waste_report', editingItem.id); }} className={ds.btnSecondary}>
+                  <button onClick={() => { setEditorOpen(false); handleAction('wasteReport', editingItem.id); }} className={ds.btnSecondary}>
                     <FileText className="w-4 h-4" /> Waste Report
                   </button>
                 )}
@@ -2631,11 +2631,11 @@ export default function FoodLensPage() {
           <Zap className="w-5 h-5 text-yellow-400" /> Quick Actions
         </h3>
         <div className="flex flex-wrap gap-3">
-          <button onClick={() => handleAction('cost_plate')} className={ds.btnSecondary}><DollarSign className="w-4 h-4" /> Cost Plate</button>
-          <button onClick={() => handleAction('menu_analysis')} className={ds.btnSecondary}><PieChart className="w-4 h-4" /> Menu Analysis</button>
-          <button onClick={() => handleAction('generate_prep_list')} className={ds.btnSecondary}><ClipboardList className="w-4 h-4" /> Generate Prep List</button>
-          <button onClick={() => handleAction('waste_report')} className={ds.btnSecondary}><Trash2 className="w-4 h-4" /> Waste Report</button>
-          <button onClick={() => handleAction('scale_recipe')} className={ds.btnSecondary}><Scale className="w-4 h-4" /> Scale Recipe</button>
+          <button onClick={() => handleAction('costPlate')} className={ds.btnSecondary}><DollarSign className="w-4 h-4" /> Cost Plate</button>
+          <button onClick={() => handleAction('menuAnalysis')} className={ds.btnSecondary}><PieChart className="w-4 h-4" /> Menu Analysis</button>
+          <button onClick={() => handleAction('generatePrepList')} className={ds.btnSecondary}><ClipboardList className="w-4 h-4" /> Generate Prep List</button>
+          <button onClick={() => handleAction('wasteReport')} className={ds.btnSecondary}><Trash2 className="w-4 h-4" /> Waste Report</button>
+          <button onClick={() => handleAction('scaleRecipe')} className={ds.btnSecondary}><Scale className="w-4 h-4" /> Scale Recipe</button>
         </div>
       </div>
     </div>

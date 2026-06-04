@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CoinGeckoTicker } from '@/components/crypto/CoinGeckoTicker';
 import { CryptoActionPanel } from '@/components/crypto/CryptoActionPanel';
+import { AddressBookPanel } from '@/components/crypto/AddressBookPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { SwapRoutePanel } from '@/components/crypto-explorer/SwapRoutePanel';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
@@ -28,7 +29,7 @@ import {
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -145,11 +146,56 @@ export default function CryptoLensPage() {
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [showReceive, setShowReceive] = useState(false);
   const [receiveAddress, setReceiveAddress] = useState<string>('');
-  useEffect(() => { setWatchlist(loadWatchlist()); }, []);
+  useEffect(() => {
+    // Seed instantly from the local cache, then reconcile against the
+    // server-side watchlist — the backend `crypto.watchlist-*` macros are
+    // the source of truth, so the list follows the user across sessions and
+    // devices (localStorage alone is per-browser).
+    const cached = loadWatchlist();
+    setWatchlist(cached);
+    let cancelled = false;
+    (async () => {
+      try {
+        // lensRun unwraps the { ok, result } envelope — raw api.post leaves
+        // watchlist-list double-wrapped (result.result.watchlist), so a direct
+        // res.data.result.watchlist read is always undefined and the server list
+        // never loads (cross-device sync silently no-ops).
+        const res = await lensRun({
+          domain: 'crypto', action: 'watchlist-list', input: {},
+        });
+        if (cancelled) return;
+        const ids: string[] = (res?.data?.result?.watchlist || [])
+          .map((w: { symbol?: string }) => w?.symbol)
+          .filter((s: unknown): s is string => typeof s === 'string');
+        if (ids.length > 0) {
+          setWatchlist(ids);
+          saveWatchlist(ids);
+        } else if (cached.length > 0) {
+          // First sync for this account: migrate the local watchlist up so
+          // the server becomes authoritative (otherwise the backend macros
+          // stay dead and the list never syncs).
+          for (const id of cached) {
+            api.post('/api/lens/run', {
+              domain: 'crypto', action: 'watchlist-add', input: { symbol: id },
+            }).catch(() => { /* offline — retry on next toggle/load */ });
+          }
+        }
+      } catch { /* offline — keep the local cache */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const toggleWatch = useCallback((id: string) => {
     setWatchlist(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      const wasWatching = prev.includes(id);
+      const next = wasWatching ? prev.filter(x => x !== id) : [...prev, id];
       saveWatchlist(next);
+      // Persist to the server watchlist (source of truth); the local cache
+      // above keeps the toggle instant + offline-tolerant.
+      api.post('/api/lens/run', {
+        domain: 'crypto',
+        action: wasWatching ? 'watchlist-remove' : 'watchlist-add',
+        input: { symbol: id },
+      }).catch(() => { /* offline — reconciles on next load */ });
       return next;
     });
   }, []);
@@ -1238,7 +1284,7 @@ export default function CryptoLensPage() {
             >
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold text-cyan-300">Receive</h2>
-                <button onClick={() => setShowReceive(false)} className="p-1 text-gray-400 hover:text-white">
+                <button onClick={() => setShowReceive(false)} aria-label="Close receive panel" className="p-1 text-gray-400 hover:text-white">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -1651,6 +1697,7 @@ export default function CryptoLensPage() {
       {/* CoinGecko + Uniswap + Etherscan-shape workbench: portfolio / tokens / swap / gas + actions */}
       <PipingProvider>
         <section className="mt-6">
+      <AddressBookPanel className="mt-6 mx-4" />
       <section className="mt-6"><LensFeedButton domain="crypto" /></section>
           <CryptoActionPanel />
         </section>

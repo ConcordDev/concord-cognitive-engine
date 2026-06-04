@@ -1008,4 +1008,43 @@ export default function registerMetaActions(registerLensAction) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
   });
+
+  // classify — deterministic text → best-lens-domain classifier. Used by QuickCapture
+  // to auto-route captured text to a lens. Keyword-scored over a domain signal map;
+  // returns { domain, confidence, signals }. (Guarded caller; opt-in LLM not needed.)
+  registerLensAction("meta", "classify", (ctx, artifact, params = {}) => {
+    const text = String(params.text || artifact.data?.text || artifact.data?.content || "").toLowerCase();
+    if (!text.trim()) return { ok: false, error: "text required" };
+    const SIGNALS = {
+      code: ["code", "function", "bug", "git", "compile", "api", "deploy", "refactor", "typescript", "python"],
+      finance: ["budget", "invest", "stock", "money", "expense", "savings", "portfolio", "tax", "income"],
+      crypto: ["crypto", "bitcoin", "ethereum", "wallet", "token", "defi", "blockchain"],
+      health: ["doctor", "symptom", "medication", "pain", "diagnosis", "patient", "clinic"],
+      fitness: ["workout", "gym", "run", "exercise", "reps", "weight", "muscle", "cardio"],
+      music: ["song", "track", "playlist", "bpm", "chord", "melody", "album", "guitar"],
+      cooking: ["recipe", "cook", "ingredient", "bake", "meal", "kitchen", "dish"],
+      travel: ["trip", "flight", "hotel", "travel", "itinerary", "destination", "vacation"],
+      research: ["paper", "study", "citation", "hypothesis", "experiment", "abstract", "journal"],
+      legal: ["contract", "court", "lawsuit", "clause", "attorney", "case", "statute"],
+      writing: ["draft", "chapter", "story", "essay", "manuscript", "poem", "narrative"],
+      tasks: ["todo", "task", "deadline", "remind", "schedule", "meeting", "project"],
+    };
+    const scores = {};
+    for (const [domain, words] of Object.entries(SIGNALS)) {
+      let s = 0; for (const w of words) if (text.includes(w)) s += 1;
+      if (s > 0) scores[domain] = s;
+    }
+    const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+    const top = ranked[0];
+    const totalHits = ranked.reduce((n, [, s]) => n + s, 0);
+    return {
+      ok: true,
+      result: {
+        domain: top ? top[0] : null,
+        confidence: top ? Math.round((top[1] / Math.max(totalHits, 1)) * 100) / 100 : 0,
+        signals: Object.fromEntries(ranked.slice(0, 4)),
+        matched: !!top,
+      },
+    };
+  });
 }

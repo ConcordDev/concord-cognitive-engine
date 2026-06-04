@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Heart, Play, ListPlus, Trash2, ListMusic, ChevronRight } from 'lucide-react';
+import { Loader2, Plus, Heart, Play, ListPlus, Trash2, ListMusic, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -76,6 +76,16 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
     setPlTracks(r.data?.result?.tracks || []);
     await refresh();
   };
+  const reorderTrack = async (playlistId: string, trackId: string, direction: 'up' | 'down') => {
+    await lensRun('music', 'playlist-reorder', { id: playlistId, trackId, direction });
+    const r = await lensRun('music', 'playlist-detail', { id: playlistId });
+    setPlTracks(r.data?.result?.tracks || []);
+  };
+  const deletePlaylist = async (id: string) => {
+    await lensRun('music', 'playlist-delete', { id });
+    if (openPl === id) setOpenPl(null);
+    await refresh(); onChange();
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
@@ -101,18 +111,29 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
         {playlists.length > 0 && (
           <ul className="space-y-1">
             {playlists.map((p) => (
-              <li key={p.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg overflow-hidden">
-                <button type="button" onClick={() => openPlaylist(p.id)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-zinc-900">
-                  <ChevronRight className={cn('w-3.5 h-3.5 text-zinc-600 transition-transform', openPl === p.id && 'rotate-90')} />
-                  <span className="text-xs text-zinc-200">{p.name}</span>
-                  <span className="text-[10px] text-zinc-400">{p.trackCount} tracks · {dur(p.durationSec)}</span>
-                </button>
+              <li key={p.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg overflow-hidden group">
+                <div className="w-full flex items-center gap-2 px-3 py-2 hover:bg-zinc-900">
+                  <button type="button" onClick={() => openPlaylist(p.id)} className="flex items-center gap-2 text-left flex-1">
+                    <ChevronRight className={cn('w-3.5 h-3.5 text-zinc-600 transition-transform', openPl === p.id && 'rotate-90')} />
+                    <span className="text-xs text-zinc-200">{p.name}</span>
+                    <span className="text-[10px] text-zinc-400">{p.trackCount} tracks · {dur(p.durationSec)}</span>
+                  </button>
+                  <button type="button" onClick={() => void deletePlaylist(p.id)} aria-label={`Delete playlist ${p.name}`}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+                </div>
                 {openPl === p.id && (
                   <div className="border-t border-zinc-800 p-2 bg-zinc-950/50">
                     {plTracks.length > 0 && (
                       <ul className="mb-2 space-y-0.5">
-                        {plTracks.map((t) => <li key={t.id} className="text-[11px] text-zinc-400">{t.title} — {t.artist}</li>)}
+                        {plTracks.map((t, ti) => (
+                          <li key={t.id} className="flex items-center gap-1.5 text-[11px] text-zinc-400 group/track">
+                            <span className="flex-1">{t.title} — {t.artist}</span>
+                            <button type="button" disabled={ti === 0} onClick={() => void reorderTrack(p.id, t.id, 'up')} aria-label="Move up"
+                              className="opacity-0 group-hover/track:opacity-100 disabled:opacity-20 p-0.5 hover:text-zinc-200"><ArrowUp className="w-3 h-3" /></button>
+                            <button type="button" disabled={ti === plTracks.length - 1} onClick={() => void reorderTrack(p.id, t.id, 'down')} aria-label="Move down"
+                              className="opacity-0 group-hover/track:opacity-100 disabled:opacity-20 p-0.5 hover:text-zinc-200"><ArrowDown className="w-3 h-3" /></button>
+                          </li>
+                        ))}
                       </ul>
                     )}
                     <div className="flex flex-wrap gap-1">
@@ -167,21 +188,21 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
           <ul className="space-y-1">
             {tracks.map((t) => (
               <li key={t.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-                <button type="button" onClick={() => play(t.id)} className="text-emerald-400 hover:text-emerald-300 shrink-0">
+                <button type="button" onClick={() => play(t.id)} aria-label={`Play ${t.title}`} className="text-emerald-400 hover:text-emerald-300 shrink-0">
                   <Play className="w-4 h-4" />
                 </button>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-zinc-200 truncate">{t.title}</p>
                   <p className="text-[10px] text-zinc-400 truncate">{t.artist}{t.album ? ` · ${t.album}` : ''} · {dur(t.durationSec)}{t.playCount > 0 ? ` · ${t.playCount} plays` : ''}</p>
                 </div>
-                <button type="button" onClick={() => like(t.id)}
+                <button type="button" onClick={() => like(t.id)} aria-label={t.liked ? `Unlike ${t.title}` : `Like ${t.title}`}
                   className={cn('shrink-0', t.liked ? 'text-emerald-400' : 'text-zinc-600 hover:text-zinc-400')}>
                   <Heart className={cn('w-3.5 h-3.5', t.liked && 'fill-current')} />
                 </button>
-                <button type="button" onClick={() => queue(t.id)} className="text-zinc-600 hover:text-zinc-300 shrink-0">
+                <button type="button" onClick={() => queue(t.id)} aria-label={`Queue ${t.title}`} className="text-zinc-600 hover:text-zinc-300 shrink-0">
                   <ListPlus className="w-3.5 h-3.5" />
                 </button>
-                <button type="button" onClick={() => del(t.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                <button type="button" onClick={() => del(t.id)} aria-label={`Delete ${t.title}`} className="text-zinc-600 hover:text-rose-400 shrink-0">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </li>

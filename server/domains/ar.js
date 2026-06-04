@@ -593,6 +593,91 @@ export default function registerArActions(registerLensAction) {
   const VALID_ANCHORS = ["plane", "point", "image", "face", "object", "geo", "world_origin"];
 
   /**
+   * buildRenderPlan — the deterministic WebXR render descriptor for a set of AR objects.
+   * Shared by `webxrPreview` (session-plan preview) and `render` (the lens render button).
+   * Computes immersive-ar required/optional features from the objects + anchor, and a
+   * draw-order-sorted draw list (opaque first, transparent last).
+   */
+  function buildRenderPlan(objects, anchor, settings) {
+    objects = Array.isArray(objects) ? objects : [];
+    anchor = anchor || "plane";
+    settings = settings || {};
+    const requiredFeatures = ["local-floor"];
+    const optionalFeatures = ["dom-overlay", "light-estimation"];
+    if (anchor === "plane" || settings.planeDetection !== false) requiredFeatures.push("plane-detection");
+    if (anchor === "image") optionalFeatures.push("image-tracking");
+    if (objects.some((o) => o.occlusion && o.occlusion.enabled)) optionalFeatures.push("depth-sensing");
+    if (objects.some((o) => o.kind === "anchor" || anchor === "geo")) optionalFeatures.push("anchors");
+
+    const drawList = objects
+      .map((o) => ({
+        id: o.id,
+        kind: o.kind,
+        model: o.model || o.primitive || null,
+        transform: { position: o.position, rotation: o.rotation, scale: o.scale },
+        opacity: o.opacity != null ? o.opacity : 1,
+        physics: o.physics ? o.physics.body : "static",
+        occlusion: !!(o.occlusion && o.occlusion.enabled),
+        color: o.color || "#a855f7",
+      }))
+      .sort((a, b) => (a.opacity >= 1 ? 0 : 1) - (b.opacity >= 1 ? 0 : 1));
+
+    return {
+      sessionMode: "immersive-ar",
+      requiredFeatures,
+      optionalFeatures,
+      fallback: "screen-ar", // when immersive-ar is unsupported
+      referenceSpace: "local-floor",
+      anchor,
+      drawList,
+      objectCount: drawList.length,
+      renderQuality: settings.renderQuality || "high",
+      estimatedDrawCalls: drawList.length + (drawList.some((d) => d.occlusion) ? 1 : 0),
+    };
+  }
+
+  /** Parse a "x,y,z" string (the AR lens form shape) or a {x,y,z} object into a vec3. */
+  function parseVec3(v, fallback) {
+    if (v && typeof v === "object") return v;
+    if (typeof v === "string" && v.trim()) {
+      const parts = v.split(",").map((x) => Number(x.trim()));
+      if (parts.length === 3 && parts.every(Number.isFinite)) return { x: parts[0], y: parts[1], z: parts[2] };
+    }
+    return fallback || { x: 0, y: 0, z: 0 };
+  }
+
+  /** Synthesize a single renderable object from a lens artifact's flat form fields. */
+  function objectFromArtifact(artifact, d) {
+    return {
+      id: (artifact && artifact.id) || "obj",
+      name: d.name || (artifact && artifact.title) || "object",
+      kind: artifact && artifact.type ? String(artifact.type).toLowerCase() : "model",
+      model: d.model || d.format || null,
+      primitive: "box",
+      position: parseVec3(d.position),
+      rotation: parseVec3(d.rotation),
+      scale: Number(d.scale) || 1,
+      opacity: d.opacity != null ? clampNum(d.opacity, 0, 100, 100) / 100 : 1,
+      color: d.color || "#a855f7",
+      occlusion: d.occlusion ? { enabled: true } : undefined,
+    };
+  }
+
+  /** AABB + center from a draw list's transform positions (null when empty). */
+  function computeBounds(drawList) {
+    const min = { x: Infinity, y: Infinity, z: Infinity };
+    const max = { x: -Infinity, y: -Infinity, z: -Infinity };
+    for (const dr of drawList) {
+      const p = dr.transform && dr.transform.position;
+      if (!p) continue;
+      min.x = Math.min(min.x, p.x || 0); min.y = Math.min(min.y, p.y || 0); min.z = Math.min(min.z, p.z || 0);
+      max.x = Math.max(max.x, p.x || 0); max.y = Math.max(max.y, p.y || 0); max.z = Math.max(max.z, p.z || 0);
+    }
+    if (!Number.isFinite(min.x)) return null;
+    return { min, max, center: { x: (min.x + max.x) / 2, y: (min.y + max.y) / 2, z: (min.z + max.z) / 2 } };
+  }
+
+  /**
    * sceneSave
    * Create or update a full AR authoring scene (objects + behaviors + anchors).
    * params.scene: { id?, name, anchor?, objects:[{id,name,kind,model?,position,rotation,scale,
@@ -1024,50 +1109,64 @@ export default function registerArActions(registerLensAction) {
         settings = p.settings || {};
       }
 
-      const requiredFeatures = ["local-floor"];
-      const optionalFeatures = ["dom-overlay", "light-estimation"];
-      if (anchor === "plane" || settings.planeDetection !== false) {
-        requiredFeatures.push("plane-detection");
-      }
-      if (anchor === "image") optionalFeatures.push("image-tracking");
-      if (objects.some((o) => o.occlusion && o.occlusion.enabled)) {
-        optionalFeatures.push("depth-sensing");
-      }
-      if (objects.some((o) => o.kind === "anchor" || anchor === "geo")) {
-        optionalFeatures.push("anchors");
-      }
+      return { ok: true, result: buildRenderPlan(objects, anchor, settings) };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
 
-      // Sorted draw list — render order so transparent objects come last.
-      const drawList = objects
-        .map((o) => ({
-          id: o.id,
-          kind: o.kind,
-          model: o.model || o.primitive || null,
-          transform: { position: o.position, rotation: o.rotation, scale: o.scale },
-          opacity: o.opacity != null ? o.opacity : 1,
-          physics: o.physics ? o.physics.body : "static",
-          occlusion: !!(o.occlusion && o.occlusion.enabled),
-          color: o.color || "#a855f7",
-        }))
-        .sort((a, b) => (a.opacity >= 1 ? 0 : 1) - (b.opacity >= 1 ? 0 : 1));
+  /**
+   * render — the AR lens "render" button. Produces a deterministic render descriptor for
+   * a scene/layer/model artifact that the frontend drives into the existing Three.js
+   * viewport (inline) or, when the device supports it, an immersive-ar WebXR session
+   * (the SceneStudio path). Resolves objects from: an explicit sceneId (arState scenes),
+   * else the artifact's own `objects[]`, else a single renderable synthesized from the
+   * artifact's flat form fields. Never throws.
+   */
+  registerLensAction("ar", "render", (ctx, artifact, params = {}) => {
+    try {
+      const p = params || {};
+      const d = (artifact && artifact.data) || {};
+      let objects, anchor, settings;
+
+      if (p.sceneId) {
+        const scene = bucket(arState().scenes, userIdOf(ctx)).get(p.sceneId);
+        if (scene) { objects = scene.objects; anchor = scene.anchor; settings = scene.settings; }
+      }
+      if (!objects) {
+        if (Array.isArray(d.objects) && d.objects.length) {
+          objects = d.objects; anchor = anchor || d.anchor; settings = settings || d.settings;
+        } else if (Array.isArray(p.objects) && p.objects.length) {
+          objects = p.objects; anchor = anchor || p.anchor; settings = settings || p.settings;
+        } else {
+          objects = [objectFromArtifact(artifact, d)];
+        }
+      }
+      anchor = anchor || d.anchorType || d.anchor || "plane";
+      settings = settings || { renderQuality: d.renderQuality };
+
+      const plan = buildRenderPlan(objects, anchor, settings);
+      // Model URLs to pre-warm the GLTF LRU cache (asset-loader.ts) before the session.
+      const assets = [...new Set(
+        plan.drawList.map((x) => x.model).filter((m) => typeof m === "string" && /[./]/.test(m))
+      )];
 
       return {
         ok: true,
         result: {
-          sessionMode: "immersive-ar",
-          requiredFeatures,
-          optionalFeatures,
-          fallback: "screen-ar", // when immersive-ar is unsupported
-          referenceSpace: "local-floor",
-          anchor,
-          drawList,
-          objectCount: drawList.length,
-          renderQuality: settings.renderQuality || "high",
-          estimatedDrawCalls: drawList.length + (drawList.some((d) => d.occlusion) ? 1 : 0),
+          ...plan,
+          // The client feature-detects navigator.xr.isSessionSupported('immersive-ar');
+          // when unsupported it downgrades to the inline orbit viewport (a real render).
+          inlineFallback: true,
+          renderTarget: "ar-viewport",
+          assets,
+          bounds: computeBounds(plan.drawList),
+          artifactId: artifact ? artifact.id : null,
+          title: (artifact && artifact.title) || d.name || "AR scene",
         },
       };
     } catch (e) {
-      return { ok: false, error: String(e && e.message || e) };
+      return { ok: false, error: "handler_error", message: String(e && e.message || e) };
     }
   });
 }

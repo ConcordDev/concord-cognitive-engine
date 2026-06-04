@@ -61,6 +61,7 @@ export function useWhiteboardCollab({
   const lastCursorPushRef = useRef(0);
   const sceneDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSceneRef = useRef<unknown | null>(null);
+  const lastBroadcastAtRef = useRef(0);
 
   // Join on mount, leave on unmount.
   useEffect(() => {
@@ -92,11 +93,16 @@ export function useWhiteboardCollab({
     const offScene = onEvent('whiteboard:scene-update', (payload: unknown) => {
       const p = payload as { boardId?: string; userId?: string; elementCount?: number };
       if (p.boardId !== boardId) return;
-      // The event itself carries metadata only; re-fetch the full scene.
-      // We do this lazily — the next remote-driven render can call
-      // whiteboard.join-shared again to pull the latest scene.
-      // For now we increment a counter so callers can re-fetch.
-      setState((prev) => ({ ...prev, remoteSceneUpdateCount: prev.remoteSceneUpdateCount + 1 }));
+      // Ignore the echo of our own broadcast (io.to(room) reaches the sender too).
+      if (Date.now() - lastBroadcastAtRef.current < 1500) return;
+      // The event carries metadata only — re-fetch the full scene (join-shared returns
+      // board.scene and is idempotent) and surface it as remoteScene for the host to apply.
+      api.post('/api/lens/run', { domain: 'whiteboard', action: 'join-shared', input: { id: boardId } })
+        .then((res) => {
+          const remoteScene = res.data?.result?.board?.scene;
+          if (remoteScene) setState((prev) => ({ ...prev, remoteScene, remoteSceneUpdateCount: prev.remoteSceneUpdateCount + 1 }));
+        })
+        .catch(() => { setState((prev) => ({ ...prev, remoteSceneUpdateCount: prev.remoteSceneUpdateCount + 1 })); });
     });
     const offCursor = onEvent('whiteboard:cursor', (payload: unknown) => {
       const p = payload as { boardId?: string; userId?: string; x?: number; y?: number };
@@ -151,6 +157,7 @@ export function useWhiteboardCollab({
       const payload = pendingSceneRef.current;
       pendingSceneRef.current = null;
       sceneDebounceRef.current = null;
+      lastBroadcastAtRef.current = Date.now(); // suppress our own scene-update echo
       api.post('/api/lens/run', {
         domain: 'whiteboard', action: 'broadcast-scene',
         input: { id: boardId, scene: payload },

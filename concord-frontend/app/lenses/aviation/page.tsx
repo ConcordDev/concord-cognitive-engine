@@ -733,19 +733,19 @@ export default function AviationLensPage() {
       <div className={ds.panel}>
         <h3 className={cn(ds.heading3, 'mb-3')}>Quick Actions</h3>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => handleAction('wb_calculate')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('calculate-wb')} className={ds.btnSecondary}>
             <Calculator className="w-4 h-4" /> W&B Calculate
           </button>
-          <button onClick={() => handleAction('currency_check')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('currencyCheck')} className={ds.btnSecondary}>
             <Shield className="w-4 h-4" /> Currency Check
           </button>
-          <button onClick={() => handleAction('maintenance_alert')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('maintenanceAlert')} className={ds.btnSecondary}>
             <AlertTriangle className="w-4 h-4" /> Maintenance Alert
           </button>
-          <button onClick={() => handleAction('flight_summary')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('flightSummary')} className={ds.btnSecondary}>
             <Clipboard className="w-4 h-4" /> Flight Summary
           </button>
-          <button onClick={() => handleAction('duty_time_check')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('dutyTimeCheck')} className={ds.btnSecondary}>
             <Timer className="w-4 h-4" /> Duty Time Check
           </button>
         </div>
@@ -1753,12 +1753,12 @@ export default function AviationLensPage() {
         const queueItems = [
           expiringPilots > 0 && {
             label: `${expiringPilots} pilot${expiringPilots === 1 ? '' : 's'} medical expiring in 30 days`,
-            action: () => { setActiveMode('pilots'); handleAction('currency_check'); },
+            action: () => { setActiveMode('pilots'); handleAction('currencyCheck'); },
             color: 'text-amber-300',
           },
           overdueMaint > 0 && {
             label: `${overdueMaint} aircraft maintenance overdue (Hobbs)`,
-            action: () => { setActiveMode('maintenance'); handleAction('maintenance_alert'); },
+            action: () => { setActiveMode('maintenance'); handleAction('maintenanceAlert'); },
             color: 'text-rose-300',
           },
           recentSafetyAlerts > 0 && {
@@ -1885,35 +1885,35 @@ export default function AviationLensPage() {
           <div className="flex flex-wrap gap-2">
             {activeMode === 'flights' && (
               <>
-                <button onClick={() => handleAction('flight_summary')} className={cn(ds.btnGhost, ds.btnSmall)}><Clipboard className="w-3 h-3" /> Flight Summary</button>
-                <button onClick={() => handleAction('weather_check')} className={cn(ds.btnGhost, ds.btnSmall)}><CloudRain className="w-3 h-3" /> Weather Check</button>
+                <button onClick={() => handleAction('flightSummary')} className={cn(ds.btnGhost, ds.btnSmall)}><Clipboard className="w-3 h-3" /> Flight Summary</button>
+                <button onClick={() => handleAction('weatherCheck')} className={cn(ds.btnGhost, ds.btnSmall)}><CloudRain className="w-3 h-3" /> Weather Check</button>
               </>
             )}
             {activeMode === 'pilots' && (
               <>
-                <button onClick={() => handleAction('currency_check')} className={cn(ds.btnGhost, ds.btnSmall)}><Shield className="w-3 h-3" /> Currency Check</button>
-                <button onClick={() => handleAction('duty_time_check')} className={cn(ds.btnGhost, ds.btnSmall)}><Timer className="w-3 h-3" /> Duty Time Check</button>
+                <button onClick={() => handleAction('currencyCheck')} className={cn(ds.btnGhost, ds.btnSmall)}><Shield className="w-3 h-3" /> Currency Check</button>
+                <button onClick={() => handleAction('dutyTimeCheck')} className={cn(ds.btnGhost, ds.btnSmall)}><Timer className="w-3 h-3" /> Duty Time Check</button>
               </>
             )}
             {activeMode === 'fleet' && (
               <>
-                <button onClick={() => handleAction('maintenance_alert')} className={cn(ds.btnGhost, ds.btnSmall)}><AlertTriangle className="w-3 h-3" /> Maintenance Alert</button>
+                <button onClick={() => handleAction('maintenanceAlert')} className={cn(ds.btnGhost, ds.btnSmall)}><AlertTriangle className="w-3 h-3" /> Maintenance Alert</button>
               </>
             )}
             {activeMode === 'maintenance' && (
               <>
-                <button onClick={() => handleAction('maintenance_alert')} className={cn(ds.btnGhost, ds.btnSmall)}><AlertTriangle className="w-3 h-3" /> Check ADs</button>
+                <button onClick={() => handleAction('maintenanceAlert')} className={cn(ds.btnGhost, ds.btnSmall)}><AlertTriangle className="w-3 h-3" /> Check ADs</button>
               </>
             )}
             {activeMode === 'wb' && (
               <>
-                <button onClick={() => handleAction('wb_calculate')} className={cn(ds.btnGhost, ds.btnSmall)}><Calculator className="w-3 h-3" /> W&B Calculate</button>
+                <button onClick={() => handleAction('calculate-wb')} className={cn(ds.btnGhost, ds.btnSmall)}><Calculator className="w-3 h-3" /> W&B Calculate</button>
               </>
             )}
             {activeMode === 'weather' && (
               <>
-                <button onClick={() => handleAction('weather_check')} className={cn(ds.btnGhost, ds.btnSmall)}><CloudRain className="w-3 h-3" /> Refresh Weather</button>
-                <button onClick={() => handleAction('flight_summary')} className={cn(ds.btnGhost, ds.btnSmall)}><Clipboard className="w-3 h-3" /> Weather Summary</button>
+                <button onClick={() => handleAction('weatherCheck')} className={cn(ds.btnGhost, ds.btnSmall)}><CloudRain className="w-3 h-3" /> Refresh Weather</button>
+                <button onClick={() => handleAction('flightSummary')} className={cn(ds.btnGhost, ds.btnSmall)}><Clipboard className="w-3 h-3" /> Weather Summary</button>
               </>
             )}
           </div>
@@ -2053,22 +2053,22 @@ export default function AviationLensPage() {
                     </button>
                   )}
                   {editingId && activeMode === 'flights' && (
-                    <button onClick={() => handleAction('flight_summary', editingId)} className={ds.btnSecondary}>
+                    <button onClick={() => handleAction('flightSummary', editingId)} className={ds.btnSecondary}>
                       <Clipboard className="w-4 h-4" /> Summary
                     </button>
                   )}
                   {editingId && activeMode === 'pilots' && (
-                    <button onClick={() => handleAction('currency_check', editingId)} className={ds.btnSecondary}>
+                    <button onClick={() => handleAction('currencyCheck', editingId)} className={ds.btnSecondary}>
                       <Shield className="w-4 h-4" /> Check Currency
                     </button>
                   )}
                   {editingId && activeMode === 'wb' && (
-                    <button onClick={() => handleAction('wb_calculate', editingId)} className={ds.btnSecondary}>
+                    <button onClick={() => handleAction('calculate-wb', editingId)} className={ds.btnSecondary}>
                       <Calculator className="w-4 h-4" /> Calculate
                     </button>
                   )}
                   {editingId && activeMode === 'weather' && (
-                    <button onClick={() => handleAction('weather_check', editingId)} className={ds.btnSecondary}>
+                    <button onClick={() => handleAction('weatherCheck', editingId)} className={ds.btnSecondary}>
                       <CloudRain className="w-4 h-4" /> Refresh
                     </button>
                   )}

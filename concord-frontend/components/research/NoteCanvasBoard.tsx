@@ -260,6 +260,7 @@ export function NoteCanvasBoard() {
                 <button
                   type="button"
                   onClick={() => removeCard(c.id)}
+                  aria-label="Remove card"
                   className="text-gray-400 hover:text-rose-300"
                 >
                   <Trash2 className="w-3 h-3" />
@@ -332,6 +333,7 @@ export function NoteCanvasBoard() {
               <button
                 type="button"
                 onClick={() => deleteCanvas(c.id)}
+                aria-label="Delete canvas"
                 className="p-1 text-gray-600 hover:text-rose-300"
               >
                 <Trash2 className="w-3 h-3" />

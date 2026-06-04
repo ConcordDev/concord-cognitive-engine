@@ -19,6 +19,42 @@ export default function registerLinguisticsActions(registerLensAction) {
     const uniqueWords = new Set(words.map(w => w.toLowerCase().replace(/[^a-z]/g, "")));
     return { ok: true, result: { wordCount: words.length, sentenceCount: sentences.length, charCount: chars, avgWordLength: Math.round(chars / words.length * 10) / 10, avgSentenceLength: Math.round(words.length / sentences.length * 10) / 10, vocabularySize: uniqueWords.size, lexicalDiversity: Math.round((uniqueWords.size / words.length) * 100), readabilityGrade: Math.round(Math.max(0, fleschKincaid) * 10) / 10, readingLevel: fleschKincaid < 6 ? "elementary" : fleschKincaid < 10 ? "middle-school" : fleschKincaid < 14 ? "high-school" : "college" } };
   });
+  // Morphosyntactic analysis for the lens "Analyze" surface
+  // (app/lenses/linguistics/page.tsx posts {action:'analyze', input:{text, type:'morphosyntactic'}}
+  // and renders result.content). Reads text from params OR artifact.data (the
+  // /api/lens/run bridge populates both). Was called but never registered — the
+  // Analyze button hit the utility-brain catch-all until this landed.
+  registerLensAction("linguistics", "analyze", (ctx, artifact, params = {}) => {
+    const text = String(params?.text || artifact?.data?.text || artifact?.data?.content || "").trim();
+    if (!text) return { ok: false, error: "text required" };
+    const words = text.split(/\s+/).filter(Boolean);
+    const sentences = text.split(/[.!?]+/).filter(Boolean);
+    const chars = text.replace(/\s/g, "").length;
+    const syllables = words.reduce((s, w) => s + Math.max(1, w.replace(/[^aeiouy]/gi, "").length), 0);
+    const fk = 0.39 * (words.length / Math.max(sentences.length, 1)) + 11.8 * (syllables / Math.max(words.length, 1)) - 15.59;
+    const grade = Math.round(Math.max(0, fk) * 10) / 10;
+    const level = fk < 6 ? "elementary" : fk < 10 ? "middle-school" : fk < 14 ? "high-school" : "college";
+    const unique = new Set(words.map(w => w.toLowerCase().replace(/[^a-z]/g, "")).filter(Boolean));
+    const ttr = words.length ? Math.round((unique.size / words.length) * 100) : 0;
+    // Morphological sketch: tally inferable word-classes from common suffixes.
+    const suffixClass = (w) => /ly$/.test(w) ? "adverb" : /(ness|tion|ment|ity)$/.test(w) ? "noun"
+      : /(ful|ous|ive|al)$/.test(w) ? "adjective" : /(ing|ed|ise|ize)$/.test(w) ? "verb-form" : null;
+    const classes = {};
+    // Strip punctuation before suffix classification so "happily." still reads as -ly.
+    for (const w of words) { const c = suffixClass(w.toLowerCase().replace(/[^a-z]/g, "")); if (c) classes[c] = (classes[c] || 0) + 1; }
+    const morph = Object.entries(classes).sort((a, b) => b[1] - a[1])
+      .map(([c, n]) => `${c} ×${n}`).join(", ") || "no strongly-marked affixes detected";
+    const content = [
+      `Morphosyntactic analysis`,
+      ``,
+      `Tokens: ${words.length} words · ${sentences.length} sentence(s) · ${chars} non-space chars`,
+      `Mean word length: ${Math.round(chars / Math.max(words.length, 1) * 10) / 10} chars · mean sentence length: ${Math.round(words.length / Math.max(sentences.length, 1) * 10) / 10} words`,
+      `Lexical diversity (type/token): ${ttr}% · vocabulary: ${unique.size} distinct`,
+      `Readability: Flesch-Kincaid grade ${grade} (${level})`,
+      `Affix-inferred word classes: ${morph}`,
+    ].join("\n");
+    return { ok: true, result: { content, wordCount: words.length, sentenceCount: sentences.length, lexicalDiversity: ttr, readabilityGrade: grade, readingLevel: level, wordClasses: classes } };
+  });
   registerLensAction("linguistics", "morphologyBreakdown", (ctx, artifact, _params) => {
     const word = artifact.data?.word || "";
     if (!word) return { ok: true, result: { message: "Provide a word to analyze morphologically." } };

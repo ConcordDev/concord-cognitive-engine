@@ -1195,6 +1195,17 @@ export default function registerChatActions(registerLensAction) {
     if (lang !== "javascript") {
       return { ok: false, error: "only javascript is supported in this sandbox" };
     }
+    // node:vm is NOT a security boundary — gate live execution: default OFF in production,
+    // ON in dev/test. Enable with CONCORD_CODE_EXEC_ENABLED=1 (only behind real isolation).
+    const _execEnabled = (() => {
+      const v = process.env.CONCORD_CODE_EXEC_ENABLED;
+      if (v === "1" || v === "true") return true;
+      if (v === "0" || v === "false") return false;
+      return (process.env.NODE_ENV || "development") !== "production";
+    })();
+    if (!_execEnabled) {
+      return { ok: false, error: "code_exec_disabled", detail: "Live code execution is disabled in this environment (set CONCORD_CODE_EXEC_ENABLED=1 to enable)." };
+    }
     // Static deny-list — block escape hatches before execution.
     const banned = /\b(require|import|process|globalThis|global|Function|eval|fetch|XMLHttpRequest|__dirname|__filename|module|exports|setInterval|WebAssembly)\b/;
     if (banned.test(code)) {

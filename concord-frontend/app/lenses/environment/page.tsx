@@ -24,6 +24,7 @@ import ScenarioModeler from '@/components/environment/ScenarioModeler';
 import AuditTrailPanel from '@/components/environment/AuditTrailPanel';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { GbifPanel } from '@/components/environment/GbifPanel';
+import { AirQualityPanel } from '@/components/environment/AirQualityPanel';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   MapPin as MTabSite, Bird as MTabSpecies, TestTube as MTabSamp,
@@ -3734,6 +3735,10 @@ export default function EnvironmentLensPage() {
       {/* Phase 4 — REAL GBIF biodiversity occurrence search. */}
       <section className="mt-4 mx-4">
         <GbifPanel domain="environment" />
+      </section>
+      {/* REAL EPA AirNow real-time AQI by ZIP (AIRNOW_API_KEY-gated; honest no-key state). */}
+      <section className="mt-4 mx-4">
+        <AirQualityPanel />
       </section>
 
       {/* AirNow-shape action surface: mint / DM alert / publish / agent / CSV */}

@@ -10,10 +10,12 @@ import registerMusicActions from "../domains/music.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
-function call(name, ctx, params = {}) {
+// publish-as-stem is async (async fs); list-published-stems is sync. Awaiting a
+// sync return is harmless, so this helper works for both.
+async function call(name, ctx, params = {}) {
   const fn = ACTIONS.get(`music.${name}`);
   assert.ok(fn, `music.${name} not registered`);
-  return fn(ctx, { id: null, data: {}, meta: {} }, params);
+  return await fn(ctx, { id: null, data: {}, meta: {} }, params);
 }
 
 // 100-byte WAV-ish payload — valid base64; the macro doesn't validate
@@ -67,41 +69,41 @@ const ctxAlice = (overrides = {}) => ({
   ...overrides,
 });
 
-describe("music.publish-as-stem", () => {
-  it("rejects anonymous publishers", () => {
-    const r = call("publish-as-stem", { db, actor: { userId: "anon" }, userId: "anon" }, {
+describe("music.publish-as-stem", async () => {
+  it("rejects anonymous publishers", async () => {
+    const r = await call("publish-as-stem", { db, actor: { userId: "anon" }, userId: "anon" }, {
       stemName: "ambient_bed", audioDataUrl: TINY_WAV_DATA_URL,
     });
     assert.equal(r.ok, false);
     assert.match(r.error, /auth/i);
   });
 
-  it("rejects unknown stemName", () => {
-    const r = call("publish-as-stem", ctxAlice(), {
+  it("rejects unknown stemName", async () => {
+    const r = await call("publish-as-stem", ctxAlice(), {
       stemName: "intro_strings", audioDataUrl: TINY_WAV_DATA_URL,
     });
     assert.equal(r.ok, false);
     assert.match(r.error, /stemName/);
   });
 
-  it("rejects a non-data-URL audioDataUrl", () => {
-    const r = call("publish-as-stem", ctxAlice(), {
+  it("rejects a non-data-URL audioDataUrl", async () => {
+    const r = await call("publish-as-stem", ctxAlice(), {
       stemName: "ambient_bed", audioDataUrl: "https://example/x.wav",
     });
     assert.equal(r.ok, false);
     assert.match(r.error, /base64 data/i);
   });
 
-  it("rejects when db is unavailable", () => {
-    const r = call("publish-as-stem", { actor: { userId: "user_alice" }, userId: "user_alice" }, {
+  it("rejects when db is unavailable", async () => {
+    const r = await call("publish-as-stem", { actor: { userId: "user_alice" }, userId: "user_alice" }, {
       stemName: "combat_drum", audioDataUrl: TINY_WAV_DATA_URL,
     });
     assert.equal(r.ok, false);
     assert.match(r.error, /db/i);
   });
 
-  it("inserts route_artifacts + dtus row and returns downloadUrl", () => {
-    const r = call("publish-as-stem", ctxAlice(), {
+  it("inserts route_artifacts + dtus row and returns downloadUrl", async () => {
+    const r = await call("publish-as-stem", ctxAlice(), {
       stemName: "ambient_bed",
       audioDataUrl: TINY_WAV_DATA_URL,
       durationMs: 12000,
@@ -141,10 +143,10 @@ describe("music.publish-as-stem", () => {
     assert.equal(body.artifactId, r.result.artifactId);
   });
 
-  it("accepts each of the 4 stems", () => {
+  it("accepts each of the 4 stems", async () => {
     const stems = ["ambient_bed", "tension_pad", "combat_drum", "revelation_strings"];
     for (const s of stems) {
-      const r = call("publish-as-stem", ctxAlice(), {
+      const r = await call("publish-as-stem", ctxAlice(), {
         stemName: s, audioDataUrl: TINY_MP3_DATA_URL,
       });
       assert.equal(r.ok, true, `${s} should publish`);
@@ -153,11 +155,11 @@ describe("music.publish-as-stem", () => {
     assert.equal(count, stems.length);
   });
 
-  it("each publish creates a distinct dtuId + artifactId", () => {
-    const r1 = call("publish-as-stem", ctxAlice(), {
+  it("each publish creates a distinct dtuId + artifactId", async () => {
+    const r1 = await call("publish-as-stem", ctxAlice(), {
       stemName: "ambient_bed", audioDataUrl: TINY_WAV_DATA_URL,
     });
-    const r2 = call("publish-as-stem", ctxAlice(), {
+    const r2 = await call("publish-as-stem", ctxAlice(), {
       stemName: "ambient_bed", audioDataUrl: TINY_WAV_DATA_URL,
     });
     assert.equal(r1.ok, true);
@@ -167,22 +169,22 @@ describe("music.publish-as-stem", () => {
   });
 });
 
-describe("music.list-published-stems", () => {
-  it("returns empty list when nothing published", () => {
-    const r = call("list-published-stems", ctxAlice(), {});
+describe("music.list-published-stems", async () => {
+  it("returns empty list when nothing published", async () => {
+    const r = await call("list-published-stems", ctxAlice(), {});
     assert.equal(r.ok, true);
     assert.equal(r.result.count, 0);
     assert.deepEqual(r.result.stems, []);
   });
 
-  it("lists every published stem with downloadUrl", () => {
-    call("publish-as-stem", ctxAlice(), {
+  it("lists every published stem with downloadUrl", async () => {
+    await call("publish-as-stem", ctxAlice(), {
       stemName: "ambient_bed", audioDataUrl: TINY_WAV_DATA_URL, mood: "calm",
     });
-    call("publish-as-stem", ctxAlice(), {
+    await call("publish-as-stem", ctxAlice(), {
       stemName: "combat_drum", audioDataUrl: TINY_MP3_DATA_URL,
     });
-    const r = call("list-published-stems", ctxAlice(), {});
+    const r = await call("list-published-stems", ctxAlice(), {});
     assert.equal(r.ok, true);
     assert.equal(r.result.count, 2);
     const names = r.result.stems.map((s) => s.stemName).sort();
@@ -193,39 +195,39 @@ describe("music.list-published-stems", () => {
     }
   });
 
-  it("filters by stemName when specified", () => {
-    call("publish-as-stem", ctxAlice(), {
+  it("filters by stemName when specified", async () => {
+    await call("publish-as-stem", ctxAlice(), {
       stemName: "ambient_bed", audioDataUrl: TINY_WAV_DATA_URL,
     });
-    call("publish-as-stem", ctxAlice(), {
+    await call("publish-as-stem", ctxAlice(), {
       stemName: "tension_pad", audioDataUrl: TINY_WAV_DATA_URL,
     });
-    const r = call("list-published-stems", ctxAlice(), { stemName: "tension_pad" });
+    const r = await call("list-published-stems", ctxAlice(), { stemName: "tension_pad" });
     assert.equal(r.ok, true);
     assert.equal(r.result.count, 1);
     assert.equal(r.result.stems[0].stemName, "tension_pad");
   });
 
-  it("filters by mood when specified", () => {
-    call("publish-as-stem", ctxAlice(), {
+  it("filters by mood when specified", async () => {
+    await call("publish-as-stem", ctxAlice(), {
       stemName: "ambient_bed", audioDataUrl: TINY_WAV_DATA_URL, mood: "calm",
     });
-    call("publish-as-stem", ctxAlice(), {
+    await call("publish-as-stem", ctxAlice(), {
       stemName: "ambient_bed", audioDataUrl: TINY_WAV_DATA_URL, mood: "intense",
     });
-    const r = call("list-published-stems", ctxAlice(), { mood: "calm" });
+    const r = await call("list-published-stems", ctxAlice(), { mood: "calm" });
     assert.equal(r.ok, true);
     assert.equal(r.result.count, 1);
     assert.equal(r.result.stems[0].mood, "calm");
   });
 
-  it("excludes private DTUs", () => {
-    const r = call("publish-as-stem", ctxAlice(), {
+  it("excludes private DTUs", async () => {
+    const r = await call("publish-as-stem", ctxAlice(), {
       stemName: "ambient_bed", audioDataUrl: TINY_WAV_DATA_URL,
     });
     // Flip the visibility to private and confirm it disappears from the list.
     db.prepare("UPDATE dtus SET visibility = 'private' WHERE id = ?").run(r.result.dtuId);
-    const listed = call("list-published-stems", ctxAlice(), {});
+    const listed = await call("list-published-stems", ctxAlice(), {});
     assert.equal(listed.result.count, 0);
   });
 });

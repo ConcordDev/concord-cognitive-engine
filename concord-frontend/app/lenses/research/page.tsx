@@ -17,7 +17,7 @@ import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import {
   Search,
   Filter,
@@ -188,7 +188,9 @@ export default function ResearchLensPage() {
     setGenerateError(null);
     setGenerateResult(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      // lensRun unwraps the { ok, result } envelope so data.result is the macro's
+      // payload directly (raw api.post leaves it double-wrapped → blank/JSON render).
+      const res = await lensRun({
         domain: 'research',
         action: 'generate',
         input: { hypothesis: hypothesis.trim(), type: 'analysis' },
@@ -793,9 +795,9 @@ export default function ResearchLensPage() {
                     </span>
                   </span>
                   <span className="text-gray-400">
-                    Citations:{' '}
+                    Density:{' '}
                     <span className="text-neon-cyan font-mono">
-                      {String(researchActionResult.totalCitations ?? '')}
+                      {String(researchActionResult.networkDensity ?? '')}
                     </span>
                   </span>
                   <span className="text-gray-400">
@@ -816,14 +818,14 @@ export default function ResearchLensPage() {
                   <span className="text-gray-400">
                     Score:{' '}
                     <span
-                      className={`font-mono font-bold ${(researchActionResult.score as number) >= 7 ? 'text-green-400' : (researchActionResult.score as number) >= 4 ? 'text-yellow-400' : 'text-red-400'}`}
+                      className={`font-mono font-bold ${(researchActionResult.percentage as number) >= 75 ? 'text-green-400' : (researchActionResult.percentage as number) >= 40 ? 'text-yellow-400' : 'text-red-400'}`}
                     >
-                      {String(researchActionResult.score ?? '')}/10
+                      {String(researchActionResult.percentage ?? '')}%
                     </span>
                   </span>
                   <span className="text-gray-400">
-                    Quality:{' '}
-                    <span className="text-white">{String(researchActionResult.quality ?? '')}</span>
+                    Grade:{' '}
+                    <span className="text-white">{String(researchActionResult.grade ?? '')}</span>
                   </span>
                 </div>
                 {Array.isArray(researchActionResult.strengths) &&
@@ -847,16 +849,16 @@ export default function ResearchLensPage() {
                   <span className="text-gray-400">
                     Score:{' '}
                     <span
-                      className={`font-mono font-bold ${(researchActionResult.reproducibilityScore as number) >= 7 ? 'text-green-400' : (researchActionResult.reproducibilityScore as number) >= 4 ? 'text-yellow-400' : 'text-red-400'}`}
+                      className={`font-mono font-bold ${(researchActionResult.reproducibilityPercentage as number) >= 75 ? 'text-green-400' : (researchActionResult.reproducibilityPercentage as number) >= 40 ? 'text-yellow-400' : 'text-red-400'}`}
                     >
-                      {String(researchActionResult.reproducibilityScore ?? '')}/10
+                      {String(researchActionResult.reproducibilityPercentage ?? '')}%
                     </span>
                   </span>
                 </div>
-                {Array.isArray(researchActionResult.issues) &&
-                  researchActionResult.issues.length > 0 && (
+                {Array.isArray(researchActionResult.criticalIssues) &&
+                  researchActionResult.criticalIssues.length > 0 && (
                     <div className="space-y-0.5">
-                      {(researchActionResult.issues as string[]).map((s, i) => (
+                      {(researchActionResult.criticalIssues as string[]).map((s, i) => (
                         <p key={i} className="text-yellow-300">
                           ⚠ {s}
                         </p>

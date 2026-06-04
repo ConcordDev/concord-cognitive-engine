@@ -141,6 +141,22 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     return () => { active = false; };
   }, [artworkId]);
 
+  // Brush-preset CRUD (surfaces art.brush-preset-save / brush-preset-delete).
+  const reloadBrushes = useCallback(async () => {
+    const b = await lensRun('art', 'brush-presets', {});
+    setBrushes(b.data?.result?.brushes || []);
+  }, []);
+  const saveBrush = useCallback(async () => {
+    const name = window.prompt('Name this brush preset')?.trim();
+    if (!name) return;
+    await lensRun('art', 'brush-preset-save', { name, tool, size, opacity });
+    await reloadBrushes();
+  }, [tool, size, opacity, reloadBrushes]);
+  const deleteBrush = useCallback(async (id: string) => {
+    setBrushes((prev) => prev.filter((b) => b.id !== id));
+    try { await lensRun('art', 'brush-preset-delete', { id }); } catch { void reloadBrushes(); }
+  }, [reloadBrushes]);
+
   const render = useCallback(() => {
     const cv = canvasRef.current;
     if (!cv || !artwork) return;
@@ -475,12 +491,22 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
       {/* Tool palette */}
       <div className="flex flex-wrap gap-1.5">
         {brushes.filter((b) => BRUSH_TOOLS.includes(b.tool)).map((b) => (
-          <button key={b.id} type="button"
-            onClick={() => { setTool(b.tool); setSize(b.size); setOpacity(b.opacity); setSelectedIds(new Set()); }}
-            className={cn(toolBtn, tool === b.tool && size === b.size ? on : off)}>
-            <Brush className="w-3 h-3" />{b.name}
-          </button>
+          <span key={b.id} className="relative group inline-flex">
+            <button type="button"
+              onClick={() => { setTool(b.tool); setSize(b.size); setOpacity(b.opacity); setSelectedIds(new Set()); }}
+              className={cn(toolBtn, tool === b.tool && size === b.size ? on : off)}>
+              <Brush className="w-3 h-3" />{b.name}
+            </button>
+            {b.custom && (
+              <button type="button" onClick={() => void deleteBrush(b.id)} aria-label={`Delete brush ${b.name}`}
+                className="absolute -top-1 -right-1 hidden group-hover:flex items-center justify-center w-3.5 h-3.5 rounded-full bg-rose-600 text-white text-[8px] leading-none">×</button>
+            )}
+          </span>
         ))}
+        <button type="button" onClick={() => void saveBrush()} title="Save current tool/size/opacity as a brush preset"
+          className={cn(toolBtn, off)}>
+          <Brush className="w-3 h-3" />+ Save
+        </button>
         {TOOLS.map((t) => {
           const Icon = t.icon;
           return (
@@ -522,24 +548,24 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold text-zinc-300">Layers</h3>
-            <button type="button" onClick={addLayer} className="text-zinc-400 hover:text-violet-300"><Plus className="w-4 h-4" /></button>
+            <button type="button" onClick={addLayer} aria-label="Add layer" className="text-zinc-400 hover:text-violet-300"><Plus className="w-4 h-4" /></button>
           </div>
           <ul className="space-y-1.5">
             {[...artwork.layers].reverse().map((l) => (
               <li key={l.id}
                 className={cn('rounded-lg border p-2', activeLayer === l.id ? 'border-violet-600 bg-violet-950/30' : 'border-zinc-800 bg-zinc-900/70')}>
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => updateLayer(l.id, { visible: !l.visible })} className="text-zinc-400 hover:text-zinc-200">
+                  <button type="button" onClick={() => updateLayer(l.id, { visible: !l.visible })} aria-label={l.visible ? `Hide layer ${l.name}` : `Show layer ${l.name}`} className="text-zinc-400 hover:text-zinc-200">
                     {l.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                   </button>
                   <button type="button" onClick={() => { setActiveLayer(l.id); setSelectedIds(new Set()); }}
                     className="flex-1 text-left text-xs text-zinc-200 truncate">{l.name}</button>
-                  <button type="button" onClick={() => updateLayer(l.id, { locked: !l.locked })} className="text-zinc-400 hover:text-zinc-300">
+                  <button type="button" onClick={() => updateLayer(l.id, { locked: !l.locked })} aria-label={l.locked ? `Unlock layer ${l.name}` : `Lock layer ${l.name}`} className="text-zinc-400 hover:text-zinc-300">
                     {l.locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
                   </button>
-                  <button type="button" onClick={() => reorderLayer(l.id, 'up')} className="text-zinc-400 hover:text-zinc-300"><ChevronUp className="w-3.5 h-3.5" /></button>
-                  <button type="button" onClick={() => reorderLayer(l.id, 'down')} className="text-zinc-400 hover:text-zinc-300"><ChevronDown className="w-3.5 h-3.5" /></button>
-                  <button type="button" onClick={() => deleteLayer(l.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => reorderLayer(l.id, 'up')} aria-label={`Move layer ${l.name} up`} className="text-zinc-400 hover:text-zinc-300"><ChevronUp className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => reorderLayer(l.id, 'down')} aria-label={`Move layer ${l.name} down`} className="text-zinc-400 hover:text-zinc-300"><ChevronDown className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => deleteLayer(l.id)} aria-label={`Delete layer ${l.name}`} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
                 {activeLayer === l.id && (
                   <div className="mt-1.5 space-y-1.5">

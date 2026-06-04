@@ -95,7 +95,7 @@ export function DiscountsManager() {
                     {d.usageCount}{d.usageLimit ? `/${d.usageLimit}` : ''} uses
                   </span>
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', d.active ? 'bg-emerald-500/15 text-emerald-300' : 'bg-gray-500/15 text-gray-300')}>{d.active ? 'active' : 'inactive'}</span>
-                  <button onClick={() => remove(d.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => remove(d.id)} aria-label="Delete discount" className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </li>
               );
             })}

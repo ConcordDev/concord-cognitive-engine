@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { TravelTripsSection } from '@/components/travel/TravelTripsSection';
 import { ZippopotamPanel } from '@/components/travel/ZippopotamPanel';
+import { ParksPanel } from '@/components/travel/ParksPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -192,6 +193,8 @@ export default function TravelLensPage() {
     <div data-lens-theme="travel" className="p-6 space-y-6">
       {/* Phase 4 (sixth wave) — REAL Zippopotam postal-code lookup. */}
       <ZippopotamPanel domain="travel" />
+      {/* REAL National Parks Service lookup (NPS_API_KEY-gated; honest empty/no-key states). */}
+      <ParksPanel />
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/30 to-teal-500/30 border border-cyan-500/20 flex items-center justify-center">

@@ -144,7 +144,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
               <div key={style} className="flex items-start gap-2">
                 <span className="text-[10px] uppercase text-zinc-400 w-12 shrink-0 pt-0.5">{style}</span>
                 <code className="flex-1 text-[10px] text-zinc-400 break-all whitespace-pre-wrap">{citations[style]}</code>
-                <button type="button" onClick={() => copy(citations[style])} className="text-zinc-600 hover:text-zinc-300 shrink-0">
+                <button type="button" onClick={() => copy(citations[style])} aria-label={`Copy ${style} citation`} className="text-zinc-600 hover:text-zinc-300 shrink-0">
                   <Copy className="w-3 h-3" />
                 </button>
               </div>
@@ -177,7 +177,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
                     {p.pages ? <span className="text-zinc-600">· {p.pages}p</span> : null}
                     <ExternalLink className="w-3 h-3 shrink-0" />
                   </a>
-                  <button type="button" onClick={() => deletePdf(p.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                  <button type="button" onClick={() => deletePdf(p.id)} aria-label="Delete PDF" className="text-zinc-600 hover:text-rose-400 shrink-0">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </li>
@@ -276,7 +276,7 @@ export function ResearchLibraryPanel({ onChange }: { onChange: () => void }) {
               </button>
               <div className="flex items-center gap-2 shrink-0">
                 <span className={cn('text-[10px] uppercase', STATUS_COLOR[r.status])}>{r.status.replace(/_/g, ' ')}</span>
-                <button type="button" onClick={() => del(r.id)} className="text-zinc-600 hover:text-rose-400">
+                <button type="button" onClick={() => del(r.id)} aria-label="Delete reference" className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

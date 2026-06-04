@@ -21,13 +21,15 @@ groups:
           description: "Heap used is {{ $value | humanizePercentage }} of total"
 
       - alert: ConcordMemoryCritical
-        expr: concord_process_memory_bytes{type="heapUsed"} > 1.7e9
+        # Relative (not a hardcoded 1.7GB — that was ~20x too low for the 32GB-heap deploy
+        # and fired constantly). Auto-scales with MAX_OLD_SPACE_SIZE: critical at 95% heap.
+        expr: concord_process_memory_bytes{type="heapUsed"} / concord_process_memory_bytes{type="heapTotal"} > 0.95
         for: 2m
         labels:
           severity: critical
         annotations:
-          summary: "Concord heap above 1.7 GB — OOM risk"
-          description: "Heap used: {{ $value | humanize1024 }}B"
+          summary: "Concord heap above 95% — OOM risk"
+          description: "Heap used is {{ $value | humanizePercentage }} of total"
 
       - alert: ConcordBrainErrors
         expr: rate(concord_brain_errors_total[5m]) > 0.1

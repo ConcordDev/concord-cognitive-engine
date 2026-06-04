@@ -1721,7 +1721,7 @@ export default function registerMusicActions(registerLensAction) {
   //
   // Stems are stored inline (≤1 MB) or to disk (>1 MB); the existing
   // download route handles both.
-  registerLensAction("music", "publish-as-stem", (ctx, _a, params = {}) => {
+  registerLensAction("music", "publish-as-stem", async (ctx, _a, params = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, error: "db unavailable" };
     const userId = muAid(ctx);
@@ -1755,15 +1755,17 @@ export default function registerMusicActions(registerLensAction) {
     if (!inline) {
       // Same DATA_DIR convention as art-textures; stem files live under
       // $DATA_DIR/lens-assets/music-stems/<stemName>/.
-      const fs = require("node:fs");
+      const fsp = require("node:fs/promises");
       const path = require("node:path");
+      // Async fs throughout (no event-loop-blocking sync fs in the handler).
+      const workspaceExists = await fsp.access("/workspace/concord-data").then(() => true).catch(() => false);
       const DATA_DIR = process.env.DATA_DIR
-        || (fs.existsSync("/workspace/concord-data") ? "/workspace/concord-data" : path.join(process.cwd(), "data"));
+        || (workspaceExists ? "/workspace/concord-data" : path.join(process.cwd(), "data"));
       const dir = path.join(DATA_DIR, "lens-assets", "music-stems", stemName);
       try {
-        fs.mkdirSync(dir, { recursive: true });
+        await fsp.mkdir(dir, { recursive: true });
         storagePath = path.join(dir, fileName);
-        fs.writeFileSync(storagePath, decoded.buf);
+        await fsp.writeFile(storagePath, decoded.buf);
       } catch (err) {
         return { ok: false, error: `failed to write stem file: ${err?.message || err}` };
       }

@@ -69,7 +69,7 @@ export function ShippingZonesEditor() {
         <Truck className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Shipping zones</span>
         <span className="ml-auto text-[10px] text-gray-400">{zones.length}</span>
-        <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
+        <button onClick={() => setCreating(v => !v)} aria-label="New shipping zone" className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       {creating && (

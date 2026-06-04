@@ -17,6 +17,7 @@ import ClaimTracker from '@/components/insurance/ClaimTracker';
 import QuoteCompare from '@/components/insurance/QuoteCompare';
 import CoverageAnalyzer from '@/components/insurance/CoverageAnalyzer';
 import AmsWorkbench from '@/components/insurance/AmsWorkbench';
+import MutualAidPactsPanel from '@/components/insurance/MutualAidPactsPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -63,6 +64,7 @@ import {
   Layers,
   ChevronDown,
   ArrowRight,
+  HeartHandshake,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -76,7 +78,7 @@ import LiveFeed from '@/components/lens/LiveFeed';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ModeTab = 'Dashboard' | 'Policies' | 'Claims' | 'Calculator' | 'Clients' | 'Commissions' | 'Compliance' | 'Compare' | 'Documents' | 'Vault' | 'ClaimTracker' | 'QuoteCompare' | 'GapAnalysis' | 'AMS';
+type ModeTab = 'Dashboard' | 'Policies' | 'Claims' | 'Calculator' | 'Clients' | 'Commissions' | 'Compliance' | 'Compare' | 'Documents' | 'Vault' | 'ClaimTracker' | 'QuoteCompare' | 'GapAnalysis' | 'AMS' | 'Pacts';
 type ArtifactType = 'Policy' | 'Claim' | 'Quote' | 'InsuredClient' | 'Commission' | 'ComplianceItem' | 'Document';
 
 type PolicyType = 'auto' | 'home' | 'life' | 'commercial' | 'health' | 'umbrella';
@@ -204,6 +206,7 @@ const MODE_TABS: { id: ModeTab; icon: typeof Shield; artifactType?: ArtifactType
   { id: 'QuoteCompare', icon: DollarSign, artifactType: 'Quote' },
   { id: 'GapAnalysis', icon: AlertTriangle, artifactType: 'Policy' },
   { id: 'AMS', icon: Building2 },
+  { id: 'Pacts', icon: HeartHandshake },
 ];
 
 const POLICY_TYPES: PolicyType[] = ['auto', 'home', 'life', 'commercial', 'health', 'umbrella'];
@@ -1142,7 +1145,7 @@ export default function InsuranceLensPage() {
           <button onClick={() => handleAction('renewalAlert')} className={ds.btnSecondary}>
             <RefreshCw className="w-4 h-4" /> Renewal Alert
           </button>
-          <button onClick={() => handleAction('coverageGapCheck')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('coverageGap')} className={ds.btnSecondary}>
             <AlertCircle className="w-4 h-4" /> Coverage Gap Check
           </button>
           <button onClick={() => handleAction('lossRatioReport')} className={ds.btnSecondary}>
@@ -1161,9 +1164,10 @@ export default function InsuranceLensPage() {
       {mode === 'QuoteCompare' && <div className="p-4"><QuoteCompare /></div>}
       {mode === 'GapAnalysis' && <div className="p-4"><CoverageAnalyzer /></div>}
       {mode === 'AMS' && <div className="p-4"><AmsWorkbench /></div>}
+      {mode === 'Pacts' && <div className="p-4"><MutualAidPactsPanel /></div>}
 
       {/* Content */}
-      {!['Vault','ClaimTracker','QuoteCompare','GapAnalysis','AMS'].includes(mode) && mode === 'Dashboard' ? renderDashboard() : !['Vault','ClaimTracker','QuoteCompare','GapAnalysis','AMS','Dashboard'].includes(mode) && (
+      {!['Vault','ClaimTracker','QuoteCompare','GapAnalysis','AMS','Pacts'].includes(mode) && mode === 'Dashboard' ? renderDashboard() : !['Vault','ClaimTracker','QuoteCompare','GapAnalysis','AMS','Pacts','Dashboard'].includes(mode) && (
         <>
           {isLoading ? (
             <div className="flex items-center justify-center py-20">

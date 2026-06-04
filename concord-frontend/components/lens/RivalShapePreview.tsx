@@ -138,7 +138,7 @@ function CryptoPreview() {
   useEffect(() => {
     (async () => {
       try {
-        const w = await lensRun({ domain: 'crypto', action: 'wallet', input: {} }).catch(() => null);
+        const w = await lensRun({ domain: 'crypto', action: 'wallet-list', input: {} }).catch(() => null);
         const items = (w?.data?.result?.wallets || w?.data?.result?.assets || []) as Array<{ id?: string; symbol?: string; name?: string; balance?: number; usdValue?: number }>;
         const assets = items.map(it => ({
           id: String(it.id || it.symbol || ''),

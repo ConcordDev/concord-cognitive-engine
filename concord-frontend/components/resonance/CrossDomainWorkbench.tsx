@@ -254,7 +254,7 @@ function ProposePairForm({ onCreated }: { onCreated: () => void }) {
         <h3 className="flex items-center gap-2 text-sm font-bold text-purple-300">
           <GitBranch className="h-4 w-4" /> Propose a Cross-Domain Pair
         </h3>
-        <button onClick={() => setOpen(false)} className="text-gray-600 hover:text-gray-400">
+        <button onClick={() => setOpen(false)} aria-label="Close pair proposer" className="text-gray-600 hover:text-gray-400">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -361,7 +361,7 @@ function DrilldownModal({
           <h3 className="flex items-center gap-2 text-sm font-bold text-white">
             <Microscope className="h-4 w-4 text-purple-400" /> Pair Drill-Down
           </h3>
-          <button onClick={onClose} className="text-gray-600 hover:text-gray-300">
+          <button onClick={onClose} aria-label="Close drill-down" className="text-gray-600 hover:text-gray-300">
             <X className="h-4 w-4" />
           </button>
         </div>

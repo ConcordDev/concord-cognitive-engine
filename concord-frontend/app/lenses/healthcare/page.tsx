@@ -15,6 +15,7 @@ import AppointmentScheduler from '@/components/healthcare/AppointmentScheduler';
 import RxPriceCompare from '@/components/healthcare/RxPriceCompare';
 import { ProviderDirectory } from '@/components/healthcare/ProviderDirectory';
 import { HealthcareActionPanel } from '@/components/healthcare/HealthcareActionPanel';
+import { ImmunizationsPanel } from '@/components/healthcare/ImmunizationsPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { useState, useMemo, useCallback, useRef } from 'react';
@@ -3991,6 +3992,7 @@ export default function HealthcareLensPage() {
       </div>
 
       <PipingProvider>
+        <section className="mt-6"><ImmunizationsPanel /></section>
         <section className="mt-6">
           <HealthcareActionPanel />
         </section>

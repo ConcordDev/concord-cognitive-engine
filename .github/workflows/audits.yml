@@ -132,6 +132,32 @@ jobs:
           # own helpers via tsx so the gate tracks the real nav surface.
           node scripts/audit/gates/lens-reachability.mjs --ci
 
+      - name: Lens broken-wire gate (no NEW button → unregistered macro)
+        run: |
+          # The highest-severity lens facade: a frontend button that POSTs
+          # /api/lens/run for a (domain, action) that has no registered macro, so it
+          # 404s / falls to the AI catch-all (e.g. research.generate before it was
+          # built). Cross-references every literal frontend (domain, action) call
+          # against the registered macro set. Ratchet ceiling 0 (GENUINE count; was 53 at
+          # the 38-repoint sweep, 8 after the unloaded-domain pass, 5 after Batch D, 2 after
+          # music.browse + ingest.batch-ingest + neuro.train, 1 after code.execute → code.exec,
+          # 0 after ar.render got a real macro reusing ar.webxrPreview + the WebXR/Three.js
+          # stack); the intentional `*.analyze`/`*generate*` AI-catch-all convention is
+          # excluded. The entire genuine broken-wire backlog (51→0) is now closed — a NEW
+          # broken frontend→macro wire can no longer merge. See
+          # docs/LENS_AUDIT_METHODOLOGY.md (Layer 1.5, broken-wire detector).
+          node scripts/lens-broken-calls.mjs
+          node scripts/lens-broken-calls.mjs --ci 0
+
+      - name: Unloaded-domain gate (no whole-domain backend is dead)
+        run: |
+          # The most severe lens facade: a server/domains/<X>.js that registers macros
+          # but is never wired into the runtime loader (server/domains/index.js), so EVERY
+          # macro 404s and the lens backend is dead. Source-based verifiers miss it (the
+          # registrations exist) — found 2026-06-04: genesis/staking/sponsorship/system/
+          # code-quality (64 macros) were all dead this way. Floor 0 — no unloaded domain.
+          node scripts/lens-unloaded-domains.mjs --ci
+
       - name: Schema/query drift gate (ratchet — prevents NEW drift)
         run: |
           # Runs all migrations into an in-memory DB (PRAGMA = authoritative column

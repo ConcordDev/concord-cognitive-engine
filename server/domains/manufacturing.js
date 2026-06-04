@@ -704,4 +704,93 @@ export default function registerManufacturingActions(registerLensAction) {
       };
     } catch (e) { return { ok: false, error: String(e.message || e) }; }
   });
+
+  // ── Work-order / quality / downtime actions (deterministic; artifact-based) ──
+  // Surface the manufacturing lens buttons that previously hit no macro
+  // (advanceStep / generateTraveler / logDowntime / defectAnalysis). Each reads
+  // the work-order/defect data off the artifact and computes a real result.
+
+  registerLensAction("manufacturing", "advanceStep", (ctx, artifact, params = {}) => {
+    const steps = Array.isArray(artifact.data?.steps) ? artifact.data.steps
+      : Array.isArray(params.steps) ? params.steps : [];
+    const total = steps.length;
+    const cur = Math.max(0, Number(artifact.data?.currentStep ?? params.currentStep ?? 0));
+    const next = Math.min(total, cur + 1);
+    const done = total > 0 && next >= total;
+    return {
+      ok: true,
+      result: {
+        workOrder: artifact.title || artifact.data?.workOrder || "work order",
+        currentStep: next,
+        totalSteps: total,
+        status: done ? "complete" : total === 0 ? "no_steps_defined" : "in_progress",
+        currentStepName: steps[next - 1]?.name || steps[next - 1] || (total ? `Step ${next}` : null),
+        nextStepName: done ? null : (steps[next]?.name || steps[next] || (total ? `Step ${next + 1}` : null)),
+        percentComplete: total > 0 ? Math.round((next / total) * 100) : 0,
+      },
+    };
+  });
+
+  registerLensAction("manufacturing", "defectAnalysis", (ctx, artifact, params = {}) => {
+    const defects = Array.isArray(artifact.data?.defects) ? artifact.data.defects
+      : Array.isArray(params.defects) ? params.defects : [];
+    const byType = {};
+    const bySeverity = { critical: 0, major: 0, minor: 0 };
+    for (const d of defects) {
+      const type = String(d?.type || d?.category || "unspecified");
+      byType[type] = (byType[type] || 0) + 1;
+      const sev = String(d?.severity || "minor").toLowerCase();
+      if (bySeverity[sev] !== undefined) bySeverity[sev] += 1; else bySeverity.minor += 1;
+    }
+    const total = defects.length;
+    const inspected = Number(artifact.data?.inspected ?? params.inspected ?? total) || total;
+    const defectRate = inspected > 0 ? Math.round((total / inspected) * 10000) / 100 : 0;
+    const topDefect = Object.entries(byType).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    const riskLevel = bySeverity.critical > 0 ? "high" : bySeverity.major > 2 ? "elevated" : total > 0 ? "low" : "none";
+    return {
+      ok: true,
+      result: { defectCount: total, inspected, defectRatePct: defectRate, byType, bySeverity, topDefect, riskLevel },
+    };
+  });
+
+  registerLensAction("manufacturing", "generateTraveler", (ctx, artifact, params = {}) => {
+    const steps = Array.isArray(artifact.data?.steps) ? artifact.data.steps
+      : Array.isArray(params.steps) ? params.steps : [];
+    const partNumber = artifact.data?.partNumber || params.partNumber || "N/A";
+    const qty = Number(artifact.data?.quantity ?? params.quantity ?? 1) || 1;
+    const travelerId = `TRV-${String(artifact.id || artifact.title || "wo").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
+    const lines = [
+      `ROUTING TRAVELER  ${travelerId}`,
+      `Part: ${partNumber}    Qty: ${qty}    WO: ${artifact.title || "work order"}`,
+      `${"-".repeat(48)}`,
+      ...(steps.length
+        ? steps.map((s, i) => `  ${String(i + 1).padStart(2, "0")}. ${s?.name || s}   [ op:____  insp:____  date:____ ]`)
+        : ["  (no routing steps defined on this work order)"]),
+      `${"-".repeat(48)}`,
+      `Sign-off: __________________   QA: __________________`,
+    ];
+    return {
+      ok: true,
+      result: { travelerId, partNumber, quantity: qty, stepCount: steps.length, content: lines.join("\n") },
+    };
+  });
+
+  registerLensAction("manufacturing", "logDowntime", (ctx, artifact, params = {}) => {
+    const machine = artifact.data?.machine || artifact.title || params.machine || "machine";
+    const reason = String(params.reason || artifact.data?.reason || "unplanned");
+    const durationMinutes = Math.max(0, Number(params.durationMinutes ?? artifact.data?.durationMinutes ?? 0));
+    const plannedTime = Math.max(1, Number(artifact.data?.plannedTime ?? params.plannedTime ?? 480));
+    const availabilityImpactPct = Math.round((durationMinutes / plannedTime) * 10000) / 100;
+    const downtimeId = `DT-${Date.now().toString(36).toUpperCase()}`;
+    return {
+      ok: true,
+      result: {
+        downtimeId, machine, reason, durationMinutes,
+        plannedTimeMinutes: plannedTime,
+        availabilityImpactPct,
+        category: /maint|repair|break/i.test(reason) ? "maintenance" : /setup|changeover/i.test(reason) ? "setup" : "unplanned",
+        loggedAt: new Date().toISOString(),
+      },
+    };
+  });
 };

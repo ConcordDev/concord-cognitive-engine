@@ -150,7 +150,7 @@ export default function UnifiedSelfLensPage() {
   const achievementsQ = useQuery({
     queryKey: ['self-achievements'],
     queryFn: async () => {
-      const me = await apiHelpers.lens.runDomain('auth', 'me').catch(() => null);
+      const me = await apiHelpers.lens.runDomain('auth', 'whoami').catch(() => null);
       const userId = (me?.data?.result as { userId?: string } | undefined)?.userId
         ?? (me?.data as { userId?: string } | undefined)?.userId;
       if (!userId) return { achievements: [] as FrontendAch[], progress: [] as FrontendProgress[] };

@@ -931,4 +931,44 @@ export default function registerSecurityActions(registerLensAction) {
     }
     return { ok: true, result };
   });
+
+  // accessAudit — deterministic security-posture audit over the user's assets +
+  // vulnerabilities (real STATE, like security-dashboard). Surfaces the lens's
+  // "Access Audit" button. Returns a posture score + open-critical list + advice.
+  registerLensAction("security", "accessAudit", (ctx, _artifact, _params = {}) => {
+    const s = getSecurityState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = secActor(ctx);
+    const assets = secAssets(s, userId);
+    const vulns = secVulns(s, userId);
+    const bySeverity = { critical: 0, high: 0, medium: 0, low: 0 };
+    let openCritical = 0;
+    const critical = [];
+    for (const v of vulns) {
+      const sev = String(v?.severity || "low").toLowerCase();
+      if (bySeverity[sev] !== undefined) bySeverity[sev] += 1;
+      const open = v?.status !== "resolved" && v?.status !== "closed";
+      if ((sev === "critical") && open) { openCritical += 1; critical.push({ cve: v.cve || null, title: v.title || "vulnerability", cvss: v.cvss ?? null }); }
+    }
+    // Posture score: start 100, subtract weighted open findings (capped at 0).
+    const openHigh = vulns.filter(v => String(v?.severity).toLowerCase() === "high" && v?.status !== "resolved" && v?.status !== "closed").length;
+    const postureScore = Math.max(0, 100 - openCritical * 20 - openHigh * 8 - bySeverity.medium * 2);
+    const recommendations = [];
+    if (openCritical > 0) recommendations.push(`Remediate ${openCritical} open critical vulnerability(ies) immediately.`);
+    if (openHigh > 0) recommendations.push(`Schedule patching for ${openHigh} high-severity finding(s).`);
+    if (assets.length === 0) recommendations.push("No assets inventoried — add assets to scope the attack surface.");
+    if (recommendations.length === 0) recommendations.push("No open critical/high findings — maintain monitoring cadence.");
+    return {
+      ok: true,
+      result: {
+        assetCount: assets.length,
+        vulnerabilityCount: vulns.length,
+        vulnsBySeverity: bySeverity,
+        openCritical,
+        criticalFindings: critical.slice(0, 10),
+        postureScore,
+        rating: postureScore >= 90 ? "strong" : postureScore >= 70 ? "moderate" : postureScore >= 40 ? "weak" : "critical",
+        recommendations,
+      },
+    };
+  });
 };

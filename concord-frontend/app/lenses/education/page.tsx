@@ -1108,7 +1108,7 @@ export default function EducationLensPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => handleAction('generate_report_card', selectedStudent.id)} className={ds.btnSecondary}>
+            <button onClick={() => handleAction('generateReportCard', selectedStudent.id)} className={ds.btnSecondary}>
               <Printer className="w-4 h-4" /> Report Card
             </button>
             <button onClick={() => openEditEditor(selectedStudent)} className={ds.btnPrimary}>
@@ -1549,16 +1549,16 @@ export default function EducationLensPage() {
       <div className={ds.panel}>
         <h3 className={cn(ds.heading3, 'mb-3 text-sm')}>Domain Actions</h3>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => handleAction('calculate_grades')} className={cn(ds.btnSecondary, ds.btnSmall)}>
+          <button onClick={() => handleAction('gradeCalculation')} className={cn(ds.btnSecondary, ds.btnSmall)}>
             <Calculator className="w-3.5 h-3.5" /> Calculate Grades
           </button>
-          <button onClick={() => handleAction('generate_report_card')} className={cn(ds.btnSecondary, ds.btnSmall)}>
+          <button onClick={() => handleAction('generateReportCard')} className={cn(ds.btnSecondary, ds.btnSmall)}>
             <Printer className="w-3.5 h-3.5" /> Generate Report Card
           </button>
-          <button onClick={() => handleAction('attendance_report')} className={cn(ds.btnSecondary, ds.btnSmall)}>
+          <button onClick={() => handleAction('attendanceReport')} className={cn(ds.btnSecondary, ds.btnSmall)}>
             <CalendarCheck className="w-3.5 h-3.5" /> Attendance Report
           </button>
-          <button onClick={() => handleAction('schedule_conflict_check')} className={cn(ds.btnSecondary, ds.btnSmall)}>
+          <button onClick={() => handleAction('scheduleConflict')} className={cn(ds.btnSecondary, ds.btnSmall)}>
             <Shuffle className="w-3.5 h-3.5" /> Schedule Conflict Check
           </button>
           {runAction.isPending && <span className="text-xs text-neon-blue animate-pulse self-center">Running...</span>}

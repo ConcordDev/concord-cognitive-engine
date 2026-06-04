@@ -10,6 +10,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FitnessFeed } from '@/components/fitness/FitnessFeed';
+import { RoutesPanel } from '@/components/fitness/RoutesPanel';
 import { FitnessStravaSection } from '@/components/fitness/FitnessStravaSection';
 import WorkoutLogger from '@/components/fitness/WorkoutLogger';
 import HeartRateZones from '@/components/fitness/HeartRateZones';
@@ -1027,16 +1028,16 @@ export default function FitnessLensPage() {
       <div className={ds.panel}>
         <h3 className={cn(ds.heading3, 'mb-3')}>Quick Actions</h3>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => handleAction('calculate-progression')} className={cn(ds.btnSmall, 'bg-red-400/20 text-red-400 border border-red-400/30')}>
+          <button onClick={() => handleAction('progressionCalc')} className={cn(ds.btnSmall, 'bg-red-400/20 text-red-400 border border-red-400/30')}>
             <TrendingUp className="w-3.5 h-3.5" /> Calculate Progression
           </button>
           <button onClick={() => handleAction('generate-program')} className={cn(ds.btnSmall, 'bg-red-500/20 text-red-500 border border-red-500/30')}>
             <Brain className="w-3.5 h-3.5" /> Generate Program
           </button>
-          <button onClick={() => handleAction('body-comp-report')} className={cn(ds.btnSmall, 'bg-red-300/20 text-red-300 border border-red-300/30')}>
+          <button onClick={() => handleAction('bodyCompReport')} className={cn(ds.btnSmall, 'bg-red-300/20 text-red-300 border border-red-300/30')}>
             <FileText className="w-3.5 h-3.5" /> Body Comp Report
           </button>
-          <button onClick={() => handleAction('attendance-report')} className={cn(ds.btnSmall, 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30')}>
+          <button onClick={() => handleAction('attendanceReport')} className={cn(ds.btnSmall, 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30')}>
             <ClipboardList className="w-3.5 h-3.5" /> Attendance Report
           </button>
         </div>
@@ -2194,7 +2195,7 @@ export default function FitnessLensPage() {
                     </button>
                   )}
                   {editingItem && (
-                    <button onClick={() => handleAction('calculate-progression', editingItem.id)} className={cn(ds.btnSmall, 'bg-red-400/20 text-red-400 border border-red-400/30')}>
+                    <button onClick={() => handleAction('progressionCalc', editingItem.id)} className={cn(ds.btnSmall, 'bg-red-400/20 text-red-400 border border-red-400/30')}>
                       <TrendingUp className="w-3.5 h-3.5" /> Calc Progression
                     </button>
                   )}
@@ -2235,6 +2236,7 @@ export default function FitnessLensPage() {
         <WorkoutFinishPanel />
       </section>
 
+      <RoutesPanel className="mt-6" />
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <FitnessFeed />
       </section>

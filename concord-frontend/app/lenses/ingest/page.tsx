@@ -176,6 +176,42 @@ export default function IngestLensPage() {
     if (file) handleFile(file);
   }, [handleFile]);
 
+  // Batch-ingest: read each text file's content client-side (FileReader) and send it
+  // to the real ingest.batch-ingest macro, which creates a DTU per text file. Binaries
+  // (images) carry no extractable text here, so they're reported skipped — not faked.
+  const TEXT_BATCH_EXT = /\.(txt|md|markdown|json|csv|tsv|log|ya?ml|xml|html)$/i;
+  const handleBatchIngest = useCallback(async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = '.txt,.md,.json,.csv,.png,.jpg';
+    input.onchange = async () => {
+      const fileList = input.files;
+      if (!fileList || fileList.length === 0) return;
+      showToast('info', `Reading ${fileList.length} file(s)...`);
+      const files = await Promise.all(
+        Array.from(fileList).map(async (f) => ({
+          name: f.name,
+          mime: f.type || 'application/octet-stream',
+          content: TEXT_BATCH_EXT.test(f.name) ? await f.text().catch(() => '') : '',
+        }))
+      );
+      try {
+        const res = await api.post('/api/lens/run', {
+          domain: 'ingest', action: 'batch-ingest', input: { files },
+        });
+        const r = (res.data?.result ?? res.data) as { ingested?: number; skipped?: number };
+        const ingested = r?.ingested ?? 0;
+        const skipped = r?.skipped ?? 0;
+        showToast('success', `Ingested ${ingested} file(s)${skipped ? `, skipped ${skipped}` : ''}`);
+        queryClient.invalidateQueries({ queryKey: ['ingest-history'] });
+      } catch {
+        showToast('error', 'Batch ingest failed');
+      }
+    };
+    input.click();
+  }, [queryClient]);
+
   const chunkCount = textInput.length > 0 ? Math.ceil(textInput.length / (chunkSize - chunkOverlap)) : 0;
 
   // ── Ingest keyboard shortcuts (Airbyte / Fivetran idiom) ─────────
@@ -487,7 +523,7 @@ export default function IngestLensPage() {
             <span className="flex items-center gap-1"><FileJson className="w-3 h-3" /> .json .csv</span>
             <span className="flex items-center gap-1"><ImageIcon className="w-3 h-3" /> .png .jpg</span>
           </div>
-          <button onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.multiple = true; input.accept = '.txt,.md,.json,.csv,.png,.jpg'; input.onchange = () => { const files = input.files; if (files && files.length > 0) { showToast('info', `Processing ${files.length} file(s)...`); api.post('/api/lens/run', { domain: 'ingest', action: 'batch-ingest', input: { fileCount: files.length, filenames: Array.from(files).map(f => f.name) } }).then(() => showToast('success', `Batch ingest started for ${files.length} file(s)`)).catch(() => showToast('error', 'Batch ingest failed')); } }; input.click(); }} className="mt-2 px-6 py-2 bg-neon-cyan/20 border border-neon-cyan/40 rounded-lg text-sm text-neon-cyan hover:bg-neon-cyan/30 transition-colors">
+          <button onClick={() => void handleBatchIngest()} className="mt-2 px-6 py-2 bg-neon-cyan/20 border border-neon-cyan/40 rounded-lg text-sm text-neon-cyan hover:bg-neon-cyan/30 transition-colors">
             Select Files for Batch Ingest
           </button>
         </div>

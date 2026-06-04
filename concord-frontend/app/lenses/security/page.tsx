@@ -1204,6 +1204,25 @@ export default function SecurityLensPage() {
                 </div>
               </div>
             )}
+            {/* accessAudit — security posture */}
+            {actionResult.postureScore !== undefined && (
+              <div className="space-y-2">
+                <div className="flex gap-4 flex-wrap text-sm">
+                  <span className="text-gray-400">Posture: <span className={`font-mono font-bold ${Number(actionResult.postureScore) >= 90 ? 'text-green-400' : Number(actionResult.postureScore) >= 70 ? 'text-amber-400' : 'text-red-400'}`}>{String(actionResult.postureScore)}/100 ({String(actionResult.rating)})</span></span>
+                  <span className="text-gray-400">Assets: <span className="text-white font-mono">{String(actionResult.assetCount)}</span></span>
+                  <span className="text-gray-400">Open critical: <span className="text-red-400 font-mono">{String(actionResult.openCritical)}</span></span>
+                </div>
+                {Array.isArray(actionResult.recommendations) && (
+                  <ul className="text-xs text-gray-300 list-disc pl-4">
+                    {(actionResult.recommendations as string[]).map((r, i) => <li key={i}>{r}</li>)}
+                  </ul>
+                )}
+              </div>
+            )}
+            {/* generic fallback (e.g. failure {message}) */}
+            {actionResult.message !== undefined && actionResult.postureScore === undefined && (
+              <p className="text-sm text-gray-300">{String(actionResult.message)}</p>
+            )}
           </div>
         </div>
       )}

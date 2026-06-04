@@ -578,10 +578,10 @@ export default function CreativeLensPage() {
         <h3 className={cn(ds.heading3, 'mb-3 flex items-center gap-2')}><Zap className="w-5 h-5 text-amber-400" /> Quick Actions</h3>
         <div className="flex flex-wrap gap-2">
           {[
-            { action: 'generate_shot_list', label: 'Generate Shot List', icon: Clapperboard },
-            { action: 'asset_report', label: 'Asset Report', icon: BarChart3 },
-            { action: 'budget_analysis', label: 'Budget Analysis', icon: DollarSign },
-            { action: 'distribution_checklist', label: 'Distribution Checklist', icon: ListChecks },
+            { action: 'shotListGenerate', label: 'Generate Shot List', icon: Clapperboard },
+            { action: 'assetOrganize', label: 'Asset Report', icon: BarChart3 },
+            { action: 'budgetTrack', label: 'Budget Analysis', icon: DollarSign },
+            { action: 'distributionChecklist', label: 'Distribution Checklist', icon: ListChecks },
             { action: 'project_summary', label: 'Project Summary', icon: ClipboardList },
           ].map(a => (
             <button
@@ -1388,12 +1388,12 @@ export default function CreativeLensPage() {
                   {currentMode === 'projects' && (
                     <>
                       <button onClick={() => handleAction('project_summary', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><ClipboardList className="w-3 h-3" /> Project Summary</button>
-                      <button onClick={() => handleAction('generate_shot_list', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><Clapperboard className="w-3 h-3" /> Generate Shot List</button>
-                      <button onClick={() => handleAction('budget_analysis', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><DollarSign className="w-3 h-3" /> Budget Analysis</button>
+                      <button onClick={() => handleAction('shotListGenerate', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><Clapperboard className="w-3 h-3" /> Generate Shot List</button>
+                      <button onClick={() => handleAction('budgetTrack', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><DollarSign className="w-3 h-3" /> Budget Analysis</button>
                     </>
                   )}
                   {currentMode === 'assets' && (
-                    <button onClick={() => handleAction('asset_report', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><BarChart3 className="w-3 h-3" /> Asset Report</button>
+                    <button onClick={() => handleAction('assetOrganize', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><BarChart3 className="w-3 h-3" /> Asset Report</button>
                   )}
                   {currentMode === 'proofs' && (
                     <button onClick={() => handleAction('project_summary', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><ClipboardList className="w-3 h-3" /> Generate Summary</button>
@@ -1402,7 +1402,7 @@ export default function CreativeLensPage() {
                     <button onClick={() => handleAction('revision_summary', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><ClipboardList className="w-3 h-3" /> Revision Summary</button>
                   )}
                   {currentMode === 'distribution' && (
-                    <button onClick={() => handleAction('distribution_checklist', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><ListChecks className="w-3 h-3" /> Checklist Report</button>
+                    <button onClick={() => handleAction('distributionChecklist', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><ListChecks className="w-3 h-3" /> Checklist Report</button>
                   )}
                 </div>
               </div>

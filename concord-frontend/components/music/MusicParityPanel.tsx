@@ -832,9 +832,9 @@ function Head({ icon: Icon, title, hint }: { icon: typeof Radio; title: string; 
     </div>
   );
 }
-function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
+function Toggle({ on, onClick, label = 'setting' }: { on: boolean; onClick: () => void; label?: string }) {
   return (
-    <button type="button" onClick={onClick}
+    <button type="button" onClick={onClick} role="switch" aria-checked={on} aria-label={`Toggle ${label}`}
       className={cn('w-9 h-5 rounded-full transition-colors relative', on ? 'bg-emerald-600' : 'bg-zinc-700')}>
       <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all', on ? 'left-4' : 'left-0.5')} />
     </button>

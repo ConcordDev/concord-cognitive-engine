@@ -23,7 +23,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
@@ -154,7 +154,9 @@ export default function LinguisticsLensPage() {
     setAnalyzing(true);
     setAnalyzeResult(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      // lensRun unwraps the { ok, result } envelope so data.result is the macro's
+      // payload directly (raw api.post leaves it double-wrapped → blank/JSON render).
+      const res = await lensRun({
         domain: 'linguistics',
         action: 'analyze',
         input: { text: analyzeText.trim(), type: 'morphosyntactic' },

@@ -129,7 +129,7 @@ export function ChannelsPanel() {
                   <span className="text-[10px] text-gray-400 flex-1 truncate">{c.storeName || '—'}</span>
                   <span className="text-[10px] text-gray-400">{c.listedSkus.length} listed</span>
                   <span className={cn('px-1.5 py-0.5 text-[9px] uppercase rounded', 'bg-emerald-500/15 text-emerald-300')}>{c.status}</span>
-                  <button onClick={() => disconnect(c.id)} disabled={busy} className="p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => disconnect(c.id)} disabled={busy} aria-label="Disconnect channel" className="p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
                 {c.lastSyncedAt && <p className="text-[10px] text-gray-400 mt-0.5">Last sync {new Date(c.lastSyncedAt).toLocaleString()}</p>}
                 <div className="mt-1 flex flex-wrap items-center gap-1">

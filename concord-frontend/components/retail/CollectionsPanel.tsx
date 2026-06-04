@@ -75,7 +75,7 @@ export function CollectionsPanel() {
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm text-white font-medium flex-1 truncate">{c.name}</span>
                   <span className="text-[10px] text-gray-400">{c.productSkus.length} products</span>
-                  <button onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => remove(c.id)} aria-label="Delete collection" className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
                 {c.description && <p className="text-[11px] text-gray-400 mb-1">{c.description}</p>}
                 <div className="flex flex-wrap items-center gap-1">

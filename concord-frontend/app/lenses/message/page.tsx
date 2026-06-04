@@ -24,6 +24,8 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MessagingRepos } from '@/components/message/MessagingRepos';
+import { LabelManagerPanel } from '@/components/message/LabelManagerPanel';
+import { ThreadLabelBar } from '@/components/message/ThreadLabelBar';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -296,6 +298,7 @@ export default function MessageLensPage() {
                 <div className="text-sm text-gray-400 mt-1">
                   From {activeThread.from} · {new Date(activeThread.timestamp).toLocaleString()}
                 </div>
+                <ThreadLabelBar threadId={activeThread.id} className="mt-2" />
               </header>
               {messages.length === 0 ? (
                 <p>{activeThread.snippet}</p>
@@ -395,6 +398,7 @@ export default function MessageLensPage() {
         Message Workbench
       </button>
       <MessageWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
+      <LabelManagerPanel className="mt-6" />
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <MessagingRepos />
       </section>
