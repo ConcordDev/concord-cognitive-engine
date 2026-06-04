@@ -49204,6 +49204,18 @@ app.get("/api/admin/heartbeat-stats", requireRole("owner", "admin", "sovereign",
   }
 });
 
+// Wave 7 / Track D2 — the cost-story telemetry. "N actors ran K LLM calls / T tokens /
+// $C over the window" — the artifact that proves a thousand instinct NPCs cost like ten.
+app.get("/api/admin/inference-costs", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { aggregateInferenceCosts } = await import("./lib/inference-metering.js");
+    const sinceHours = Math.max(1, Math.min(720, Number(req.query.hours) || 24));
+    res.json({ ok: true, ...aggregateInferenceCosts(STATE?.db, { sinceHours }), generatedAt: new Date().toISOString() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try {
     res.json({
