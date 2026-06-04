@@ -1072,6 +1072,15 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const state   = _tryParseJSON(npc.state, {});
       const npcName = state.name || npc.archetype || 'NPC';
 
+      // Wave 7 / C1 HARD DISCLOSURE — is this NPC an autonomous AI? Computed once,
+      // surfaced on every dialogue response so the human always knows.
+      let isAgentNpc = false;
+      try {
+        const _nc = _tryParseJSON(npc.narrative_context, {});
+        isAgentNpc = _nc?.ai_resident === true
+          || !!db.prepare(`SELECT 1 FROM ai_residents WHERE npc_id = ?`).get(npcId);
+      } catch { /* ai_residents table optional */ }
+
       // Phase 2: idempotent seed of grudge/preoccupation/desire on first
       // dialogue. Best-effort — never blocks the dialogue path.
       try {
@@ -1141,6 +1150,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
           mood: interactResult.mood === 'warm' ? 'friendly' : interactResult.mood,
           options,
           reputation, opinion: interactResult.opinion,
+          isAgent: isAgentNpc || undefined,
         });
       }
 
@@ -1319,7 +1329,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* weaponise consumption best-effort — never blocks dialogue */ }
 
-      // 10. Return structured response
+      // 10. Return structured response (isAgent computed once at fetch — C1 disclosure).
       res.json({
         ok: true, npcId, npcName,
         greeting,
@@ -1328,6 +1338,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         subtext: subtext || undefined,
         reputation,
         opinion: interactResult.opinion,
+        isAgent: isAgentNpc || undefined,
         weaponiseFired: weaponiseFired.length ? weaponiseFired : undefined,
       });
     } catch (e) {

@@ -26,6 +26,7 @@
 
 import { brainChat, provenanceFrom } from "./byo-router.js";
 import { TASK_PROMPTS } from "./prompt-registry.js";
+import { recordInferenceSpan } from "./inference-metering.js";
 
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
@@ -361,12 +362,24 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
 
   for (let turn = 0; turn < maxTurns; turn++) {
     turnsTaken++;
+    const _turnStart = Date.now();
     const r = await brainChat({
       db, userId,
       slot: opts.slot || "conscious",
       messages,
       opts: { temperature: 0.4, maxTokens: opts.maxTokens || 2048 },
     });
+    // Wave 7 / D2 — record the agent-loop inference span (the cost ledger). Token
+    // counts use the brain's usage when present, else a ~chars/4 estimate. Best-effort.
+    try {
+      recordInferenceSpan(db, {
+        spanType: "agent_loop", brainUsed: opts.slot || "conscious", modelUsed: r.model,
+        callerId: opts.callerId || `agent:${userId}`, latencyMs: Date.now() - _turnStart,
+        tokensIn: r.tokensIn ?? Math.ceil((messages.reduce((s, m) => s + (m.content?.length || 0), 0)) / 4),
+        tokensOut: r.tokensOut ?? Math.ceil((r.text?.length || 0) / 4),
+        error: r.ok ? null : (r.error || "brain_failed"),
+      });
+    } catch { /* metering never breaks the loop */ }
     if (!r.ok) {
       return {
         ok: false, error: r.error || "brain_failed",
