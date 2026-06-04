@@ -522,3 +522,32 @@ the actual response. Setup notes learned this session:
   `retentionRate`, …), and the `.analyze` AI-catch-all degrades gracefully (HTTP 200,
   honest "fetch failed" in <1s with no Ollama, no hang). Runtime is Layer 3: it certifies
   what the static layers can only triage.
+
+## Execution program — closing the genuine broken-wire backlog (2026-06-04)
+Following the approved plan (`/root/.claude/plans/1-51-genuine-broken-steady-kay.md`),
+the genuine broken-wire backlog is being closed batch-by-batch, each
+research→audit→build/repoint→**validate-live**→ratchet→commit. Progress so far
+(genuine count 51 → 32, CI ratchet lowered in lockstep):
+- **Batch A (5 repoints):** `events.budget_analysis→budgetReconcile`,
+  `creative.budget_analysis→budgetTrack`, `education.calculate_grades→gradeCalculation`,
+  `services.inventoryCheck→supplyCheck`, `trades.generateEstimate→calculateEstimate`.
+  Each target re-derived from code (the inventory agent's suggestions were ~all wrong),
+  confirmed `registerLensAction` + **artifact-based** (rejected `events.budget-summary`
+  which reads `params.eventId` the `{id}` dispatch can't supply), display-compatible,
+  validated live.
+- **Batch B — manufacturing (4 builds):** `advanceStep`/`defectAnalysis`/`generateTraveler`/
+  `logDowntime` as deterministic macros (oeeCalculate template) + 4 matching typed display
+  branches (the lens has no generic fallback). Test + live-validated.
+- **Batch B — creative+events (2 repoints + 2 builds):** `asset_report→assetOrganize`,
+  `event_summary→advanceSheet`; new `creative.project_summary`/`revision_summary`. Generic
+  display, validated.
+- **Batch B — nonprofit (2 repoints + 4 builds + a generic fallback):** `campaign-analysis→
+  campaignProgress` and `export-grant-report→grantReporting` (both happen to match existing
+  typed branches); new `view-giving-history`/`grant-deadline-check`/`impact-report`/
+  `send-acknowledgment`; added a JSON fallback to the typed-only result panel. Validated.
+- **Recurring lessons reconfirmed:** (1) a repoint target must read the **artifact**, not
+  unsupplied `params.X`; (2) typed-display lenses need the target's fields to match a branch
+  OR a generic fallback added; (3) the sandbox can't hold both servers — free the frontend,
+  run backend alone, foreground `nohup … & disown` (background-tool launches get reaped),
+  pace ≤700ms. Remaining genuine (32): government ×16 (substrate build), retail ×3 (params
+  UI), model-dependent ×~5, and scattered singles needing per-lens display fallbacks.
