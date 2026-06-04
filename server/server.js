@@ -6436,7 +6436,11 @@ function requireRole(...roles) {
 
 // Production write-auth: enforce authentication on all mutating requests in production
 // unless AUTH_MODE=public, where anonymous writes are intentionally allowed.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/chat"];
+// Only genuinely-public endpoints bypass the production write-auth gate. /api/chat and
+// /api/lens were removed (H1 + its follow-up): anonymous POST to them is an unauthenticated
+// write/LLM-cost surface. AUTH_MODE=public deploys still allow anonymous writes — the gate
+// skips entirely in that mode — so local-first/demo setups are unaffected.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics"];
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
