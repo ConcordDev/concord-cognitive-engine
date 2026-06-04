@@ -33,6 +33,20 @@ test("code.exec sandbox is isolated — no host globals leak", async () => {
   assert.match(res.stdout, /^undefined,undefined,undefined,/);
 });
 
+test("code.exec respects the CONCORD_CODE_EXEC_ENABLED kill-switch (H2)", async () => {
+  const prev = process.env.CONCORD_CODE_EXEC_ENABLED;
+  process.env.CONCORD_CODE_EXEC_ENABLED = "0";
+  try {
+    const r = await lensRun("code", "exec", { params: { language: "javascript", code: "console.log(1)" } });
+    const res = r.result ?? r;
+    assert.deepStrictEqual(res.supported, false);
+    assert.match(res.stderr, /disabled/i);
+  } finally {
+    if (prev === undefined) delete process.env.CONCORD_CODE_EXEC_ENABLED;
+    else process.env.CONCORD_CODE_EXEC_ENABLED = prev;
+  }
+});
+
 test("code.exec surfaces thrown errors as stderr with a non-zero exit", async () => {
   const r = await lensRun("code", "exec", { params: { language: "javascript", code: "throw new Error('boom')" } });
   const res = r.result ?? r;
