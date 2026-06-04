@@ -2373,79 +2373,33 @@ async function gracefulShutdown(signal) {
 // Register shutdown handlers
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-const _uncaughtTimestamps = [];
 process.on("uncaughtException", (err) => {
   structuredLog("fatal", "uncaught_exception", { error: err.message, stack: err.stack });
-
-  // Give repair cortex ONE chance before dying
+  // ALWAYS exit. After an uncaught exception the process state is undefined; this is a
+  // stateful SQLite economy monolith, so continuing risks silent data corruption. The
+  // repair cortex still RECORDS the error (diagnostics for the next clean boot) but never
+  // keeps the process alive. The orchestrator (docker restart:unless-stopped / k8s)
+  // restarts cleanly. gracefulShutdown flushes state + drains, then exits.
   try {
     observe(err, "uncaughtException");
-
     const diagnosis = matchErrorPattern(err.message);
-    if (diagnosis?.fixes?.[0]?.confidence >= 0.9) {
-      addToRepairMemory(err.message, diagnosis.fixes[0]);
-      structuredLog("warn", "uncaught_repair_attempted", {
-        error: err.message,
-        pattern: diagnosis.key,
-      });
-
-      // Only exit if this is the 3rd uncaught in 60 seconds
-      // (rapid-fire uncaughts = system is truly broken)
-      const now = Date.now();
-      _uncaughtTimestamps.push(now);
-      while (_uncaughtTimestamps.length > 0 && _uncaughtTimestamps[0] < now - 60000) {
-        _uncaughtTimestamps.shift();
-      }
-
-      if (_uncaughtTimestamps.length >= 3) {
-        structuredLog("fatal", "uncaught_cascade", {
-          count: _uncaughtTimestamps.length,
-          message: "3+ uncaught exceptions in 60s — exiting for clean restart",
-        });
-        gracefulShutdown("uncaughtException_cascade");
-      }
-      return; // Survive this one — repair cycle will attempt fix
-    }
-  } catch {
-    // Repair cortex itself failed — fall through to shutdown
-  }
-
+    if (diagnosis?.fixes?.[0]) addToRepairMemory(err.message, diagnosis.fixes[0]);
+  } catch { /* the repair cortex must never crash the crash handler */ }
   gracefulShutdown("uncaughtException");
 });
-process.on("unhandledRejection", async (reason, _promise) => {
+process.on("unhandledRejection", (reason, _promise) => {
   const errorStr = reason?.message || String(reason);
   structuredLog("fatal", "unhandled_rejection", { reason: errorStr, stack: String(reason?.stack || "") });
-
-  // Consult Repair Cortex Surgeon before dying
+  // Record for diagnostics, but NEVER run an executor that keeps a corrupt process
+  // alive. In production, always exit for a clean restart; in dev, log + continue so
+  // local rejection bugs surface without killing the dev loop.
   try {
     const diagnosis = matchErrorPattern(errorStr);
-    if (diagnosis?.fixes?.length) {
-      structuredLog("warn", "surgeon_intervention", {
-        error: errorStr,
-        fixes: diagnosis.fixes.map(f => f.name || f.pattern || "unknown"),
-        confidence: diagnosis.fixes[0]?.confidence,
-      });
-      addToRepairMemory(errorStr, diagnosis.fixes[0]);
-
-      // If high-confidence fix exists with an executor, apply and don't exit
-      if (diagnosis.fixes[0]?.confidence >= 0.9 && typeof diagnosis.fixes[0]?.executor === "function") {
-        try {
-          await diagnosis.fixes[0].executor();
-          recordRepairSuccess(errorStr);
-          structuredLog("info", "surgeon_fix_applied", { error: errorStr });
-          return; // Don't exit — fix was applied
-        } catch (fixErr) {
-          recordRepairFailure(errorStr);
-          structuredLog("error", "surgeon_fix_failed", { error: errorStr, fixError: String(fixErr?.message || fixErr) });
-        }
-      }
-    }
-  } catch (_e) { logger.debug('server', 'repair cortex itself must never crash the crash handler', { error: _e?.message }); }
-
-  // No fix or low confidence — exit as before
+    if (diagnosis?.fixes?.length) addToRepairMemory(errorStr, diagnosis.fixes[0]);
+  } catch (_e) { logger.debug('server', 'repair cortex must never crash the crash handler', { error: _e?.message }); }
   if ((process.env.NODE_ENV || "development") === "production") {
-    console.error("[FATAL] Unhandled promise rejection in production — exiting to allow clean restart.");
-    process.exit(1);
+    console.error("[FATAL] Unhandled promise rejection in production — exiting for clean restart.");
+    gracefulShutdown("unhandledRejection");
   }
 });
 
