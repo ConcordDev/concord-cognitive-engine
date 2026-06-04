@@ -24,6 +24,8 @@ import crypto from "node:crypto";
 import logger from "../logger.js";
 import { inheritHooks } from "./hooks.js";
 import { handleNpcDeathVacancy } from "./settlements.js";
+import { birthTemperament } from "./ecosystem/temperament.js";
+import { DRIVE_KINDS } from "./ecosystem/drives.js";
 
 // Living Society Phase 1.5c — open a settlement vacancy when a role-holder dies.
 function _openSettlementVacancyOnDeath(db, npc, opts) {
@@ -236,6 +238,35 @@ function inheritRecipes(db, deceased, heir) {
   return n;
 }
 
+/**
+ * Wave 7 / A3b — the heir inherits a DECAYED blend of the deceased's temperament.
+ * "Your temperament is a fossil of what tried to erase your ancestors and failed" —
+ * a fearful parent biases a fearful child, but inheritance is partial (the heir keeps
+ * its own character too). Reuses birthTemperament's stability-gated parent blend.
+ * Column-optional: a no-op when world_npcs.temperament_json isn't present (mig pending).
+ */
+export function inheritTemperament(db, deceased, heir) {
+  if (!db || !deceased?.id || !heir?.id) return 0;
+  try {
+    const dRow = db.prepare(`SELECT temperament_json FROM world_npcs WHERE id = ?`).get(deceased.id);
+    const parentTemp = dRow?.temperament_json ? JSON.parse(dRow.temperament_json) : null;
+    if (!parentTemp || typeof parentTemp !== "object") return 0;
+    const hRow = db.prepare(`SELECT temperament_json FROM world_npcs WHERE id = ?`).get(heir.id);
+    const heirTemp = hRow?.temperament_json ? JSON.parse(hRow.temperament_json) : null;
+    // Blend deceased + heir (or the deceased alone if the heir has none yet); the
+    // seed keys to the pair so the inheritance is deterministic/idempotent.
+    const parents = heirTemp ? [parentTemp, heirTemp] : [parentTemp];
+    const blended = birthTemperament({ speciesId: heir.archetype || "humanoid", parents, seed: `${deceased.id}|${heir.id}|inherit` });
+    // Validate shape before writing.
+    if (!DRIVE_KINDS.every((k) => Number.isFinite(blended[k]))) return 0;
+    db.prepare(`UPDATE world_npcs SET temperament_json = ? WHERE id = ?`).run(JSON.stringify(blended), heir.id);
+    recordInheritanceLink(db, deceased.id, heir.id, "temperament", "temperament");
+    return 1;
+  } catch {
+    return 0; // column/table optional — never blocks the legacy
+  }
+}
+
 function inheritWealth(db, deceased, heirs) {
   if (!db || !deceased?.id || !Array.isArray(heirs) || heirs.length === 0) return 0;
   let total = 0;
@@ -339,6 +370,7 @@ export function onNpcDeath(db, npc, opts = {}) {
     inherited.desire        = inheritDesires(db, npc, primary);
     inherited.recipe        = inheritRecipes(db, npc, primary);
     inherited.wealth        = inheritWealth(db, npc, heirs);
+    inherited.temperament   = inheritTemperament(db, npc, primary); // A3b — the fossil of resistance
     // D5 — hooks held over the deceased re-point to the heir; hooks the
     // deceased held pass to the heir. Synchronous + guarded (table-optional).
     try {
