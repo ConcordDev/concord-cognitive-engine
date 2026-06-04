@@ -1030,4 +1030,41 @@ export default function registerAffectActions(registerLensAction) {
     moodSave();
     return { ok: true, result: { scale, isCustom: true } };
   });
+
+  // detect-patterns — deterministic analysis of the affect journal entries
+  // (artifact.data.entries: [{ text, timestamp }]). Returns the shape the lens's
+  // patternResult panel renders: patterns / triggers / cycles / correlations / summary.
+  registerLensAction("affect", "detect-patterns", (ctx, artifact, _params = {}) => {
+    const entries = Array.isArray(artifact.data?.entries) ? artifact.data.entries
+      : Array.isArray(artifact.data?.checkins) ? artifact.data.checkins : [];
+    const STOP = new Set("the a an and or but i to of in is it im was are my me you we be for on with that this so just feel feeling felt today".split(" "));
+    const TRIGGER_WORDS = ["work", "money", "family", "sleep", "health", "relationship", "deadline", "alone", "tired", "stress", "anxious", "angry", "sad", "happy", "exam", "conflict"];
+    const freq = {}, triggerHits = {}, hourBuckets = {}, dayBuckets = {};
+    for (const e of entries) {
+      const text = String(e?.text || e?.note || "").toLowerCase();
+      for (const w of text.match(/[a-z][a-z']{2,}/g) || []) { if (!STOP.has(w)) freq[w] = (freq[w] || 0) + 1; }
+      for (const t of TRIGGER_WORDS) if (text.includes(t)) triggerHits[t] = (triggerHits[t] || 0) + 1;
+      const ts = e?.timestamp || e?.at || e?.date;
+      if (ts) { const dt = new Date(ts); if (!isNaN(dt)) { hourBuckets[dt.getHours()] = (hourBuckets[dt.getHours()] || 0) + 1; dayBuckets[dt.getDay()] = (dayBuckets[dt.getDay()] || 0) + 1; } }
+    }
+    const patterns = Object.entries(freq).filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([word, count]) => ({ theme: word, count }));
+    const triggers = Object.entries(triggerHits).sort((a, b) => b[1] - a[1]).map(([trigger, count]) => ({ trigger, count }));
+    const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const peakHour = Object.entries(hourBuckets).sort((a, b) => b[1] - a[1])[0];
+    const peakDay = Object.entries(dayBuckets).sort((a, b) => b[1] - a[1])[0];
+    const cycles = [];
+    if (peakHour) cycles.push({ kind: "time_of_day", label: `Most entries around ${peakHour[0]}:00`, count: peakHour[1] });
+    if (peakDay) cycles.push({ kind: "day_of_week", label: `${DAYS[Number(peakDay[0])]} is the most-journaled day`, count: peakDay[1] });
+    const correlations = triggers.slice(0, 3).map((t) => ({ between: [t.trigger, patterns[0]?.theme || "mood"], strength: t.count >= 3 ? "strong" : "moderate" }));
+    return {
+      ok: true,
+      result: {
+        entryCount: entries.length,
+        patterns, triggers, cycles, correlations,
+        summary: entries.length
+          ? `Across ${entries.length} entries: ${patterns.length} recurring theme(s), ${triggers.length} trigger(s) detected${peakDay ? `, most active on ${DAYS[Number(peakDay[0])]}` : ""}.`
+          : "No journal entries yet — add a few check-ins to surface patterns.",
+      },
+    };
+  });
 }
