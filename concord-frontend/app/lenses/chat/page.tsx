@@ -72,6 +72,11 @@ import {
   Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+// ConKay ("Kay") — Concord's JARVIS-style majordomo, as a voice-native chat MODE.
+import { ConKaySurface } from '@/components/conkay/ConKaySurface';
+import { ConKayMessage } from '@/components/conkay/ConKayViz';
+import { useConKayVoice } from '@/components/conkay/useConKayVoice';
+import { CONKAY_PERSONA_PROMPT, type ConKayState } from '@/components/conkay/conkay-persona';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { formatBytes } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -251,6 +256,7 @@ const AI_MODES: AIMode[] = [
   { id: 'code', name: 'Code', icon: Code, description: 'Programming help' },
   { id: 'research', name: 'Research', icon: BookOpen, description: 'Research mode with citations' },
   { id: 'creti', name: 'CRETI', icon: Zap, description: 'Structured CRETI format' },
+  { id: 'conkay', name: 'ConKay', icon: Sparkles, description: 'Voice-native majordomo — archives + research, holographic' },
 ];
 
 const PERSONAS: Persona[] = [
@@ -498,6 +504,8 @@ export default function ChatLensPage() {
     loadSessionId()
   );
   const [aiMode, setAiMode] = useState<AIMode>(AI_MODES[0]);
+  const isConKay = aiMode.id === 'conkay';
+  const [conkayMuted, setConkayMuted] = useState(false);
   const [showModeSelect, setShowModeSelect] = useState(false);
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [feedbackState, setFeedbackState] = useState<Record<string, 'up' | 'down'>>({});
@@ -1221,9 +1229,11 @@ export default function ChatLensPage() {
           signal: abortController.signal,
           body: JSON.stringify({
             message: messageContent,
-            mode: aiMode.id,
+            // ConKay presents as its own mode but rides the citation-oriented
+            // "research" backend path + its persona prompt (archives + research).
+            mode: isConKay ? 'research' : aiMode.id,
             sessionId: activeSessionId,
-            ...(systemPrompt ? { systemPrompt } : {}),
+            ...(isConKay ? { systemPrompt: CONKAY_PERSONA_PROMPT } : systemPrompt ? { systemPrompt } : {}),
             ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
           }),
         });
@@ -1288,9 +1298,11 @@ export default function ChatLensPage() {
           '/api/chat',
           {
             message: messageContent,
-            mode: aiMode.id,
+            // ConKay presents as its own mode but rides the citation-oriented
+            // "research" backend path + its persona prompt (archives + research).
+            mode: isConKay ? 'research' : aiMode.id,
             sessionId: activeSessionId,
-            ...(systemPrompt ? { systemPrompt } : {}),
+            ...(isConKay ? { systemPrompt: CONKAY_PERSONA_PROMPT } : systemPrompt ? { systemPrompt } : {}),
             ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
           },
           { signal: abortController.signal }
@@ -1652,6 +1664,34 @@ export default function ChatLensPage() {
 
     sendMutation.mutate(input);
   }, [input, sendMutation, executeSlashCommand]);
+
+  // ── ConKay: voice-native STT in / TTS out when the mode is active ───────────
+  const conkayVoice = useConKayVoice({
+    enabled: isConKay,
+    muted: conkayMuted,
+    onFinalTranscript: (t) => {
+      const text = t.trim();
+      if (!text || sendMutation.isPending) return;
+      if (text.startsWith('/')) { executeSlashCommand(text); return; }
+      sendMutation.mutate(text);
+    },
+  });
+  // Speak each new assistant reply aloud while ConKay is active.
+  const conkaySpokeRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isConKay || conkayMuted) return;
+    const last = [...localMessages].reverse().find((m) => m.role === 'assistant');
+    if (last && last.id !== conkaySpokeRef.current) {
+      conkaySpokeRef.current = last.id;
+      conkayVoice.speak(last.content || '');
+    }
+  }, [isConKay, conkayMuted, localMessages, conkayVoice]);
+  // ConKay state machine — driven by real signals (not a screensaver).
+  const conkayState: ConKayState =
+    sendMutation.isPending ? 'processing'
+      : conkayVoice.speaking ? 'presenting'
+        : conkayVoice.listening ? 'listening'
+          : 'idle';
 
   // Lens-scoped keyboard commands. Send via mod+enter is the power-user
   // shortcut (Enter still sends from inside the textarea); slash focuses
@@ -2086,6 +2126,19 @@ export default function ChatLensPage() {
                       </button>
                     </div>
                   </div>
+                ) : isConKay && message.role === 'assistant' ? (
+                  <ConKayMessage
+                    fields={{
+                      content: message.content,
+                      computed: message.computed,
+                      dtuRefs: message.dtuRefs,
+                      refs: message.refs,
+                      sources: message.sources,
+                      toolCalls: message.toolCalls,
+                      webAugmented: message.webAugmented,
+                    }}
+                    renderProse={(t) => <MessageRenderer content={t} />}
+                  />
                 ) : (
                   <MessageRenderer content={message.content} />
                 )}
@@ -3108,6 +3161,20 @@ export default function ChatLensPage() {
               </AnimatePresence>
             </div>
           </header>
+
+          {/* ConKay holographic presence band (P0 surface; Three.js full-bleed is P1) */}
+          {isConKay && (
+            <div className="relative h-32 shrink-0 overflow-hidden border-b border-cyan-400/15 bg-lattice-void/40">
+              <ConKaySurface
+                state={conkayState}
+                muted={conkayMuted}
+                onToggleMute={() => setConkayMuted((m) => !m)}
+                listening={conkayVoice.listening}
+                speaking={conkayVoice.speaking}
+                voiceSupported={conkayVoice.supported}
+              />
+            </div>
+          )}
 
           {/* Chat Mode Selector Rail */}
           <ModeSelector activeMode={chatMode} onModeChange={setChatMode} />
