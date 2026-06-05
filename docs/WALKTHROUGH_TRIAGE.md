@@ -117,3 +117,45 @@ chunks so it cannot occur there. `pharmacy`'s "network error" was the same (a mi
 ## Bottom line
 **259-lens surface: 257 clean, 2 had real bugs (both fixed).** That's a strong health signal — the
 reachability layer is solid. Business-logic (value-assertion) verification is the next layer.
+
+---
+
+# Business-Logic Value-Assertion Sweep (2026-06-05)
+
+The correctness layer above reachability: send KNOWN inputs to computational lens macros
+and assert the COMPUTED OUTPUT against hand-verified answers. Catches "renders fine, math
+is wrong." Harness: `scripts/value-assertions.mjs` (13/13 green).
+
+## 🔴 Real bugs — FIXED + verified
+All in the `server.js` compute block (~40636), which re-registered macros that SHADOWED
+the purpose-built `domains/*` handlers with thin/mislabeled implementations the UI couldn't use.
+
+| Macro | Bug | Fix | Verified |
+|---|---|---|---|
+| `math.statisticalAnalysis` | returned `results.{normal,regression}` not flat `mean/stdDev/count` → UI showed μ=undefined | flat fields + removed dup | mean 5, σ 2, n 8 |
+| `math.polynomialAnalysis` | shadow did regression-fit → "numeric arrays required" instead of roots | removed dup; roots:number[] + derivative:string | x²−5x+6 → {2,3}, f′=2x−5 |
+| `math.regressionFit` | read `points:[{x,y}]` but UI sends `x[]/y[]` → "need 2 data points" | accept x/y arrays | y=2x → R²=1, slope 2 |
+| `physics.kinematicsSim` | returned beamDeflection/windLoad/momentOfInertia (STRUCTURAL) mislabeled as kinematics | real v=u+at, s=½at² | v=20, s=20 |
+| `physics.orbitalMechanics` | gravitationalForce called `windLoad()` → "areaSqft must be positive" | real F=G·m₁·m₂/r² | Earth-Moon 1.98e20 N, v 1018 m/s, T 27.4d |
+
+## 🟢 Verified correct (no bug) — hand-checked computed values
+`math.matrixOperations` det −2 · `chem.molecular-weight`/`molecularAnalysis` H₂O 18.015 ·
+`chem.calc-molarity` 0.25 M · `chem.balanceReaction` 2H₂+O₂→2H₂O · `quantum.simulateCircuit`
+Hadamard 0.5/0.5 amp 0.707 · `physics.waveInterference` λ=3.4 · `physics.thermodynamics`
+PV=nRT · `finance.compoundInterest` $1000@5% → 1647.01 (monthly comp) · `eng.stressAnalysis`
+100 MPa SF 2.5 · `eng.unitConvert` 1in=25.4mm · `astro.lightTravelTime` 1ly→1yr/9.461e12km ·
+`astro.orbitalMechanics` 1AU→29.8 km/s · `hvac.loadCalculation` 1000sqft→25000 BTU ·
+`elec.voltageDropCalc` 5.79V@12AWG/100ft.
+
+## 🟡 Known follow-up (not UI-impacting)
+The `server.js` block still shadows a few domain handlers (`physics.thermodynamics/
+waveInterference` flat-input vs domain `state`/`sources`-input; `chem.molecularAnalysis`
+etc. — these delegate correctly so they're not broken). No frontend lens calls them (the
+physics lens uses `constants`/`projectile`), so they're API-only. Systematic cleanup =
+remove the remaining block shadows + standardize on domain handlers; deferred (contract-change).
+
+## Bottom line
+Computational surface (math/physics/chem/quantum/finance/engineering/electrical/hvac/
+materials/astronomy): **5 real correctness bugs found + fixed, everything else verified
+against hand-checked math.** The bugs clustered entirely in the shadowing compute block.
+The value-assertion harness is committed + CI-able so this class can't silently regress.
