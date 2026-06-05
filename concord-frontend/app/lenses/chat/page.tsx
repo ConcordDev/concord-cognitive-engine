@@ -126,6 +126,7 @@ import MeshStatusCard from '@/components/chat/MeshStatusCard';
 import IntelligenceCard from '@/components/chat/IntelligenceCard';
 import AtlasPrivacyMonitor from '@/components/chat/AtlasPrivacyMonitor';
 import { InitiativeChip, type Initiative } from '@/components/chat/InitiativeChip';
+import { AssistantMoodChip } from '@/components/chat/AssistantMoodChip';
 import { ToolPalette } from '@/components/chat/ToolPalette';
 import { SafeCard } from '@/components/common/SafeCard';
 import { GracefulFallback } from '@/components/common/GracefulFallback';
@@ -2905,6 +2906,9 @@ export default function ChatLensPage() {
                 <Activity className="w-3 h-3" />
                 <span>Systems</span>
               </button>
+              {/* Living chat / Layer 4b — the assistant's felt state (a qualeOf mood
+                  label), surfaced honestly as a correlate. Renders only when lit. */}
+              <AssistantMoodChip />
               {/* 2026 parity — Projects, Prompts, Scheduled, Search.
                   Parity with Claude Projects / ChatGPT Projects-Tasks /
                   Perplexity Spaces. */}

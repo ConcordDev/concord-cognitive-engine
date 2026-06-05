@@ -21555,8 +21555,27 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
     const _chatDb = ctx?.db || globalThis._concordSTATE?.db;
     const _uid = ctx?.actor?.userId || input?.userId || null;
     if (_chatDb && _uid && prompt) {
-      const { feelChatTurn } = await import("./lib/chat-self.js");
-      feelChatTurn(_chatDb, _uid, prompt);
+      const { feelChatTurn, readChatMood } = await import("./lib/chat-self.js");
+      const _felt = feelChatTurn(_chatDb, _uid, prompt);
+
+      // Living chat / Layer 4a — AWARENESS on a hard turn. When the exchange is salient
+      // (a charged feeling, or a real question), the assistant runs the awareness loop
+      // once: it attends, reads its own felt state + interoception, and leaves a durable
+      // reasoning trace (watchable at /lenses/reasoning/traces). Not every message —
+      // only the ones that actually move it. Gated CONCORD_CHAT_AWARENESS (default on).
+      const _salient = _felt && (_felt.feltPer?.intensity >= 0.18 || _felt.kind === "explore" || _felt.kind === "social_snub");
+      if (_salient && process.env.CONCORD_CHAT_AWARENESS !== "0") {
+        try {
+          const { runAwarenessLoop } = await import("./lib/awareness-loop.js");
+          const _mood = readChatMood(_chatDb, _uid);
+          runAwarenessLoop({
+            force: true, db: _chatDb, agentId: _felt.entityId,
+            self: { affect: { v: _mood.valence, a: _mood.arousal }, worldId: "chat" },
+            experience: { kind: _felt.kind },
+            system: { llmQueueDepth: 0, memPressure: 0 },
+          });
+        } catch (_e2) { /* awareness optional */ }
+      }
     }
   } catch (_e) { /* felt self optional */ }
 
