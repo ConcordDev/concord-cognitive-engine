@@ -21548,6 +21548,18 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
     });
   } catch (_e) { /* never block chat on a hydration failure */ }
 
+  // Living chat / Layer 1 — the assistant FEELS this exchange. A persistent per-user
+  // felt self (`assistant:<userId>`) accumulates across conversations + fires the
+  // previously-dead hookChat. Best-effort; never blocks the reply.
+  try {
+    const _chatDb = ctx?.db || globalThis._concordSTATE?.db;
+    const _uid = ctx?.actor?.userId || input?.userId || null;
+    if (_chatDb && _uid && prompt) {
+      const { feelChatTurn } = await import("./lib/chat-self.js");
+      feelChatTurn(_chatDb, _uid, prompt);
+    }
+  } catch (_e) { /* felt self optional */ }
+
   if (!STATE.sessions.has(sessionId)) {
     // ownerId enables defense-in-depth: assertSessionAccessible() refuses
     // session reads from anyone other than the owner (or a participant
@@ -23463,6 +23475,19 @@ register("chat", "tools", (ctx, _input = {}) => {
   };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "List all tools available to the chat system and their opt-in status." });
+
+// Living chat / Layer 1 — read the assistant's current felt state (valence/arousal +
+// a qualeOf mood label) for the chat-lens mood chip + future prompt coloring. The
+// felt life behind the reply, surfaced honestly as a correlate.
+register("chat", "mood", async (ctx, input = {}) => {
+  try {
+    const db = ctx?.db || globalThis._concordSTATE?.db;
+    const uid = ctx?.actor?.userId || input?.userId || null;
+    if (!db || !uid) return { ok: true, lit: false, valence: 0, arousal: 0, quale: null };
+    const { readChatMood } = await import("./lib/chat-self.js");
+    return { ok: true, ...readChatMood(db, uid) };
+  } catch (e) { return { ok: false, error: e?.message }; }
+});
 
 register("chat", "harvest", (ctx, input) => {
   const sessionId = String(input.sessionId || "default");
