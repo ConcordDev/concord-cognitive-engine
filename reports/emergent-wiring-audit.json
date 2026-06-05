@@ -7,6 +7,12 @@
       ]
     },
     {
+      "file": "agent-drift-watch-cycle.js",
+      "handlers": [
+        "runAgentDriftWatchCycle"
+      ]
+    },
+    {
       "file": "agent-marathon-cycle.js",
       "handlers": [
         "runAgentMarathonCycle"
@@ -334,6 +340,12 @@
       "file": "idle-behavior.js",
       "handlers": [
         "runIdleBehavior"
+      ]
+    },
+    {
+      "file": "initiative-cycle.js",
+      "handlers": [
+        "runInitiativeCycle"
       ]
     },
     {
@@ -1085,5 +1097,5 @@
     }
   ],
   "orphan": [],
-  "scannedAt": "2026-06-04T22:50:53.245Z"
+  "scannedAt": "2026-06-05T18:47:02.529Z"
 }
