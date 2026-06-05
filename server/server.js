@@ -40632,31 +40632,12 @@ registerUniversalLensActions();
     }};
   });
 
-  // Math
-  registerLensAction('math', 'statisticalAnalysis', async (_ctx, artifact, params) => {
-    const stats = await loadComputeModule('statistics');
-    const data  = params?.data || artifact?.data?.values || [];
-    return { ok: true, results: {
-      regression: stats.linearRegression?.(data.map((_, i) => i), data) ?? null,
-      normal: stats.fitNormal?.(data) ?? null,
-      movingAvg: stats.movingAverage?.(data, params?.window || 3) ?? null,
-    }};
-  });
-  registerLensAction('math', 'regressionFit', async (_ctx, artifact, params) => {
-    const stats = await loadComputeModule('statistics');
-    const p = { ...artifact?.data, ...params };
-    return { ok: true, results: {
-      linear: stats.linearRegression?.(p.x || [], p.y || []) ?? null,
-      polynomial: stats.polynomialRegression?.(p.x || [], p.y || [], p.degree || 2) ?? null,
-    }};
-  });
-  registerLensAction('math', 'polynomialAnalysis', async (_ctx, artifact, params) => {
-    const stats = await loadComputeModule('statistics');
-    const p = { ...artifact?.data, ...params };
-    return { ok: true, results: {
-      fit: stats.polynomialRegression?.(p.x || [], p.y || [], p.degree || 3) ?? null,
-    }};
-  });
+  // Math — statisticalAnalysis / regressionFit / polynomialAnalysis are registered in
+  // server/domains/math.js with the rich, frontend-aligned implementations (flat
+  // mean/stdDev/count, polynomial roots, x|y-or-points regression). They USED to be
+  // shadowed by thin `results.{fit,normal}` duplicates here that returned shapes the
+  // math-lens UI doesn't read (it showed μ=undefined / 0 roots / R²=undefined). Removed
+  // the duplicates so the domain handlers win. Do not re-register these here.
 
   // Chemistry
   registerLensAction('chem', 'molecularAnalysis', async (_ctx, artifact, params) => {
