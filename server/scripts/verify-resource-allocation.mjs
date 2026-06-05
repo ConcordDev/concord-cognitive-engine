@@ -30,17 +30,21 @@ function gpuVramMB() {
 }
 
 // crude-but-honest model VRAM estimate from the tag (params × bytes-per-param + KV).
-function estimateModelMB(model) {
+// Custom tags with no size in the name (e.g. concord-conscious:latest) can declare their
+// size via CONCORD_<ROLE>_PARAMS_B so the budget is accurate.
+function estimateModelMB(model, role) {
   const name = String(model || "").toLowerCase();
   const m = name.match(/(\d+(?:\.\d+)?)\s*b\b/);
-  let params = m ? parseFloat(m[1]) : 7;            // custom/unknown (e.g. concord-conscious) → assume 7B
+  const override = role && Number(process.env[`CONCORD_${role.toUpperCase()}_PARAMS_B`]);
+  let params = Number.isFinite(override) && override > 0 ? override : (m ? parseFloat(m[1]) : 7);
+  const declared = !m && Number.isFinite(override) && override > 0;
   let bpp = 0.6;                                     // q4_K_M ≈ 0.6 GB / B
   if (/q8|fp16|:16|f16/.test(name)) bpp = 1.1;
   if (/q2|q3/.test(name)) bpp = 0.45;
   let weightsGB = params * bpp;
   if (/vl|vision|llava/.test(name)) weightsGB += 1.5; // vision encoder
   const kvGB = 1.0;                                   // resident KV (q8_0, modest ctx)
-  return { params, weightsMB: MB(weightsGB), kvMB: MB(kvGB), totalMB: MB(weightsGB) + MB(kvGB), assumed: !m };
+  return { params, weightsMB: MB(weightsGB), kvMB: MB(kvGB), totalMB: MB(weightsGB) + MB(kvGB), assumed: !m && !declared, declared };
 }
 
 const VRAM = gpuVramMB();
@@ -54,9 +58,10 @@ console.log(dim("─".repeat(58)));
 let brainsMB = 0;
 const ROLE_ORDER = ["conscious", "subconscious", "utility", "repair", "multimodal"];
 for (const role of ROLE_ORDER.filter((k) => BRAIN_CONFIG[k])) {
-  const e = estimateModelMB(BRAIN_CONFIG[role].model);
+  const e = estimateModelMB(BRAIN_CONFIG[role].model, role);
   brainsMB += e.totalMB;
-  console.log(`${role.padEnd(13)} ${String(BRAIN_CONFIG[role].model).slice(0, 33).padEnd(34)} ${(e.totalMB + " MB").padStart(8)} ${e.assumed ? dim("(size assumed 7B)") : ""}`);
+  const tag = e.assumed ? dim("(size assumed 7B — set CONCORD_" + role.toUpperCase() + "_PARAMS_B)") : e.declared ? dim(`(${e.params}B declared)`) : "";
+  console.log(`${role.padEnd(13)} ${String(BRAIN_CONFIG[role].model).slice(0, 33).padEnd(34)} ${(e.totalMB + " MB").padStart(8)} ${tag}`);
 }
 console.log(dim("─".repeat(58)));
 console.log(`${"brains total".padEnd(48)} ${(brainsMB + " MB").padStart(8)}`);

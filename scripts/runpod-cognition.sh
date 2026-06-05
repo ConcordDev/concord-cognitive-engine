@@ -28,6 +28,15 @@ declare -A MODEL=( [conscious]="${BRAIN_CONSCIOUS_MODEL:-concord-conscious:lates
 declare -A GPU=(   [conscious]="${BRAIN_CONSCIOUS_GPU:-0}" [subconscious]="${BRAIN_SUBCONSCIOUS_GPU:-0}" \
                    [utility]="${BRAIN_UTILITY_GPU:-0}" [repair]="${BRAIN_REPAIR_GPU:-0}" \
                    [vision]="${BRAIN_VISION_GPU:-0}" )
+# Per-role residency. Empty → inherit the global OLLAMA_KEEP_ALIVE (set below). Set a
+# SHORT value for a bursty brain to make it load-on-demand and free its VRAM for a bigger
+# Concordia slice — e.g. BRAIN_VISION_KEEP_ALIVE=30s evicts vision (~6.9GB) when idle, so
+# you can raise CONCORD_WORLD_VRAM_MB without over-committing the card. The trade is a
+# cold-load latency on the first vision call after idle. Conscious/subconscious should
+# stay hot (long keep-alive) — they're on the chat + world-sim hot path.
+declare -A KEEPALIVE=( [conscious]="${BRAIN_CONSCIOUS_KEEP_ALIVE:-}" [subconscious]="${BRAIN_SUBCONSCIOUS_KEEP_ALIVE:-}" \
+                       [utility]="${BRAIN_UTILITY_KEEP_ALIVE:-}" [repair]="${BRAIN_REPAIR_KEEP_ALIVE:-}" \
+                       [vision]="${BRAIN_VISION_KEEP_ALIVE:-}" )
 ROLES=(conscious subconscious utility repair vision)
 
 NPROC=$(nproc 2>/dev/null || echo 4)
@@ -89,8 +98,9 @@ for role in "${ROLES[@]}"; do
   p=${PORT[$role]}; c=${CORES[$role]}; gid=${GPU[$role]}
   pin=""; [ "$HAVE_TASKSET" = 1 ] && pin="taskset -c $c"
   gpuenv=""; [ "$HAVE_GPU" = 1 ] && gpuenv="CUDA_VISIBLE_DEVICES=$gid"
-  log "Brain ${role}: port ${p}  cores ${c}  gpu ${gid}  model ${MODEL[$role]}"
-  env $gpuenv OLLAMA_HOST="127.0.0.1:${p}" $pin ollama serve > "${LOG_DIR}/brain-${role}.log" 2>&1 &
+  ka="${KEEPALIVE[$role]:-$OLLAMA_KEEP_ALIVE}"   # per-role residency; empty inherits the global
+  log "Brain ${role}: port ${p}  cores ${c}  gpu ${gid}  keep-alive ${ka}  model ${MODEL[$role]}"
+  env $gpuenv OLLAMA_HOST="127.0.0.1:${p}" OLLAMA_KEEP_ALIVE="$ka" $pin ollama serve > "${LOG_DIR}/brain-${role}.log" 2>&1 &
 done
 
 # ── health-check + pull each role's model on its own instance ────────────────
