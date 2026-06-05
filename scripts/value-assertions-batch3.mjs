@@ -12,7 +12,7 @@ const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", dim: "\x1b[2m", rst: "\
 const near = (a, b, tol = 0.01) => typeof a === "number" && Number.isFinite(a) && Math.abs(a - b) <= tol;
 const numIn = (s) => { const m = String(s ?? "").match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : NaN; };
 
-const mod = await import("/home/user/concord-cognitive-engine/server/server.js");
+const mod = await import(new URL("../server/server.js", import.meta.url).href);
 const T = mod.__TEST__ || mod.default?.__TEST__;
 const { makeInternalCtx } = T;
 const LA = globalThis.__concordLensActions;
@@ -282,4 +282,4 @@ for (const bn of batchNames) {
 }
 console.log(`\n${C.g}${pass} pass${C.rst}  ${fail ? C.r : C.dim}${fail} fail${C.rst}  ${err ? C.y : C.dim}${err} err${C.rst}`);
 if (failures.length) { console.log(`\n${C.r}Triage:${C.rst}`); for (const [k, v] of failures) console.log(`  • ${k}  ${C.dim}${v}${C.rst}`); }
-process.exit(0);
+process.exit((fail > 0 || err > 0) ? 1 : 0);

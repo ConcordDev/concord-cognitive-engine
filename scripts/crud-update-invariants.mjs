@@ -14,7 +14,7 @@ process.env.CONCORD_NO_LISTEN = "true";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "value-assert-fixed-secret-key-32plus-characters-2026";
 
 const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", dim: "\x1b[2m", rst: "\x1b[0m" };
-const mod = await import("/home/user/concord-cognitive-engine/server/server.js");
+const mod = await import(new URL("../server/server.js", import.meta.url).href);
 const { makeInternalCtx } = mod.__TEST__ || mod.default?.__TEST__;
 const LA = globalThis.__concordLensActions;
 const ctx = makeInternalCtx("upd_user_" + Math.random().toString(36).slice(2));
@@ -73,4 +73,4 @@ for (const [dom, label, cAct, cParams, idPath, uAct, idParam, field, newVal, lAc
 }
 console.log(`\nupdate-reflects ${C.g}${pass}✓${C.rst}/${fail ? C.r : C.dim}${fail}✗${C.rst}   errors ${err ? C.y : C.dim}${err}${C.rst}`);
 if (issues.length) { console.log(`\n${C.r}Triage:${C.rst}`); for (const [k, v] of issues) console.log(`  • ${k}  ${C.dim}${v}${C.rst}`); }
-process.exit(0);
+process.exit((fail > 0 || err > 0) ? 1 : 0);

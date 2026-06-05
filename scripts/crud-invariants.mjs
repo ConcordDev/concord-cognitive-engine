@@ -15,7 +15,7 @@ process.env.CONCORD_NO_LISTEN = "true";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "value-assert-fixed-secret-key-32plus-characters-2026";
 
 const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", dim: "\x1b[2m", rst: "\x1b[0m" };
-const mod = await import("/home/user/concord-cognitive-engine/server/server.js");
+const mod = await import(new URL("../server/server.js", import.meta.url).href);
 const T = mod.__TEST__ || mod.default?.__TEST__;
 const { makeInternalCtx } = T;
 const LA = globalThis.__concordLensActions;
@@ -134,4 +134,4 @@ for (const [dom, label, cAct, cParams, idPath, lAct, lArr, idField, dAct, dParam
 }
 console.log(`\nround-trip ${C.g}${rtP}✓${C.rst}/${rtF ? C.r : C.dim}${rtF}✗${C.rst}   isolation ${C.g}${isoP}✓${C.rst}/${isoF ? C.r : C.dim}${isoF}✗${C.rst}   delete ${C.g}${delP}✓${C.rst}/${delF ? C.r : C.dim}${delF}✗${C.rst}   errors ${errs ? C.y : C.dim}${errs}${C.rst}`);
 if (issues.length) { console.log(`\n${C.r}Triage:${C.rst}`); for (const [k, v] of issues) console.log(`  • ${k}  ${C.dim}${v}${C.rst}`); }
-process.exit(0);
+process.exit((rtF + isoF + delF + errs) > 0 ? 1 : 0);
