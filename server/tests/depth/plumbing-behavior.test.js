@@ -9,11 +9,14 @@ import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
 
 describe("plumbing — calc actions (exact engineering values)", () => {
-  it("pipeSize: 10 GPM @ 5 ft/s → 1.25\" nominal", async () => {
+  it("pipeSize: 10 GPM @ 5 ft/s → 1\" nominal", async () => {
     const r = await lensRun("plumbing", "pipeSize", { data: { flowGPM: 10, velocityFPS: 5 } });
     assert.equal(r.ok, true);
-    assert.equal(r.result.calculatedDiameter, "1.02\"");
-    assert.equal(r.result.recommendedSize, "1.25\" nominal");
+    // Standard flow relation GPM = 2.448·d²·v → d = √(10/(2.448·5)) = 0.904".
+    // (Prior values "1.02\"" / "1.25\" nominal" encoded the pre-fix bug that applied
+    //  the circle-area inverse to d² and oversized the pipe — corrected 2026-06.)
+    assert.equal(r.result.calculatedDiameter, "0.9\"");
+    assert.equal(r.result.recommendedSize, "1\" nominal");
   });
 
   it("waterHeaterSize: tank gallons = household × 15; 6+ people ⇒ tankless advice", async () => {
