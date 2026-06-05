@@ -54071,6 +54071,24 @@ app.get("/api/social/trending/creators", (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// Trending domains — the social TrendingDomains widget polls this (was 404). Aggregates
+// recent DTUs by domain and returns { domains: [{ domain, score, topPosts }] }.
+app.get("/api/social/trending/domains", (_req, res) => {
+  try {
+    const counts = new Map();
+    const limit = Math.max(1, Math.min(20, parseInt(_req.query?.limit, 10) || 5));
+    for (const dtu of dtusArray().slice(-500)) {
+      const d = dtu.domain || dtu.lens || dtu.category;
+      if (d) counts.set(d, (counts.get(d) || 0) + 1);
+    }
+    const domains = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([domain, score]) => ({ domain, score, topPosts: [] }));
+    res.json({ ok: true, domains });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // Platform status
 app.get("/api/platform/status", (_req, res) => {
   try {

@@ -310,8 +310,8 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
         });
         return (res.data.media || []) as FeedItem[];
       }
-      // For posts/dtus/liked, use the user's posts endpoint
-      const res = await api.get(`/api/social/posts/${userId}`, { params: { limit: 20 } });
+      // For posts/dtus/liked, use the user's posts endpoint (route is /posts/user/:userId)
+      const res = await api.get(`/api/social/posts/user/${userId}`, { params: { limit: 20 } });
       return (res.data.posts || res.data.feed || []) as FeedItem[];
     },
   });

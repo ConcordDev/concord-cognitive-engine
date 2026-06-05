@@ -854,7 +854,10 @@ export default function FeedLensPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }, []);
 
-  const formatNumber = useCallback((num: number) => {
+  const formatNumber = useCallback((num?: number | null) => {
+    // Guard: post counts (comments/reposts/likes/views) can be undefined before the
+    // backend hydrates them — calling .toString() on undefined crashed the whole lens.
+    if (num == null || Number.isNaN(num)) return '0';
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toString();
