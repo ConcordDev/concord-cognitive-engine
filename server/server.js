@@ -21392,30 +21392,64 @@ register("dtu", "syncFromGlobal", (ctx, input) => {
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "Sync a global DTU into the user's local inventory" });
 
+// Partition key for DTU consolidation — the HARD boundary that prevents improper mixing.
+// PRIVATE DTUs (personal/local) partition per-(creator, world) so one user's private notes
+// never co-cluster with ANOTHER user's, nor with the shared pool. SHARED DTUs (global/
+// public) partition per-(scope, world) so a tunya-world synthesis never merges with a hub
+// one, and global never merges with public. Lens is intentionally NOT in the key — cross-
+// lens synthesis inside one scope/world is the desirable novelty path.
+function _dtuScopeKey(d) {
+  const scope = String(d?.scope || d?.meta?.scope || d?.visibility || "global").toLowerCase();
+  const world = String(d?.world_id || d?.worldId || d?.meta?.world_id || d?.meta?.worldId || "_none");
+  const isPrivate = scope === "personal" || scope === "private" || scope === "local";
+  if (isPrivate) {
+    const creator = String(d?.creator_id || d?.creatorId || d?.createdBy || d?.userId || d?.meta?.creatorId || "anon");
+    return `private|${creator}|${world}`;
+  }
+  return `${scope}|${world}`;
+}
+
 register("dtu", "cluster", (ctx, input) => {
   try {
-  // group DTUs by similarity (simple jaccard on title+tags)
-  const items = dtusArray().filter(d => (d.tier || "regular") === "regular");
+  // group DTUs by similarity (simple jaccard on title+tags) — BUT only ever WITHIN a
+  // scope+world+visibility partition, never across. This is the hard boundary that stops
+  // a private/personal DTU clustering with a global one (→ would leak as a published MEGA)
+  // or a world-A skill merging with world-B. Cross-LENS is intentionally allowed inside a
+  // partition (that's where cross-domain novelty comes from). See _dtuScopeKey.
+  // fromTier lets the HYPER pass cluster MEGAs (fromTier:'mega') instead of only regulars —
+  // without it, "cluster MEGAs into HYPERs" silently re-clustered regulars and HYPERs never formed.
+  const _fromTier = input.fromTier || "regular";
+  const items = dtusArray().filter(d => (d.tier || "regular") === _fromTier);
   const threshold = Number(input.threshold ?? 0.38);
   const clusters = [];
   const used = new Set();
 
-  for (let i=0;i<items.length;i++){
-    const a = items[i];
-    if (used.has(a.id)) continue;
-    const aTok = simpleTokens(a.title + " " + (a.tags||[]).join(" "));
-    const cluster = [a];
-    used.add(a.id);
-    for (let j=i+1;j<items.length;j++){
-      const b = items[j];
-      if (used.has(b.id)) continue;
-      const bTok = simpleTokens(b.title + " " + (b.tags||[]).join(" "));
-      if (jaccard(aTok, bTok) >= threshold) {
-        cluster.push(b);
-        used.add(b.id);
+  // Partition first — DTUs in different scope/world/visibility buckets can never co-cluster.
+  const partitions = new Map();
+  for (const d of items) {
+    const key = _dtuScopeKey(d);
+    if (!partitions.has(key)) partitions.set(key, []);
+    partitions.get(key).push(d);
+  }
+
+  for (const [, partItems] of partitions) {
+    for (let i=0;i<partItems.length;i++){
+      const a = partItems[i];
+      if (used.has(a.id)) continue;
+      const aTok = simpleTokens(a.title + " " + (a.tags||[]).join(" "));
+      const cluster = [a];
+      used.add(a.id);
+      for (let j=i+1;j<partItems.length;j++){
+        const b = partItems[j];
+        if (used.has(b.id)) continue;
+        const bTok = simpleTokens(b.title + " " + (b.tags||[]).join(" "));
+        if (jaccard(aTok, bTok) >= threshold) {
+          cluster.push(b);
+          used.add(b.id);
+        }
       }
+      clusters.push(cluster);
     }
-    clusters.push(cluster);
   }
 
   clusters.sort((c1,c2)=>c2.length - c1.length);
@@ -21426,21 +21460,26 @@ register("dtu", "cluster", (ctx, input) => {
       size: c.length,
       ids: c.map(x=>x.id),
       titles: c.map(x=>x.title).slice(0, 12),
+      scope: _dtuScopeKey(c[0]),
       tagHints: Array.from(new Set(c.flatMap(x=>x.tags||[]))).slice(0, 20)
     }))
   };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-}, { description: "Cluster regular DTUs by topic similarity." });
+}, { description: "Cluster regular DTUs by topic similarity, partitioned by scope+world+visibility." });
 
 
 register("dtu", "gapPromote", async (ctx, input) => {
   const minCluster = clamp(Number(input.minCluster || 5), 3, 50);
   const maxPromotions = clamp(Number(input.maxPromotions || 3), 1, 25);
   const dryRun = !!input.dryRun;
+  // Honor input.tier — the HYPER pass calls gapPromote({tier:'hyper'}); without this it
+  // hardcoded 'mega' so HYPERs never auto-formed. childTier is what we cluster FROM.
+  const targetTier = input.tier === "hyper" ? "hyper" : "mega";
+  const childTier = targetTier === "hyper" ? "mega" : "regular";
 
-  // Use existing clustering logic (same as dtu.cluster) but promote stable clusters into a MEGA DTU.
-  const regular = Array.from(STATE.dtus.values()).filter(d => (d.tier||"regular")==="regular" && !isShadowDTU(d) && (d.status||"active")==="active");
-  if (regular.length < minCluster) return { ok:true, did:"none", reason:"not_enough_regular_dtus", regular: regular.length };
+  // Promote stable clusters of childTier DTUs into a targetTier DTU.
+  const regular = Array.from(STATE.dtus.values()).filter(d => (d.tier||"regular")===childTier && !isShadowDTU(d) && (d.status||"active")==="active");
+  if (regular.length < minCluster) return { ok:true, did:"none", reason:`not_enough_${childTier}_dtus`, regular: regular.length };
 
   // Lightweight topic hashing for cluster identity
   const topicKeyOf = (cluster) => {
@@ -21451,7 +21490,7 @@ register("dtu", "gapPromote", async (ctx, input) => {
 
   // Reuse cluster() macro internally by calling its implementation (avoid endpoint recursion).
   // runMacro signature is (domain, name, input, ctx) — ctx is the 4th arg, not the 1st.
-  const clustersRes = await runMacro("dtu", "cluster", { minCluster, maxClusters: clamp(Number(input.maxClusters||12), 1, 50) }, ctx);
+  const clustersRes = await runMacro("dtu", "cluster", { minCluster, maxClusters: clamp(Number(input.maxClusters||12), 1, 50), fromTier: childTier }, ctx);
   if (!clustersRes?.ok) return { ok:false, error:"cluster_failed", detail: clustersRes?.error || clustersRes };
   const clusters = Array.isArray(clustersRes.clusters) ? clustersRes.clusters : [];
 
@@ -21465,7 +21504,7 @@ register("dtu", "gapPromote", async (ctx, input) => {
 
     const clusterKey = topicKeyOf(members);
     // Skip if a mega already exists for this cluster key
-    const existing = Array.from(STATE.dtus.values()).find(d => (d.tier||"") === "mega" && d?.meta?.clusterKey === clusterKey);
+    const existing = Array.from(STATE.dtus.values()).find(d => (d.tier||"") === targetTier && d?.meta?.clusterKey === clusterKey);
     if (existing) continue;
 
     // Build a deterministic mega summary (no LLM dependency)
@@ -21476,11 +21515,27 @@ register("dtu", "gapPromote", async (ctx, input) => {
       .filter(Boolean)
       .slice(0, 8);
 
+    // Inherit the members' scope envelope (uniform within a partition post-_dtuScopeKey)
+    // so a MEGA is the SAME class of adaptability as a regular DTU — it carries scope,
+    // world, lens, visibility, creator forward instead of dropping them (which would let a
+    // private-DTU MEGA leak as published, or strand a world skill out of its world).
+    const _seed = members.find(m => m?.scope || m?.world_id || m?.worldId || m?.lens_id || m?.lensId) || members[0] || {};
+    const _megaScope = _seed.scope || _seed.meta?.scope || _seed.visibility || "global";
+    const _megaWorld = _seed.world_id || _seed.worldId || _seed.meta?.world_id || _seed.meta?.worldId || null;
+    const _lensSet = Array.from(new Set(members.map(m => m.lens_id || m.lensId || m.meta?.lensId).filter(Boolean)));
+    const _megaLens = _lensSet.length === 1 ? _lensSet[0] : (_lensSet.length > 1 ? "multi" : (_seed.lens_id || _seed.lensId || null));
+    const _megaCreator = _seed.creator_id || _seed.creatorId || _seed.createdBy || _seed.userId || _seed.meta?.creatorId || null;
     const mega = {
       id: uid("dtu"),
-      tier: "mega",
-      title: `MEGA — ${titleSeed}`,
+      tier: targetTier,
+      title: `${targetTier.toUpperCase()} — ${titleSeed}`,
       tags,
+      scope: _megaScope,
+      visibility: _seed.visibility || (String(_megaScope).match(/personal|private|local/i) ? "private" : "public"),
+      world_id: _megaWorld,
+      lens_id: _megaLens,
+      lensSpan: _lensSet.length > 1 ? _lensSet : undefined,
+      creator_id: _megaCreator,
       createdAt: nowISO(),
       updatedAt: nowISO(),
       status: "active",
