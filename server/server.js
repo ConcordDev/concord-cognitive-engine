@@ -25095,6 +25095,18 @@ registerHeartbeat("agent-drift-watch", {
   handler: () => runAgentDriftWatchCycle({ db: STATE?.db || globalThis._concordDB, io: STATE?.io || globalThis.__concordIO }),
 });
 
+// Living chat / Layer 2 — THE PULSE. Clock the initiative engine, salience-gated: for
+// each recently-active user, surface a real "thought" (an unsurfaced morning brief, a
+// notably-lit assistant felt state) and let the engine's rate-limits decide. The
+// assistant reaches out only when something crossed threshold, never on a timer.
+// scope:'global'; ~10 min; kill-switch CONCORD_INITIATIVE_CYCLE=0.
+import { runInitiativeCycle } from "./emergent/initiative-cycle.js";
+registerHeartbeat("initiative-cycle", {
+  frequency: 40,
+  scope: "global",
+  handler: () => runInitiativeCycle({ db: STATE?.db || globalThis._concordDB, io: STATE?.io || globalThis.__concordIO }),
+});
+
 import { mountMcpServer } from "./lib/mcp-server-host.js";
 // Mount deferred to after LENS_ACTIONS declaration — see ~line 36545 (Sprint 18.5 TDZ fix).
 
