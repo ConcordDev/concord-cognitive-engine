@@ -20,6 +20,8 @@
 import { useEffect, useRef } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
 import { resolveImpact } from '@/lib/concordia/impact-resolver';
+import { requestHitPause } from '@/lib/concordia/hit-pause';
+import { requestKnockback, requestHitReaction } from '@/lib/concordia/strike-fx-dedup';
 
 export function ImpactMomentumBridge() {
   const lastFiredRef = useRef<Map<string, number>>(new Map());
@@ -52,17 +54,16 @@ export function ImpactMomentumBridge() {
         isKill: ev.targetKilled,
       });
 
+      // All three effects go through the shared per-entity dedup authorities so
+      // this combat:hit path and the combat:impact feel bridge (T1.4b) can't
+      // double-apply the same strike (T2.7): hit-pause via requestHitPause,
+      // knockback + hit-reaction via strike-fx-dedup.
+
       // 1) Hitstop on the target (+ a short attacker freeze on big hits).
       if (feel.hitPauseMs > 0) {
-        window.dispatchEvent(new CustomEvent('concordia:hit-pause', {
-          detail: { entityId: ev.targetId, durationMs: feel.hitPauseMs },
-        }));
-        if (feel.severity === 'crit' || feel.severity === 'kill') {
-          if (ev.attackerId) {
-            window.dispatchEvent(new CustomEvent('concordia:hit-pause', {
-              detail: { entityId: ev.attackerId, durationMs: Math.round(feel.hitPauseMs * 0.3) },
-            }));
-          }
+        requestHitPause(ev.targetId, feel.hitPauseMs);
+        if ((feel.severity === 'crit' || feel.severity === 'kill') && ev.attackerId) {
+          requestHitPause(ev.attackerId, Math.round(feel.hitPauseMs * 0.3));
         }
       }
 
@@ -71,22 +72,18 @@ export function ImpactMomentumBridge() {
         const dx = ev.targetPosition.x - ev.attackerPosition.x;
         const dz = ev.targetPosition.z - ev.attackerPosition.z;
         const mag = Math.hypot(dx, dz) || 1;
-        window.dispatchEvent(new CustomEvent('concordia:knockback', {
-          detail: {
-            entityId: ev.targetId,
-            direction: { x: dx / mag, z: dz / mag },
-            magnitude: feel.knockback,
-            durationMs: feel.severity === 'kill' ? 320 : 220,
-          },
-        }));
+        requestKnockback({
+          entityId: ev.targetId,
+          direction: { x: dx / mag, z: dz / mag },
+          magnitude: feel.knockback,
+          durationMs: feel.severity === 'kill' ? 320 : 220,
+        });
       }
 
       // 3) Reflex wince graded by momentum severity.
       const winceSeverity = feel.severity === 'kill' || feel.severity === 'crit'
         ? 'crit' : feel.severity === 'heavy' ? 'heavy' : 'light';
-      window.dispatchEvent(new CustomEvent('concordia:hit-reaction', {
-        detail: { targetId: ev.targetId, severity: winceSeverity, reflexIntensity: feel.reflexIntensity },
-      }));
+      requestHitReaction({ targetId: ev.targetId, severity: winceSeverity, reflexIntensity: feel.reflexIntensity });
     });
     const map = lastFiredRef.current;
     return () => { off?.(); map.clear(); };

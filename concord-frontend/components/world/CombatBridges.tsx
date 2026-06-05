@@ -32,6 +32,7 @@
 import { useEffect } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
 import { requestHitPause } from '@/lib/concordia/hit-pause';
+import { requestKnockback, requestHitReaction } from '@/lib/concordia/strike-fx-dedup';
 import { computeImpactCameraPunch } from '@/lib/concordia/combat-camera';
 import { useAccessibilitySettings } from '@/hooks/useAccessibilitySettings';
 import CombatVFXBridge from '@/components/world/CombatVFXBridge';
@@ -68,7 +69,9 @@ function dispatchCombatAnim(entityId: string, animation: string) {
 }
 
 function dispatchHitReaction(targetId: string, severity: 'light' | 'heavy' | 'crit') {
-  window.dispatchEvent(new CustomEvent('concordia:hit-reaction', { detail: { targetId, severity } }));
+  // Through the shared dedup authority (T2.7) so the combat:hit (momentum) and
+  // combat:impact (feel) paths can't double-fire a wince for the same strike.
+  requestHitReaction({ targetId, severity });
 }
 
 function dispatchTimeDilation(factor: number, durationMs: number) {
@@ -715,14 +718,14 @@ export function CombatImpactFeelBridge({ userId = null }: { userId?: string | nu
         const dx = ev.targetPosition.x - ev.attackerPosition.x;
         const dz = ev.targetPosition.z - ev.attackerPosition.z;
         const mag = Math.hypot(dx, dz) || 1;
-        window.dispatchEvent(new CustomEvent('concordia:knockback', {
-          detail: {
-            entityId: ev.targetId,
-            direction: { x: dx / mag, z: dz / mag },
-            magnitude: feel.knockback,
-            durationMs: feel.knockMs ?? 220,
-          },
-        }));
+        // Through the shared dedup authority (T2.7) — one shove per strike even
+        // when the combat:hit momentum path already fired for the same strike.
+        requestKnockback({
+          entityId: ev.targetId,
+          direction: { x: dx / mag, z: dz / mag },
+          magnitude: feel.knockback ?? 0,
+          durationMs: feel.knockMs ?? 220,
+        });
       }
 
       // 3) Wince / topple reflex — the recipient's hit-reaction animation,
