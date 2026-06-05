@@ -52,8 +52,8 @@ The socket PvP `combat:attack` handler now runs the `impact-feel.js` chain and e
 builder as the NPC HTTP route so the client `CombatImpactFeelBridge` applies identical
 hitstop/knockback/wince. Pinned by `server/tests/combat-impact-pvp-feel.test.js` (4/4).
 (The original claim that the socket path "emits `combat:attack:ack`/`combat:hit` only"
-was stale.) Remaining minor concern: the `combat:hit`/`combat:impact` double-fire dedupe
-(see T2.7) is separate and still open.
+was stale.) The related `combat:hit`/`combat:impact` double-fire dedupe is now also
+✅ **DONE (2026-06)** — `lib/concordia/strike-fx-dedup.ts`, see T2.7.
 
 ---
 
