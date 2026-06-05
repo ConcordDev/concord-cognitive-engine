@@ -109,7 +109,9 @@ function ActivityChart() {
   const [range, setRange] = useState<Range>('Daily');
   const { data } = useQuery({
     queryKey: ['dash-activity-dtus'],
-    queryFn: () => safeGet<{ dtus?: Array<Record<string, unknown>> }>('/api/dtus?limit=200&pageSize=200', { dtus: [] }),
+    // mine=true → only the signed-in user's OWN creations (their creation
+    // rhythm), never the global published feed.
+    queryFn: () => safeGet<{ dtus?: Array<Record<string, unknown>> }>('/api/dtus?mine=true&limit=200&pageSize=200', { dtus: [] }),
     refetchInterval: 60000, retry: 1,
   });
   const items = useMemo(() => {
@@ -136,9 +138,21 @@ function ActivityChart() {
         }
       />
       <div className="px-2 pb-2">
-        <div className="px-2 pb-1 text-[11px] text-zinc-500">{total} thoughts minted in view · your creation rhythm</div>
-        <ChartKit kind="area" data={chartData} xKey="bucket"
-          series={[{ key: 'count', label: 'DTUs', color: '#a855f7' }]} height={220} />
+        {total === 0 ? (
+          <div className="m-2 rounded-xl border border-dashed border-lattice-border px-4 py-10 text-center">
+            <Sparkles className="mx-auto mb-2 h-5 w-5 text-fuchsia-300/70" />
+            <div className="text-[13px] text-zinc-300">No thoughts minted yet</div>
+            <div className="mt-1 text-[11px] text-zinc-500">
+              Your creation rhythm shows up here. <Link href="/lenses/studio" className="text-neon-purple hover:underline">Mint your first thought</Link>.
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="px-2 pb-1 text-[11px] text-zinc-500">{total} thoughts minted · your creation rhythm</div>
+            <ChartKit kind="area" data={chartData} xKey="bucket"
+              series={[{ key: 'count', label: 'DTUs', color: '#a855f7' }]} height={220} />
+          </>
+        )}
       </div>
     </Card>
   );

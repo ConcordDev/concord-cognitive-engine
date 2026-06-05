@@ -21252,6 +21252,10 @@ register("dtu", "list", (ctx, input) => {
   const q = tokenish(input.q || "");
   const scopeFilter = input.scope || null; // "local", "global", or null (default: user's view)
   const userId = ctx?.actor?.id || ctx?.actor?.odId || null;
+  // "mine" — the caller's OWN creations only (any scope, public + private),
+  // never other users' published DTUs. Used by the dashboard "My Activity"
+  // chart so the creation rhythm is the signed-in user's, not the global feed.
+  const mineOnly = input.mine === true || input.mine === "true" || input.owner === "me";
 
   // Filter out shadow/repair/system DTUs - internal, not real user content.
   // Pass viewer ID so private/user-scoped uploads by other users are hidden.
@@ -21266,7 +21270,10 @@ register("dtu", "list", (ctx, input) => {
   // - global:   everyone (published/public only for non-owners)
   const SCOPE_LEVELS = { local: 0, regional: 1, national: 2, global: 3 };
 
-  if (scopeFilter && SCOPE_LEVELS[scopeFilter] !== undefined) {
+  if (mineOnly) {
+    // Owner-scoped: only DTUs this signed-in user created. Not signed in → none.
+    items = userId ? items.filter(d => d.ownerId === userId) : [];
+  } else if (scopeFilter && SCOPE_LEVELS[scopeFilter] !== undefined) {
     const requestedLevel = SCOPE_LEVELS[scopeFilter];
     items = items.filter(d => {
       const dtuScope = d.scope || "local";
