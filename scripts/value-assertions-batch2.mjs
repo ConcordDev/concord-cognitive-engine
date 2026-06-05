@@ -316,6 +316,110 @@ const BATCHES = {
       assert: r => near(r.identificationConfidence, 100),
       show: r => `confidence=${r.identificationConfidence}` },
   ],
+
+  // ───────────────────────── crypto ─────────────────────────
+  crypto: [
+    { dom: "crypto", act: "portfolioAnalysis", data: { holdings: [{ token: "BTC", amount: 1, priceUsd: 60000, costBasis: 40000 }, { token: "ETH", amount: 10, priceUsd: 2000, costBasis: 25000 }] },
+      // values 60000/20000; total=80000; weights 75/25; HHI=0.75²+0.25²=0.625→critical; PnL=(80000-65000)/65000=23.08%
+      assert: r => near(r.totalValue, 80000) && near(r.hhi, 0.625, 1e-3) && r.concentrationRisk === "critical" && near(r.overallPnlPercent, 23.08, 0.02),
+      show: r => `total=${r.totalValue} hhi=${r.hhi} ${r.concentrationRisk} pnl=${r.overallPnlPercent}%` },
+  ],
+
+  // ───────────────────────── cooking ─────────────────────────
+  cooking: [
+    { dom: "cooking", act: "scaleRecipe", data: { servings: 4, targetServings: 8, ingredients: [{ name: "flour", quantity: 2, unit: "cup" }] },
+      // factor=8/4=2; 2 cup → 4 cup
+      assert: r => near(r.scaleFactor, 2) && /(^|\D)4(\D|$)/.test(r.ingredients?.[0]?.scaled || ""),
+      show: r => `factor=${r.scaleFactor} scaled=${r.ingredients?.[0]?.scaled}` },
+    { dom: "cooking", act: "nutritionEstimate", data: { ingredients: [{ name: "butter", grams: 100 }], servings: 1 },
+      // butter 717 cal/100g × 1 = 717
+      assert: r => near(r.totalCalories, 717) && near(r.perServing, 717),
+      show: r => `cal=${r.totalCalories} perServing=${r.perServing}` },
+  ],
+
+  // ───────────────────────── automotive ─────────────────────────
+  automotive: [
+    { dom: "automotive", act: "fuelEfficiency", data: { fillups: [{ mileage: 1000, gallons: 10 }, { mileage: 1300, gallons: 10, pricePerGallon: 3 }] },
+      // 300 mi / 10 gal = 30 MPG
+      assert: r => near(r.avgMPG, 30, 0.1) && near(r.bestMPG, 30, 0.1) && near(r.worstMPG, 30, 0.1),
+      show: r => `avg=${r.avgMPG} best=${r.bestMPG} worst=${r.worstMPG}` },
+    { dom: "automotive", act: "repairEstimate", data: { repairs: [{ name: "brakes", partsCost: 200, laborHours: 2, laborRate: 100 }], shopRate: 120 },
+      // labor=2*100=200; total=400; tax=8%→32; withTax=432
+      assert: r => near(r.grandTotal, 400) && near(r.tax, 32) && near(r.totalWithTax, 432),
+      show: r => `total=${r.grandTotal} tax=${r.tax} withTax=${r.totalWithTax}` },
+  ],
+
+  // ───────────────────────── aviation ─────────────────────────
+  aviation: [
+    { dom: "aviation", act: "calculate-wb", data: { aircraft: { emptyWeight: 1500, emptyArm: 39 }, loading: [{ weight: 340, arm: 37 }, { weight: 100, arm: 95 }] },
+      // moment=1500*39+340*37+100*95=58500+12580+9500=80580; gross=1940; cg=80580/1940=41.54
+      assert: r => near(r.grossWeight, 1940, 0.1) && near(r.cg, 41.54, 0.02),
+      show: r => `gross=${r.grossWeight} cg=${r.cg}` },
+    { dom: "aviation", act: "perf-takeoff", params: { pressureAlt: 0, oat: 15, weight: 2200, headwind: 0, slope: 0 },
+      // all factors=1 at sea level/ISA/2200lb → groundRoll=860; over50ft=round(860*1.83)=1574
+      assert: r => near(r.groundRoll_ft, 860, 1) && near(r.over50ft_ft, 1574, 2),
+      show: r => `roll=${r.groundRoll_ft} over50=${r.over50ft_ft}` },
+  ],
+
+  // ───────────────────────── photography ─────────────────────────
+  photography: [
+    { dom: "photography", act: "printSize", data: { widthPixels: 6000, heightPixels: 4000, dpi: 300 },
+      // 6000*4000/1e6=24 MP; 6000/300=20" wide @300dpi
+      assert: r => near(r.megapixels, 24, 0.1) && /(^|\D)20(\D|$)/.test(r.maxPrintAt300DPI || JSON.stringify(r.maxPrint || "")),
+      show: r => `MP=${r.megapixels} print=${r.maxPrintAt300DPI || JSON.stringify(r.maxPrint)}` },
+  ],
+
+  // ───────────────────────── welding ─────────────────────────
+  welding: [
+    { dom: "welding", act: "heatInput", data: { voltage: 25, amperage: 150, travelSpeed: 5, efficiency: 0.8 },
+      // HI=(25*150*0.8)/5=600 J/mm=0.6 kJ/mm; 0.6<1.5→low
+      assert: r => near(numIn(r.heatInput), 0.6, 0.01) && near(r.heatInputJoules, 600, 1) && r.distortionRisk === "low",
+      show: r => `HI=${r.heatInput} J=${r.heatInputJoules} ${r.distortionRisk}` },
+    { dom: "welding", act: "jointStrength", data: { thickness: 6, weldType: "fillet", material: "mild-steel", length: 100 },
+      // throat=6*0.707=4.24; shear=400*0.6=240; cap=round(4.242*100*240/1000)=102; safe=round(102/1.5)=68
+      assert: r => near(numIn(r.throatSize), 4.2, 0.05) && near(numIn(r.theoreticalCapacity), 102, 1) && near(numIn(r.safeWorkingLoad), 68, 1),
+      show: r => `throat=${r.throatSize} cap=${r.theoreticalCapacity} safe=${r.safeWorkingLoad}` },
+  ],
+
+  // ───────────────────────── carpentry ─────────────────────────
+  carpentry: [
+    { dom: "carpentry", act: "boardFootCalc", data: { pieces: [{ thickness: 2, width: 6, length: 96, quantity: 5 }] },
+      // BF=(2*6*96)/144=8 each; ×5=40; +15% waste → 46
+      assert: r => near(r.pieces?.[0]?.boardFeetEach, 8, 0.01) && near(r.totalBoardFeet, 40, 0.01) && near(r.totalWithWaste, 46, 0.02),
+      show: r => `each=${r.pieces?.[0]?.boardFeetEach} total=${r.totalBoardFeet} +waste=${r.totalWithWaste}` },
+    { dom: "carpentry", act: "jointStrength", data: { jointType: "mortise-tenon", species: "oak", glued: true },
+      // base=90; oak×1.2=108; +glue20=128
+      assert: r => near(r.effectiveStrength, 128),
+      show: r => `eff=${r.effectiveStrength} base=${r.baseStrength} mult=${r.speciesMultiplier}` },
+  ],
+
+  // ───────────────────────── masonry ─────────────────────────
+  masonry: [
+    { dom: "masonry", act: "materialEstimate", data: { squareFootage: 100, material: "brick" },
+      // units=ceil(100*7*1.05)=735; matCost=round(735*0.75)=551; mortar=ceil(2)=2 bags→$24; labor=1500; grand=2075
+      assert: r => near(r.unitsNeeded, 735) && near(r.materialCost, 551) && near(r.grandTotal, 2075),
+      show: r => `units=${r.unitsNeeded} matCost=${r.materialCost} grand=${r.grandTotal}` },
+    { dom: "masonry", act: "wallStrength", data: { heightFeet: 8, thicknessInches: 8, reinforced: true },
+      // slenderness=(8*12)/8=12; max(reinforced)=25; 12<=25 → pass
+      assert: r => near(r.slendernessRatio, 12) && near(r.maxAllowedRatio, 25) && r.passesSlenderness === true,
+      show: r => `slender=${r.slendernessRatio} max=${r.maxAllowedRatio} pass=${r.passesSlenderness}` },
+  ],
+
+  // ───────────────────────── manufacturing ─────────────────────────
+  manufacturing: [
+    { dom: "manufacturing", act: "oeeCalculate", data: { plannedTime: 480, downtime: 80, idealCycleTime: 1, totalPieces: 350, goodPieces: 330 },
+      // A=400/480=83%; P=(1*350)/400=88%; Q=330/350=94%; OEE=0.687→69%
+      assert: r => near(r.availability, 83) && near(r.performance, 88) && near(r.quality, 94) && near(r.oee, 69),
+      show: r => `A=${r.availability} P=${r.performance} Q=${r.quality} OEE=${r.oee}` },
+    { dom: "manufacturing", act: "safetyRate", data: { incidents: [{ oshaRecordable: true }, { oshaRecordable: false }], hoursWorked: 200000 },
+      // TRIR = 1*200000/200000 = 1.0
+      assert: r => near(r.incidentRate, 1, 0.01) && near(r.recordableIncidents, 1),
+      show: r => `TRIR=${r.incidentRate} rec=${r.recordableIncidents}` },
+    { dom: "manufacturing", act: "bomCost", data: { components: [{ name: "A", quantity: 2, unitCost: 10 }, { name: "B", quantity: 3, unitCost: 5 }] },
+      // 2*10 + 3*5 = 35
+      assert: r => near(r.totalCost, 35),
+      show: r => `total=${r.totalCost}` },
+  ],
 };
 
 // ── runner ──
