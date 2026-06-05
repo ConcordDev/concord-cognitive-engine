@@ -33,8 +33,17 @@ const PUBLIC_PREFIXES = [
   '/sounds/',
   '/textures/',
   '/manifest.json',
+  '/manifest.webmanifest',
   '/robots.txt',
   '/favicon.ico',
+  '/favicon.svg',
+  // PWA service worker + its scope assets must serve unauthenticated, or the SW
+  // script is fetched via a 307→/login redirect and the browser refuses to register
+  // it ("The script resource is behind a redirect, which is disallowed").
+  '/sw.js',
+  '/service-worker.js',
+  '/offline',
+  '/workbox-',
 ];
 
 export function middleware(request: NextRequest) {
