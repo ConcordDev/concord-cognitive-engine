@@ -33578,11 +33578,15 @@ async function governorTick(reason="heartbeat") {
         await runHeartbeatModule("breakthrough_clusters", async () => {
           const breakthroughMod = await import("./emergent/breakthrough-clusters.js").catch(() => null);
           if (!breakthroughMod?.listClusters) return;
-          const clusters = breakthroughMod.listClusters();
-          for (const c of clusters) {
-            if (c.status === "active") {
-              try { breakthroughMod.triggerClusterResearch(c.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-            }
+          // listClusters() returns { ok, clusters: [...], count } — unwrap the array (this
+          // used to `for...of` the wrapper object → "clusters is not iterable" every 100
+          // ticks, killing the cross-domain-synthesis cycle). Items key on `clusterId`
+          // (not `id`) and have no `status` field; triggerClusterResearch auto-initialises,
+          // so advancing every cluster is correct.
+          const _cres = breakthroughMod.listClusters();
+          const _clusterList = _cres && Array.isArray(_cres.clusters) ? _cres.clusters : [];
+          for (const c of _clusterList) {
+            try { breakthroughMod.triggerClusterResearch(c.clusterId); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
           }
         });
       }
