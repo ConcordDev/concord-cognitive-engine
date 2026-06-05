@@ -38,6 +38,12 @@ declare -A KEEPALIVE=( [conscious]="${BRAIN_CONSCIOUS_KEEP_ALIVE:-}" [subconscio
                        [utility]="${BRAIN_UTILITY_KEEP_ALIVE:-}" [repair]="${BRAIN_REPAIR_KEEP_ALIVE:-}" \
                        [vision]="${BRAIN_VISION_KEEP_ALIVE:-}" )
 ROLES=(conscious subconscious utility repair vision)
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Custom models that are NOT on the Ollama registry are BUILT from a Modelfile via
+# `ollama create`, not pulled. concord-conscious is the 14B flagship built from the
+# repo-root Modelfile (FROM qwen2.5:14b-instruct-q4_K_M). A pull of a custom tag 404s —
+# this map tells the launcher to build it instead. Empty → pull from the registry.
+declare -A MODELFILE=( [conscious]="${BRAIN_CONSCIOUS_MODELFILE:-$REPO_ROOT/Modelfile}" )
 
 NPROC=$(nproc 2>/dev/null || echo 4)
 
@@ -107,8 +113,20 @@ done
 wait_for() { local p=$1 n=$2 a=0; while [ $a -lt 60 ]; do curl -sf "http://127.0.0.1:${p}/api/tags" >/dev/null 2>&1 && { log "${n} ready (:$p)"; return 0; }; a=$((a+1)); sleep 1; done; log "ERROR: ${n} never came up on :$p"; return 1; }
 for role in "${ROLES[@]}"; do wait_for "${PORT[$role]}" "$role" || true; done
 for role in "${ROLES[@]}"; do
-  log "Pulling ${MODEL[$role]} into ${role} (:${PORT[$role]})..."
-  OLLAMA_HOST="127.0.0.1:${PORT[$role]}" ollama pull "${MODEL[$role]}" 2>&1 | tail -1 || log "WARN: pull failed for ${role} (custom model? use 'ollama create' from the Modelfile)"
+  mf="${MODELFILE[$role]:-}"
+  if [ -n "$mf" ] && [ -f "$mf" ]; then
+    # custom model → build from its Modelfile (ollama create auto-pulls the FROM base).
+    # idempotent + cheap if already built; the shared blob store makes it visible to all.
+    log "Building ${MODEL[$role]} for ${role} (:${PORT[$role]}) from ${mf} — first build downloads the base, ~minutes..."
+    OLLAMA_HOST="127.0.0.1:${PORT[$role]}" ollama create "${MODEL[$role]}" -f "$mf" 2>&1 | tail -2 \
+      || log "ERROR: build failed for ${role} from ${mf} — the Conscious brain will be offline. Check the Modelfile FROM base is pullable."
+  elif [ -n "$mf" ]; then
+    log "WARN: ${role} expects a Modelfile at ${mf} but it's missing — falling back to pull (will 404 for a custom tag)."
+    OLLAMA_HOST="127.0.0.1:${PORT[$role]}" ollama pull "${MODEL[$role]}" 2>&1 | tail -1 || log "WARN: pull failed for ${role}"
+  else
+    log "Pulling ${MODEL[$role]} into ${role} (:${PORT[$role]})..."
+    OLLAMA_HOST="127.0.0.1:${PORT[$role]}" ollama pull "${MODEL[$role]}" 2>&1 | tail -1 || log "WARN: pull failed for ${role} (registry model unreachable — check egress)"
+  fi
 done
 # embeddings on the conscious instance (small, CPU, used by the substrate)
 OLLAMA_HOST="127.0.0.1:${PORT[conscious]}" ollama pull "${CONCORD_EMBED_MODEL:-nomic-embed-text}" >/dev/null 2>&1 || true
