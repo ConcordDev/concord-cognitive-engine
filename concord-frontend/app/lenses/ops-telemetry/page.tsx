@@ -82,6 +82,7 @@ export default function OpsTelemetryPage() {
   const [macroPool, setMacroPool] = useState<PoolStats | null>(null);
   const [hbPool, setHbPool] = useState<PoolStats | null>(null);
   const [brains, setBrains] = useState<BrainRow[]>([]);
+  const [brainActivity, setBrainActivity] = useState<Array<{ brain: string; role: string; model: string; enabled: boolean; requests: number; errors: number; dtusGenerated: number; avgMs: number; idleSeconds: number | null }>>([]);
   const [shards, setShards] = useState<WorldShardRow[]>([]);
   const [sharded, setSharded] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -93,16 +94,18 @@ export default function OpsTelemetryPage() {
   const refresh = useCallback(async () => {
     setLoading(true); setErr(null);
     try {
-      const [hb, wp, be, ws, ic] = await Promise.all([
+      const [hb, wp, be, ws, ic, ba] = await Promise.all([
         fetch('/api/admin/heartbeat-stats', { credentials: 'include' }).then(r => r.json()).catch(() => null),
         fetch('/api/admin/worker-stats', { credentials: 'include' }).then(r => r.json()).catch(() => null),
         fetch('/api/admin/brain-endpoints', { credentials: 'include' }).then(r => r.json()).catch(() => null),
         fetch('/api/admin/world-shards', { credentials: 'include' }).then(r => r.json()).catch(() => null),
         fetch('/api/admin/inference-costs?hours=24', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+        fetch('/api/admin/brain-activity', { credentials: 'include' }).then(r => r.json()).catch(() => null),
       ]);
       if (hb?.ok) setHbStats(hb.modules || []);
       if (wp?.ok) { setMacroPool(wp.macroPool || null); setHbPool(wp.heartbeatPool || null); }
       if (be?.ok) setBrains(be.brains || []);
+      if (ba?.ok) setBrainActivity(ba.brains || []);
       if (ws?.ok) { setShards(ws.shards || []); setSharded(!!ws.sharded); }
       if (ic?.ok) setCosts({ calls: ic.calls, tokensIn: ic.tokensIn, tokensOut: ic.tokensOut, costLabel: ic.costLabel, byBrain: ic.byBrain || {} });
       setLastRefresh(new Date());
@@ -273,6 +276,37 @@ export default function OpsTelemetryPage() {
                 </div>
               ))}
               {brains.length === 0 && <p className="text-[11px] text-slate-500">no endpoints loaded</p>}
+            </div>
+          </div>
+
+          {/* Brain activity — per-brain division of labor (aggregate counts only, no content) */}
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
+            <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-cyan-300">
+              <Activity className="h-4 w-4" /> Brain activity
+              <span className="ml-1 text-[10px] font-normal normal-case text-slate-500">who&apos;s pulling their weight (counts only)</span>
+            </h2>
+            <div className="space-y-1.5">
+              {brainActivity.map((b) => {
+                const live = b.idleSeconds != null && b.idleSeconds < 120;
+                return (
+                  <div key={b.brain} className="flex items-center justify-between rounded border border-zinc-800/60 bg-black/20 px-2 py-1 text-[11px]">
+                    <div className="min-w-0">
+                      <span className="font-mono font-semibold text-slate-200">{b.brain}</span>
+                      <span className="ml-2 text-slate-400">{b.role}</span>
+                      <div className="text-[10px] text-slate-500">{b.model}{!b.enabled && ' · offline'}</div>
+                    </div>
+                    <div className="flex items-center gap-3 text-right tabular-nums">
+                      <span className="text-cyan-300" title="total requests">{b.requests}<span className="text-slate-500"> req</span></span>
+                      {b.errors > 0 && <span className="text-red-400" title="errors">{b.errors} err</span>}
+                      <span className="text-slate-400" title="avg latency">{b.avgMs}ms</span>
+                      <span className={live ? 'text-emerald-400' : 'text-slate-500'} title="last active">
+                        {b.idleSeconds == null ? 'idle' : live ? '● active' : `${b.idleSeconds}s ago`}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              {brainActivity.length === 0 && <p className="text-[11px] text-slate-500">no brain activity loaded</p>}
             </div>
           </div>
 

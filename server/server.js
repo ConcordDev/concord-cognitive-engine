@@ -51889,6 +51889,44 @@ app.get("/api/admin/brain-endpoints", requireRole("owner", "admin", "sovereign",
   }
 });
 
+// Per-brain ACTIVITY readout — aggregate counters only (requests / errors / avg latency /
+// last-active), NEVER message content. Lets an operator watch the division of labor live:
+// is the subconscious actually thinking, is conscious handling chat, utility the tools, etc.
+const _BRAIN_ROLES = {
+  conscious: "chat + deep reasoning (talks to people)",
+  subconscious: "autogen / dream / evo (always-on growth)",
+  utility: "tool execution + fast lens actions",
+  repair: "error detection / auto-fix / vet dialogue + DTU",
+  multimodal: "vision (image understanding)",
+  vision: "vision (image understanding)",
+};
+app.get("/api/admin/brain-activity", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    const now = Date.now();
+    const brains = Object.entries(BRAIN || {})
+      .filter(([, b]) => b && b.stats)
+      .map(([name, b]) => {
+        const s = b.stats;
+        const last = s.lastCallAt ? new Date(s.lastCallAt).getTime() : null;
+        return {
+          brain: name,
+          role: _BRAIN_ROLES[name] || "—",
+          model: b.model || "unknown",
+          enabled: !!b.enabled,
+          requests: s.requests || 0,
+          errors: s.errors || 0,
+          dtusGenerated: s.dtusGenerated || 0,
+          avgMs: s.requests ? Math.round((s.totalMs || 0) / s.requests) : 0,
+          lastCallAt: s.lastCallAt || null,
+          idleSeconds: last ? Math.round((now - last) / 1000) : null,
+        };
+      });
+    res.json({ ok: true, brains, generatedAt: new Date().toISOString() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 // ---- Wave 14: Enterprise Endpoints ----
 app.get("/api/admin/stats", requireRole("owner", "admin"), (req, res) => {
   res.json(getAdminStats());

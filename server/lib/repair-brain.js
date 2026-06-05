@@ -24,6 +24,11 @@ async function callRepairBrain(prompt, options = {}) {
   if (!cfg?.url || !cfg?.enabled) {
     return { ok: false, error: "repair_brain_disabled" };
   }
+  // Count this call into the per-brain activity stats (aggregate only — no content).
+  // This is a DIRECT fetch (not via callBrain), so without this bump the repair brain's
+  // work was invisible to /api/admin/brain-activity. Mirrors callBrain's accounting.
+  if (cfg.stats) { cfg.stats.requests = (cfg.stats.requests || 0) + 1; cfg.stats.lastCallAt = new Date().toISOString(); }
+  const _t0 = Date.now();
   try {
     const res = await fetch(`${cfg.url}/api/generate`, {
       method: "POST",
@@ -39,10 +44,12 @@ async function callRepairBrain(prompt, options = {}) {
       }),
       signal: AbortSignal.timeout(options.timeout ?? REPAIR_TIMEOUT_MS),
     });
-    if (!res.ok) return { ok: false, error: `repair_status_${res.status}` };
+    if (cfg.stats) cfg.stats.totalMs = (cfg.stats.totalMs || 0) + (Date.now() - _t0);
+    if (!res.ok) { if (cfg.stats) cfg.stats.errors = (cfg.stats.errors || 0) + 1; return { ok: false, error: `repair_status_${res.status}` }; }
     const data = await res.json();
     return { ok: true, content: data.response || "" };
   } catch (e) {
+    if (cfg.stats) cfg.stats.errors = (cfg.stats.errors || 0) + 1;
     return { ok: false, error: String(e.message || e) };
   }
 }
