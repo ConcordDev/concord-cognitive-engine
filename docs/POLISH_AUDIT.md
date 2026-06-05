@@ -45,14 +45,15 @@ hacking, karaoke, mahjong, trivia, brawl invites → zero sound.
 **Fix:** an alias/normalize table in `triggerSFX` (underscore↔hyphen) + register the
 missing ids. Highest ROI in the codebase.
 
-### T0.3 PvP combat has no server-authoritative feel
-The momentum→poise→stagger→`combat:impact`→hitstop/knockback/wince chain is emitted
-**only** on the NPC HTTP route (`server/routes/worlds.js:2271`). The socket PvP path
-(`server/server.js:8273`, `cityPresence.applyAttack`) emits `combat:attack:ack`/`combat:hit`
-only — player-vs-player falls back to GameJuice's `damage>25` heuristic, so it has no
-poise, no momentum, no server-driven stagger.
-**Fix:** run the `combat-impact.js`→`impact-feel.js` chain in the socket `combat:attack`
-handler and emit `combat:impact` for player targets.
+### T0.3 PvP combat has no server-authoritative feel — ✅ DONE (2026-06)
+The socket PvP `combat:attack` handler now runs the `impact-feel.js` chain and emits
+`combat:impact` for player targets at `server/server.js:8767` via `buildImpactPayload`
+(PvP-specific `derivePvpSeverity` / `pvpMomentumFromDamage`), reusing the same payload
+builder as the NPC HTTP route so the client `CombatImpactFeelBridge` applies identical
+hitstop/knockback/wince. Pinned by `server/tests/combat-impact-pvp-feel.test.js` (4/4).
+(The original claim that the socket path "emits `combat:attack:ack`/`combat:hit` only"
+was stale.) Remaining minor concern: the `combat:hit`/`combat:impact` double-fire dedupe
+(see T2.7) is separate and still open.
 
 ---
 
