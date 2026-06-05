@@ -119,6 +119,31 @@ const CASES = [
     why:'corr([1,2,3],[2,4,6]) = 1 (perfectly correlated)',
     assert:r=>near(r.sensitivity?.[0]?.correlation?.value ?? r.sensitivity?.[0]?.correlation, 1),
     show:r=>`corr=${r.sensitivity?.[0]?.correlation?.value ?? r.sensitivity?.[0]?.correlation}` },
+  { lens:'accounting', d:'accounting', n:'trialBalance', input:{ accounts:[
+      {accountNumber:'1000',name:'Cash',type:'asset',entries:[{debit:1500},{credit:500}]},
+      {accountNumber:'1500',name:'Equipment',type:'asset',entries:[{debit:800}]},
+      {accountNumber:'2000',name:'AP',type:'liability',entries:[{credit:1800}]}] },
+    why:'Cash net-D 1000 + Equip 800 = 1800 debits; A/P 1800 credits → balanced',
+    assert:r=>near(r.totalDebits,1800)&&near(r.totalCredits,1800)&&r.isBalanced===true,
+    show:r=>`D=${r.totalDebits} C=${r.totalCredits} balanced=${r.isBalanced}` },
+  { lens:'accounting', d:'accounting', n:'profitLoss', input:{ accounts:[
+      {name:'Sales',type:'revenue',entries:[{credit:5000,date:'2026-03-01'}]},
+      {name:'Rent',type:'expense',entries:[{debit:3000,date:'2026-03-01'}]}] },
+    why:'revenue 5000 − expenses 3000 → net income 2000',
+    assert:r=>near(r.revenue?.total,5000)&&near(r.operatingExpenses?.total,3000)&&near(r.netIncome,2000),
+    show:r=>`rev=${r.revenue?.total} exp=${r.operatingExpenses?.total} net=${r.netIncome}` },
+  { lens:'accounting', d:'accounting', n:'budgetVariance', input:{ budget:[{category:'Marketing',planned:1000,actual:1200}] },
+    why:'actual 1200 − planned 1000 = 200 over (20%)',
+    assert:r=>near(r.lineItems?.[0]?.variance,200)&&r.lineItems?.[0]?.status==='over-budget',
+    show:r=>`variance=${r.lineItems?.[0]?.variance} ${r.lineItems?.[0]?.status}` },
+  { lens:'finance', d:'finance', n:'portfolioAnalysis', input:{ holdings:[{symbol:'A',value:6000},{symbol:'B',value:4000}] },
+    why:'$6000/$10000 = 60% allocation, $4000 = 40%',
+    assert:r=>near(r.holdings?.[0]?.allocation,60)&&near(r.holdings?.[1]?.allocation,40),
+    show:r=>`A=${r.holdings?.[0]?.allocation}% B=${r.holdings?.[1]?.allocation}%` },
+  { lens:'finance', d:'finance', n:'debtPayoff', input:{ debts:[{name:'Card',balance:1000,rate:0.12,minimumPayment:100}], extraPayment:0 },
+    why:'$1000 @ 12% APR, $100/mo → ~11 months to debt-free',
+    assert:r=>near(r.monthsToDebtFree,11,1),
+    show:r=>`months=${r.monthsToDebtFree}` },
 ];
 
 console.log('\nBusiness-logic value assertions  '+dim(`(${BASE})`)+'\n');
