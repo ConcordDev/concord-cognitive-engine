@@ -71,6 +71,14 @@ export OLLAMA_MODELS="${OLLAMA_MODELS:-$HOME/.ollama/models}"
 export OLLAMA_FLASH_ATTENTION="${OLLAMA_FLASH_ATTENTION:-1}"
 export OLLAMA_KV_CACHE_TYPE="${OLLAMA_KV_CACHE_TYPE:-q8_0}"
 export OLLAMA_KEEP_ALIVE="${OLLAMA_KEEP_ALIVE:-30m}"
+# ── Concordia's GPU SLICE (enforced, not hoped-for) ─────────────────────────────
+# Reserve VRAM on the Blackwell that the brains will NOT touch — that headroom is the
+# world lens's slice (its server-side GPU work + room for its brain calls' KV growth so
+# the sim's cognition never queues behind chat). OLLAMA_GPU_OVERHEAD is per-instance
+# bytes the scheduler keeps free, so the 5 brain models load UNDER 32GB − this slice.
+CONCORD_WORLD_VRAM_MB="${CONCORD_WORLD_VRAM_MB:-6144}"
+export OLLAMA_GPU_OVERHEAD=$(( CONCORD_WORLD_VRAM_MB * 1024 * 1024 ))
+export CONCORD_WORLD_GPU="${CONCORD_WORLD_GPU:-0}"
 LOG_DIR="${LOG_DIR:-/tmp/concord-brains}"; mkdir -p "$LOG_DIR"
 
 log "Stopping any existing Ollama instances..."; pkill -f "ollama serve" 2>/dev/null || true; sleep 2
@@ -105,9 +113,13 @@ echo ""
 log "CPU bands:  brains 0-$((POOL-1))   Concordia/world-sim ${CONCORD_WORLD_CORES}   frontend $((WORLD_END+1))-$((NPROC-1))"
 log "  → after the app starts, pin the backend (Concordia lives in its worker_threads) +"
 log "    frontend to their bands:  CONCORD_WORLD_CORES=${CONCORD_WORLD_CORES} bash scripts/pin-processes.sh"
-log "GPU: all brains + Concordia's LLM calls (oracle/dream/vision) share the one Blackwell."
-log "  Leave VRAM headroom for the world sim — keep the 5 brain models from filling 32GB"
-log "  (use a smaller CONCORD_GPU_PROFILE or lighter BRAIN_*_MODEL if VRAM is tight)."
+log "GPU (the one Blackwell): brains load UNDER a reserved Concordia slice —"
+log "  Concordia VRAM slice: ${CONCORD_WORLD_VRAM_MB} MB held free (OLLAMA_GPU_OVERHEAD) — the brains"
+log "  cannot allocate into it. That slice is the world lens's: its server-side GPU work + the KV"
+log "  headroom for its own brain calls, so the sim's cognition never starves behind chat."
+log "  Concordia's dedicated cognition engine is the SUBCONSCIOUS brain (dream/oracle/forward-sim"
+log "  all route there) on GPU ${CONCORD_WORLD_GPU}. If the 5 models + slice exceed 32GB, drop"
+log "  CONCORD_GPU_PROFILE a band or raise CONCORD_WORLD_VRAM_MB to keep the slice intact."
 echo ""
 if [ -f "$(dirname "$0")/../server/scripts/verify-brain-wiring.mjs" ]; then
   log "Verifying wiring..."
