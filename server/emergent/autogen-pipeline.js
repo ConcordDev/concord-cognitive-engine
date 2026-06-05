@@ -25,6 +25,7 @@
 
 import crypto from "node:crypto";
 import { runEmpiricalGates } from "./empirical-gates.js";
+import { assessGrounding, stampGrounding } from "../lib/dtu-grounding.js";
 import { formatAndValidate as formatGRC } from "../grc/index.js";
 import { runCouncilVoices } from "./council-voices.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
@@ -577,6 +578,18 @@ export function synthesizerPhase(candidate, criticResult) {
     ...(revised.human.bullets || []),
     `Critic: ${criticResult.issues.length} issues (${criticResult.hasCritical ? "CRITICAL" : "clean"})`,
   ];
+
+  // "Show your work" gate — the subconscious-quality bar. An autonomous DTU that asserts a
+  // feasibility CLAIM must carry an EXTERNAL web source (internal DTU citations alone are
+  // confidence laundering); a CREATIVE generation must be reproducibly EXECUTABLE. Anything
+  // that can't show its work is PROBATIONED here (confidence-capped, not promoted/published)
+  // — it can still exist, it just can't launder into verified/global knowledge ungrounded.
+  // Definitional DTUs owe no external grounding and pass untouched.
+  try {
+    const grounding = assessGrounding(revised);
+    stampGrounding(revised, grounding);
+    revised.meta.criticTrace.grounding = grounding.kind + (grounding.grounded ? ":grounded" : ":probation(" + (grounding.gaps?.[0] || "ungrounded") + ")");
+  } catch (_e) { /* grounding is best-effort; never block synthesis */ }
 
   return { ok: true, candidate: revised };
 }
