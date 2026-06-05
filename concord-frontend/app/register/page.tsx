@@ -42,10 +42,19 @@ export default function RegisterPage() {
         _t: pageLoadTime.current,
         ...(honeypot && { website: honeypot }),
       });
-      if (res.data?.ok) {
-        // Registration auto-sets auth cookies, redirect to onboarding for universe setup
+      // A REAL registration returns a `token` (and auto-sets the auth cookies). The
+      // anti-bot defenses (honeypot / sub-2s timing check) return a SILENT fake-success
+      // — { ok: true, user: { id: 'ok' } } with NO token, NO cookie — so we must not
+      // treat a bare `ok` as logged-in, or the user lands on /onboarding unauthenticated
+      // and bounces to /login ("I registered but I'm not logged in"). Require the token.
+      const realSuccess = res.data?.ok && (res.data?.token || res.data?.user?.id && res.data.user.id !== 'ok');
+      if (realSuccess) {
+        // Registration auto-logged you in (cookies set) — go straight to onboarding.
         localStorage.setItem('concord_entered', 'true');
         router.push('/onboarding');
+      } else if (res.data?.ok) {
+        // Silently rejected by a bot-defense (most often: form submitted too fast).
+        setError('Registration could not be completed. Please wait a moment, then try again.');
       } else {
         setError(res.data?.error || 'Registration failed');
       }
