@@ -1,0 +1,37 @@
+# infra/cloudflare/cloudflared.runpod.yml.example
+#
+# Cloudflare Tunnel ingress for a SINGLE RunPod pod (NO docker-compose). Everything
+# runs on the one box on localhost: the backend on :5050, the Next.js frontend on
+# :3000. cloudflared connects outbound from the pod to Cloudflare's edge — no inbound
+# ports, free TLS, your own domain.
+#
+# Copy to cloudflared.yml, fill <TUNNEL_UUID> + <YOUR_DOMAIN>, then run:
+#   cloudflared tunnel --config infra/cloudflare/cloudflared.yml run
+# (or use TOKEN mode in the Zero Trust dashboard and skip this file — see README.md.)
+#
+# Single hostname, same-origin: API / socket / health / mcp go to the backend; every
+# other path goes to the Next.js UI. Same-origin means zero CORS pain — set
+# NEXT_PUBLIC_API_URL empty (relative) in .env.runpod so the browser calls /api/* on
+# the same host the tunnel serves.
+
+tunnel: <TUNNEL_UUID>
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  # --- backend: API, realtime socket, health probes, MCP host ---
+  - hostname: concord.<YOUR_DOMAIN>
+    path: ^/(api|socket\.io|health|ready|metrics|mcp)(/.*)?$
+    service: http://127.0.0.1:5050
+    originRequest:
+      connectTimeout: 30s
+      keepAliveTimeout: 90s
+      noTLSVerify: false
+
+  # --- everything else: the Next.js frontend UI ---
+  - hostname: concord.<YOUR_DOMAIN>
+    service: http://127.0.0.1:3000
+    originRequest:
+      connectTimeout: 30s
+
+  # --- required catch-all ---
+  - service: http_status:404
