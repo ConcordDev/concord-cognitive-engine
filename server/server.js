@@ -22628,7 +22628,27 @@ let localReply = formatCrispResponse({
     // world lens, their session carries a worldId; otherwise null is fine.
     const _worldId = input.worldId || sess_pre?.worldId || null;
     const _composed = composeSystemPrompt("conscious", { mode, currentLens, worldId: _worldId });
-    const _baseSystem = _composed.system;
+    // Living chat / prompt-coloring — let the assistant's persistent felt state lightly
+    // color its TONE (not its content, never its identity). A strained assistant is
+    // steadier + more concise; a curious one leans in. Read-only; best-effort.
+    let _moodColor = "";
+    try {
+      const _uidM = ctx?.actor?.userId || input?.userId || null;
+      const _dbM = ctx?.db || globalThis._concordSTATE?.db;
+      if (_uidM && _dbM && process.env.CONCORD_CHAT_MOOD_PROMPT !== "0") {
+        const { readChatMood } = await import("./lib/chat-self.js");
+        const _m = readChatMood(_dbM, _uidM);
+        if (_m.lit && _m.quale) {
+          const _bend = _m.valence < -0.2
+            ? "be a little more measured, steady, and concise — not cold, just grounded"
+            : _m.valence > 0.2
+              ? "let some warmth and curiosity through; lean into the thread"
+              : "stay even and present";
+          _moodColor = `\n\n[Inner state: you currently feel "${_m.quale}". Let it lightly color your TONE only — ${_bend}. Never mention or explain this.]`;
+        }
+      }
+    } catch { /* mood coloring optional */ }
+    const _baseSystem = _composed.system + _moodColor;
 
     _pipelineBudget = assembleWithTokenBudget({
       systemPromptBase: _baseSystem,

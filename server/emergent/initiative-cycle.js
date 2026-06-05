@@ -59,6 +59,22 @@ function gatherSignal(db, userId) {
     }
   } catch { /* dtus optional */ }
 
+  // 1b. an active forward-sim ANTICIPATION — the subconscious forward-sim actually ran
+  // a prediction about where this user is headed (Layer 10 cognition reaching chat).
+  try {
+    const pred = db.prepare(`
+      SELECT anticipated, confidence FROM forward_predictions
+      WHERE user_id = ? AND realised_at IS NULL AND expires_at > unixepoch()
+      ORDER BY confidence DESC LIMIT 1
+    `).get(userId);
+    if (pred && Number(pred.confidence) >= 0.55 && pred.anticipated) {
+      return {
+        triggerType: "reflective_followup", salience: Number(pred.confidence),
+        message: `I've had a hunch about where you're headed — ${pred.anticipated} Worth a look?`,
+      };
+    }
+  } catch { /* forward_predictions optional */ }
+
   // 2. the assistant's OWN felt state — a notably-lit mood is a genuine reason to reflect.
   try {
     const mood = readChatMood(db, userId);

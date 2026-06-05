@@ -10,6 +10,7 @@ function setupDb() {
   const db = new Database(":memory:");
   migAffect(db);
   db.exec(`CREATE TABLE dtus (id TEXT PRIMARY KEY, creator_id TEXT, kind TEXT, title TEXT, created_at INTEGER DEFAULT (unixepoch()))`);
+  db.exec(`CREATE TABLE forward_predictions (id TEXT PRIMARY KEY, user_id TEXT, subject_kind TEXT, subject_id TEXT, anticipated TEXT, confidence REAL, composed_at INTEGER DEFAULT (unixepoch()), expires_at INTEGER, realised_at INTEGER)`);
   return db;
 }
 
@@ -54,6 +55,18 @@ test("Living chat — the pulse (initiative cycle)", async (t) => {
     assert.equal(r.fired, 1);
     assert.equal(eng.calls.created[0].triggerType, "morning_context");
     assert.match(eng.calls.created[0].message, /overnight/i);
+  });
+
+  await t.test("a forward-sim anticipation reaches the surface (Layer 3 cognition → chat)", () => {
+    const db = setupDb();
+    feelChatTurn(db, "u9", "hey what's next"); // recently active
+    db.prepare(`INSERT INTO forward_predictions (id, user_id, subject_kind, subject_id, anticipated, confidence, expires_at)
+      VALUES ('p1', 'u9', 'self', 'u9', 'you may circle back to the migration idea.', 0.8, unixepoch() + 3600)`).run();
+    const eng = stubEngine();
+    const r = runInitiativeCycle({ db, engine: eng });
+    assert.equal(r.fired, 1);
+    assert.equal(eng.calls.created[0].triggerType, "reflective_followup");
+    assert.match(eng.calls.created[0].message, /hunch|migration idea/i);
   });
 
   await t.test("the engine's own gate (rate-limit/quiet-hours) can still veto", () => {
