@@ -276,6 +276,46 @@ const BATCHES = {
       assert: r => near(r.forecastAtCompletion, 1000) && near(r.variance, 0) && r.status === "under-budget",
       show: r => `FAC=${r.forecastAtCompletion} var=${r.variance} ${r.status}` },
   ],
+
+  // ───────────────────────── insurance ─────────────────────────
+  insurance: [
+    { dom: "insurance", act: "riskScore", data: { probability: 4, impact: 5, mitigations: ["a", "b"] },
+      // raw=4*5=20; normalized=round(20/25*100)=80; mitigated=max(1,20-2)=18; 20>=15→critical
+      assert: r => near(r.rawScore, 20) && near(r.normalizedScore, 80) && near(r.mitigatedScore, 18) && r.level === "critical",
+      show: r => `raw=${r.rawScore} norm=${r.normalizedScore} mit=${r.mitigatedScore} ${r.level}` },
+    { dom: "insurance", act: "lossRatioReport", data: { policies: [{ premium: 1000 }, { premium: 1000 }], claims: [{ status: "paid", amount: 600 }] },
+      // premiums=2000; paid=600; lossRatio=600/2000=30%
+      assert: r => near(r.lossRatio, 30, 0.01) && near(r.claimsPaid, 600),
+      show: r => `LR=${r.lossRatio}% paid=${r.claimsPaid}` },
+    { dom: "insurance", act: "commissionSummary", data: { policies: [{ premium: 1000, rate: 10, tier: "A" }, { premium: 2000, rate: 5, tier: "B" }] },
+      // comm=100+100=200; effRate=200/3000=6.67%
+      assert: r => near(r.totalCommission, 200, 0.01) && near(r.effectiveRate, 6.67, 0.02),
+      show: r => `comm=${r.totalCommission} eff=${r.effectiveRate}%` },
+  ],
+
+  // ───────────────────────── agriculture ─────────────────────────
+  agriculture: [
+    { dom: "agriculture", act: "yieldAnalysis", data: { fields: [{ acreage: 100, history: [{ yieldPerAcre: 50, expectedYield: 48, year: 2025, season: "summer", crop: "corn" }] }] }, params: { year: 2025 },
+      // actual=50*100=5000; expected=48*100=4800; variance=(5000-4800)/4800=4.17% (filter by year=2025)
+      assert: r => near(r.totalActualYield, 5000, 1) && near(r.totalExpectedYield, 4800, 1) && near(r.overallVariancePct, 4.17, 0.05),
+      show: r => `act=${r.totalActualYield} exp=${r.totalExpectedYield} var=${r.overallVariancePct}%` },
+    { dom: "agriculture", act: "waterSchedule", data: { fields: [{ crop: "corn", acreage: 100, soilType: "sandy" }] },
+      // ET formula baseline (no forecast → temp 80, factor 1.0): corn(0.3)/sandy(0.6)=0.5"/day; daysAhead=7 → 3.5" total
+      assert: r => { const f = r.fields?.[0]; return near(f?.schedule?.[0]?.irrigationNeededInches, 0.5, 0.01) && near(f?.totalIrrigationInches, 3.5, 0.02); },
+      show: r => `perDay=${r.fields?.[0]?.schedule?.[0]?.irrigationNeededInches}" total=${r.fields?.[0]?.totalIrrigationInches}"` },
+  ],
+
+  // ───────────────────────── geology ─────────────────────────
+  geology: [
+    { dom: "geology", act: "seismicRisk", data: { latitude: 37, longitude: -122, soilType: "soft-soil" },
+      // amp=1.6 (table); baseRisk=0.8 (SF zone)→80; adjusted=min(1,0.8*1.6)=1.0→100; high
+      assert: r => near(r.amplificationFactor, 1.6) && near(r.baseSeismicRisk, 80) && near(r.adjustedRisk, 100) && r.riskLevel === "high",
+      show: r => `amp=${r.amplificationFactor} base=${r.baseSeismicRisk} adj=${r.adjustedRisk} ${r.riskLevel}` },
+    { dom: "geology", act: "mineralId", data: { hardness: 7, streak: "white", cleavage: "none", specificGravity: 2.65, color: "clear" },
+      // score = 25(hardness>0)+20(streak)+20(cleavage)+20(sg>0)+15(color) = 100
+      assert: r => near(r.identificationConfidence, 100),
+      show: r => `confidence=${r.identificationConfidence}` },
+  ],
 };
 
 // ── runner ──
