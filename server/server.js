@@ -18552,6 +18552,60 @@ function getSubconsciousOllamaCallback() {
 }
 
 /**
+ * System-context web search for the AUTONOMOUS autogen/dream pipeline (NOT a user session).
+ *
+ * The subconscious can't reach `tools.web_search` — that macro is correctly session-gated
+ * (toolsOptIn + per-session Chicken3). But the "show your work" grounding gate
+ * (lib/dtu-grounding.js) requires an EMPIRICAL autonomous claim to carry at least one real
+ * external source or it gets probationed. This helper does the actual egress + URL parse so
+ * an autonomous claim can be grounded in reality instead of laundered on internal vibes.
+ *
+ * Returns `(query) -> { ok, results:[{url,title}] }` or null when disabled / no egress.
+ * Kill-switch CONCORD_AUTOGEN_WEB_SEARCH=0. Degrades safely: on any failure the autogen
+ * enrichment swallows it and the claim stays probation (the correct default).
+ */
+function getAutogenWebSearch() {
+  if (process.env.CONCORD_AUTOGEN_WEB_SEARCH === "0") return null;
+  return async (query) => {
+    const q = String(query || "").trim();
+    if (!q) return { ok: false, error: "query required", results: [] };
+    const local = process.env.SEARXNG_URL || "";
+    const url = local
+      ? `${local}/search?q=${encodeURIComponent(q)}&format=json`
+      : `https://duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
+    try {
+      const r = await fetch(url, { method: "GET", signal: AbortSignal.timeout(10000) }).catch(() => null);
+      if (!r || !r.ok) return { ok: false, error: "search failed", status: r?.status || 0, results: [] };
+      if (local) {
+        const j = await r.json().catch(() => null);
+        const results = (Array.isArray(j?.results) ? j.results : [])
+          .map((x) => ({ url: x?.url, title: x?.title }))
+          .filter((x) => typeof x.url === "string" && /^https?:\/\//.test(x.url));
+        return { ok: true, source: "searxng", results: results.slice(0, 8) };
+      }
+      // DuckDuckGo HTML — extract result anchors + decode the uddg redirect wrapper.
+      const html = await r.text().catch(() => "");
+      const out = [];
+      const re = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+      let m;
+      while ((m = re.exec(html)) && out.length < 8) {
+        let href = m[1];
+        const ud = href.match(/[?&]uddg=([^&]+)/);
+        if (ud) { try { href = decodeURIComponent(ud[1]); } catch { /* keep raw */ } }
+        else if (href.startsWith("//")) href = "https:" + href;
+        if (/^https?:\/\//.test(href)) {
+          const title = m[2].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim().slice(0, 200);
+          out.push({ url: href, title });
+        }
+      }
+      return { ok: true, source: "duckduckgo_html", results: out };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e), results: [] };
+    }
+  };
+}
+
+/**
  * Build an Ollama callback that routes to the conscious brain.
  * Used by the chat pipeline for LLM-enhanced responses.
  */
@@ -25752,6 +25806,7 @@ register("system", "dream", async (ctx, input) => {
   const result = await ctx.macro.run("emergent", "pipeline.run", {
     variant: "dream",
     callOllama: ollamaCallback,
+    webSearch: getAutogenWebSearch(),
     seed: input.seed,
   });
 
@@ -25783,6 +25838,7 @@ register("system", "autogen", async (ctx, _input) => {
   // Run pipeline without a variant — picks best intent from lattice signals
   const result = await ctx.macro.run("emergent", "pipeline.run", {
     callOllama: ollamaCallback,
+    webSearch: getAutogenWebSearch(),
   });
 
   if (!result?.ok || !result.candidate) {
@@ -25819,6 +25875,7 @@ register("system", "evolution", async (ctx, input) => {
   const result = await ctx.macro.run("emergent", "pipeline.run", {
     variant: "evolution",
     callOllama: ollamaCallback,
+    webSearch: getAutogenWebSearch(),
   });
 
   if (!result?.ok || !result.candidate) {
@@ -26003,6 +26060,7 @@ register("system", "synthesize", async (ctx, input) => {
   const result = await ctx.macro.run("emergent", "pipeline.run", {
     variant: "synth",
     callOllama: ollamaCallback,
+    webSearch: getAutogenWebSearch(),
   });
 
   if (!result?.ok || !result.candidate) {
