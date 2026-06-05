@@ -33,12 +33,20 @@ ROLES=(conscious subconscious utility repair vision)
 NPROC=$(nproc 2>/dev/null || echo 4)
 
 # ── auto-allocate CPU cores from the pod's REAL core count (no hand-tuning) ───
-# Reserve the top cores for the backend/frontend/world-shards, split the rest across
-# the brains by weight (conscious heaviest), as contiguous ranges. Override any role
-# with BRAIN_<ROLE>_CORES to take manual control.
+# Ollama inference is GPU-bound — the CPU side is just dispatch/tokenization — so the
+# five brains are confined to an OLLAMA BAND (~35% of cores, low end). The LARGE middle
+# band is left for the BACKEND, which hosts Concordia's world simulation (the
+# world-shard worker_threads + governorTick + 124 heartbeats + NPC/physics sim) — that's
+# the world lens's "power cores". The top band is the frontend. pin-processes.sh pins the
+# backend(world)+frontend to those bands after the app starts; this script keeps the
+# brains in their lane so they don't steal Concordia's cores. (Matches pin-processes.sh:
+# OLLAMA_CORE_PCT / FRONTEND_CORE_PCT.)
 declare -A WEIGHT=( [conscious]=8 [subconscious]=4 [utility]=2 [repair]=1 [vision]=1 ); WSUM=16
-APP_RESERVE="${CONCORD_APP_CORE_RESERVE:-2}"
-POOL=$NPROC; [ "$NPROC" -gt $((APP_RESERVE + 5)) ] && POOL=$((NPROC - APP_RESERVE))
+OLLAMA_PCT="${OLLAMA_CORE_PCT:-35}"
+POOL=$(( NPROC * OLLAMA_PCT / 100 )); [ "$POOL" -lt 5 ] && POOL=$(( NPROC < 5 ? NPROC : 5 ))
+WORLD_START=$POOL
+FE_PCT="${FRONTEND_CORE_PCT:-10}"; FE_COUNT=$(( NPROC * FE_PCT / 100 )); [ "$FE_COUNT" -lt 1 ] && FE_COUNT=1
+WORLD_END=$(( NPROC - FE_COUNT - 1 ))
 declare -A CORES; cur=0
 for role in "${ROLES[@]}"; do
   ov="BRAIN_$(echo "$role" | tr '[:lower:]' '[:upper:]')_CORES"
@@ -49,6 +57,10 @@ for role in "${ROLES[@]}"; do
   CORES[$role]=$([ "$cur" -eq "$end" ] && echo "$cur" || echo "${cur}-${end}")
   cur=$(( end + 1 ))
 done
+# the band Concordia/world-sim (the backend) should be pinned to — export for
+# pin-processes.sh / the operator. (>= one core even on tiny pods.)
+[ "$WORLD_END" -lt "$WORLD_START" ] && WORLD_END=$WORLD_START
+export CONCORD_WORLD_CORES="${WORLD_START}-${WORLD_END}"
 HAVE_TASKSET=1; command -v taskset >/dev/null 2>&1 || { HAVE_TASKSET=0; log "WARN: taskset not found — CPU pinning DISABLED (apt-get install util-linux)"; }
 command -v ollama  >/dev/null 2>&1 || { log "ERROR: ollama not installed (https://ollama.com/download)"; exit 1; }
 HAVE_GPU=0; command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1 && HAVE_GPU=1 || log "WARN: no NVIDIA GPU detected — Ollama will run on CPU."
@@ -87,8 +99,15 @@ OLLAMA_HOST="127.0.0.1:${PORT[conscious]}" ollama pull "${CONCORD_EMBED_MODEL:-n
 echo ""; log "Brain ⇆ endpoint wiring (set these in .env.runpod):"
 for role in "${ROLES[@]}"; do
   RU=$(echo "$role" | tr '[:lower:]' '[:upper:]')
-  echo "  BRAIN_${RU}_URL=http://127.0.0.1:${PORT[$role]}"
+  echo "  BRAIN_${RU}_URL=http://127.0.0.1:${PORT[$role]}  ${dim:-}(cores ${CORES[$role]}, gpu ${GPU[$role]})"
 done
+echo ""
+log "CPU bands:  brains 0-$((POOL-1))   Concordia/world-sim ${CONCORD_WORLD_CORES}   frontend $((WORLD_END+1))-$((NPROC-1))"
+log "  → after the app starts, pin the backend (Concordia lives in its worker_threads) +"
+log "    frontend to their bands:  CONCORD_WORLD_CORES=${CONCORD_WORLD_CORES} bash scripts/pin-processes.sh"
+log "GPU: all brains + Concordia's LLM calls (oracle/dream/vision) share the one Blackwell."
+log "  Leave VRAM headroom for the world sim — keep the 5 brain models from filling 32GB"
+log "  (use a smaller CONCORD_GPU_PROFILE or lighter BRAIN_*_MODEL if VRAM is tight)."
 echo ""
 if [ -f "$(dirname "$0")/../server/scripts/verify-brain-wiring.mjs" ]; then
   log "Verifying wiring..."
