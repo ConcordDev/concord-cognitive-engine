@@ -7414,7 +7414,11 @@ export { createBackup, restoreBackup, listBackups };
 // integration/smoke/e2e jobs set CONCORD_RATE_LIMIT_BYPASS=1 because the
 // whole suite hits the server from one runner IP. Both exemptions apply
 // to every limiter below.
-const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/health(\b|\/)/;
+// Health/status probes — exempt from the bot guard + rate limiting. Includes the two
+// endpoints the UI's connection indicator + uptime monitors poll (/api/status and
+// /api/brain/health); without them a no-browser-UA monitor (curl/wget/k8s probe) got a
+// 403 bot_access_denied on the very endpoints meant to report liveness.
+const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/(health|status|brain\/health)(\b|\/)/;
 const _RATE_LIMIT_BYPASS_ENV = process.env.CONCORD_RATE_LIMIT_BYPASS === "1";
 let rateLimiter = null;
 let authRateLimiter = null;
