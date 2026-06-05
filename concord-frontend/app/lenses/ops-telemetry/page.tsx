@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { AdminRequiredState } from '@/components/common/EmptyState';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LivenessPanel } from '@/components/admin/LivenessPanel';
@@ -86,6 +87,7 @@ export default function OpsTelemetryPage() {
   const [shards, setShards] = useState<WorldShardRow[]>([]);
   const [sharded, setSharded] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [forbidden, setForbidden] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   // Wave 7 / D2 — the cost-story telemetry ("a thousand NPCs for the cost of ten").
@@ -94,8 +96,12 @@ export default function OpsTelemetryPage() {
   const refresh = useCallback(async () => {
     setLoading(true); setErr(null);
     try {
-      const [hb, wp, be, ws, ic, ba] = await Promise.all([
-        fetch('/api/admin/heartbeat-stats', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+      // Probe the first admin endpoint status-aware so a 403 renders the friendly
+      // admin-gate instead of a stuck spinner / empty tables.
+      const hbRes = await fetch('/api/admin/heartbeat-stats', { credentials: 'include' });
+      if (hbRes.status === 403) { setForbidden(true); return; }
+      const hb = await hbRes.json().catch(() => null);
+      const [wp, be, ws, ic, ba] = await Promise.all([
         fetch('/api/admin/worker-stats', { credentials: 'include' }).then(r => r.json()).catch(() => null),
         fetch('/api/admin/brain-endpoints', { credentials: 'include' }).then(r => r.json()).catch(() => null),
         fetch('/api/admin/world-shards', { credentials: 'include' }).then(r => r.json()).catch(() => null),
@@ -135,6 +141,12 @@ export default function OpsTelemetryPage() {
       setErr(String((e as Error)?.message || e));
     }
   }, [refresh]);
+
+  if (forbidden) return (
+    <LensShell lensId="ops-telemetry" asMain={false}>
+      <AdminRequiredState roles={['admin', 'operator']} />
+    </LensShell>
+  );
 
   return (
     <LensShell lensId="ops-telemetry" asMain={false}>

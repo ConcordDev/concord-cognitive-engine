@@ -8,7 +8,8 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { lensRun } from '@/lib/api/client';
+import { lensRun, isForbidden } from '@/lib/api/client';
+import { AdminRequiredState } from '@/components/common/EmptyState';
 
 interface HealthEntry { id: string; pathology: string; category: string; disposition: string; subject_id: string; checked_at: number }
 interface Escalation { id: string; message: string; priority: string; status: string; created_at: string }
@@ -18,6 +19,7 @@ export default function RepairTelemetryPage() {
   const [log, setLog] = useState<HealthEntry[]>([]);
   const [escalations, setEscalations] = useState<Escalation[]>([]);
   const [mem, setMem] = useState<MemStats | null>(null);
+  const [forbidden, setForbidden] = useState(false);
 
   const refresh = useCallback(async () => {
     const [l, e, m] = await Promise.all([
@@ -25,6 +27,7 @@ export default function RepairTelemetryPage() {
       lensRun('repair', 'escalations', {}),
       lensRun('repair', 'memory', {}),
     ]);
+    if ([l, e, m].some(r => isForbidden(r.data))) { setForbidden(true); return; }
     if (l.data?.ok) setLog((l.data.result as { entries: HealthEntry[] }).entries || []);
     if (e.data?.ok) setEscalations((e.data.result as { escalations: Escalation[] }).escalations || []);
     if (m.data?.ok) setMem((m.data.result as { stats: MemStats }).stats || null);
@@ -38,6 +41,8 @@ export default function RepairTelemetryPage() {
   }
 
   const dispColor: Record<string, string> = { healed: '#4caf50', escalated: '#e0a030', noted: '#888' };
+
+  if (forbidden) return <AdminRequiredState roles={['admin']} />;
 
   return (
     <div style={{ maxWidth: 920, margin: '0 auto', padding: '24px 16px', color: '#e8e4dc' }}>

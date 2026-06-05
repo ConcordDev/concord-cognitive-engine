@@ -19,7 +19,8 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { lensRun } from '@/lib/api/client';
+import { lensRun, isForbidden } from '@/lib/api/client';
+import { AdminRequiredState } from '@/components/common/EmptyState';
 import { FemaDisasters } from '@/components/crisis-ops/FemaDisasters';
 import { CrisisMap } from '@/components/crisis-ops/CrisisMap';
 import { TriagePanel } from '@/components/crisis-ops/TriagePanel';
@@ -48,6 +49,7 @@ export default function CrisisOpsPage() {
   const [crises, setCrises] = useState<Crisis[]>([]);
   const [suggestions, setSuggestions] = useState<SkillSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
   const [selected, setSelected] = useState<Crisis | null>(null);
 
   useLensCommand([
@@ -61,6 +63,7 @@ export default function CrisisOpsPage() {
     const r = await lensRun<{ crises?: Crisis[]; suggestions?: SkillSuggestion[] }>(
       'crisis', 'active_for_player', { worldId: wid },
     );
+    if (isForbidden(r.data)) { setForbidden(true); setLoading(false); return; }
     // active_for_player returns crises/suggestions at top level (not nested in result)
     const payload = (r.data?.result ?? r.data) as { crises?: Crisis[]; suggestions?: SkillSuggestion[] };
     const list = payload?.crises ?? [];
@@ -76,6 +79,12 @@ export default function CrisisOpsPage() {
     await lensRun('crisis', 'resolve', { crisisId });
     refresh();
   }, [refresh]);
+
+  if (forbidden) return (
+    <LensShell lensId="crisis-ops" asMain={false}>
+      <AdminRequiredState roles={['admin', 'operator']} />
+    </LensShell>
+  );
 
   return (
     <LensShell lensId="crisis-ops" asMain={false}>
