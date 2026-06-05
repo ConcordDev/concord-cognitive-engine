@@ -40601,12 +40601,20 @@ registerUniversalLensActions();
 
   // Physics
   registerLensAction('physics', 'kinematicsSim', async (_ctx, artifact, params) => {
-    const phys = await loadComputeModule('physics');
+    // BUGFIX: this used to return beamDeflection/windLoad/momentOfInertia — STRUCTURAL
+    // values mislabeled as kinematics. Compute real 1-D kinematics: v = u + at,
+    // s = ut + ½at². (The richer multi-body sim lives in domains/physics.js; this is the
+    // flat single-body API.)
     const p = { ...artifact?.data, ...params };
-    return { ok: true, results: {
-      beamDeflection: phys.beamDeflection?.(p) ?? null,
-      windLoad: phys.windLoad?.(p) ?? null,
-      momentOfInertia: phys.momentOfInertia?.(p) ?? null,
+    const u = Number(p.initialVelocity ?? p.u ?? p.v0 ?? 0);
+    const a = Number(p.acceleration ?? p.a ?? 0);
+    const t = Number(p.time ?? p.t);
+    if (!Number.isFinite(t)) return { ok: false, error: 'kinematicsSim needs numeric time (optional initialVelocity, acceleration)' };
+    const finalVelocity = u + a * t;
+    const displacement = u * t + 0.5 * a * t * t;
+    return { ok: true, result: {
+      finalVelocity, displacement, averageVelocity: (u + finalVelocity) / 2,
+      inputs: { initialVelocity: u, acceleration: a, time: t }, formula: 'v = u + at, s = ut + ½at²',
     }};
   });
   registerLensAction('physics', 'thermodynamics', async (_ctx, artifact, params) => {
@@ -40619,9 +40627,25 @@ registerUniversalLensActions();
     }};
   });
   registerLensAction('physics', 'orbitalMechanics', async (_ctx, artifact, params) => {
-    const phys = await loadComputeModule('physics');
+    // BUGFIX: gravitationalForce used to call phys.windLoad (a wind-load formula!) — a
+    // copy-paste error that returned "areaSqft must be positive". Compute real Newtonian
+    // gravity: F = G·m₁·m₂/r², plus circular orbital velocity v=√(GM/r) and period
+    // T=2π√(r³/GM) about the central mass m₁.
     const p = { ...artifact?.data, ...params };
-    return { ok: true, results: { gravitationalForce: phys.windLoad?.(p) ?? null }};
+    const G = 6.674e-11;
+    const m1 = Number(p.mass1 ?? p.m1 ?? p.centralMass);
+    const m2 = Number(p.mass2 ?? p.m2 ?? p.orbitingMass);
+    const r = Number(p.distance ?? p.r ?? p.radius);
+    if (![m1, m2, r].every(Number.isFinite) || r <= 0) {
+      return { ok: false, error: 'orbitalMechanics needs numeric mass1, mass2, distance(>0)' };
+    }
+    const gravitationalForce = (G * m1 * m2) / (r * r);
+    return { ok: true, result: {
+      gravitationalForce,
+      orbitalVelocity: Math.sqrt((G * m1) / r),
+      orbitalPeriod: 2 * Math.PI * Math.sqrt((r * r * r) / (G * m1)),
+      inputs: { mass1: m1, mass2: m2, distance: r }, formula: 'F = G·m₁·m₂/r²',
+    }};
   });
   registerLensAction('physics', 'waveInterference', async (_ctx, artifact, params) => {
     const phys = await loadComputeModule('physics');
