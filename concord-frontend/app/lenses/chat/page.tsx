@@ -73,7 +73,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 // ConKay ("Kay") — Concord's JARVIS-style majordomo, as a voice-native chat MODE.
-import { ConKaySurface } from '@/components/conkay/ConKaySurface';
+import { ConKayBackdrop } from '@/components/conkay/ConKayBackdrop';
+import { ConKayHud } from '@/components/conkay/ConKayHud';
 import { ConKayMessage } from '@/components/conkay/ConKayViz';
 import { useConKayVoice } from '@/components/conkay/useConKayVoice';
 import { CONKAY_PERSONA_PROMPT, type ConKayState } from '@/components/conkay/conkay-persona';
@@ -3162,20 +3163,6 @@ export default function ChatLensPage() {
             </div>
           </header>
 
-          {/* ConKay holographic presence band (P0 surface; Three.js full-bleed is P1) */}
-          {isConKay && (
-            <div className="relative h-32 shrink-0 overflow-hidden border-b border-cyan-400/15 bg-lattice-void/40">
-              <ConKaySurface
-                state={conkayState}
-                muted={conkayMuted}
-                onToggleMute={() => setConkayMuted((m) => !m)}
-                listening={conkayVoice.listening}
-                speaking={conkayVoice.speaking}
-                voiceSupported={conkayVoice.supported}
-              />
-            </div>
-          )}
-
           {/* Chat Mode Selector Rail */}
           <ModeSelector activeMode={chatMode} onModeChange={setChatMode} />
 
@@ -3193,11 +3180,31 @@ export default function ChatLensPage() {
 
           {/* Messages */}
           <div
-            className="flex-1 overflow-hidden flex flex-col"
+            className={cn('flex-1 overflow-hidden flex flex-col', isConKay && 'relative isolate')}
             role="log"
             aria-label="Chat messages"
             aria-live="polite"
           >
+            {/* ConKay full-bleed holographic field (behind the conversation) + status HUD */}
+            {isConKay && (
+              <>
+                <ConKayBackdrop
+                  state={conkayState}
+                  listening={conkayVoice.listening}
+                  muted={conkayMuted}
+                  className="pointer-events-none absolute inset-0 -z-10"
+                />
+                <ConKayHud
+                  state={conkayState}
+                  muted={conkayMuted}
+                  onToggleMute={() => setConkayMuted((m) => !m)}
+                  listening={conkayVoice.listening}
+                  speaking={conkayVoice.speaking}
+                  voiceSupported={conkayVoice.supported}
+                  className="pointer-events-auto absolute right-3 top-3 z-20"
+                />
+              </>
+            )}
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center">
                 <div className="w-20 h-20 rounded-full bg-neon-cyan/10 flex items-center justify-center mb-6">
