@@ -209,3 +209,27 @@ describe("Phase 0.4 — glyph-spells.mintSpell power-source fuel", () => {
     } finally { delete process.env.CONCORD_CRAFT_RESOLVE; }
   });
 });
+
+// ── inventory is user-global (Concord Link carries items across worlds) ───────
+describe("inventory is user-global across worlds", () => {
+  it("a material earned in one world is consumable when crafting in another", () => {
+    const db = makeToolDb();
+    // iron_ingot acquired while in 'world_alpha'
+    db.prepare(`INSERT INTO player_inventory (id, user_id, world_id, item_type, item_id, item_name, quantity)
+                VALUES ('inv_xw', ?, 'world_alpha', 'material', 'iron_ingot', 'iron_ingot', 5)`).run(USER);
+    recipeConsuming(db, "xw_axe", "iron_ingot", 50); // consumes 2 per craft, no tier/skill gate
+    // craft while standing in a DIFFERENT world — must draw from the global stock
+    const r = craftTool(db, USER, "xw_axe", "world_beta");
+    assert.equal(r.ok, true, `cross-world craft should succeed; got ${JSON.stringify(r)}`);
+    const left = db.prepare(`SELECT SUM(quantity) q FROM player_inventory WHERE user_id=? AND item_id='iron_ingot'`).get(USER).q;
+    assert.equal(left, 3, "2 units consumed from the global stock regardless of crafting world");
+  });
+
+  it("missing material is reported regardless of world (no phantom per-world stock)", () => {
+    const db = makeToolDb();
+    recipeConsuming(db, "xw_axe2", "iron_ingot", 50);
+    const r = craftTool(db, USER, "xw_axe2", "world_beta");
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "missing_material");
+  });
+});

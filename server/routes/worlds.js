@@ -1634,13 +1634,18 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // composite. world_id must be scoped (mig 101). Quality is stored
       // in metadata JSON to preserve gather-time rarity.
       for (const item of result.gathered) {
+        // User-global inventory (one universe, many worlds): stack onto the
+        // player's single global row for this item (PK is (user_id,item_id)).
+        // A world-scoped existing-check would miss a row tagged another world
+        // and then hit a PK violation on INSERT. world_id on the INSERT below
+        // is "where-gathered" metadata only.
         const existing = db.prepare(
-          'SELECT quantity FROM player_inventory WHERE user_id = ? AND item_id = ? AND world_id = ?'
-        ).get(req.user.id, item.item, worldId);
+          'SELECT quantity FROM player_inventory WHERE user_id = ? AND item_id = ?'
+        ).get(req.user.id, item.item);
         if (existing) {
           db.prepare(
-            'UPDATE player_inventory SET quantity = quantity + ? WHERE user_id = ? AND item_id = ? AND world_id = ?'
-          ).run(item.quantity, req.user.id, item.item, worldId);
+            'UPDATE player_inventory SET quantity = quantity + ? WHERE user_id = ? AND item_id = ?'
+          ).run(item.quantity, req.user.id, item.item);
         } else {
           db.prepare(`
             INSERT INTO player_inventory (user_id, item_id, quantity, world_id, metadata)
