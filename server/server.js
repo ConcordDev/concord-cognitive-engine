@@ -44096,10 +44096,17 @@ app.post("/api/org/:orgId/promote", requireAuth(), validate("orgPromote"), (req,
 });
 
 app.get("/api/org/list", requireAuth(), (req, res) => {
-  const userId = req.user.id;
-  const orgs = Array.from((STATE.orgs || new Map()).values())
-    .filter(o => o.members.some(m => m.userId === userId));
-  res.json({ ok: true, orgs });
+  try {
+    const userId = req.user.id;
+    // Guard: an org without a `members` array (partially-constructed / legacy row)
+    // made `o.members.some` throw → unhandled 500 (an HTML error page) → the admin
+    // lens that polls this crashed. Treat a memberless org as having no members.
+    const orgs = Array.from((STATE.orgs || new Map()).values())
+      .filter(o => Array.isArray(o?.members) && o.members.some(m => m.userId === userId));
+    res.json({ ok: true, orgs });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || "org_list_failed" });
+  }
 });
 
 // --- Capability 9: SELF-IMPROVING QUALITY (Adaptive Thresholds) ---

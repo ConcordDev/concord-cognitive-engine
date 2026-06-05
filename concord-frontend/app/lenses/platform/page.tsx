@@ -46,19 +46,22 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: 'events', label: 'Live Events', icon: Radio, desc: 'Real-time event stream' },
 ];
 
-function EventStreamPanel({ events, connected }: { events: Array<{ type: string; data: Record<string, unknown>; timestamp: string }>; connected: boolean }) {
+function EventStreamPanel({ events = [], connected }: { events?: Array<{ type: string; data: Record<string, unknown>; timestamp: string }>; connected: boolean }) {
   const [filterType, setFilterType] = useState('');
   const [showRaw, setShowRaw] = useState<number | null>(null);
 
+  // Guard: `events` can be undefined before the realtime stream populates (mounting the
+  // Live Events tab) — calling .map on it crashed the whole platform lens via ErrorBoundary.
+  const safeEvents = Array.isArray(events) ? events : [];
   const eventTypes = useMemo(() => {
-    const types = new Set(events.map(e => e.type));
+    const types = new Set(safeEvents.map(e => e.type));
     return Array.from(types).sort();
-  }, [events]);
+  }, [safeEvents]);
 
   const filtered = useMemo(() => {
-    if (!filterType) return events;
-    return events.filter(e => e.type === filterType);
-  }, [events, filterType]);
+    if (!filterType) return safeEvents;
+    return safeEvents.filter(e => e.type === filterType);
+  }, [safeEvents, filterType]);
 
   return (
     <div className="space-y-4">
@@ -74,9 +77,9 @@ function EventStreamPanel({ events, connected }: { events: Array<{ type: string;
               onChange={(e) => setFilterType(e.target.value)}
               className="input-lattice text-xs py-1"
             >
-              <option value="">All types ({events.length})</option>
+              <option value="">All types ({safeEvents.length})</option>
               {eventTypes.map(t => (
-                <option key={t} value={t}>{t} ({events.filter(e => e.type === t).length})</option>
+                <option key={t} value={t}>{t} ({safeEvents.filter(e => e.type === t).length})</option>
               ))}
             </select>
           )}
