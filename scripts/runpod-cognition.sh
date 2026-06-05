@@ -24,17 +24,31 @@ declare -A MODEL=( [conscious]="${BRAIN_CONSCIOUS_MODEL:-concord-conscious:lates
                    [utility]="${BRAIN_UTILITY_MODEL:-qwen2.5:3b}" \
                    [repair]="${BRAIN_REPAIR_MODEL:-qwen2.5:0.5b}" \
                    [vision]="${BRAIN_VISION_MODEL:-qwen2.5vl:7b}" )
-declare -A CORES=( [conscious]="${BRAIN_CONSCIOUS_CORES:-0-7}" \
-                   [subconscious]="${BRAIN_SUBCONSCIOUS_CORES:-8-11}" \
-                   [utility]="${BRAIN_UTILITY_CORES:-12-13}" \
-                   [repair]="${BRAIN_REPAIR_CORES:-14}" \
-                   [vision]="${BRAIN_VISION_CORES:-15}" )
+# Single Blackwell GPU → every brain shares GPU 0 (VRAM is the budget, not GPU count).
 declare -A GPU=(   [conscious]="${BRAIN_CONSCIOUS_GPU:-0}" [subconscious]="${BRAIN_SUBCONSCIOUS_GPU:-0}" \
                    [utility]="${BRAIN_UTILITY_GPU:-0}" [repair]="${BRAIN_REPAIR_GPU:-0}" \
                    [vision]="${BRAIN_VISION_GPU:-0}" )
 ROLES=(conscious subconscious utility repair vision)
 
 NPROC=$(nproc 2>/dev/null || echo 4)
+
+# ── auto-allocate CPU cores from the pod's REAL core count (no hand-tuning) ───
+# Reserve the top cores for the backend/frontend/world-shards, split the rest across
+# the brains by weight (conscious heaviest), as contiguous ranges. Override any role
+# with BRAIN_<ROLE>_CORES to take manual control.
+declare -A WEIGHT=( [conscious]=8 [subconscious]=4 [utility]=2 [repair]=1 [vision]=1 ); WSUM=16
+APP_RESERVE="${CONCORD_APP_CORE_RESERVE:-2}"
+POOL=$NPROC; [ "$NPROC" -gt $((APP_RESERVE + 5)) ] && POOL=$((NPROC - APP_RESERVE))
+declare -A CORES; cur=0
+for role in "${ROLES[@]}"; do
+  ov="BRAIN_$(echo "$role" | tr '[:lower:]' '[:upper:]')_CORES"
+  if [ -n "${!ov:-}" ]; then CORES[$role]="${!ov}"; continue; fi   # explicit override wins
+  n=$(( POOL * WEIGHT[$role] / WSUM )); [ "$n" -lt 1 ] && n=1
+  end=$(( cur + n - 1 )); [ "$end" -gt $((POOL - 1)) ] && end=$((POOL - 1))
+  [ "$cur" -gt "$end" ] && cur=$end
+  CORES[$role]=$([ "$cur" -eq "$end" ] && echo "$cur" || echo "${cur}-${end}")
+  cur=$(( end + 1 ))
+done
 HAVE_TASKSET=1; command -v taskset >/dev/null 2>&1 || { HAVE_TASKSET=0; log "WARN: taskset not found — CPU pinning DISABLED (apt-get install util-linux)"; }
 command -v ollama  >/dev/null 2>&1 || { log "ERROR: ollama not installed (https://ollama.com/download)"; exit 1; }
 HAVE_GPU=0; command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1 && HAVE_GPU=1 || log "WARN: no NVIDIA GPU detected — Ollama will run on CPU."

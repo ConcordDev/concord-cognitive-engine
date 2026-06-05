@@ -19,7 +19,7 @@ credentials-file: /etc/cloudflared/credentials.json
 
 ingress:
   # --- backend: API, realtime socket, health probes, MCP host ---
-  - hostname: concord.<YOUR_DOMAIN>
+  - hostname: concord-os.org
     path: ^/(api|socket\.io|health|ready|metrics|mcp)(/.*)?$
     service: http://127.0.0.1:5050
     originRequest:
@@ -28,7 +28,7 @@ ingress:
       noTLSVerify: false
 
   # --- everything else: the Next.js frontend UI ---
-  - hostname: concord.<YOUR_DOMAIN>
+  - hostname: concord-os.org
     service: http://127.0.0.1:3000
     originRequest:
       connectTimeout: 30s
