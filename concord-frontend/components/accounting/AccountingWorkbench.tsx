@@ -361,9 +361,9 @@ function JournalEntryTab() {
         <table className="w-full text-xs">
           <thead className="bg-black/40 text-gray-400 uppercase text-[10px] tracking-wider">
             <tr>
-              <th className="text-left px-2 py-1.5">Account</th>
-              <th className="text-right px-2 py-1.5 w-24">Debit</th>
-              <th className="text-right px-2 py-1.5 w-24">Credit</th>
+              <th scope="col" className="text-left px-2 py-1.5">Account</th>
+              <th scope="col" className="text-right px-2 py-1.5 w-24">Debit</th>
+              <th scope="col" className="text-right px-2 py-1.5 w-24">Credit</th>
               <th className="w-6"></th>
             </tr>
           </thead>
@@ -542,11 +542,11 @@ function LedgerTab() {
           <table className="w-full text-xs">
             <thead className="bg-black/40 text-gray-400 uppercase text-[10px] tracking-wider">
               <tr>
-                <th className="text-left px-2 py-1.5">Date</th>
-                <th className="text-left px-2 py-1.5">Entry</th>
-                <th className="text-left px-2 py-1.5">Account</th>
-                <th className="text-right px-2 py-1.5">Debit</th>
-                <th className="text-right px-2 py-1.5">Credit</th>
+                <th scope="col" className="text-left px-2 py-1.5">Date</th>
+                <th scope="col" className="text-left px-2 py-1.5">Entry</th>
+                <th scope="col" className="text-left px-2 py-1.5">Account</th>
+                <th scope="col" className="text-right px-2 py-1.5">Debit</th>
+                <th scope="col" className="text-right px-2 py-1.5">Credit</th>
               </tr>
             </thead>
             <tbody>

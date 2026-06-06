@@ -151,7 +151,7 @@ export function PortfolioPanel() {
             ) : (
               <table className="w-full text-xs">
                 <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
-                  <tr><th className="text-left py-1.5 pl-3">Asset</th><th className="text-right">Qty</th><th className="text-right">Avg cost</th><th className="text-right">Price</th><th className="text-right">Value</th><th className="text-right">PnL</th><th className="pr-3 text-right"></th></tr>
+                  <tr><th scope="col" className="text-left py-1.5 pl-3">Asset</th><th scope="col" className="text-right">Qty</th><th scope="col" className="text-right">Avg cost</th><th scope="col" className="text-right">Price</th><th scope="col" className="text-right">Value</th><th scope="col" className="text-right">PnL</th><th className="pr-3 text-right"></th></tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {holdings.map(h => (

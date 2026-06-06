@@ -324,7 +324,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
               ) : (
                 <table className="w-full text-xs">
                   <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
-                    <tr><th className="text-left py-1.5">Time</th><th>BP</th><th>HR</th><th>Temp</th><th>SpO2</th><th>BMI</th><th>Pain</th><th className="text-right">Flags</th></tr>
+                    <tr><th scope="col" className="text-left py-1.5">Time</th><th scope="col">BP</th><th scope="col">HR</th><th scope="col">Temp</th><th scope="col">SpO2</th><th scope="col">BMI</th><th scope="col">Pain</th><th scope="col" className="text-right">Flags</th></tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {data.vitals.slice(0, 12).map(v => (
@@ -374,7 +374,7 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
               ) : (
                 <table className="w-full text-xs">
                   <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
-                    <tr><th className="text-left py-1.5">Test</th><th className="text-right">Value</th><th className="text-right">Reference</th><th className="text-right">Flag</th><th className="text-right">Date</th></tr>
+                    <tr><th scope="col" className="text-left py-1.5">Test</th><th scope="col" className="text-right">Value</th><th scope="col" className="text-right">Reference</th><th scope="col" className="text-right">Flag</th><th scope="col" className="text-right">Date</th></tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {data.labs.map(l => (

@@ -487,7 +487,7 @@ export function TaxPanel() {
             <div className="rounded border border-white/10 bg-black/30 overflow-hidden">
               <table className="w-full text-xs">
                 <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
-                  <tr><th className="text-left py-1.5 pl-3">Term</th><th>Symbol</th><th className="text-right">Qty</th><th className="text-right">Held days</th><th className="text-right">Cost</th><th className="text-right">Proceeds</th><th className="text-right pr-3">Gain</th></tr>
+                  <tr><th scope="col" className="text-left py-1.5 pl-3">Term</th><th scope="col">Symbol</th><th scope="col" className="text-right">Qty</th><th scope="col" className="text-right">Held days</th><th scope="col" className="text-right">Cost</th><th scope="col" className="text-right">Proceeds</th><th scope="col" className="text-right pr-3">Gain</th></tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {[...report.realizedLongTerm.map(r => ({ ...r, term: 'long' })), ...report.realizedShortTerm.map(r => ({ ...r, term: 'short' }))].sort((a, b) => b.soldAt.localeCompare(a.soldAt)).map((r, i) => (
