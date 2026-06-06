@@ -130,8 +130,18 @@ available, else the 2D field; loaded `ssr:false`. Verified live (WebGL canvas mo
 **Proactive greeting** — on entering the mode ConKay speaks a brief greeting and
 invites "brief me" (which flows through the normal pipeline → a DTU-grounded brief).
 
+**Vision (perception) — shipped wiring:** an image attached in ConKay mode is a
+"look at this" — `handleSend` POSTs the raw image to the existing
+`POST /api/vision/analyze` (→ `analyzeImage` → the multimodal/vision brain) and
+renders the description (labelled "via vision brain"). Fully isolated (only fires
+for ConKay + an image; every other send path is unchanged) with an honest offline
+fallback ("the vision brain isn't reachable…") when no vision model is connected.
+*Real image understanding requires a connected vision model (LLaVA/Qwen-VL); the
+end-to-end inference was not live-verifiable in the dev sandbox (no vision model +
+backend boot instability), but the route exists and the wiring is type-checked.*
+
 **Later:** WebGPU compute particles; richer realtime-bus subscription for
-per-system flares; image perception via the vision brain on uploads.
+per-system flares; in-message image thumbnails for the vision turn.
 
 ### Files
 - `concord-frontend/components/conkay/conkay-persona.ts` — persona prompt, voice hints, state type.

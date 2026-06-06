@@ -1659,7 +1659,58 @@ export default function ChatLensPage() {
     });
   }, []);
 
+  // ── ConKay vision: an image attachment in ConKay mode is a "look at this" —
+  // POST the raw image to /api/vision/analyze (the vision brain). Honest offline
+  // fallback when no vision model is connected. Reuses JARVIS-style perception.
+  const conkayVisionMutation = useMutation({
+    mutationFn: async ({ file, prompt }: { file: File; prompt: string }) => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const res = await fetch(`${apiUrl}/api/vision/analyze?prompt=${encodeURIComponent(prompt)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type || 'image/png' },
+        credentials: 'include',
+        body: file,
+      });
+      return res.json().catch(() => ({ ok: false, error: 'unreadable response' }));
+    },
+    onSuccess: (data: { ok?: boolean; description?: string; model?: string; error?: string }) => {
+      const ok = !!data?.ok;
+      const content = ok
+        ? (data.description?.trim() || 'I looked, but the vision brain returned nothing.')
+        : `I can't see that right now — the vision brain isn't reachable in this environment${data?.error ? ` (${data.error})` : ''}.`;
+      setLocalMessages((prev) => [...prev, {
+        id: `asst-${Date.now()}`, role: 'assistant', content,
+        timestamp: new Date().toISOString(), model: ok ? (data.model || 'vision') : undefined,
+      }]);
+    },
+    onError: () => {
+      setLocalMessages((prev) => [...prev, {
+        id: `asst-${Date.now()}`, role: 'assistant',
+        content: "I couldn't reach the vision brain just now. Try again, or check that a vision model is connected.",
+        timestamp: new Date().toISOString(),
+      }]);
+    },
+  });
+
   const handleSend = useCallback(() => {
+    // ConKay vision: an attached image is "look at this" — runs even with no text.
+    if (isConKay && !conkayVisionMutation.isPending) {
+      const img = attachments.find((a) => a.type.startsWith('image/'));
+      if (img) {
+        const prompt = input.trim() || 'Describe this image in detail.';
+        setLocalMessages((prev) => [...prev, {
+          id: `user-${Date.now()}`, role: 'user',
+          content: input.trim() || 'What do you see?',
+          timestamp: new Date().toISOString(),
+          attachments: [{ name: img.name, size: img.size, type: img.type }],
+        }]);
+        setInput('');
+        setAttachments([]);
+        conkayVisionMutation.mutate({ file: img.file, prompt });
+        return;
+      }
+    }
+
     if (!input.trim() || sendMutation.isPending) return;
 
     // Check for slash commands
@@ -1669,7 +1720,7 @@ export default function ChatLensPage() {
     }
 
     sendMutation.mutate(input);
-  }, [input, sendMutation, executeSlashCommand]);
+  }, [input, sendMutation, executeSlashCommand, isConKay, attachments, conkayVisionMutation]);
 
   // ── ConKay: voice-native STT in / TTS out when the mode is active ───────────
   const conkayVoice = useConKayVoice({
@@ -1710,7 +1761,7 @@ export default function ChatLensPage() {
 
   // ConKay state machine — driven by real signals (not a screensaver).
   const conkayState: ConKayState =
-    sendMutation.isPending ? 'processing'
+    (sendMutation.isPending || conkayVisionMutation.isPending) ? 'processing'
       : conkayActing ? 'acting'
         : conkayVoice.speaking ? 'presenting'
           : conkayVoice.listening ? 'listening'
