@@ -30,6 +30,7 @@ interface SkillRow { id: string; title: string; }
 
 export default function TrainingRoomPage() {
   const [skills, setSkills] = useState<SkillRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [frameData, setFrameData] = useState<FrameData | null>(null);
   const [replayPhase, setReplayPhase] = useState<'idle' | 'startup' | 'active' | 'recovery'>('idle');
@@ -41,6 +42,7 @@ export default function TrainingRoomPage() {
       setSkills(list);
       if (!selectedSkillId && list.length > 0) setSelectedSkillId(list[0].id);
     } catch { /* network blip */ }
+    finally { setLoading(false); }
   }, [selectedSkillId]);
 
   useEffect(() => { refreshSkills(); }, [refreshSkills]);
@@ -86,7 +88,11 @@ export default function TrainingRoomPage() {
         <section className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-4 px-4 py-5 sm:px-6 lg:grid-cols-3">
           <aside className="rounded-xl border border-cyan-500/20 bg-zinc-950/60 p-3">
             <h2 className="mb-2 text-[11px] uppercase tracking-wider text-cyan-300/60">Your skills</h2>
-            {skills.length === 0 ? (
+            {loading ? (
+              <div className="space-y-2" aria-busy="true" aria-label="Loading skills">
+                {[0, 1, 2].map((i) => <div key={i} className="h-10 animate-pulse rounded-lg border border-white/5 bg-white/5" />)}
+              </div>
+            ) : skills.length === 0 ? (
               <p className="py-4 text-center text-[12px] text-slate-500">
                 Acquire a skill first — try a few combats, then come back.
               </p>

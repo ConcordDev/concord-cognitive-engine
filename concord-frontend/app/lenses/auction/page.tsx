@@ -44,6 +44,7 @@ interface BuyOrderRow {
 
 export default function AuctionLensPage() {
   const [auctions, setAuctions] = useState<AuctionRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [bidTarget, setBidTarget] = useState<AuctionRow | null>(null);
   const [bidAmount, setBidAmount] = useState('');
   const [createForm, setCreateForm] = useState({ title: '', itemKind: 'dtu' as 'dtu' | 'inventory', itemId: '', startCc: 1, buyoutCc: '', durationS: 3600 });
@@ -70,6 +71,7 @@ export default function AuctionLensPage() {
       const r = await fetch('/api/auctions/buy-orders?limit=20').then((x) => x.json());
       if (r?.ok) setBuyOrders(r.buyOrders || []);
     } catch { /* network blip */ }
+    setLoading(false);
   }, []);
 
   const handlePlaceBuyOrder = useCallback(async () => {
@@ -227,7 +229,10 @@ export default function AuctionLensPage() {
 
         <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {auctions.length === 0 && (
+            {loading && Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-28 animate-pulse rounded-xl border border-white/5 bg-white/5" />
+            ))}
+            {!loading && auctions.length === 0 && (
               <p className="col-span-full px-4 py-8 text-center text-[12px] text-slate-500">No active auctions. Post one yourself.</p>
             )}
             {auctions.map((a) => {
