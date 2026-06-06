@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Heart, Play, ListPlus, Trash2, ListMusic, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
 
 interface Track { id: string; title: string; artist: string; album: string | null; genre: string; durationSec: number; liked: boolean; playCount: number }
 interface Playlist { id: string; name: string; trackCount: number; durationSec: number }
@@ -181,9 +182,15 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
         )}
 
         {tracks.length === 0 ? (
-          <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
-            No tracks. Add music to your library.
-          </div>
+          <EmptyStateCTA
+            lensId="music"
+            accent="emerald"
+            headline="Your library's quiet"
+            caption="Add a track and it becomes a DTU in your lattice — yours across every lens and world."
+            buttonLabel="Add your first track"
+            onAction={() => setShowAdd(true)}
+            className="py-10"
+          />
         ) : (
           <ul className="space-y-1">
             {tracks.map((t) => (
