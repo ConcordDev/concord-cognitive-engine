@@ -116,14 +116,22 @@ these improve the substrate underneath all of them.
    shared modal/overlay; widen `useLensCommand` coverage. *(WCAG 2.2 focus;
    flexibility/shortcuts.)*
 
-5. **`[shared-layer]` Icon-only navigation lacks tooltips** (message, atlas left
-   rails). → Add `title`/`aria-label` tooltips to icon-only nav. *(Recognition over
-   recall; WCAG name/role/value.)*
+5. **`[shared-layer]` Icon-only navigation tooltips** — **PARTLY DONE (verified in
+   code):** `AtlasShell.tsx:48` already sets `title={n.label}` on its rail icons, so
+   atlas has tooltips + an accessible name. Remaining: audit the message lens's
+   icon strip and any other icon-only rails for the same `title`/`aria-label`
+   treatment. *(Recognition over recall; WCAG name/role/value.)*
 
-6. **`[shared-layer]` WCAG 2.2 AA pass.** Add a visible `:focus-visible` ring token;
-   verify neon-on-near-black accents clear 4.5:1 (the brightest neons on `#0a0a0f`
-   are borderline for small text); ensure interactive targets ≥24px; add
-   `role="grid"`/`aria-sort` to data tables (accounting ledger, finance holdings).
+6. **`[shared-layer]` WCAG 2.2 AA pass.** **A visible `:focus-visible` ring already
+   exists** (`globals.css:711-718`, plus a high-contrast override at `:845`) — so
+   that sub-item is DONE; don't re-add it. Remaining: verify neon-on-near-black
+   accents clear 4.5:1 (the brightest neons on `#0a0a0f` are borderline for small
+   text); ensure interactive targets ≥24px; add `role="grid"`/`aria-sort` to data
+   tables (accounting ledger, finance holdings).
+
+   > **Audit discipline note:** items 5 and 6 were each found *partly already
+   > implemented* when checked against code. Verify every backlog item against the
+   > source before building it — a blind sweep would duplicate existing work.
 
 7. **`[per-app, case-by-case]` Redundant navigation/controls** — music's triple-nav,
    social's two composers. Flag per lens; **do not** force-merge, since some rival
