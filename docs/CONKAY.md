@@ -136,9 +136,12 @@ invites "brief me" (which flows through the normal pipeline → a DTU-grounded b
 renders the description (labelled "via vision brain"). Fully isolated (only fires
 for ConKay + an image; every other send path is unchanged) with an honest offline
 fallback ("the vision brain isn't reachable…") when no vision model is connected.
-*Real image understanding requires a connected vision model (LLaVA/Qwen-VL); the
-end-to-end inference was not live-verifiable in the dev sandbox (no vision model +
-backend boot instability), but the route exists and the wiring is type-checked.*
+*Wiring verified end-to-end at the API level: an authenticated `POST
+/api/vision/analyze` (session cookie, no CSRF header needed — same posture as
+`/api/chat/stream`) returns HTTP 200 `{ok:false,error:"fetch failed"}` when no
+vision model is reachable — exactly the shape the ConKay handler renders as the
+honest fallback. Only real image understanding remains gated on connecting a
+vision model (LLaVA/Qwen-VL); the full path is otherwise live.*
 
 **Later:** WebGPU compute particles; richer realtime-bus subscription for
 per-system flares; in-message image thumbnails for the vision turn.
