@@ -374,6 +374,26 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
   }
 
   if (profileQuery.isError || !profile) {
+    // Your own profile simply isn't set up yet — invite, don't report a "not
+    // found" error (that read as a bug for brand-new users). A genuinely
+    // missing/private OTHER user still gets the honest not-found message.
+    if (isOwnProfile) {
+      return (
+        <div className={cn('text-center py-16', className)}>
+          <Users className="w-12 h-12 text-neon-cyan/70 mx-auto mb-4" />
+          <h3 className="text-white font-medium mb-2">Set up your profile</h3>
+          <p className="text-sm text-gray-400 mb-5 max-w-xs mx-auto">
+            Add a name, bio, and specialties so others can find your work across the commons.
+          </p>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('profile:edit', { detail: { userId } }))}
+            className="inline-flex items-center gap-2 rounded-lg bg-neon-cyan/15 px-4 py-2 text-sm text-neon-cyan border border-neon-cyan/30 hover:bg-neon-cyan/25 transition-colors"
+          >
+            <Settings className="w-4 h-4" /> Complete your profile
+          </button>
+        </div>
+      );
+    }
     return (
       <div className={cn('text-center py-16', className)}>
         <Users className="w-12 h-12 text-gray-600 mx-auto mb-4" />
