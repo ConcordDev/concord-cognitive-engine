@@ -63,6 +63,12 @@ Verified in the live screenshots and the shared-layer code:
 - **Per-lens "quick tour" coachmarks** — contextual onboarding per app.
 - **Design tokens**: near-black surfaces (`--lattice-void #0a0a0f`, not pure
   black) ✓, an 8pt `--space-*` scale ✓, a constrained neon accent set.
+- **Feedback-state adoption is already broad (verified against code):** a shared
+  `Skeleton` primitive exists and ~98/259 lenses use loading skeletons; `ErrorState`
+  is wired in 122/259; some `EmptyState` renders in 210/259; a global `:focus-visible`
+  ring + high-contrast override exist. The shared layer is in much better shape than a
+  first glance suggests — the work is *finishing the rollout + consistency*, not
+  building from zero.
 
 ---
 
@@ -92,23 +98,28 @@ lens-specific (`[per-app]`), never "make it look like the others."
 These are the *only* things that should be uniform. Each lens keeps its own look;
 these improve the substrate underneath all of them.
 
-1. **`[shared-layer]` Empty states are inconsistent, and some are error-as-empty.**
-   Worst: social's "Profile Not Found" for a new user. Common: flat one-liners
-   ("No tracks.") with no CTA; some Tier-3 lenses render blank. → Standardize on the
-   existing **`EmptyStateCTA`** (manifest-derived "Create your first {artifact}"),
-   **tinted with each lens's own accent** so it still fits that app. *(Per NN/g:
-   educate + CTA.)*
+1. **`[shared-layer]` Empty states: broadly present, but inconsistent + none use the
+   manifest CTA.** **Verified against code: 210/259 lens dirs already render some
+   `EmptyState`** — so absence is NOT the problem (the earlier "Tier-3 miss them" was
+   overstated). The real gaps: (a) **0 lenses use `EmptyStateCTA`** (the
+   manifest-derived "Create your first {artifact}") — flat one-liners like "No tracks."
+   could become an inviting CTA; (b) **error-as-empty** — social's "Profile Not Found"
+   for a new user (**fixed this pass**). → Upgrade flat empty states to `EmptyStateCTA`,
+   **tinted per lens accent**; sweep for other error-as-empty cases. *(NN/g: educate + CTA.)*
 
-2. **`[shared-layer]` Loading states are mostly absent** — content pops in; no
-   skeletons. → A shared **`Skeleton`** primitive, **shaped per lens** (a wallet
-   skeleton ≠ a ledger table skeleton ≠ a clip-grid skeleton) so perceived
-   performance improves without flattening identity. *(Visibility of system status.)*
+2. **`[shared-layer]` Loading states: a shared primitive exists + ~98 lenses use it.**
+   **Verified: `components/common/Skeleton.tsx` exists and ~98/259 lenses already use
+   `Skeleton`/`animate-pulse`** (the earlier "mostly absent" was wrong). The gap is the
+   remaining ~160 lenses + **shaping** skeletons per lens (a wallet skeleton ≠ a ledger
+   table ≠ a clip grid) rather than a generic spinner. *(Visibility of system status.)*
 
-3. **`[shared-layer]` Error states fall back to raw strings or silent console
-   logs.** `ErrorState` and `AdminRequiredState` + `isForbidden()` already exist in
-   `components/common/EmptyState.tsx` + `lib/api/client.ts` but are under-used. →
-   Route lens load-errors through `ErrorState`; admin-gated lenses through
-   `AdminRequiredState`. *(Help users recover from errors.)*
+3. **`[shared-layer]` Error states: `ErrorState` is broadly adopted (122 lenses).**
+   **Verified: `ErrorState` is imported in 122/259 lenses** — well-adopted, not
+   "under-used" (correction). `AdminRequiredState` + `isForbidden()` also exist
+   (`components/common/EmptyState.tsx` + `lib/api/client.ts`). The remaining gap: the
+   ~137 lenses not yet routing load-errors through it, and any raw-string/silent-fail
+   fallbacks. → Finish the rollout; admin-gated lenses → `AdminRequiredState`.
+   *(Help users recover from errors.)*
 
 4. **`[shared-layer]` Keyboard & focus.** Only ~30% of lenses bind keys via
    `useLensCommand`; modal focus-trap and Esc-to-close are inconsistent (the per-lens
