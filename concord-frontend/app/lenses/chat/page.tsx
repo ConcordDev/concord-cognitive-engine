@@ -1342,6 +1342,11 @@ export default function ChatLensPage() {
           typeof data.reasoningSessionId === 'string' ? data.reasoningSessionId : undefined,
         wasSynthesized: !!data.wasSynthesized,
         shadowsUsed: typeof data.shadowsUsed === 'number' ? data.shadowsUsed : undefined,
+        // Which brain/source produced this (ConKay surfaces it when present).
+        model: (typeof data.brain === 'string' && data.brain)
+          || (typeof data.source === 'string' && data.source)
+          || (typeof data.model === 'string' && data.model)
+          || undefined,
       };
 
       setLocalMessages((prev) => [...prev, assistantMsg]);
@@ -1677,22 +1682,39 @@ export default function ChatLensPage() {
       sendMutation.mutate(text);
     },
   });
-  // Speak each new assistant reply aloud while ConKay is active.
+  // React to each new assistant reply: speak it, and flare "acting" when the
+  // reply actually touched a system (real toolCalls — ambient action feedback).
+  const [conkayActing, setConkayActing] = useState(false);
   const conkaySpokeRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!isConKay || conkayMuted) return;
+    if (!isConKay) return;
     const last = [...localMessages].reverse().find((m) => m.role === 'assistant');
-    if (last && last.id !== conkaySpokeRef.current) {
-      conkaySpokeRef.current = last.id;
-      conkayVoice.speak(last.content || '');
+    if (!last || last.id === conkaySpokeRef.current) return;
+    conkaySpokeRef.current = last.id;
+    if (!conkayMuted) conkayVoice.speak(last.content || '');
+    if (Array.isArray(last.toolCalls) && last.toolCalls.length > 0) {
+      setConkayActing(true);
+      const tmr = setTimeout(() => setConkayActing(false), 3500);
+      return () => clearTimeout(tmr);
     }
   }, [isConKay, conkayMuted, localMessages, conkayVoice]);
+
+  // ConKay greets on entering the mode — a spoken presence, no fabricated data.
+  const conkayGreetedRef = useRef(false);
+  useEffect(() => {
+    if (!isConKay) { conkayGreetedRef.current = false; return; }
+    if (conkayGreetedRef.current) return;
+    conkayGreetedRef.current = true;
+    if (!conkayMuted) conkayVoice.speak("Kay here. I'm listening — ask me anything, or say brief me.");
+  }, [isConKay, conkayMuted, conkayVoice]);
+
   // ConKay state machine — driven by real signals (not a screensaver).
   const conkayState: ConKayState =
     sendMutation.isPending ? 'processing'
-      : conkayVoice.speaking ? 'presenting'
-        : conkayVoice.listening ? 'listening'
-          : 'idle';
+      : conkayActing ? 'acting'
+        : conkayVoice.speaking ? 'presenting'
+          : conkayVoice.listening ? 'listening'
+            : 'idle';
 
   // Lens-scoped keyboard commands. Send via mod+enter is the power-user
   // shortcut (Enter still sends from inside the textarea); slash focuses
@@ -2137,6 +2159,7 @@ export default function ChatLensPage() {
                       sources: message.sources,
                       toolCalls: message.toolCalls,
                       webAugmented: message.webAugmented,
+                      brain: message.model,
                     }}
                     renderProse={(t) => <MessageRenderer content={t} />}
                   />

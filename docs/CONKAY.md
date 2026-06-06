@@ -117,13 +117,21 @@ response is genuinely data-bearing.
 - Voice-native STT/TTS (`useConKayVoice.ts`), female-chill, feedback-loop aware.
 - Holographic presence band + state-machine HUD (`ConKaySurface.tsx`, canvas particle field, reduced-motion aware).
 
-**P1 (next):** port the surface to a full-bleed **Three.js/WebGPU** field (reuse
-Concordia's `lib/world-lens/` + `lib/concordia/`) — same state contract; mic-amplitude
-drives the `listening` particles.
+**P1 — shipped:** full-bleed **Three.js** field via `@react-three/fiber`
+(`ConKayScene.tsx`) — a 1500-point additive-blended sphere + wireframe core,
+reacting to the state machine and to **live mic amplitude** (`useMicAmplitude.ts`)
+while listening. `ConKayBackdrop.tsx` picks the 3D scene when WebGL + motion are
+available, else the 2D field; loaded `ssr:false`. Verified live (WebGL canvas mounts).
 
-**P2 (next):** richer ambient-action mode subscribed to the realtime bus
-(`realtimeEmit`); brain-routing made visible (which of the four brains woke);
-proactive briefing on open (reuse `morningBrief`); image perception via the vision brain.
+**P2 — shipped:** **ambient-action flares** — a reply that touched a system (real
+`toolCalls`) drives a short-lived `acting` state (the field flares + HUD "Working…").
+**Brain made visible** — the reply's `brain`/`source` is surfaced as a small
+"via {brain}" label *only when the backend reports it* (never fabricated).
+**Proactive greeting** — on entering the mode ConKay speaks a brief greeting and
+invites "brief me" (which flows through the normal pipeline → a DTU-grounded brief).
+
+**Later:** WebGPU compute particles; richer realtime-bus subscription for
+per-system flares; image perception via the vision brain on uploads.
 
 ### Files
 - `concord-frontend/components/conkay/conkay-persona.ts` — persona prompt, voice hints, state type.

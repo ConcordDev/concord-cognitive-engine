@@ -12,7 +12,7 @@
 // mapping: structured-output-shape → meaningful visualization, reusing ChartKit.
 
 import { useMemo } from 'react';
-import { BarChart3, Database, Globe, Wrench, Network } from 'lucide-react';
+import { BarChart3, Database, Globe, Wrench, Network, Cpu } from 'lucide-react';
 import { ChartKit } from '@/components/viz/ChartKit';
 
 export interface ConKayReplyFields {
@@ -23,6 +23,22 @@ export interface ConKayReplyFields {
   sources?: unknown;
   toolCalls?: unknown;
   webAugmented?: boolean;
+  /** Which brain/source produced the reply, if the backend reported it. */
+  brain?: string;
+}
+
+// Map a raw backend source/model id to a friendly brain label. Returns null for
+// uninformative values (so we never show a meaningless chip).
+function brainLabel(raw?: string): string | null {
+  if (!raw || typeof raw !== 'string') return null;
+  const s = raw.toLowerCase();
+  if (s.includes('conscious') && !s.includes('sub')) return 'conscious brain';
+  if (s.includes('subconscious')) return 'subconscious brain';
+  if (s.includes('utility')) return 'utility brain';
+  if (s.includes('repair')) return 'repair brain';
+  if (s.includes('vision') || s.includes('multimodal')) return 'vision brain';
+  if (s === 'cache' || s.includes('cached')) return 'memory (cached)';
+  return null;
 }
 
 interface VizSpec {
@@ -206,6 +222,7 @@ export function ConKayMessage({
     return null;
   }, [fields.computed]);
 
+  const brain = brainLabel(fields.brain);
   return (
     <div className="conkay-message">
       <div className="conkay-prose">{renderProse(prose)}</div>
@@ -213,6 +230,11 @@ export function ConKayMessage({
       {computedSpec && <Viz spec={computedSpec} />}
       <Citations fields={fields} />
       <ToolCalls toolCalls={fields.toolCalls} />
+      {brain && (
+        <div className="mt-2 inline-flex items-center gap-1 text-[10px] text-zinc-500">
+          <Cpu className="h-3 w-3" /> via {brain}
+        </div>
+      )}
     </div>
   );
 }
