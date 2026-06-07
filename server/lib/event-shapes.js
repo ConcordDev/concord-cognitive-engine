@@ -306,6 +306,18 @@ export const EVENT_SHAPES = Object.freeze({
   "npc:activity-batch":         { required: ["worldId", "count", "transitions"], optional: [] },
   "npc:economy-batch":          { required: ["worldId", "gathers", "crafts", "trades", "rests", "notable"], optional: [] },
   "social:shadows-synced":      { required: ["createdShadows", "totalCapacity"], optional: ["droppedForPrivacy"] },
+
+  // ── ConKay honest event spine (Track B / Phase 0) ─────────────────
+  // Emitted by app.post("/api/lens/run") to the caller's user:<id> room
+  // when the request opts in with a correlation id (x-conkay-run-id /
+  // body.__runId). They make a macro's single request→response lifecycle
+  // observable so the ConKay HUD can animate the *real* call beginning and
+  // ending — never a guessed spinner. `macro:stage` is optional and only
+  // ever fires when a macro reports a genuine internal stage (none do yet;
+  // the shape is registered so future stage-emitting macros validate).
+  "macro:started":   { required: ["runId", "domain", "action"], optional: [] },
+  "macro:stage":     { required: ["runId", "stage"], optional: ["domain", "action", "detail", "index", "total"] },
+  "macro:completed": { required: ["runId", "domain", "action", "ok"], optional: ["ms", "error"] },
 });
 
 /**

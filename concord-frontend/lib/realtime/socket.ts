@@ -432,7 +432,13 @@ export type SocketEvent =
   | 'combat:chain'
   | 'npc:activity-batch'
   | 'npc:economy-batch'
-  | 'social:shadows-synced';
+  | 'social:shadows-synced'
+  // ConKay honest event spine (Track B / Phase 0) — the REAL lifecycle of an
+  // /api/lens/run macro call, scoped to the caller's user:<id> room when the
+  // request opts in with x-conkay-run-id. The ConKay HUD animates these 1:1.
+  | 'macro:started'
+  | 'macro:stage'
+  | 'macro:completed';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {
