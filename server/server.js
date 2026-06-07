@@ -25118,6 +25118,13 @@ import registerRealmCouncilMacros from "./domains/realm-council.js";
 registerRealmCouncilMacros(register);
 import registerKingdomsMacros from "./domains/kingdoms.js";
 registerKingdomsMacros(register);
+// crime domain macros (heists/bounties/territories) — the engine + migrations
+// shipped and are tested, but the macro registration was never wired here, so
+// runMacro("crime",…) returned "macro domain not found" and the 14 macros were
+// unreachable. Wired now (auth-gated like every other write domain). Pinned by
+// tests/depth/crime-behavior.test.js.
+import registerCrimeMacros from "./domains/crime.js";
+registerCrimeMacros(register);
 import registerBuildingsMacros from "./domains/buildings.js";
 registerBuildingsMacros(register);
 import registerOxygenMacros from "./domains/oxygen.js";
