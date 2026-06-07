@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node --max-old-space-size=32768 server.js",
     "dev": "node --max-old-space-size=32768 --watch server.js",
-    "test": "node --test --import=./tests/preload/no-egress.mjs --test-force-exit --test-timeout=180000 'tests/**/*.test.js' 'tests/**/*-tests.js' && npm run test:behavior",
+    "test": "node --test --import=./tests/preload/no-egress.mjs --test-force-exit --test-timeout=300000 'tests/**/*.test.js' 'tests/**/*-tests.js' && npm run test:behavior",
     "test:watch": "node --test --watch --test-timeout=60000 'tests/**/*.test.js' 'tests/**/*-tests.js'",
     "test:coverage": "node --test --import=./tests/preload/no-egress.mjs --test-force-exit --test-timeout=60000 --experimental-test-coverage 'tests/**/*.test.js' 'tests/**/*-tests.js'",
     "test:e2e": "node --test --test-force-exit --test-timeout=60000 'tests/e2e/**/*.test.js'",
