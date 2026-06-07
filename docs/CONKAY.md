@@ -48,10 +48,10 @@ presence rather than FRIDAY's terseness. One persona, not a toggle.
 
 | Capability | Status | Concord substrate that already exists |
 |---|---|---|
-| Agentic multi-tool action | **BUILDABLE** | `runMacro` over **9,609 macros** (the tool surface) |
-| Persistent memory / RAG | **BUILDABLE** | the **DTU substrate** + citation system |
+| Agentic multi-tool action | **BUILDABLE** | `runMacro` over **9,623 macros** (the tool surface) |
+| Persistent memory / RAG | **BUILDABLE** | the **DTU substrate** + citation system + semantic (embedding) search (`discovery.search`) |
 | Proactive briefings | **BUILDABLE** | `TASK_PROMPTS.morningBrief` in `prompt-registry.js` |
-| Real-time voice (STT/TTS) | **BUILDABLE** | Web Speech API (no key) |
+| Real-time voice (STT/TTS) | **BUILDABLE** | Web Speech API (no key) + cross-browser server STT fallback (`/api/voice/transcribe-raw`, Whisper) for Firefox/webviews |
 | Multimodal perception (uploaded media) | **BUILDABLE** | the **vision brain** (LLaVA/Qwen-VL) |
 | Autonomous background tasks | **BUILDABLE** | **agent-marathon** loops |
 | Security/anomaly monitoring | **BUILDABLE** | admin telemetry surfaces |
@@ -186,7 +186,8 @@ navigation + an ambient "acting" flare.
 |---|---|---|
 | Brief me | "brief me", "status", "catch me up" | `/api/dtus?mine=true` + `/api/presence/active` + `/api/events` → metrics panel + archive citations |
 | My activity | "show my activity" | `/api/dtus?mine=true` → last-14-days creation series chart |
-| Search archive | "search my archive for X" | `/api/dtus?mine=true&q=X` → DTU citation cards |
+| Search archive | "search my archive for X" | `discovery.search` macro (`mine:true`) → semantic embedding rerank when brains are up, keyword+recency fallback otherwise; honest "ranked by meaning" only when it actually ran → DTU citation cards |
+| **Compute (deterministic)** | "what is 2^10", "solve x^2-5x+6=0", "derivative of sin(x)", "is 97 prime", "convert 100 c to f" | routes to the real `domains/math.js` CAS via `ctx.runMacro('math','naturalQuery')` — **computes, never guesses**; the answer is `toolCalls`-backed → "Grounded" |
 | World pulse | "what's happening", "who's around" | presence + events → metrics |
 | Enter the world | "enter the world" | navigates into Concordia |
 | Open a lens | "open music", "go to accounting" | resolves any lens by name/keyword from the registry → navigates |
@@ -241,13 +242,19 @@ Google's A2UI) all still require each app to opt in and publish a contract.
 
 Concord already ships the missing piece: a **unified, semantic action surface
 across all 259 lenses** — the macro registry (`runMacro(domain, name, input)`,
-~9,609 `(domain, macro)` pairs) plus the lens manifest / feature specs. That *is*
+~9,623 `(domain, macro)` pairs) plus the lens manifest / feature specs. That *is*
 the agent↔app contract App Intents/MCP/A2UI are reaching for — but **unified, not
 per-app opt-in, and already wired front-to-back**. So ConKay can operate any lens
 by **calling its real macros** (the same functions the UI calls), semantically,
 with no screen-scraping and no per-app integration work.
 
-### 9.3 Design — the cross-lens takeover overlay (next build)
+### 9.3 Design — the cross-lens takeover overlay (SHIPPED 2026-06; `components/conkay/ConKayOverlay.tsx`)
+
+> Status: the overlay below is no longer "next build" — it shipped. ConKay is
+> summonable on **any** lens via ⌘/Ctrl+J, the command palette, AND a persistent
+> floating "Ask Kay" button (every lens except chat, which hosts its own mode).
+> NL→macro, DTU-locker artifacts, and seamless voice are wired (§9.4); the NL
+> control lights up fully when the brains are online.
 
 - **Global presence in the Concord Link shell.** ConKay becomes summonable from
   *any* lens (hotkey / Link bar), not only inside the chat lens. A lightweight
@@ -290,6 +297,28 @@ Shipped scaffolding (the overlay, `components/conkay/ConKayOverlay.tsx`):
 - **Seamless voice.** `useConKayVoice` runs continuous + interim recognition (stays
   open across pauses; live "hearing you…" partials) with TTS pausing STT to avoid
   self-hearing; auto-resumes listening after speaking — hands-free turn-taking.
+
+### 9.4b Trustworthiness — the verifiability surface (shipped 2026-06)
+
+The Tony↔JARVIS *feeling* is here; the JARVIS *reliability* (never confidently
+wrong) is the grind, and these landed toward it:
+- **Trust badge on every reply** (`ConKayViz.tsx#TrustBadge`). A reply backed by a
+  real artifact — a cited DTU, a web source, a completed macro/action, or computed
+  data — reads **"Grounded."** A prose-only model reply reads **"Reasoned —
+  verify,"** with tooltip copy that it must never be treated as proof of
+  real-world/physics behaviour. Honest calibration so a confidently-wrong answer
+  never passes as fact.
+- **Compute, don't guess** (§8 math skill). Decidable math routes to the real CAS,
+  not the LLM — correct + grounded.
+- **`reason.verify` macro** (`domains/reason.js` + `lib/reason-verify.js`) — claim
+  verification: a deterministic citation-resolution floor (catches *fabricated
+  citations* — a cited DTU that doesn't exist/isn't visible — with no brains) plus
+  the multi-brain **council** judge (`lib/agentic/council.js#councilDecision`) that
+  rules SUPPORTED/UNSUPPORTED when the brains are up. Degrades gracefully — never
+  stamps "verified" without verifying.
+- **The boundary, by design:** ConKay computes/organizes; it does **not** certify
+  real-world physics/engineering. The world sim and the LLM are never the source of
+  physical truth — that's a real bench's job.
 
 ### 9.5 The work-animation language (JARVIS "you can see it building") — design
 

@@ -14,6 +14,9 @@
  * All four are read-only views over STATE.dtus + STATE.marketplaceListings.
  */
 
+import { CREDIT_ROW_PREDICATE } from "../economy/balances.js";
+import { earnedWithdrawableBalance } from "../economy/withdrawals.js";
+
 const TRENDING_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -232,31 +235,22 @@ export function computeWithdrawalEligibility(db, userId) {
     // Total balance via economy_ledger (double-sided: credits land as `net` to
     // to_user_id, debits as `amount` from from_user_id — the canonical
     // economy/balances.js#getBalance model; economy_ledger has no `user_id`).
+    // CREDIT_ROW_PREDICATE excludes the redundant two-row debit halves so the
+    // balance is not double-credited (see economy/balances.js).
     const balRow = db.prepare(
-      `SELECT COALESCE((SELECT SUM(net) FROM economy_ledger WHERE to_user_id = ? AND status = 'complete'), 0)
+      `SELECT COALESCE((SELECT SUM(net) FROM economy_ledger WHERE to_user_id = ? AND status = 'complete' AND ${CREDIT_ROW_PREDICATE}), 0)
             - COALESCE((SELECT SUM(amount) FROM economy_ledger WHERE from_user_id = ? AND status = 'complete'), 0) AS bal`
     ).get(userId, userId);
     const balance = Number(balRow?.bal || 0);
 
-    // Credits older than HOLD_HOURS are eligible to withdraw.
-    const eligibleRow = db.prepare(
-      `SELECT COALESCE(SUM(net), 0) AS bal
-       FROM economy_ledger
-       WHERE to_user_id = ?
-         AND status = 'complete'
-         AND created_at <= datetime('now', '-${HOLD_HOURS} hours')`
-    ).get(userId);
-    const eligibleCredits = Number(eligibleRow?.bal || 0);
-
-    // Subtract debits + already-withdrawn / pending withdrawals from
-    // the eligible bucket so a creator can't double-spend their hold.
-    const debitsRow = db.prepare(
-      `SELECT COALESCE(SUM(amount), 0) AS bal
-       FROM economy_ledger
-       WHERE from_user_id = ? AND status = 'complete'`
-    ).get(userId);
-    const debits = Math.abs(Number(debitsRow?.bal || 0));
-    const eligibleAmount = Math.max(0, eligibleCredits - debits);
+    // Eligible-to-withdraw uses the SAME earned-only, settled, claim-netted
+    // logic as the withdrawal endpoint (economy/withdrawals.js) so this surface
+    // never promises an amount requestWithdrawal would reject. Only EARNED CC
+    // (marketplace sales + royalties), held 48h, is withdrawable; purchased CC
+    // is spend-only store credit. Capped by live balance (can't withdraw coin
+    // already spent on-platform).
+    const earned = earnedWithdrawableBalance(db, userId);
+    const eligibleAmount = Math.max(0, Math.min(earned.eligible, balance));
     const pendingHoldAmount = Math.max(0, balance - eligibleAmount);
 
     // The next credit that will unlock — earliest credit with age < HOLD_HOURS.

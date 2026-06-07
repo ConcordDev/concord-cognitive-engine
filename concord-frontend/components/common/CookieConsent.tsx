@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
-const CONSENT_KEY = 'concord_cookie_consent';
+import { COOKIE_CONSENT_KEY as CONSENT_KEY, advanceFirstRun } from '@/lib/first-run';
 
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);
@@ -19,11 +18,15 @@ export function CookieConsent() {
   const accept = () => {
     try { localStorage.setItem(CONSENT_KEY, 'accepted'); } catch {}
     setVisible(false);
+    // The cookie notice sequences AHEAD of onboarding — tell the welcome wizard
+    // it may open now (it waited for this answer instead of stacking on top).
+    advanceFirstRun();
   };
 
   const reject = () => {
     try { localStorage.setItem(CONSENT_KEY, 'rejected'); } catch {}
     setVisible(false);
+    advanceFirstRun();
   };
 
   if (!visible) return null;

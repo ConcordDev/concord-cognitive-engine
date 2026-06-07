@@ -182,6 +182,12 @@ export function ConKayOverlay() {
             return await r.json();
           } catch { return null; }
         },
+        // Lets a skill delegate to a real deterministic backend engine (e.g. the
+        // math CAS) via the unified macro contract instead of LLM-reasoning.
+        runMacro: async (domain: string, name: string, input: Record<string, unknown>) => {
+          try { const { data } = await lensRun(domain, name, input); return data; }
+          catch { return null; }
+        },
       });
       setStep('gather', 'done', 'Composing the answer');
       setStep('render', 'active');
@@ -327,7 +333,27 @@ export function ConKayOverlay() {
 
   const onSubmitForm = (e: React.FormEvent) => { e.preventDefault(); submit(input); };
 
-  if (!open) return null;
+  // Closed: a persistent, discoverable summon button (the hotkey ⌘/Ctrl+J still
+  // works, and the command palette still has "Summon Kay" — this just makes the
+  // front door visible for people who don't know the shortcut). Suppressed on
+  // the chat lens, which hosts its own ConKay mode.
+  if (!open) {
+    if (onChatLens) return null;
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Summon ConKay (⌘/Ctrl+J)"
+        title="Summon Kay — ask in one sentence (⌘/Ctrl+J)"
+        className="group fixed bottom-5 right-5 z-[55] flex h-12 w-12 items-center justify-center rounded-full border border-cyan-400/40 bg-black/70 text-cyan-200 shadow-lg shadow-cyan-500/20 backdrop-blur transition hover:scale-105 hover:bg-cyan-500/20 hover:text-cyan-100"
+      >
+        <Sparkles className="h-5 w-5" />
+        <span className="pointer-events-none absolute right-14 whitespace-nowrap rounded-md bg-black/80 px-2 py-1 text-xs text-cyan-100 opacity-0 transition group-hover:opacity-100">
+          Ask Kay
+        </span>
+      </button>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col" role="dialog" aria-modal="true" aria-label="ConKay">
@@ -413,7 +439,9 @@ export function ConKayOverlay() {
           </button>
         </div>
         <p className="mx-auto mt-1.5 max-w-2xl text-center text-[10px] text-cyan-200/40">
-          ⌘/Ctrl+J to summon Kay on any lens · Esc to dismiss
+          {voice.usingServerStt && voice.voiceUnavailable
+            ? 'Voice transcription isn’t available in this browser — type to Kay instead.'
+            : '⌘/Ctrl+J to summon Kay on any lens · Esc to dismiss'}
         </p>
       </form>
     </div>

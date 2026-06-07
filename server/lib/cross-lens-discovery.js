@@ -15,6 +15,10 @@
 import logger from "../logger.js";
 
 const MAX_RESULTS = 100;
+// Recall width for the semantic re-rank: keyword/metadata prefilter pulls this
+// many candidates, then we re-order by embedding cosine similarity. Wider recall
+// = better semantic results, bounded so the cosine pass stays sub-10ms.
+const SEMANTIC_RECALL = 100;
 
 /**
  * Search across all DTUs for a query string. Supports filters:
@@ -115,6 +119,52 @@ export function searchDtus(db, query, opts = {}) {
   });
 
   return { ok: true, results, count: results.length, query: q };
+}
+
+/**
+ * Semantic archive search — the upgrade from keyword+recency to meaning.
+ *
+ * Hybrid retrieval (2026 RAG best practice): the keyword/metadata `searchDtus`
+ * is the RECALL prefilter (and the honest fallback), then DTUs are RE-RANKED by
+ * embedding cosine similarity against the query via the existing
+ * embeddings.js#semanticSearch (nomic-embed-text over Ollama; DTUs are embedded
+ * on create). When embeddings are unavailable (Ollama/embed model offline) the
+ * re-rank yields nothing and we return the keyword+recency results unchanged —
+ * so this NEVER regresses below today's behaviour and never blocks.
+ *
+ * The `semantic` flag in the result tells the caller (and the UI) honestly
+ * whether meaning-ranking actually happened — no fake "AI-powered" badge when
+ * it silently fell back to keyword.
+ *
+ * @returns {Promise<{ ok, results, count, query, semantic }>}
+ */
+export async function semanticSearchDtus(db, query, opts = {}) {
+  const limit = Math.min(MAX_RESULTS, Math.max(1, Number(opts.limit) || 30));
+  // Recall: broad keyword/metadata prefilter (also our fallback set).
+  const base = searchDtus(db, query, { ...opts, limit: Math.max(limit, SEMANTIC_RECALL) });
+  if (!base.ok) return { ...base, semantic: false };
+  if (base.results.length <= 1) {
+    return { ok: true, results: base.results.slice(0, limit), count: Math.min(base.results.length, limit), query: base.query, semantic: false };
+  }
+
+  try {
+    const { semanticSearch } = await import("../embeddings.js");
+    const candidates = base.results.map((r) => ({ id: r.id, title: r.title, _row: r }));
+    const ranked = await semanticSearch(String(query).trim(), candidates, { topK: limit });
+    if (Array.isArray(ranked) && ranked.length > 0) {
+      const results = ranked.map((c) => ({
+        ...c._row,
+        similarity: Math.round((c.rawSimilarity ?? 0) * 1000) / 1000,
+      }));
+      return { ok: true, results, count: results.length, query: base.query, semantic: true };
+    }
+  } catch (err) {
+    try { logger.warn?.("cross-lens-discovery", "semantic_rerank_failed", { error: err?.message }); }
+    catch { /* ignore */ }
+  }
+
+  // Embeddings offline / empty → honest keyword + recency fallback.
+  return { ok: true, results: base.results.slice(0, limit), count: Math.min(base.results.length, limit), query: base.query, semantic: false };
 }
 
 function safeParse(json) {

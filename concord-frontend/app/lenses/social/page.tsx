@@ -312,11 +312,11 @@ function FollowingTimeline({ currentUserId }: { currentUserId: string }) {
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-12 text-center">
         <Users className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
         <h3 className="text-sm font-medium text-zinc-300 mb-1">
-          {error ? 'Following timeline unavailable' : 'No activity yet'}
+          {error ? 'Couldn’t load your timeline' : 'No activity yet'}
         </h3>
         <p className="text-xs text-zinc-400 max-w-md mx-auto">
           {error
-            ? 'The /api/social/following-activity endpoint is not reachable.'
+            ? 'We couldn’t reach your following timeline just now. Check your connection and try again in a moment.'
             : 'Follow some creators — their DTUs, posts, and reactions will surface here in reverse-chronological order.'}
         </p>
       </div>

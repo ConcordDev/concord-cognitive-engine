@@ -377,18 +377,18 @@ All figures verified by direct `grep`/`ls` against the working tree. Reproductio
 
 |Metric                  |Value                       |
 |------------------------|----------------------------|
-|Total lines of code     |~1,364,000                  |
-|Source files            |~3,500                      |
-|Frontend lens pages     |235 directories             |
-|Backend domain files    |249                         |
-|DTU substrate (`dtus.js`)|145,600+ lines              |
-|Server core (`server.js`)|70,200+ lines               |
-|Emergent modules        |178 files (94K+ LOC)        |
-|Lib modules             |341 top-level / 561 recursive|
+|Authored source LOC     |~2.05M (2.91M incl. content) — `npm run count-loc`|
+|Source files            |~7,123                      |
+|Frontend lens pages     |259 directories             |
+|Backend domain files    |352                         |
+|DTU substrate (`dtus.js`)|145,612 lines (deprecated data seed pack — NOT code)|
+|Server core (`server.js`)|76,239 lines               |
+|Emergent modules        |214 files                   |
+|Lib modules             |565 top-level / 858 recursive|
 |Route files             |131                         |
-|HTTP route registrations|~2,400 (1,087 in server.js + 1,313 in routes/*.js)|
-|Macros                  |~800 (domain, macro) pairs across 160+ domains|
-|Migrations              |196 numbered (latest `196_dtu_surface_log.js`)|
+|HTTP route registrations|~3,353 (1,397 in server.js + 1,956 in routes/*.js)|
+|Macros                  |~9,623 (domain, macro) pairs across ~478 domains|
+|Migrations              |329 numbered (latest `330_agent_drift_watch.js`)|
 |Database tables         |459                         |
 |Heartbeats              |64 registered               |
 |Mobile client           |~42,000 lines               |

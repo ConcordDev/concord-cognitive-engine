@@ -8,6 +8,7 @@
 
 import { randomUUID } from "crypto";
 import { anonymizeAttribution } from "./consent.js";
+import { CREDIT_ROW_PREDICATE } from "../economy/balances.js";
 
 function uid(prefix = "al") {
   return `${prefix}_` + randomUUID().replace(/-/g, "").slice(0, 16);
@@ -57,7 +58,7 @@ export function requestAccountDeletion(db, userId, { ip, userAgent } = {}) {
   let balance = 0;
   try {
     const credits = db.prepare(
-      "SELECT COALESCE(SUM(CAST(ROUND(net * 100) AS INTEGER)), 0) as c FROM economy_ledger WHERE to_user_id = ? AND status = 'complete'"
+      `SELECT COALESCE(SUM(CAST(ROUND(net * 100) AS INTEGER)), 0) as c FROM economy_ledger WHERE to_user_id = ? AND status = 'complete' AND ${CREDIT_ROW_PREDICATE}`
     ).get(userId)?.c || 0;
     const debits = db.prepare(
       "SELECT COALESCE(SUM(CAST(ROUND(amount * 100) AS INTEGER)), 0) as c FROM economy_ledger WHERE from_user_id = ? AND status = 'complete'"

@@ -52,6 +52,7 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'faction:war-declared'      as SocketEvent, channel: 'faction', label: 'Faction war declared' },
   { name: 'faction:alliance-formed'   as SocketEvent, channel: 'faction', label: 'Faction alliance formed' },
   { name: 'faction:truce-sought'      as SocketEvent, channel: 'faction', label: 'Faction truce sought' },
+  { name: 'faction:strategy-move'     as SocketEvent, channel: 'faction', label: 'Faction strategic move' },
   { name: 'npc:scheme-resolved'       as SocketEvent, channel: 'npc',     label: 'NPC scheme resolved' },
   { name: 'dream:composed'            as SocketEvent, channel: 'self',    label: 'Dream composed' },
   { name: 'prediction:realised'       as SocketEvent, channel: 'self',    label: 'Prediction realised' },

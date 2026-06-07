@@ -8,6 +8,7 @@
 
 import { randomUUID } from "crypto";
 import { purchaseArtifact, getArtifact } from "./creative-marketplace.js";
+import { CREDIT_ROW_PREDICATE } from "./balances.js";
 import {
   CULTURE_GATING,
   CULTURE_RESTRICTIONS,
@@ -431,7 +432,7 @@ export function oneTapPurchase(db, { userId, artifactId, requestId, ip }) {
 
   // Check user balance
   const balanceRow = db.prepare(`
-    SELECT COALESCE(SUM(CASE WHEN to_user_id = ? THEN net ELSE 0 END) -
+    SELECT COALESCE(SUM(CASE WHEN to_user_id = ? AND ${CREDIT_ROW_PREDICATE} THEN net ELSE 0 END) -
            SUM(CASE WHEN from_user_id = ? THEN amount ELSE 0 END), 0) as balance
     FROM economy_ledger WHERE (to_user_id = ? OR from_user_id = ?) AND status = 'complete'
   `).get(userId, userId, userId, userId);

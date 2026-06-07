@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { EarthEventsLive } from '@/components/world/EarthEventsLive';
 import { useRouter } from 'next/navigation';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -1915,6 +1916,16 @@ export default function WorldLensPage() {
   // present the default 'explore' (3D) view stands.
   useEffect(() => {
     if (!webglAvailable()) setViewMode('concordia');
+    // A context can be created and then LOST at runtime (driver reset, GPU
+    // hiccup, headless software-GL choking on the shaders). webglcontextlost
+    // doesn't bubble, so listen in the capture phase across any canvas — and
+    // drop to the 2D hub instead of leaving the player on a frozen black scene.
+    const onContextLost = (e: Event) => {
+      try { e.preventDefault(); } catch { /* best-effort */ }
+      setViewMode('concordia');
+    };
+    window.addEventListener('webglcontextlost', onContextLost, true);
+    return () => window.removeEventListener('webglcontextlost', onContextLost, true);
   }, []);
 
   // 2026 parity polish — slide-overs surfacing existing simulation.
@@ -4242,6 +4253,12 @@ export default function WorldLensPage() {
               </span>
             )}
           </div>
+          {/* A runtime WebGL crash (lost context / shader failure on a flaky
+              driver or headless software-GL) used to propagate and FREEZE the
+              whole interaction layer — modals included. Catch it here and fall
+              through to the same 2D hub the no-WebGL path uses, so the player
+              (and any overlay) stays interactive. */}
+          <ErrorBoundary fallback={null} onError={() => setViewMode('concordia')}>
           <ConcordiaScene
             districtId={activeDistrict.id}
             quality={getStoredQualityPreset()}
@@ -4280,6 +4297,7 @@ export default function WorldLensPage() {
             width="100%"
             height="100%"
           />
+          </ErrorBoundary>
           {/* Theme picker — 3 swatches + PBR/Toon toggle top-right */}
           <div className="absolute top-4 right-4 z-20 flex items-center gap-1.5 bg-black/50 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto">
             {[

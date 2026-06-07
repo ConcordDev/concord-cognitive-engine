@@ -1755,6 +1755,12 @@ function validateEnvironment() {
     errors.push("JWT_SECRET should be at least 32 characters for security");
   }
 
+  // SESSION_SECRET (cookie sessions) gets the same strength floor as JWT_SECRET —
+  // a short session secret is just as forgeable. Only checked when present.
+  if (process.env.SESSION_SECRET && process.env.SESSION_SECRET.length < 32) {
+    errors.push("SESSION_SECRET should be at least 32 characters for security");
+  }
+
   if (process.env.ADMIN_PASSWORD && process.env.ADMIN_PASSWORD.length < 12) {
     errors.push("ADMIN_PASSWORD must be at least 12 characters");
   }
@@ -2565,6 +2571,9 @@ if (!process.env.JWT_SECRET && NODE_ENV === "production" && AUTH_USES_JWT) {
   console.error("[FATAL] Add it to your .env file or environment variables.\n");
   process.exit(1);
 }
+// NB: a present-but-too-short JWT_SECRET/SESSION_SECRET is rejected earlier by
+// validateEnvironment() (process.exit(1) in production) — see the length checks
+// near the top of this file. No second gate needed here.
 if (!process.env.JWT_SECRET) {
   structuredLog("warn", "auth_jwt_generated", { message: "No JWT_SECRET env var — generated random secret. Sessions will not persist across restarts." });
 }
@@ -25283,6 +25292,9 @@ registerDtuPortabilityMacros(register);
 // lenses with one query.
 import registerDiscoveryMacros from "./domains/discovery.js";
 registerDiscoveryMacros(register);
+// reason.verify — claim verification (citation-resolution floor + council judge).
+import registerReasonMacros from "./domains/reason.js";
+registerReasonMacros(register);
 
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";

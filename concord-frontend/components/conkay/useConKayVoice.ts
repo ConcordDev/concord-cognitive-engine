@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CONKAY_VOICE_HINTS } from './conkay-persona';
 import { speakWithPiperOrFallback, type PiperPlaybackHandle } from '@/lib/voice/piper-stream';
+import { createMediaRecorderSTT, mediaRecorderSupported, type MediaRecorderSTTHandle } from '@/lib/voice/mediarecorder-stt';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type SR = any;
@@ -36,6 +37,12 @@ export interface ConKayVoice {
   speaking: boolean;
   /** Live partial transcript while the user is mid-sentence ("hearing you…"). */
   interim: string;
+  /** True when this browser has no Web Speech STT and is using the server
+   *  (Whisper) fallback — or has no mic STT path at all (type instead). */
+  usingServerStt: boolean;
+  /** Set if the server STT route is unconfigured/unreachable — UI can hint
+   *  "voice transcription unavailable here, type instead." */
+  voiceUnavailable: boolean;
   speak: (text: string) => void;
   cancelSpeak: () => void;
 }
@@ -50,11 +57,14 @@ export function useConKayVoice(opts: {
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [interim, setInterim] = useState('');
+  const [voiceUnavailable, setVoiceUnavailable] = useState(false);
   const recogRef = useRef<SR | null>(null);
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
   const pipeHandleRef = useRef<PiperPlaybackHandle | null>(null);
+  const mrSttRef = useRef<MediaRecorderSTTHandle | null>(null);
   const speakingRef = useRef(false);
-  const wantListenRef = useRef(false);
+  const wantListenRef = useRef(false);     // Web Speech auto-restart intent
+  const wantFallbackRef = useRef(false);   // server-STT fallback intent
   const onFinalRef = useRef(onFinalTranscript);
   onFinalRef.current = onFinalTranscript;
   const onInterimRef = useRef(onInterim);
@@ -62,7 +72,12 @@ export function useConKayVoice(opts: {
 
   const SRClass = typeof window !== 'undefined' ? getSpeechRecognition() : null;
   const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
-  const supported = !!SRClass || ttsSupported;
+  // When the browser lacks Web Speech STT (Firefox et al.) but can record, we
+  // fall back to the server (Whisper) transcription route. supported is true if
+  // ANY voice path exists (so the mode still offers voice, not just typing).
+  const webSpeechSupported = !!SRClass;
+  const serverSttSupported = !webSpeechSupported && typeof window !== 'undefined' && mediaRecorderSupported();
+  const supported = webSpeechSupported || ttsSupported || serverSttSupported;
 
   // Resolve the TTS voice (voices load async on some browsers).
   useEffect(() => {
@@ -120,6 +135,27 @@ export function useConKayVoice(opts: {
     try { r?.stop?.(); } catch { /* noop */ }
   }, []);
 
+  // Server-STT (Whisper) fallback for browsers without Web Speech. Continuous +
+  // hands-free internally (segments utterances by trailing silence).
+  const startFallbackListening = useCallback(() => {
+    if (mrSttRef.current || speakingRef.current) return;
+    const h = createMediaRecorderSTT({
+      onTranscript: (t) => { setInterim(''); onFinalRef.current(t); },
+      onUnavailable: () => setVoiceUnavailable(true),
+    });
+    mrSttRef.current = h;
+    h.start().then((ok) => {
+      if (ok) setListening(true);
+      else { mrSttRef.current = null; setListening(false); setVoiceUnavailable(true); }
+    });
+  }, []);
+
+  const stopFallbackListening = useCallback(() => {
+    try { mrSttRef.current?.stop(); } catch { /* noop */ }
+    mrSttRef.current = null;
+    setListening(false);
+  }, []);
+
   const cancelSpeak = useCallback(() => {
     try { pipeHandleRef.current?.cancel(); } catch { /* noop */ }
     pipeHandleRef.current = null;
@@ -143,7 +179,8 @@ export function useConKayVoice(opts: {
     // Real audio out: Piper TTS (server-rendered audio via the existing
     // voice.tts pipeline) → consistent voice across browsers; automatically
     // falls back to the Web Speech API when Piper is unreachable/slow.
-    stopListening(); // don't hear ourselves
+    stopListening();         // don't hear ourselves (Web Speech)
+    stopFallbackListening(); // ...nor via the server-STT fallback
     try { pipeHandleRef.current?.cancel(); } catch { /* noop */ }
     speakWithPiperOrFallback(clean, { rate: 0.98, pitch: 1.0 }, {
       onStart: () => { speakingRef.current = true; setSpeaking(true); },
@@ -151,28 +188,30 @@ export function useConKayVoice(opts: {
         speakingRef.current = false; setSpeaking(false);
         pipeHandleRef.current = null;
         if (wantListenRef.current) setTimeout(() => startListening(), 250);
+        else if (wantFallbackRef.current) setTimeout(() => startFallbackListening(), 250);
       },
     }).then((h) => { pipeHandleRef.current = h; }).catch(() => {
       speakingRef.current = false; setSpeaking(false);
     });
-  }, [muted, stopListening, startListening]);
+  }, [muted, stopListening, startListening, stopFallbackListening, startFallbackListening]);
 
-  // Drive listening from enabled/muted.
+  // Drive listening from enabled/muted: Web Speech where available, else the
+  // server-STT fallback, else nothing (typing still works).
   useEffect(() => {
-    wantListenRef.current = enabled && !muted && !!SRClass;
-    if (enabled && !muted && SRClass) {
-      startListening();
-    } else {
-      stopListening();
-    }
+    const useWebSpeech = enabled && !muted && webSpeechSupported;
+    const useFallback = enabled && !muted && !webSpeechSupported && serverSttSupported;
+    wantListenRef.current = useWebSpeech;
+    wantFallbackRef.current = useFallback;
+    if (useWebSpeech) startListening(); else stopListening();
+    if (useFallback) startFallbackListening(); else stopFallbackListening();
     if (!enabled) cancelSpeak();
-    return () => { stopListening(); };
-  }, [enabled, muted, SRClass, startListening, stopListening, cancelSpeak]);
+    return () => { stopListening(); stopFallbackListening(); };
+  }, [enabled, muted, webSpeechSupported, serverSttSupported, startListening, stopListening, startFallbackListening, stopFallbackListening, cancelSpeak]);
 
-  // Cancel any speech on unmount.
-  useEffect(() => () => { cancelSpeak(); stopListening(); }, [cancelSpeak, stopListening]);
+  // Cancel any speech + release the mic on unmount.
+  useEffect(() => () => { cancelSpeak(); stopListening(); stopFallbackListening(); }, [cancelSpeak, stopListening, stopFallbackListening]);
 
-  return { supported, listening, speaking, interim, speak, cancelSpeak };
+  return { supported, listening, speaking, interim, usingServerStt: serverSttSupported, voiceUnavailable, speak, cancelSpeak };
 }
 
 export default useConKayVoice;

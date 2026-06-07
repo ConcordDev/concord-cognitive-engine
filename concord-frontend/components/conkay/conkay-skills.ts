@@ -41,6 +41,10 @@ export interface ConKaySkillContext {
   apiBase: string;
   /** GET a Concord endpoint as JSON, credentials included. Never throws. */
   fetchJson: (path: string) => Promise<unknown>;
+  /** Run a real Concord macro via /api/lens/run. Returns the macro envelope
+   *  ({ ok, result, ... }) or null. Lets a skill DELEGATE to a deterministic
+   *  backend engine (e.g. the math CAS) instead of reasoning. Never throws. */
+  runMacro?: (domain: string, name: string, input: Record<string, unknown>) => Promise<unknown>;
 }
 
 export interface ConKaySkill {
@@ -104,6 +108,28 @@ function resolveLens(name: string): { name: string; path: string } | null {
 }
 
 const DAY_MS = 86_400_000;
+
+/** Turn the math CAS result envelope into a clean spoken sentence. */
+function formatMathAnswer(res: Record<string, unknown>, q: string): string {
+  const kind = String(res.kind || '');
+  const answer = res.answer;
+  const s = (v: unknown) => (typeof v === 'object' ? JSON.stringify(v) : String(v));
+  switch (kind) {
+    case 'evaluate': return `${q} = ${s(answer)}`;
+    case 'definite-integral': {
+      const b = Array.isArray(res.bounds) ? res.bounds : [];
+      return `∫ ${s(res.expression)} from ${s(b[0])} to ${s(b[1])} = ${s(answer)}${res.closedForm ? '' : ' (numeric)'}`;
+    }
+    case 'antiderivative': return answer ? `∫ = ${s(answer)}` : `No closed-form antiderivative — try definite bounds for a numeric value.`;
+    case 'derivative': return `d/dx = ${s(answer)}`;
+    case 'solve': return answer != null ? `Solution: ${s(answer)}` : `No closed-form solution found.`;
+    case 'simplify': return `= ${s(answer)}`;
+    case 'factorize': return `${s(res.number)} = ${(Array.isArray(res.primeFactors) ? res.primeFactors : []).join(' × ')}`;
+    case 'isprime': return `${s(res.number)} is ${res.isPrime ? '' : 'not '}prime.`;
+    case 'convert': return `${s(res.from)} → ${s(res.to)}: ${s(answer)}`;
+    default: return answer != null ? s(answer) : 'Computed.';
+  }
+}
 
 // ── the skill registry ──────────────────────────────────────────────────────
 // Order matters: specific skills before the greedy `search` catch-all.
@@ -249,6 +275,52 @@ export const CONKAY_SKILLS: ConKaySkill[] = [
     },
   },
   {
+    // COMPUTE, DON'T GUESS. Math is deterministic — routing it to the real CAS
+    // (server/domains/math.js#naturalQuery: parser, symbolic diff/integrate,
+    // solve, factor, primality, unit convert) gives a CORRECT, grounded answer
+    // instead of an LLM that's confidently wrong on arithmetic. The result is
+    // backed by a real computation (toolCalls) → "Grounded" in the trust badge.
+    id: 'math',
+    label: 'Compute (deterministic math)',
+    hint: 'what is 2^10 · solve x^2-5x+6=0 · derivative of sin(x) · is 97 prime',
+    match: (u) => {
+      const t = u.trim().replace(/[?]+$/, '').trim();
+      // Verbs the CAS understands → pass the whole phrase through.
+      if (/^(?:integrate|integral of|antiderivative of|derivative of|differentiate|d\/dx|solve|simplify|expand|reduce|factor|factorize|convert)\b/i.test(t)) return { query: t };
+      if (/^is\s+-?\d+\s+prime\b/i.test(t)) return { query: t };
+      // Verbs the CAS does NOT strip → strip them, keep the expression. Require
+      // a digit + an operator/function so we don't hijack prose ("what is a DTU").
+      const m = t.match(/^(?:please\s+)?(?:calculate|compute|evaluate|work out|what(?:'s| is)|how much is)\s+(.+)$/i);
+      if (m) {
+        const expr = m[1].trim();
+        if (/\d/.test(expr) && (/[+\-*/^%!]/.test(expr) || /\b(sqrt|cbrt|sin|cos|tan|asin|acos|atan|sinh|cosh|tanh|log|ln|exp|pi|tau|phi)\b/i.test(expr))) return { query: expr };
+        return null;
+      }
+      // A bare arithmetic/function expression: "2+2*3", "sqrt(16)", "3!".
+      if (/\d/.test(t) && /[+\-*/^%!]/.test(t) && /^[\d\s().,+\-*/^%!a-z]+$/i.test(t)) return { query: t };
+      return null;
+    },
+    run: async (a, ctx) => {
+      const q = a.query;
+      if (!ctx.runMacro) {
+        return { spoken: `I can compute "${q}", but the macro bridge isn't available here.`, acting: false };
+      }
+      const env = await ctx.runMacro('math', 'naturalQuery', { query: q }) as
+        { ok?: boolean; result?: Record<string, unknown>; error?: string } | null;
+      const res = env && typeof env === 'object' ? (env.result ?? null) : null;
+      if (!env || env.ok === false || !res) {
+        // Be honest: we could NOT compute it deterministically. Don't fake a number.
+        return { spoken: `I couldn't compute "${q}" with the math engine${env?.error ? ` (${env.error})` : ''}. I won't guess at a number — rephrase it as an expression and I'll run it for real.`, acting: true };
+      }
+      return {
+        spoken: formatMathAnswer(res, q),
+        // Marks the reply Grounded (computed by the CAS, not the model).
+        toolCalls: [{ tool: 'math.naturalQuery', params: { query: q }, result: res, ok: true }],
+        acting: true,
+      };
+    },
+  },
+  {
     id: 'search',
     label: 'Search your archive',
     hint: 'search my archive for …',
@@ -260,13 +332,35 @@ export const CONKAY_SKILLS: ConKaySkill[] = [
     },
     run: async (a, ctx) => {
       const q = a.q;
-      const dtus = readDtus(await ctx.fetchJson(`/api/dtus?mine=true&q=${encodeURIComponent(q)}&limit=40`));
-      if (dtus.length === 0) {
+      let items: Array<{ id: string; title: string; tier: string | null }> = [];
+      let semantic = false;
+      let usedMacro = false;
+      // Prefer the semantic discovery macro (embedding re-rank when the brains
+      // are up; keyword+recency fallback server-side otherwise). The `semantic`
+      // flag reports honestly which ranking actually ran.
+      if (ctx.runMacro) {
+        const env = await ctx.runMacro('discovery', 'search', { query: q, mine: true, limit: 12 }) as
+          { ok?: boolean; results?: Array<Record<string, unknown>>; semantic?: boolean } | null;
+        if (env && env.ok !== false && Array.isArray(env.results)) {
+          usedMacro = true;
+          semantic = env.semantic === true;
+          items = env.results
+            .map((r) => ({ id: String(r.id ?? ''), title: String(r.title ?? 'Untitled'), tier: r.kind != null ? String(r.kind) : null }))
+            .filter((d) => d.id);
+        }
+      }
+      // Fallback to the keyword endpoint only if the macro bridge is unavailable.
+      if (!usedMacro) {
+        const dtus = readDtus(await ctx.fetchJson(`/api/dtus?mine=true&q=${encodeURIComponent(q)}&limit=40`));
+        items = dtus.map((d) => ({ id: d.id, title: d.title, tier: d.tier }));
+      }
+      if (items.length === 0) {
         return { spoken: `I searched your archive for "${q}" and came up empty. Nothing there yet.`, acting: true };
       }
+      const how = semantic ? ', ranked by meaning' : '';
       return {
-        spoken: `Found ${dtus.length} ${dtus.length === 1 ? 'entry' : 'entries'} for "${q}" in your archive.`,
-        dtuRefs: dtus.slice(0, 8).map((d) => ({ id: d.id, title: d.title, tier: d.tier })),
+        spoken: `Found ${items.length} ${items.length === 1 ? 'entry' : 'entries'} for "${q}" in your archive${how}.`,
+        dtuRefs: items.slice(0, 8),
         acting: true,
       };
     },

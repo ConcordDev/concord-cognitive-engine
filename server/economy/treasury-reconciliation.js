@@ -7,6 +7,7 @@ import { randomUUID } from "crypto";
 import { getTreasuryState, verifyTreasuryInvariant } from "./coin-service.js";
 import { economyAudit } from "./audit.js";
 import { PLATFORM_ACCOUNT_ID } from "./fees.js";
+import { CREDIT_ROW_PREDICATE } from "./balances.js";
 import logger from '../logger.js';
 
 function uid(prefix = "rec") {
@@ -187,7 +188,7 @@ function calculateLedgerTotals(db) {
   // Circulating coins (all non-platform, non-withdrawn balance)
   const totalCredits = db.prepare(`
     SELECT COALESCE(SUM(CAST(ROUND(net * 100) AS INTEGER)), 0) as total_cents
-    FROM economy_ledger WHERE to_user_id IS NOT NULL AND status = 'complete'
+    FROM economy_ledger WHERE to_user_id IS NOT NULL AND status = 'complete' AND ${CREDIT_ROW_PREDICATE}
   `).get()?.total_cents || 0;
 
   const totalDebits = db.prepare(`
