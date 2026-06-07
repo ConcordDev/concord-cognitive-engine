@@ -204,3 +204,314 @@ describe("legal — validation rejections", () => {
     assert.match(bad.result.error, /unknown rule/);
   });
 });
+
+describe("legal — deadline/compliance/conflict calc (wave 7 top-up)", () => {
+  // LLM/research macros skipped (note skips): contract-analyze, legal-question,
+  // ai-matter-update (all gated on ctx.llm.chat).
+
+  it("complianceScore: score = round(compliant/total*100); overdue counts a past non-compliant deadline", async () => {
+    const r = await lensRun("legal", "complianceScore", {
+      data: {
+        requirements: [
+          { name: "A", status: "compliant" },
+          { name: "B", status: "compliant" },
+          { name: "C", status: "pending" },
+          { name: "D", status: "pending", deadline: "2000-01-01" }, // past + not compliant → overdue
+        ],
+      },
+    });
+    assert.equal(r.result.total, 4);
+    assert.equal(r.result.compliant, 2);
+    assert.equal(r.result.score, 50);            // round(2/4*100)
+    assert.equal(r.result.overdue, 1);           // only the past non-compliant one
+    assert.equal(r.result.rating, "fair");       // 50..69
+  });
+
+  it("complianceScore: empty requirement set is a perfect score with no items", async () => {
+    const r = await lensRun("legal", "complianceScore", { data: { requirements: [] } });
+    assert.equal(r.result.score, 100);
+    assert.equal(r.result.total, 0);
+    assert.equal(r.result.overdue, 0);
+  });
+
+  it("contractRenewal (state jurisdiction = 'auto', far-past expiry): critical + actionRequired + autoRenewal", async () => {
+    const r = await lensRun("legal", "contractRenewal", {
+      data: { expiryDate: "2000-06-15", renewalType: "auto" },
+    });
+    assert.equal(r.result.expiryDate, "2000-06-15");
+    assert.equal(r.result.autoRenewal, true);
+    assert.equal(r.result.actionRequired, true);     // daysUntilExpiry (deeply negative) <= 60
+    assert.equal(r.result.urgency, "critical");      // <= 14
+    assert.ok(r.result.daysUntilExpiry < 0);         // expiry is in the past
+  });
+
+  it("contractRenewal: a contract with no expiry returns the no_expiry status", async () => {
+    const r = await lensRun("legal", "contractRenewal", { data: { title: "Perpetual NDA" } });
+    assert.equal(r.result.status, "no_expiry");
+    assert.match(r.result.message, /No expiry/);
+  });
+
+  it("caseSummary: billingTotal = Σ(hours*rate); keyDates collects filing/closing/hearing/trial", async () => {
+    const r = await lensRun("legal", "caseSummary", {
+      data: {
+        client: "Acme", opposingParty: "Beta LLC", status: "active",
+        parties: ["Acme", "Beta LLC"],
+        filingDate: "2026-01-10", trialDate: "2026-09-01", nextHearing: "2026-03-15",
+        documents: [{ name: "Complaint" }, { name: "Answer" }],
+        timeEntries: [
+          { hours: 2, rate: 250 },   // 500
+          { hours: 1, rate: 300 },   // 300
+        ],
+      },
+    });
+    assert.equal(r.result.billingTotal, 800);          // 500 + 300
+    assert.equal(r.result.relatedDocumentsCount, 2);
+    assert.equal(r.result.status, "active");
+    const events = r.result.keyDates.map((k) => k.event);
+    assert.ok(events.includes("Filing") && events.includes("Closing") === false);
+    assert.ok(events.includes("Next Hearing") && events.includes("Trial"));
+  });
+
+  it("conflictCheck: a name matching a party/client/opposing party surfaces a direct_party conflict", async () => {
+    const r = await lensRun("legal", "conflictCheck", {
+      data: { parties: ["Acme"], client: "Acme", opposingParty: "Beta LLC" },
+      params: { checkAgainst: ["Beta LLC", "Unrelated Inc"] },
+    });
+    assert.equal(r.result.hasConflict, true);
+    assert.ok(r.result.conflicts.some((c) => c.name === "Beta LLC" && c.conflictType === "direct_party"));
+    assert.ok(!r.result.conflicts.some((c) => c.name === "Unrelated Inc")); // no false positive
+  });
+
+  it("deadlineCheck: only items inside the daysAhead window appear, sorted by daysUntil ascending", async () => {
+    const day = 86_400_000;
+    const inWindow1 = new Date(Date.now() + 3 * day).toISOString().slice(0, 10);
+    const inWindow2 = new Date(Date.now() + 10 * day).toISOString().slice(0, 10);
+    const outOfWindow = new Date(Date.now() + 90 * day).toISOString().slice(0, 10);
+    const past = new Date(Date.now() - 5 * day).toISOString().slice(0, 10);
+    const r = await lensRun("legal", "deadlineCheck", {
+      data: { items: [
+        { task: "Far", deadline: outOfWindow },
+        { task: "Soon", deadline: inWindow2 },
+        { task: "Sooner", deadline: inWindow1 },
+        { task: "Past", deadline: past },
+      ] },
+      params: { daysAhead: 30 },
+    });
+    assert.equal(r.result.count, 2);                       // only the two in-window future items
+    assert.equal(r.result.upcoming[0].task, "Sooner");    // sorted ascending by daysUntil
+    assert.equal(r.result.upcoming[1].task, "Soon");
+    assert.ok(!r.result.upcoming.some((i) => i.task === "Far" || i.task === "Past"));
+  });
+
+  it("ai-court-doc-to-calendar: a 'within 21 days' clause yields a deterministic suggested deadline date", async () => {
+    const r = await lensRun("legal", "ai-court-doc-to-calendar", {
+      params: {
+        triggerDate: "2026-01-01",
+        text: "The defendant must file an answer within 21 days of service of this complaint upon them.",
+      },
+    });
+    assert.ok(r.result.count >= 1);
+    const hit = r.result.suggestions.find((sg) => sg.source === "within_clause" && sg.days === 21);
+    assert.ok(hit);
+    assert.equal(hit.suggestedDate, "2026-01-22");  // 2026-01-01 + 21 days
+    assert.equal(hit.kind, "deadline");
+  });
+
+  it("ai-court-doc-to-calendar rejects text that is too short", async () => {
+    const bad = await lensRun("legal", "ai-court-doc-to-calendar", { params: { text: "too short" } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /text too short/);
+  });
+});
+
+describe("legal — document assembly + e-sign + intake CRUD (wave 7 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("legal-topup"); });
+
+  it("doc-generate merges matter fields into a template; {{unknown}} tokens are left intact", async () => {
+    const m = await lensRun("legal", "matters-create", {
+      params: { name: `Demand Matter ${randomUUID().slice(0, 8)}`, clientName: "Acme Corp", caseNumber: "CV-2026-1" },
+    }, ctx);
+    const matterId = m.result.matter.id;
+    const tpl = await lensRun("legal", "doc-templates-create", {
+      params: { name: "Custom Notice", body: "Re {{matter_name}} (case {{case_number}}) for {{client_name}}. Ref: {{unknown_token}}", kind: "letter" },
+    }, ctx);
+    const templateId = tpl.result.template.id;
+
+    const gen = await lensRun("legal", "doc-generate", { params: { templateId, matterId } }, ctx);
+    assert.equal(gen.result.document.matterId, matterId);
+    assert.match(gen.result.document.number, /^DOC-\d{5}$/);
+    assert.ok(gen.result.document.body.includes("for Acme Corp"));
+    assert.ok(gen.result.document.body.includes("case CV-2026-1"));
+    assert.ok(gen.result.document.body.includes("{{unknown_token}}")); // unresolved token preserved
+    assert.equal(gen.result.document.status, "draft");
+  });
+
+  it("doc-generate against a missing template is rejected", async () => {
+    const m = await lensRun("legal", "matters-create", { params: { name: `M ${randomUUID().slice(0, 8)}` } }, ctx);
+    const bad = await lensRun("legal", "doc-generate", { params: { templateId: "nope", matterId: m.result.matter.id } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /template not found/);
+  });
+
+  it("esign envelope: create → sign → completed; doc status flips to 'signed' once all recipients sign", async () => {
+    const m = await lensRun("legal", "matters-create", { params: { name: `Esign ${randomUUID().slice(0, 8)}` } }, ctx);
+    const tpl = await lensRun("legal", "doc-templates-create", { params: { name: "Agreement", body: "Body {{matter_name}}" } }, ctx);
+    const gen = await lensRun("legal", "doc-generate", { params: { templateId: tpl.result.template.id, matterId: m.result.matter.id } }, ctx);
+    const documentId = gen.result.document.id;
+
+    const env = await lensRun("legal", "esign-envelope-create", {
+      params: { documentId, recipients: [{ name: "Signer One", email: "s1@example.com", role: "signer" }] },
+    }, ctx);
+    assert.match(env.result.envelope.number, /^ENV-\d{5}$/);
+    assert.equal(env.result.envelope.status, "sent");
+    const envelopeId = env.result.envelope.id;
+    const recipientId = env.result.envelope.recipients[0].id;
+
+    const signed = await lensRun("legal", "esign-envelope-sign", { params: { envelopeId, recipientId } }, ctx);
+    assert.equal(signed.result.envelope.status, "completed");          // only recipient signed → completed
+    assert.ok(signed.result.envelope.recipients.every((r) => r.status === "signed"));
+
+    const docs = await lensRun("legal", "documents-list", { params: { matterId: m.result.matter.id } }, ctx);
+    assert.ok(docs.result.documents.some((d) => d.id === documentId && d.status === "signed"));
+
+    // Double-sign the same recipient → rejected.
+    const dbl = await lensRun("legal", "esign-envelope-sign", { params: { envelopeId, recipientId } }, ctx);
+    assert.equal(dbl.result.ok, false);
+    assert.match(dbl.result.error, /already signed/);
+  });
+
+  it("esign-envelope-create without recipients is rejected", async () => {
+    const m = await lensRun("legal", "matters-create", { params: { name: `NoRcpt ${randomUUID().slice(0, 8)}` } }, ctx);
+    const tpl = await lensRun("legal", "doc-templates-create", { params: { name: "T", body: "x" } }, ctx);
+    const gen = await lensRun("legal", "doc-generate", { params: { templateId: tpl.result.template.id, matterId: m.result.matter.id } }, ctx);
+    const bad = await lensRun("legal", "esign-envelope-create", { params: { documentId: gen.result.document.id, recipients: [] } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /recipients required/);
+  });
+
+  it("intake-forms-create → intake-submit → intake-convert mints a client contact + intake matter", async () => {
+    const form = await lensRun("legal", "intake-forms-create", {
+      params: {
+        name: `PI Intake ${randomUUID().slice(0, 8)}`,
+        matterType: "litigation",
+        fields: [
+          { key: "name", label: "Full Name", type: "text", required: true },
+          { key: "email", label: "Email", type: "email", required: true },
+          { key: "description", label: "What happened", type: "textarea" },
+        ],
+      },
+    }, ctx);
+    assert.match(form.result.form.number, /^IF-\d{4}$/);
+    const formId = form.result.form.id;
+
+    // Missing a required field → rejected.
+    const missing = await lensRun("legal", "intake-submit", {
+      params: { formId, answers: { name: "Pat Q" } }, // email required, absent
+    }, ctx);
+    assert.equal(missing.result.ok, false);
+    assert.match(missing.result.error, /required fields missing/);
+
+    const sub = await lensRun("legal", "intake-submit", {
+      params: { formId, answers: { name: "Pat Q", email: "pat@example.com", description: "Slip and fall" } },
+    }, ctx);
+    assert.match(sub.result.submission.number, /^IS-\d{5}$/);
+    assert.equal(sub.result.submission.status, "new");
+    assert.equal(sub.result.submission.contactName, "Pat Q");
+    const subId = sub.result.submission.id;
+
+    const conv = await lensRun("legal", "intake-convert", { params: { id: subId } }, ctx);
+    assert.equal(conv.result.contact.kind, "client");
+    assert.equal(conv.result.contact.name, "Pat Q");
+    assert.equal(conv.result.matter.status, "intake");
+    assert.equal(conv.result.matter.matterType, "litigation");      // inherited from the form
+    assert.equal(conv.result.submission.status, "converted");
+
+    // Re-converting the same submission is rejected.
+    const again = await lensRun("legal", "intake-convert", { params: { id: subId } }, ctx);
+    assert.equal(again.result.ok, false);
+    assert.match(again.result.error, /already converted/);
+  });
+});
+
+describe("legal — billing/trust/reporting math (wave 7 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("legal-topup2"); });
+
+  it("payment-record (card) deducts the 2.9% processing fee from the net; invoice flips paid when covered", async () => {
+    const m = await lensRun("legal", "matters-create", { params: { name: `Card ${randomUUID().slice(0, 8)}`, hourlyRate: 100 } }, ctx);
+    const matterId = m.result.matter.id;
+    await lensRun("legal", "time-entries-create", { params: { matterId, hours: 10, description: "Work" } }, ctx); // $1000
+    const inv = await lensRun("legal", "invoices-from-time", { params: { matterId } }, ctx);
+    const invoiceId = inv.result.invoice.id;
+    assert.equal(inv.result.invoice.total, 1000);
+
+    const pay = await lensRun("legal", "payment-record", { params: { invoiceId, amount: 1000, method: "card" } }, ctx);
+    assert.equal(pay.result.payment.processingFee, 29);    // 1000 * 0.029
+    assert.equal(pay.result.payment.netAmount, 971);       // 1000 - 29
+    assert.equal(pay.result.payment.invoiceBalanceAfter, 0); // gross $1000 covers $1000 total
+    assert.equal(pay.result.invoice.status, "paid");
+  });
+
+  it("payment-record requires an invoiceId or matterId target", async () => {
+    const bad = await lensRun("legal", "payment-record", { params: { amount: 50, method: "ach" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /invoiceId or matterId required/);
+  });
+
+  it("trust-reconcile flags a 3-way out-of-balance when the bank statement differs from the book", async () => {
+    const m = await lensRun("legal", "matters-create", { params: { name: `Recon ${randomUUID().slice(0, 8)}`, clientName: "Recon Co" } }, ctx);
+    const matterId = m.result.matter.id;
+    const acct = await lensRun("legal", "trust-account-create", { params: { name: "IOLTA Recon" } }, ctx);
+    const accountId = acct.result.account.id;
+    await lensRun("legal", "trust-deposit", { params: { accountId, matterId, amount: 1000 } }, ctx);
+    await lensRun("legal", "trust-disburse", { params: { accountId, matterId, amount: 400 } }, ctx); // book = 600
+
+    // Bank says 500 → out of balance against the $600 book.
+    const out = await lensRun("legal", "trust-reconcile", { params: { accountId, bankBalance: 500 } }, ctx);
+    assert.equal(out.result.bookBalance, 600);
+    assert.equal(out.result.clientLedgerTotal, 600);    // single matter → book equals client ledger
+    assert.equal(out.result.bookVsClient, 0);
+    assert.equal(out.result.bookVsBank, 100);           // 600 - 500
+    assert.equal(out.result.reconciled, false);
+    assert.ok(out.result.warnings.some((w) => w.includes("bank")));
+
+    // Correct the bank balance → reconciled.
+    const ok = await lensRun("legal", "trust-reconcile", { params: { accountId, bankBalance: 600 } }, ctx);
+    assert.equal(ok.result.reconciled, true);
+    assert.equal(ok.result.warnings.length, 0);
+  });
+
+  it("budget-report budgetStatus alerts once worked value crosses the threshold of the set budget", async () => {
+    const m = await lensRun("legal", "matters-create", { params: { name: `Budget ${randomUUID().slice(0, 8)}`, hourlyRate: 100 } }, ctx);
+    const matterId = m.result.matter.id;
+    await lensRun("legal", "budget-set", { params: { matterId, budgetAmount: 1000, budgetHours: 10, alertThreshold: 0.8 } }, ctx);
+    await lensRun("legal", "time-entries-create", { params: { matterId, hours: 9, description: "Work" } }, ctx); // $900 worked
+
+    const rep = await lensRun("legal", "budget-report", { params: { matterId } }, ctx);
+    assert.equal(rep.result.workedValue, 900);
+    assert.equal(rep.result.budget.budgetAmount, 1000);
+    assert.equal(rep.result.budgetStatus.consumedFraction, 0.9);    // 900/1000
+    assert.equal(rep.result.budgetStatus.remaining, 100);           // 1000 - 900
+    assert.equal(rep.result.budgetStatus.overBudget, false);
+    assert.equal(rep.result.budgetStatus.alert, true);              // 0.9 >= 0.8 threshold
+    assert.equal(rep.result.budgetStatus.hoursConsumedFraction, 0.9); // 9/10
+  });
+
+  it("realization-rollup totals worked/billed/collected and computes firm realization & collection rates", async () => {
+    const rollCtx = await depthCtx(`legal-rollup-${randomUUID().slice(0, 8)}`);
+    const m = await lensRun("legal", "matters-create", { params: { name: "Rollup One", hourlyRate: 200 } }, rollCtx);
+    const matterId = m.result.matter.id;
+    await lensRun("legal", "time-entries-create", { params: { matterId, hours: 10, description: "Work" } }, rollCtx); // worked $2000
+    const inv = await lensRun("legal", "invoices-from-time", { params: { matterId } }, rollCtx);                       // billed $2000
+    await lensRun("legal", "payment-record", { params: { invoiceId: inv.result.invoice.id, amount: 1500, method: "ach" } }, rollCtx); // collected $1500
+
+    const roll = await lensRun("legal", "realization-rollup", {}, rollCtx);
+    assert.equal(roll.result.totals.worked, 2000);
+    assert.equal(roll.result.totals.billed, 2000);
+    assert.equal(roll.result.totals.collected, 1500);
+    assert.equal(roll.result.totals.firmRealizationRate, 1);     // billed/worked = 2000/2000
+    assert.equal(roll.result.totals.firmCollectionRate, 0.75);   // collected/billed = 1500/2000
+    assert.ok(roll.result.matters.some((r) => r.matterId === matterId && r.realizationRate === 1));
+  });
+});
