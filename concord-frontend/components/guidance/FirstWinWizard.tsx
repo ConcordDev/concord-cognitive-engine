@@ -113,18 +113,27 @@ function FirstWinWizard() {
   // expanded card covered too much of the lens. It opens on demand (or once the
   // player explicitly resumes); the pill keeps it discoverable without blocking.
   const [collapsed, setCollapsed] = useState(true);
+  // Whether the helper has been fully dismissed. Hydrated from localStorage on
+  // mount (SSR-safe) so a prior dismissal STICKS — the pill used to reappear on
+  // every load because this flag was written but never read back.
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    try { if (localStorage.getItem(DISMISSED_KEY)) setDismissed(true); } catch { /* private mode */ }
+  }, []);
 
   const handleDismiss = () => {
     setCollapsed(true);
+    setDismissed(true);
     if (typeof window !== 'undefined') {
-      localStorage.setItem(DISMISSED_KEY, 'true');
+      try { localStorage.setItem(DISMISSED_KEY, 'true'); } catch { /* private mode */ }
     }
   };
 
   const handleResume = () => {
     setCollapsed(false);
+    setDismissed(false);
     if (typeof window !== 'undefined') {
-      localStorage.removeItem(DISMISSED_KEY);
+      try { localStorage.removeItem(DISMISSED_KEY); } catch { /* private mode */ }
     }
   };
 
@@ -212,7 +221,7 @@ function FirstWinWizard() {
     return () => clearTimeout(t);
   }, [currentStepId, collapsed]);
 
-  if (!resolved || resolved.allDone) return null;
+  if (!resolved || resolved.allDone || dismissed) return null;
 
   // Collapsed → a small Resume pill (re-openable), not a permanent hide.
   if (collapsed) {

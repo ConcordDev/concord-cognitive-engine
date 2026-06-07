@@ -259,13 +259,19 @@ api.interceptors.response.use(
 
       // Filter out expected errors that are not system failures:
       // - 404 on resource lookups (DTU, entity, inspect) = expected for missing resources
-      // - 401 on /api/auth/me = expected when not logged in
-      // - Failed WebSocket connections = expected during reconnection
+      // - 401/403 on a READ (GET) = an expected app STATE, not a failure: the
+      //   user isn't logged in yet / not onboarded / not eligible. These are
+      //   handled by the login + onboarding surfaces, and many are background
+      //   polls (guidance/first-win @15s, presence, notifications) that would
+      //   otherwise spam the "Issues" counter on every tick while a visitor
+      //   walks around. Mutations (POST/PUT/PATCH/DELETE) and all 5xx are STILL
+      //   surfaced — a write that's denied, or a real server error, is genuine.
       const requestPath = error.config?.url || '';
       const requestStatus = error.response?.status;
+      const requestMethod = (error.config?.method || 'get').toUpperCase();
       const isExpected404 = requestStatus === 404 && /\/(dtus|entity|inspect|dtu_view)\//.test(requestPath);
-      const isExpectedAuth = requestStatus === 401 && /\/api\/auth\/me/.test(requestPath);
-      const isExpectedError = isExpected404 || isExpectedAuth;
+      const isExpectedAuthRead = (requestStatus === 401 || requestStatus === 403) && requestMethod === 'GET';
+      const isExpectedError = isExpected404 || isExpectedAuthRead;
 
       // Only record unexpected errors in the store
       if (!isExpectedError) {

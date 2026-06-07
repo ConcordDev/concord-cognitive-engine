@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { FIRST_RUN_ADVANCE, cookieAnswered, onboardingDoneLocally } from '@/lib/first-run';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain,
@@ -303,35 +304,52 @@ export function useOnboarding() {
   const [hasCompleted, setHasCompleted] = useState(false);
 
   // Phase 17 polish-to-ten: server-confirmed wizard completion.
-  // localStorage is checked first for snappy hydration, then the server
-  // is consulted; if the server says completed but localStorage says not,
-  // we sync localStorage and skip the wizard. This handles login on a
-  // new device or after a cache wipe.
+  // We do NOT optimistically open the modal — that caused it to FLASH on every
+  // load for already-completed users (it popped open, then the async server
+  // check closed it) and to pile on top of the cookie notice for new users.
+  // Instead: a present local flag means done; otherwise we confirm with the
+  // server, and only open for a genuinely-new user AND only once the cookie
+  // notice has been answered (it sequences ahead of us). When the user answers
+  // the cookie notice, CookieConsent fires `concord:first-run-advance` and we
+  // re-evaluate.
   useEffect(() => {
     let cancelled = false;
-    const localFlag = localStorage.getItem('concord-onboarding-completed');
-    if (localFlag) {
+
+    if (onboardingDoneLocally()) {
       setHasCompleted(true);
-    } else {
-      // Optimistically open while we wait on the server.
-      setIsOpen(true);
+      return;
     }
 
+    const openIfNewAndCookieAnswered = () => {
+      if (cancelled) return;
+      if (!onboardingDoneLocally() && cookieAnswered()) setIsOpen(true);
+    };
+
     (async () => {
+      let serverCompleted = false;
       try {
         const res = await fetch('/api/onboarding/wizard-status', { credentials: 'same-origin' });
-        if (!res.ok) return;
-        const json = await res.json();
-        if (cancelled) return;
-        if (json?.completed) {
-          localStorage.setItem('concord-onboarding-completed', 'true');
-          setHasCompleted(true);
-          setIsOpen(false);
+        if (res.ok) {
+          const json = await res.json();
+          serverCompleted = Boolean(json?.completed);
         }
-      } catch { /* offline / unauthenticated — fall back to local flag */ }
+      } catch { /* offline / unauthenticated — treat as not-completed (new user) */ }
+      if (cancelled) return;
+      if (serverCompleted) {
+        try { localStorage.setItem('concord-onboarding-completed', 'true'); } catch { /* private mode */ }
+        setHasCompleted(true);
+        setIsOpen(false);
+        return;
+      }
+      // Genuinely new (or offline-new): open once the cookie notice is answered.
+      openIfNewAndCookieAnswered();
     })();
 
-    return () => { cancelled = true; };
+    window.addEventListener(FIRST_RUN_ADVANCE, openIfNewAndCookieAnswered);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(FIRST_RUN_ADVANCE, openIfNewAndCookieAnswered);
+    };
   }, []);
 
   const complete = () => {
