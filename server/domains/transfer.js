@@ -491,12 +491,19 @@ export default function registerTransferActions(registerLensAction) {
     const totalBatches = batches.length;
     const totalCheckpoints = plan.filter(s => s.type === "checkpoint").length;
 
-    // Dependency depth analysis
-    function depthOf(id, cache = {}) {
+    // Dependency depth analysis. `inProgress` guards against circular
+    // dependencies: a node currently on the recursion stack contributes depth 0
+    // for the back-edge, so a true cycle (a→b→a) resolves to a bounded depth
+    // instead of recursing until the call stack overflows (the plan promises to
+    // "still produce a plan" for cycles — without this guard it threw instead).
+    function depthOf(id, cache = {}, inProgress = new Set()) {
       if (cache[id] !== undefined) return cache[id];
+      if (inProgress.has(id)) return 0; // cycle back-edge — don't recurse
       const deps = entityMap[id]?.dependencies?.filter(d => entityMap[d]) || [];
       if (deps.length === 0) { cache[id] = 0; return 0; }
-      const maxDepth = Math.max(...deps.map(d => depthOf(d, cache)));
+      inProgress.add(id);
+      const maxDepth = Math.max(...deps.map(d => depthOf(d, cache, inProgress)));
+      inProgress.delete(id);
       cache[id] = maxDepth + 1;
       return cache[id];
     }
