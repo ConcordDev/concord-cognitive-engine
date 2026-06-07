@@ -1988,7 +1988,7 @@ export const LENS_REGISTRY: LensEntry[] = [
     icon: Globe,
     description:
       'Simulation sandbox — design, validate, and publish physics-bound creations in shared districts',
-    category: 'superlens',
+    category: 'core',
     showInSidebar: true,
     showInCommandPalette: true,
     path: '/lenses/world',

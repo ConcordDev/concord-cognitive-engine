@@ -51,17 +51,18 @@ describe('LENS_REGISTRY', () => {
 });
 
 describe('CORE_LENSES', () => {
-  it('has exactly 5 core lenses', () => {
-    expect(CORE_LENSES).toHaveLength(5);
+  it('has exactly 6 core lenses', () => {
+    expect(CORE_LENSES).toHaveLength(6);
   });
 
-  it('includes chat, board, graph, code, studio', () => {
+  it('includes chat, board, graph, code, studio, world', () => {
     const ids = CORE_LENSES.map(l => l.id);
     expect(ids).toContain('chat');
     expect(ids).toContain('board');
     expect(ids).toContain('graph');
     expect(ids).toContain('code');
     expect(ids).toContain('studio');
+    expect(ids).toContain('world');
   });
 
   it('each core lens has absorbedLensIds array', () => {
