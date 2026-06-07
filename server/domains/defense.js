@@ -46,7 +46,7 @@ export default function registerDefenseActions(registerLensAction) {
       const required = m.resourcesNeeded || 1;
       const priority = m.priority || "medium";
       return { mission: m.name, priority, resourcesNeeded: required, resourcesAssigned: 0, status: "unallocated" };
-    }).sort((a, b) => { const p = { critical: 0, high: 1, medium: 2, low: 3 }; return (p[a.priority] || 2) - (p[b.priority] || 2); });
+    }).sort((a, b) => { const p = { critical: 0, high: 1, medium: 2, low: 3 }; return (p[a.priority] ?? 2) - (p[b.priority] ?? 2); });
     let available = resources.length;
     for (const m of allocated) { const assign = Math.min(m.resourcesNeeded, available); m.resourcesAssigned = assign; m.status = assign >= m.resourcesNeeded ? "fully-allocated" : assign > 0 ? "partially-allocated" : "unallocated"; available -= assign; }
     return { ok: true, result: { totalResources: resources.length, totalMissions: missions.length, availableAfter: available, allocations: allocated, fullyStaffed: allocated.filter(a => a.status === "fully-allocated").length, understaffed: allocated.filter(a => a.status !== "fully-allocated").length } };
