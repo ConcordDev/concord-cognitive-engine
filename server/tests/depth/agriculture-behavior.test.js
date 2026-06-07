@@ -233,3 +233,300 @@ describe("agriculture — state CRUD round-trips + validation (shared ctx)", () 
     assert.equal(cmp.result.ranked[0].vsTrialAvgPct, 5.26); // (200-190)/190 × 100
   });
 });
+
+describe("agriculture — rotation + telemetry + maps (wave 12 top-up · exact calc)", () => {
+  it("rotationPlan: filters last-3 repeats + avoid set, suggests nitrogen fixer after corn", async () => {
+    // last crop corn (heavy feeder). rule: recommended [soybean, wheat], avoid [corn].
+    // history last 3 = [corn, wheat] → avoidSet = {corn, wheat}. recommended − avoid = [soybean].
+    const r = await lensRun("agriculture", "rotationPlan", {
+      data: {
+        fields: [{
+          fieldId: "f1", name: "North", acreage: 80, soilType: "loam",
+          history: [
+            { year: 2025, season: "summer", crop: "corn" },
+            { year: 2024, season: "summer", crop: "wheat" },
+          ],
+        }],
+        rotationRules: [
+          { previousCrop: "corn", recommendedNext: ["soybean", "wheat"], avoid: ["corn"] },
+        ],
+      },
+    });
+    const f = r.result.fields[0];
+    assert.equal(f.lastCrop, "corn");
+    assert.deepEqual(f.suggestedNext, ["soybean"]);   // wheat dropped (in last-3), corn avoided
+    assert.ok(f.avoid.includes("corn") && f.avoid.includes("wheat"));
+    assert.match(f.soilNote, /nitrogen-fixing: soybean/);
+  });
+
+  it("telemetry-import: last valid row applied; areaWorked summed exact; idle→working flip", async () => {
+    const ctx = await depthCtx(`agri-tel-${randomUUID()}`);
+    const eq = await lensRun("agriculture", "equipment-add",
+      { params: { name: `Combine-${randomUUID()}`, kind: "combine", hoursEngine: 1000 } }, ctx);
+    const id = eq.result.equipment.id;
+    assert.equal(eq.result.equipment.status, "idle");
+
+    const imp = await lensRun("agriculture", "telemetry-import", {
+      params: {
+        equipmentId: id, protocol: "isobus",
+        rows: [
+          { lat: 41.1, lng: -93.1, speed: 4.5, hours: 1010, fuel: 80, areaWorked: 12.5 },
+          { lat: 41.2, lng: -93.2, speed: 5.0, engineHours: 1012, areaWorked: 7.25 },
+        ],
+      },
+    }, ctx);
+    assert.equal(imp.result.sync.rowsReceived, 2);
+    assert.equal(imp.result.sync.rowsApplied, 2);
+    assert.equal(imp.result.sync.areaWorkedAcres, 19.75);  // 12.5 + 7.25
+    const e = imp.result.equipment;
+    assert.equal(e.lat, 41.2);            // last valid row wins
+    assert.equal(e.hoursEngine, 1012);    // max(1000, 1010, 1012)
+    assert.equal(e.speedMph, 5.0);
+    assert.equal(e.status, "working");    // speed > 0.5 + was idle
+
+    const bad = await lensRun("agriculture", "telemetry-import",
+      { params: { equipmentId: id, rows: [] } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /rows required/);
+  });
+
+  it("telemetry-import: unknown equipment is rejected", async () => {
+    const ctx = await depthCtx(`agri-tel2-${randomUUID()}`);
+    const r = await lensRun("agriculture", "telemetry-import",
+      { params: { equipmentId: "nope", rows: [{ lat: 1, lng: 2 }] } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /equipment not found/);
+  });
+
+  it("yield-map-build: field avg/min/max + per-cell tier are computed from points", async () => {
+    const ctx = await depthCtx(`agri-ym-${randomUUID()}`);
+    // 3 points spread so each lands in its own corner cell. yields 100/200/300.
+    // fieldAvg = 200, min 100, max 300. tiers: 300 ≥ 220 high; 100 ≤ 180 low.
+    const r = await lensRun("agriculture", "yield-map-build", {
+      params: {
+        fieldId: "fY", gridCells: 4,
+        points: [
+          { lat: 41.0, lng: -93.0, yieldPerAcre: 100 },
+          { lat: 41.5, lng: -93.5, yieldPerAcre: 200 },
+          { lat: 42.0, lng: -93.0, yieldPerAcre: 300 },
+        ],
+      },
+    }, ctx);
+    const m = r.result.map;
+    assert.equal(m.pointCount, 3);
+    assert.equal(m.fieldAvgYield, 200);
+    assert.equal(m.fieldMinYield, 100);
+    assert.equal(m.fieldMaxYield, 300);
+    assert.ok(m.cells.some((c) => c.avgYieldPerAcre === 300 && c.tier === "high"));
+    assert.ok(m.cells.some((c) => c.avgYieldPerAcre === 100 && c.tier === "low"));
+
+    const empty = await lensRun("agriculture", "yield-map-build",
+      { params: { fieldId: "fY", points: [] } }, ctx);
+    assert.equal(empty.result.ok, false);
+    assert.match(empty.result.error, /no geo-tagged harvest-monitor points/);
+  });
+
+  it("prescriptions-create: avgRate = mean of zoneRates, exact", async () => {
+    const ctx = await depthCtx(`agri-rx-${randomUUID()}`);
+    const r = await lensRun("agriculture", "prescriptions-create", {
+      params: {
+        fieldId: "fRx", product: "UAN-32", kind: "nitrogen",
+        zoneRates: [{ rate: 120 }, { rate: 150 }, { rate: 180 }],
+      },
+    }, ctx);
+    assert.equal(r.result.prescription.avgRate, 150);  // (120+150+180)/3
+    assert.equal(r.result.prescription.status, "draft");
+    assert.equal(r.result.prescription.unit, "lbs/acre");
+
+    const approve = await lensRun("agriculture", "prescriptions-approve",
+      { params: { id: r.result.prescription.id } }, ctx);
+    assert.equal(approve.result.prescription.status, "approved");
+
+    const bad = await lensRun("agriculture", "prescriptions-create",
+      { params: { fieldId: "fRx" } }, ctx);  // missing product
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /fieldId and product required/);
+  });
+
+  it("tank-mix-create: totalCostPerAcre summed; >4 components flagged incompatible", async () => {
+    const ctx = await depthCtx(`agri-mix-${randomUUID()}`);
+    const ok = await lensRun("agriculture", "tank-mix-create", {
+      params: {
+        name: `Mix-${randomUUID()}`,
+        components: [{ costPerAcre: 5.5 }, { costPerAcre: 3.25 }],
+        carrierGalPerAcre: 12,
+      },
+    }, ctx);
+    assert.equal(ok.result.mix.totalCostPerAcre, 8.75);  // 5.5 + 3.25
+    assert.equal(ok.result.mix.compatible, true);        // 2 ≤ 4
+
+    const five = await lensRun("agriculture", "tank-mix-create", {
+      params: {
+        name: `Mix5-${randomUUID()}`,
+        components: [{ costPerAcre: 1 }, { costPerAcre: 1 }, { costPerAcre: 1 }, { costPerAcre: 1 }, { costPerAcre: 1 }],
+      },
+    }, ctx);
+    assert.equal(five.result.mix.compatible, false);     // 5 > 4
+
+    const bad = await lensRun("agriculture", "tank-mix-create",
+      { params: { name: "Empty", components: [] } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /at least one component required/);
+  });
+
+  it("soil-grid-generate: sampleCount = dim² from acres ÷ acresPerSample", async () => {
+    const ctx = await depthCtx(`agri-grid-${randomUUID()}`);
+    // 40 acres / 2.5 = 16 target → dim = round(sqrt(16)) = 4 → 16 points.
+    const r = await lensRun("agriculture", "soil-grid-generate", {
+      params: {
+        fieldId: "fG", acreage: 40, acresPerSample: 2.5,
+        bounds: { minLat: 41.0, maxLat: 41.1, minLng: -93.1, maxLng: -93.0 },
+      },
+    }, ctx);
+    assert.equal(r.result.grid.dim, 4);
+    assert.equal(r.result.grid.sampleCount, 16);         // 4 × 4
+    assert.equal(r.result.grid.points.length, 16);
+    assert.ok(r.result.grid.points.some((p) => p.pointId === "S1"));
+    assert.equal(r.result.grid.points[0].lab, null);
+  });
+
+  it("soil-grid-import-results: matched points apply; averages exact; unmatched counted", async () => {
+    const ctx = await depthCtx(`agri-lab-${randomUUID()}`);
+    const gen = await lensRun("agriculture", "soil-grid-generate", {
+      params: {
+        fieldId: "fL", acreage: 10, acresPerSample: 2.5,
+        bounds: { minLat: 41.0, maxLat: 41.1, minLng: -93.1, maxLng: -93.0 },
+      },
+    }, ctx);
+    // 10/2.5 = 4 → dim 2 → 4 points S1..S4.
+    const gridId = gen.result.grid.id;
+    const imp = await lensRun("agriculture", "soil-grid-import-results", {
+      params: {
+        gridId,
+        results: [
+          { pointId: "S1", ph: 6.0, n_ppm: 20 },
+          { pointId: "S2", ph: 6.4, n_ppm: 30 },
+          { pointId: "S99", ph: 7.0 },   // no such point → unmatched
+        ],
+      },
+    }, ctx);
+    assert.equal(imp.result.applied, 2);
+    assert.equal(imp.result.unmatched, 1);
+    assert.equal(imp.result.grid.averages.ph, 6.2);      // (6.0 + 6.4)/2
+    assert.equal(imp.result.grid.averages.n_ppm, 25);    // (20 + 30)/2
+    assert.equal(imp.result.grid.pointsWithResults, 2);
+
+    const bad = await lensRun("agriculture", "soil-grid-import-results",
+      { params: { gridId: "missing", results: [{ pointId: "S1" }] } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /grid not found/);
+  });
+
+  it("dashboard-summary: aggregates fields/acres/yield/grain across stores", async () => {
+    const ctx = await depthCtx(`agri-dash-${randomUUID()}`);
+    await lensRun("agriculture", "field-create",
+      { params: { name: `D1-${randomUUID()}`, acreage: 100, lat: 41, lng: -93 } }, ctx);
+    await lensRun("agriculture", "field-create",
+      { params: { name: `D2-${randomUUID()}`, acreage: 50, lat: 41, lng: -93 } }, ctx);
+    await lensRun("agriculture", "harvest-log",
+      { params: { fieldId: "fD", crop: "corn", acresHarvested: 100, yieldBushels: 18000 } }, ctx);
+    const bin = await lensRun("agriculture", "grain-bins-create",
+      { params: { name: `DB-${randomUUID()}`, capacityBushels: 10000, crop: "corn" } }, ctx);
+    await lensRun("agriculture", "grain-bins-load",
+      { params: { id: bin.result.bin.id, bushels: 6000 } }, ctx);
+
+    const r = await lensRun("agriculture", "dashboard-summary", {}, ctx);
+    assert.equal(r.result.totalFields, 2);
+    assert.equal(r.result.totalAcres, 150);              // 100 + 50
+    assert.equal(r.result.seasonYieldBushels, 18000);
+    assert.equal(r.result.avgYieldPerAcre, 120);         // 18000 / 150
+    assert.equal(r.result.grainStored, 6000);
+    assert.equal(r.result.grainCapacity, 10000);
+    assert.equal(r.result.grainUtilizationPct, 60);      // 6000/10000 × 100
+  });
+
+  it("scout-add → scout-list → scout-delete: round-trips; bad category coerced; missing note rejected", async () => {
+    const ctx = await depthCtx(`agri-scout-${randomUUID()}`);
+    const fieldId = `fS-${randomUUID()}`;
+    const add = await lensRun("agriculture", "scout-add", {
+      params: { fieldId, note: "aphids on edge rows", category: "pest", severity: "high", lat: 41.5, lng: -93.6 },
+    }, ctx);
+    assert.equal(add.result.pin.category, "pest");
+    assert.equal(add.result.pin.severity, "high");
+    const pinId = add.result.pin.id;
+
+    const list = await lensRun("agriculture", "scout-list", { params: { fieldId } }, ctx);
+    assert.ok(list.result.pins.some((p) => p.id === pinId && p.note === "aphids on edge rows"));
+
+    const del = await lensRun("agriculture", "scout-delete", { params: { id: pinId } }, ctx);
+    assert.equal(del.result.deleted, pinId);
+    const after = await lensRun("agriculture", "scout-list", { params: { fieldId } }, ctx);
+    assert.ok(!after.result.pins.some((p) => p.id === pinId));
+
+    const bad = await lensRun("agriculture", "scout-add",
+      { params: { fieldId, note: "" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /note required/);
+  });
+
+  it("zones-create: areaAcres clamped to >= 0; bad input rejected", async () => {
+    const ctx = await depthCtx(`agri-zone-${randomUUID()}`);
+    const z = await lensRun("agriculture", "zones-create", {
+      params: { fieldId: "fZ", name: "High NW", productivityClass: "high", areaAcres: 23.5, organicMatterPct: 4.2 },
+    }, ctx);
+    assert.equal(z.result.zone.areaAcres, 23.5);
+    assert.equal(z.result.zone.productivityClass, "high");
+
+    const neg = await lensRun("agriculture", "zones-create",
+      { params: { fieldId: "fZ", name: "Neg", areaAcres: -10 } }, ctx);
+    assert.equal(neg.result.zone.areaAcres, 0);          // Math.max(0, …)
+
+    const bad = await lensRun("agriculture", "zones-create",
+      { params: { fieldId: "fZ" } }, ctx);  // missing name
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /fieldId and name required/);
+  });
+
+  it("work-orders: create (scheduled) → complete (completed) round-trip; missing op rejected", async () => {
+    const ctx = await depthCtx(`agri-wo-${randomUUID()}`);
+    const wo = await lensRun("agriculture", "work-orders-create",
+      { params: { fieldId: "fW", operation: "spray glyphosate", kind: "spraying" } }, ctx);
+    assert.equal(wo.result.order.status, "scheduled");
+    const id = wo.result.order.id;
+
+    const done = await lensRun("agriculture", "work-orders-complete",
+      { params: { id, notes: "applied 15 gpa" } }, ctx);
+    assert.equal(done.result.order.status, "completed");
+    assert.equal(done.result.order.completionNotes, "applied 15 gpa");
+
+    const list = await lensRun("agriculture", "work-orders-list", { params: { status: "completed" } }, ctx);
+    assert.ok(list.result.orders.some((o) => o.id === id));
+
+    const bad = await lensRun("agriculture", "work-orders-create",
+      { params: { fieldId: "fW" } }, ctx);  // missing operation
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /fieldId and operation required/);
+  });
+
+  it("field-update → field-delete: edits persist; delete removes; missing id rejected", async () => {
+    const ctx = await depthCtx(`agri-fu-${randomUUID()}`);
+    const add = await lensRun("agriculture", "field-create",
+      { params: { name: `FU-${randomUUID()}`, acreage: 60, lat: 41, lng: -93, soilType: "loam" } }, ctx);
+    const id = add.result.field.id;
+
+    const upd = await lensRun("agriculture", "field-update",
+      { params: { id, acreage: 75, soilType: "clay", currentCrop: "soybeans" } }, ctx);
+    assert.equal(upd.result.field.acreage, 75);
+    assert.equal(upd.result.field.soilType, "clay");
+    assert.equal(upd.result.field.currentCrop, "soybeans");
+
+    const del = await lensRun("agriculture", "field-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, id);
+    const list = await lensRun("agriculture", "field-list", {}, ctx);
+    assert.ok(!list.result.fields.some((f) => f.id === id));
+
+    const bad = await lensRun("agriculture", "field-update", { params: {} }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /id required/);
+  });
+});

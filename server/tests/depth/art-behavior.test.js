@@ -233,3 +233,311 @@ describe("art — validation rejections", () => {
     assert.match(bad.result.error, /imageUrl must be an http\(s\) URL/);
   });
 });
+
+// ── Wave 10 top-up ──────────────────────────────────────────────────────
+// 15 NEW behavioral tests for deterministic art macros NOT covered above:
+// more color/geometry math (color-mix interpolation, palette-harmony
+// tetradic, pattern-kinds catalog) + geometric layer transforms with EXACT
+// resulting coordinates (layer-flip, layer-rotate90, layer-rotate free-angle,
+// layer-adjust-color, stroke-batch, element-delete, layer-reorder) +
+// selection math (lasso point-in-polygon, magic-wand ΔE) + symmetry mirror
+// + CRUD round-trips (brush presets, art prompts, dynamics, timelapse, gradient).
+// SKIPPED still: vision (LLaVA), met-search/met-object/aic-search (museum APIs).
+describe("art — color & geometry math (wave 10 top-up)", () => {
+  it("color-mix: ratio 0.25 between red and blue lands at #bf0040 (exact channel interp)", async () => {
+    const r = await lensRun("art", "color-mix", { params: { colorA: "#ff0000", colorB: "#0000ff", ratio: 0.25 } });
+    assert.equal(r.ok, true);
+    // r: 255 + (0-255)*0.25 = 191.25 → 191 = bf ; b: 0 + 255*0.25 = 63.75 → 64 = 40
+    assert.equal(r.result.mixed, "#bf0040");
+    assert.equal(r.result.ratio, 0.25);
+  });
+
+  it("palette-harmony: tetradic of pure red yields the 4 90°-stepped hues", async () => {
+    const r = await lensRun("art", "palette-harmony", { params: { baseColor: "#ff0000", scheme: "tetradic" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.scheme, "tetradic");
+    assert.deepEqual(r.result.colors, ["#ff0000", "#80ff00", "#00ffff", "#8000ff"]);
+  });
+
+  it("palette-harmony: monochromatic of red produces 5 same-hue lightness steps (all reds)", async () => {
+    const r = await lensRun("art", "palette-harmony", { params: { baseColor: "#ff0000", scheme: "monochromatic" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.colors.length, 5);
+    // every step is a pure-hue red (g === b, r dominant); lightness ascends so darkest < lightest
+    assert.ok(r.result.colors.every((c) => c.slice(3, 5) === c.slice(5, 7)));
+    assert.notEqual(r.result.colors[0], r.result.colors[4]);
+  });
+
+  it("pattern-kinds: returns the four canonical catalog arrays", async () => {
+    const r = await lensRun("art", "pattern-kinds", {});
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.patternKinds, ["dots", "grid", "diagonal", "checker", "crosshatch"]);
+    assert.deepEqual(r.result.gradientKinds, ["linear", "radial"]);
+    assert.ok(r.result.filterKinds.includes("gaussian-blur"));
+    assert.ok(r.result.guideKinds.includes("perspective-2pt"));
+  });
+});
+
+describe("art — geometric layer transforms (exact coords, wave 10 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx(`art-t10-geo-${randomUUID()}`); });
+
+  // Helper: fresh 1000×1000 artwork with one stroke at known coords.
+  async function freshArt(points) {
+    const art = await lensRun("art", "artwork-create", { params: { title: "Geo", width: 1000, height: 1000 } }, ctx);
+    const artworkId = art.result.artwork.id;
+    const layerId = art.result.artwork.layers[0].id;
+    await lensRun("art", "stroke-commit", {
+      params: { artworkId, layerId, stroke: { tool: "ink", color: "#102030", points } },
+    }, ctx);
+    return { artworkId, layerId };
+  }
+
+  it("layer-flip horizontal mirrors x about the canvas width (200,300 → 800,300)", async () => {
+    const { artworkId, layerId } = await freshArt([[200, 300], [200, 700]]);
+    const r = await lensRun("art", "layer-flip", { params: { artworkId, layerId, axis: "horizontal" } }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.axis, "horizontal");
+    const got = await lensRun("art", "artwork-get", { params: { id: artworkId } }, ctx);
+    const stroke = got.result.artwork.layers[0].strokes[0];
+    // x' = width - x = 1000 - 200 = 800 ; y unchanged
+    assert.deepEqual(stroke.points, [[800, 300], [800, 700]]);
+  });
+
+  it("layer-rotate90 cw maps (x,y) about centre: (200,300) → (700,200)", async () => {
+    const { artworkId, layerId } = await freshArt([[200, 300]]);
+    const r = await lensRun("art", "layer-rotate90", { params: { artworkId, layerId, direction: "cw" } }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.direction, "cw");
+    const got = await lensRun("art", "artwork-get", { params: { id: artworkId } }, ctx);
+    // cw: [cx-(y-cy), cy+(x-cx)] = [500-(300-500), 500+(200-500)] = [700, 200]
+    assert.deepEqual(got.result.artwork.layers[0].strokes[0].points, [[700, 200]]);
+  });
+
+  it("layer-rotate free-angle 180° about centre negates the offset: (300,400) → (700,600)", async () => {
+    const { artworkId, layerId } = await freshArt([[300, 400]]);
+    const r = await lensRun("art", "layer-rotate", { params: { artworkId, layerId, degrees: 180 } }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.degrees, 180);
+    assert.equal(r.result.rotated, 1);
+    const got = await lensRun("art", "artwork-get", { params: { id: artworkId } }, ctx);
+    // 180° about (500,500): (300,400) → (1000-300, 1000-400) = (700,600)
+    assert.deepEqual(got.result.artwork.layers[0].strokes[0].points, [[700, 600]]);
+  });
+
+  it("layer-adjust-color: lightScale 2 on #404040 doubles lightness toward grey (#808080)", async () => {
+    // clean artwork with ONLY a mid-grey stroke so we control the sole input color
+    const art = await lensRun("art", "artwork-create", { params: { title: "Adjust", width: 1000, height: 1000 } }, ctx);
+    const artworkId = art.result.artwork.id;
+    const layerId = art.result.artwork.layers[0].id;
+    await lensRun("art", "stroke-commit", {
+      params: { artworkId, layerId, stroke: { tool: "ink", color: "#404040", points: [[5, 5]] } },
+    }, ctx);
+    const r = await lensRun("art", "layer-adjust-color", { params: { artworkId, layerId, lightScale: 2 } }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.adjusted, 1);
+    const got = await lensRun("art", "artwork-get", { params: { id: artworkId } }, ctx);
+    // #404040 → hsl l = 0x40/255 ≈ 0.2510 ; ×2 = 0.502 ; grey (sat 0) → round(0.502*255)=128 = 0x80
+    assert.equal(got.result.artwork.layers[0].strokes[0].color, "#808080");
+  });
+});
+
+describe("art — strokes, selections, symmetry (wave 10 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx(`art-t10-stroke-${randomUUID()}`); });
+
+  it("stroke-batch commits multiple strokes; element-delete removes a chosen one by id", async () => {
+    const art = await lensRun("art", "artwork-create", { params: { title: "Batch", width: 500, height: 500 } }, ctx);
+    const artworkId = art.result.artwork.id;
+    const layerId = art.result.artwork.layers[0].id;
+    const batch = await lensRun("art", "stroke-batch", {
+      params: {
+        artworkId, layerId, strokes: [
+          { tool: "ink", color: "#111111", points: [[1, 1], [2, 2]] },
+          { tool: "ink", color: "#222222", points: [[3, 3], [4, 4]] },
+          { kind: "text", color: "#333333", content: "hi", x: 10, y: 10 },
+        ],
+      },
+    }, ctx);
+    assert.equal(batch.result.added, 3);
+    assert.equal(batch.result.strokeCount, 3);
+
+    const got = await lensRun("art", "artwork-get", { params: { id: artworkId } }, ctx);
+    const victimId = got.result.artwork.layers[0].strokes[1].id;
+    const del = await lensRun("art", "element-delete", { params: { artworkId, layerId, ids: [victimId] } }, ctx);
+    assert.equal(del.result.deleted, 1);
+    const after = await lensRun("art", "artwork-get", { params: { id: artworkId } }, ctx);
+    assert.ok(!after.result.artwork.layers[0].strokes.some((st) => st.id === victimId));
+    assert.equal(after.result.artwork.layers[0].strokes.length, 2);
+  });
+
+  it("layer-reorder up swaps the layer toward the top of the stack", async () => {
+    const art = await lensRun("art", "artwork-create", { params: { title: "Order" } }, ctx);
+    const artworkId = art.result.artwork.id;
+    const baseId = art.result.artwork.layers[0].id;
+    const added = await lensRun("art", "layer-add", { params: { artworkId, name: "Top" } }, ctx);
+    const topId = added.result.layer.id;
+    // base is index 0, Top is index 1. Move base "up" → it should land at index 1.
+    const r = await lensRun("art", "layer-reorder", { params: { artworkId, layerId: baseId, direction: "up" } }, ctx);
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.order, [topId, baseId]);
+  });
+
+  it("selection-lasso selects only the stroke whose point falls inside the polygon", async () => {
+    const art = await lensRun("art", "artwork-create", { params: { title: "Lasso", width: 1000, height: 1000 } }, ctx);
+    const artworkId = art.result.artwork.id;
+    const layerId = art.result.artwork.layers[0].id;
+    const inside = await lensRun("art", "stroke-commit", {
+      params: { artworkId, layerId, stroke: { tool: "ink", color: "#abcdef", points: [[50, 50]] } },
+    }, ctx);
+    await lensRun("art", "stroke-commit", {
+      params: { artworkId, layerId, stroke: { tool: "ink", color: "#abcdef", points: [[900, 900]] } },
+    }, ctx);
+    // polygon is a small square around (50,50)
+    const r = await lensRun("art", "selection-lasso", {
+      params: { artworkId, layerId, polygon: [[0, 0], [100, 0], [100, 100], [0, 100]] },
+    }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.matched, 1);
+    assert.deepEqual(r.result.selection.ids, [inside.result.strokeId]);
+  });
+
+  it("selection-magic-wand matches strokes within the ΔE tolerance and excludes far colors", async () => {
+    const art = await lensRun("art", "artwork-create", { params: { title: "Wand", width: 400, height: 400 } }, ctx);
+    const artworkId = art.result.artwork.id;
+    const layerId = art.result.artwork.layers[0].id;
+    const near = await lensRun("art", "stroke-commit", {
+      params: { artworkId, layerId, stroke: { tool: "ink", color: "#ff0000", points: [[10, 10]] } },
+    }, ctx);
+    await lensRun("art", "stroke-commit", {
+      params: { artworkId, layerId, stroke: { tool: "ink", color: "#00ff00", points: [[20, 20]] } },
+    }, ctx);
+    // target pure red, tight tolerance → only the red stroke matches
+    const r = await lensRun("art", "selection-magic-wand", {
+      params: { artworkId, layerId, targetColor: "#ff0000", tolerance: 5 },
+    }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.matched, 1);
+    assert.deepEqual(r.result.selection.ids, [near.result.strokeId]);
+  });
+
+  it("symmetry-mirror-stroke (vertical guide) adds one mirrored copy reflected across cx", async () => {
+    const art = await lensRun("art", "artwork-create", { params: { title: "Sym", width: 1000, height: 1000 } }, ctx);
+    const artworkId = art.result.artwork.id;
+    const layerId = art.result.artwork.layers[0].id;
+    await lensRun("art", "guides-set", { params: { artworkId, kind: "vertical" } }, ctx);
+    const committed = await lensRun("art", "stroke-commit", {
+      params: { artworkId, layerId, stroke: { tool: "ink", color: "#123456", points: [[200, 300]] } },
+    }, ctx);
+    const r = await lensRun("art", "symmetry-mirror-stroke", {
+      params: { artworkId, layerId, strokeId: committed.result.strokeId },
+    }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.mirrored, 1);
+    assert.equal(r.result.strokeCount, 2);
+    const got = await lensRun("art", "artwork-get", { params: { id: artworkId } }, ctx);
+    // cx defaulted to width/2 = 500 ; mirror x' = 2*500 - 200 = 800
+    const mirrored = got.result.artwork.layers[0].strokes.find((st) => st.id !== committed.result.strokeId);
+    assert.deepEqual(mirrored.points, [[800, 300]]);
+  });
+});
+
+describe("art — studio meta CRUD round-trips (wave 10 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx(`art-t10-meta-${randomUUID()}`); });
+
+  it("brush-preset-save → brush-presets lists the custom brush → brush-preset-delete removes it", async () => {
+    const saved = await lensRun("art", "brush-preset-save", {
+      params: { name: "My Liner", tool: "ink", size: 9, opacity: 0.8 },
+    }, ctx);
+    assert.equal(saved.ok, true);
+    const brushId = saved.result.brush.id;
+    assert.equal(saved.result.brush.size, 9);
+
+    const list = await lensRun("art", "brush-presets", {}, ctx);
+    assert.ok(list.result.brushes.some((b) => b.id === brushId && b.name === "My Liner"));
+
+    const del = await lensRun("art", "brush-preset-delete", { params: { id: brushId } }, ctx);
+    assert.equal(del.result.deleted, brushId);
+    const after = await lensRun("art", "brush-presets", {}, ctx);
+    assert.ok(!after.result.brushes.some((b) => b.id === brushId));
+  });
+
+  it("art-prompt (random, category=color) returns a prompt drawn from the color category", async () => {
+    const r = await lensRun("art", "art-prompt", { params: { random: true, category: "color" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.prompt.category, "color");
+    assert.ok(r.result.categories.includes("imagination"));
+  });
+
+  it("dynamics-set persists pressure profile → dynamics-get reads back the same floors", async () => {
+    const art = await lensRun("art", "artwork-create", { params: { title: "Dyn" } }, ctx);
+    const artworkId = art.result.artwork.id;
+    const set = await lensRun("art", "dynamics-set", {
+      params: { artworkId, pressureSize: true, pressureOpacity: true, sizeFloor: 0.5, smoothing: 0.7 },
+    }, ctx);
+    assert.equal(set.result.dynamics.pressureSize, true);
+    assert.equal(set.result.dynamics.sizeFloor, 0.5);
+    const got = await lensRun("art", "dynamics-get", { params: { artworkId } }, ctx);
+    assert.equal(got.result.dynamics.smoothing, 0.7);
+    assert.equal(got.result.dynamics.pressureOpacity, true);
+  });
+
+  it("timelapse-start → stroke commits → timelapse-stop reports the captured frame count", async () => {
+    const art = await lensRun("art", "artwork-create", { params: { title: "TL", width: 200, height: 200 } }, ctx);
+    const artworkId = art.result.artwork.id;
+    const start = await lensRun("art", "timelapse-start", { params: { artworkId } }, ctx);
+    assert.equal(start.result.recording, true);
+    const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==";
+    await lensRun("art", "timelapse-frame", { params: { artworkId, snapshot: tinyPng } }, ctx);
+    await lensRun("art", "timelapse-frame", { params: { artworkId, snapshot: tinyPng } }, ctx);
+    const stop = await lensRun("art", "timelapse-stop", { params: { artworkId } }, ctx);
+    assert.equal(stop.result.recording, false);
+    assert.equal(stop.result.frameCount, 2);
+  });
+
+  it("gradient-commit persists a 2-stop linear gradient element sorted by offset", async () => {
+    const art = await lensRun("art", "artwork-create", { params: { title: "Grad", width: 400, height: 400 } }, ctx);
+    const artworkId = art.result.artwork.id;
+    const layerId = art.result.artwork.layers[0].id;
+    const r = await lensRun("art", "gradient-commit", {
+      params: {
+        artworkId, layerId, gradientKind: "linear",
+        stops: [{ color: "#0000ff", offset: 1 }, { color: "#ff0000", offset: 0 }],
+        x1: 0, y1: 0, x2: 400, y2: 0,
+      },
+    }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.strokeCount, 1);
+    const got = await lensRun("art", "artwork-get", { params: { id: artworkId } }, ctx);
+    const el = got.result.artwork.layers[0].strokes.find((st) => st.id === r.result.elementId);
+    assert.equal(el.kind, "gradient");
+    // stops sorted ascending by offset → red (0) first, blue (1) last
+    assert.deepEqual(el.stops.map((st) => st.color), ["#ff0000", "#0000ff"]);
+  });
+
+  it("gradient-commit with a single valid stop is rejected (needs ≥2)", async () => {
+    const art = await lensRun("art", "artwork-create", { params: { title: "GradBad", width: 400, height: 400 } }, ctx);
+    const artworkId = art.result.artwork.id;
+    const layerId = art.result.artwork.layers[0].id;
+    const bad = await lensRun("art", "gradient-commit", {
+      params: { artworkId, layerId, stops: [{ color: "#ff0000", offset: 0 }] },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /at least 2 valid color stops/);
+  });
+
+  it("symmetry-mirror-stroke with no active guide is rejected", async () => {
+    const art = await lensRun("art", "artwork-create", { params: { title: "NoGuide", width: 300, height: 300 } }, ctx);
+    const artworkId = art.result.artwork.id;
+    const layerId = art.result.artwork.layers[0].id;
+    const committed = await lensRun("art", "stroke-commit", {
+      params: { artworkId, layerId, stroke: { tool: "ink", color: "#222222", points: [[10, 10]] } },
+    }, ctx);
+    const bad = await lensRun("art", "symmetry-mirror-stroke", {
+      params: { artworkId, layerId, strokeId: committed.result.strokeId },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /no active symmetry guide/);
+  });
+});

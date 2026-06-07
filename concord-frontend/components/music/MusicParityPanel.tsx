@@ -92,6 +92,7 @@ export function MusicParityPanel({ onChange }: { onChange: () => void }) {
 // ════════════════════════════════════════════════════════════════════
 function CatalogTab({ onChange }: { onChange: () => void }) {
   const [term, setTerm] = useState('');
+  const [source, setSource] = useState<'itunes' | 'jamendo' | 'audius'>('itunes');
   const [busy, setBusy] = useState(false);
   const [ingestMsg, setIngestMsg] = useState('');
   const [ingested, setIngested] = useState<Track[]>([]);
@@ -113,16 +114,17 @@ function CatalogTab({ onChange }: { onChange: () => void }) {
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const SOURCE_MACRO = { itunes: 'ingest-itunes', jamendo: 'ingest-jamendo', audius: 'ingest-audius' } as const;
   const ingest = async () => {
     if (!term.trim()) return;
     setBusy(true); setIngestMsg('');
-    const r = await lensRun('music', 'ingest-itunes', { term: term.trim(), limit: 12 });
+    const r = await lensRun('music', SOURCE_MACRO[source], { term: term.trim(), limit: 12 });
     if (r.data?.ok) {
       setIngested(r.data.result?.tracks || []);
       setIngestMsg(`Ingested ${r.data.result?.ingested || 0} tracks (${r.data.result?.skipped || 0} already in library).`);
       await refresh();
     } else {
-      setIngestMsg(r.data?.error || 'iTunes ingestion failed.');
+      setIngestMsg(r.data?.error || `${source} ingestion failed.`);
     }
     setBusy(false); onChange();
   };
@@ -150,13 +152,22 @@ function CatalogTab({ onChange }: { onChange: () => void }) {
   if (loading) return <Spin />;
   return (
     <div className="space-y-4">
-      {/* iTunes ingestion */}
+      {/* Free-API ingestion (iTunes / Jamendo / Audius) */}
       <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
-        <Head icon={Globe} title="Free-API Catalog Ingestion" hint="iTunes Search — real previewable tracks, no key" />
+        <Head icon={Globe} title="Free-API Catalog Ingestion"
+          hint={source === 'itunes' ? 'iTunes Search — 30s previews, no key'
+            : source === 'jamendo' ? 'Jamendo — full CC-licensed streams (needs JAMENDO_CLIENT_ID)'
+              : 'Audius — decentralized full streams, no key'} />
         <div className="flex gap-2">
+          <select value={source} onChange={(e) => setSource(e.target.value as 'itunes' | 'jamendo' | 'audius')}
+            className="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="itunes">iTunes</option>
+            <option value="jamendo">Jamendo</option>
+            <option value="audius">Audius</option>
+          </select>
           <input value={term} onChange={(e) => setTerm(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void ingest(); }}
-            placeholder="Search iTunes for tracks to ingest…"
+            placeholder={`Search ${source} for tracks to ingest…`}
             className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           <button type="button" onClick={ingest} disabled={busy || !term.trim()}
             className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50">
@@ -240,9 +251,16 @@ function EngineTab() {
     // Bands are zeroed when the EQ toggle is off. (preamp/normalize left at 0 —
     // true loudness normalization is still a flagged approximation, not faked.)
     const b = cfgVal?.config?.eq;
-    getPlayer().applyAudioSettings(b?.enabled
+    const player = getPlayer();
+    player.applyAudioSettings(b?.enabled
       ? { bassDb: b.bands.bass, midDb: b.bands.mid, trebleDb: b.bands.treble }
       : { bassDb: 0, midDb: 0, trebleDb: 0 });
+    // Karaoke toggle now genuinely cancels center-panned vocals (OOPS L−R) on the
+    // live graph — previously karaoke-set only persisted + scrolled lyrics.
+    player.setKaraoke(!!cfgVal?.config?.karaoke?.enabled);
+    // Crossfade seconds drives the real equal-power track-to-track crossfade in
+    // NowPlayingBar (was persisted but never applied to playback).
+    player.setCrossfadeSeconds(Number(cfgVal?.config?.crossfadeSec) || 0);
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
 

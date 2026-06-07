@@ -284,3 +284,561 @@ describe("research — reference manager: citations, collections, stats (shared 
     assert.equal(stats.result.byStatus.to_read, 2);
   });
 });
+
+describe("research — notes lifecycle (wave 14 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("research-t14-notes"); });
+
+  it("note-create → notes-list: list returns a body-truncated preview, newest first", async () => {
+    const lctx = await depthCtx("research-t14-list"); // isolated → exact ordering
+    await lensRun("research", "note-create", { params: { title: "First", body: "alpha" } }, lctx);
+    const second = await lensRun("research", "note-create", {
+      params: { title: "Second", body: "x".repeat(300) },
+    }, lctx);
+
+    const list = await lensRun("research", "notes-list", {}, lctx);
+    assert.equal(list.result.notes.length, 2);
+    // newest (Second) sorts first
+    assert.equal(list.result.notes[0].id, second.result.note.id);
+    // preview is the body sliced to 200 chars; full body is not returned
+    assert.equal(list.result.notes[0].preview.length, 200);
+    assert.equal(list.result.notes[0].body, undefined);
+  });
+
+  it("note-create → note-delete → note-get: deleted note is gone", async () => {
+    const created = await lensRun("research", "note-create", { params: { title: "Disposable" } }, ctx);
+    const id = created.result.note.id;
+    const del = await lensRun("research", "note-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, id);
+    const gone = await lensRun("research", "note-get", { params: { id } }, ctx);
+    assert.equal(gone.result.ok, false);
+    assert.match(gone.result.error, /not found/);
+  });
+
+  it("validation: note-delete on a missing id is rejected as not found", async () => {
+    const bad = await lensRun("research", "note-delete", { params: { id: "note_does_not_exist" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /not found/);
+  });
+
+  it("note-titles: autocomplete filters by query substring (case-insensitive)", async () => {
+    const tctx = await depthCtx("research-t14-titles");
+    await lensRun("research", "note-create", { params: { title: "Photosynthesis Basics" } }, tctx);
+    await lensRun("research", "note-create", { params: { title: "Cellular Respiration" } }, tctx);
+    const all = await lensRun("research", "note-titles", {}, tctx);
+    assert.equal(all.result.count, 2);
+    const filtered = await lensRun("research", "note-titles", { params: { query: "photo" } }, tctx);
+    assert.equal(filtered.result.count, 1);
+    assert.equal(filtered.result.titles[0].title, "Photosynthesis Basics");
+  });
+
+  it("note-snapshot → note-snapshots → note-snapshot-get: full body recovers from history", async () => {
+    const sctx = await depthCtx("research-t14-snap");
+    const created = await lensRun("research", "note-create", { params: { title: "Versioned", body: "body v1 content" } }, sctx);
+    const noteId = created.result.note.id;
+    const snap = await lensRun("research", "note-snapshot", { params: { noteId, label: "milestone" } }, sctx);
+    const snapshotId = snap.result.snapshot.id;
+    // snapshot return omits body but reports its length
+    assert.equal(snap.result.snapshot.body, undefined);
+    assert.equal(snap.result.snapshot.bodyLength, "body v1 content".length);
+
+    const list = await lensRun("research", "note-snapshots", { params: { noteId } }, sctx);
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.snapshots[0].label, "milestone");
+
+    const full = await lensRun("research", "note-snapshot-get", { params: { noteId, snapshotId } }, sctx);
+    assert.equal(full.result.snapshot.body, "body v1 content");
+  });
+
+  it("validation: note-snapshot without a noteId is rejected", async () => {
+    const bad = await lensRun("research", "note-snapshot", { params: {} }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /noteId required/);
+  });
+
+  it("daily-note: first call creates, repeat call for same date returns the same note", async () => {
+    const dctx = await depthCtx("research-t14-daily");
+    const first = await lensRun("research", "daily-note", { params: { date: "2026-03-15" } }, dctx);
+    assert.equal(first.result.created, true);
+    assert.equal(first.result.note.title, "Daily — 2026-03-15");
+    assert.deepEqual(first.result.note.tags, ["daily"]);
+    const again = await lensRun("research", "daily-note", { params: { date: "2026-03-15" } }, dctx);
+    assert.equal(again.result.created, false);
+    assert.equal(again.result.note.id, first.result.note.id);
+  });
+});
+
+describe("research — templates (wave 14 top-up)", () => {
+  it("templates-list: returns the six built-in templates with id+title+body", async () => {
+    const r = await lensRun("research", "templates-list", {});
+    assert.equal(r.result.templates.length, 6);
+    const meeting = r.result.templates.find((t) => t.id === "meeting");
+    assert.equal(meeting.title, "Meeting notes");
+    assert.ok(meeting.body.includes("## Agenda"));
+  });
+
+  it("template-apply: a known id returns its body; an unknown id is rejected", async () => {
+    const ok = await lensRun("research", "template-apply", { params: { id: "decision_log" } });
+    assert.equal(ok.result.template.id, "decision_log");
+    assert.ok(ok.result.template.body.includes("## Options considered"));
+    const bad = await lensRun("research", "template-apply", { params: { id: "nope" } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /unknown template: nope/);
+  });
+});
+
+describe("research — reference manager lifecycle (wave 14 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("research-t14-refs"); });
+
+  it("reference-add → reference-update: editable fields round-trip, type defaults to article", async () => {
+    const added = await lensRun("research", "reference-add", { params: { title: "Mutable Paper" } }, ctx);
+    assert.equal(added.result.reference.type, "article"); // default
+    const id = added.result.reference.id;
+    const upd = await lensRun("research", "reference-update", {
+      params: { id, authors: "A. Newauthor", year: 2021, journal: "Science", tags: ["BIO", "bio", "Lab"] },
+    }, ctx);
+    assert.equal(upd.result.reference.authors, "A. Newauthor");
+    assert.equal(upd.result.reference.year, 2021);
+    assert.equal(upd.result.reference.journal, "Science");
+    // tags normalized: lowercased + deduped
+    assert.deepEqual(upd.result.reference.tags, ["bio", "lab"]);
+  });
+
+  it("reference-add → reference-delete: removed ref drops out of reference-list", async () => {
+    const lctx = await depthCtx("research-t14-refdel");
+    const a = await lensRun("research", "reference-add", { params: { title: "Keep" } }, lctx);
+    const b = await lensRun("research", "reference-add", { params: { title: "Drop" } }, lctx);
+    const del = await lensRun("research", "reference-delete", { params: { id: b.result.reference.id } }, lctx);
+    assert.equal(del.result.deleted, b.result.reference.id);
+    const list = await lensRun("research", "reference-list", {}, lctx);
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.references[0].id, a.result.reference.id);
+  });
+
+  it("reference-list: filters by type and sorts newer years first", async () => {
+    const lctx = await depthCtx("research-t14-reflist");
+    await lensRun("research", "reference-add", { params: { title: "Old Book", type: "book", year: 2001 } }, lctx);
+    await lensRun("research", "reference-add", { params: { title: "New Article", type: "article", year: 2024 } }, lctx);
+    await lensRun("research", "reference-add", { params: { title: "Mid Article", type: "article", year: 2010 } }, lctx);
+
+    const articles = await lensRun("research", "reference-list", { params: { type: "article" } }, lctx);
+    assert.equal(articles.result.count, 2);
+    // sorted desc by year → 2024 before 2010
+    assert.equal(articles.result.references[0].title, "New Article");
+    assert.equal(articles.result.references[1].title, "Mid Article");
+  });
+
+  it("reading-queue: surfaces only to_read/reading refs and counts each bucket", async () => {
+    const lctx = await depthCtx("research-t14-queue");
+    const r1 = await lensRun("research", "reference-add", { params: { title: "Q1" } }, lctx); // to_read
+    const r2 = await lensRun("research", "reference-add", { params: { title: "Q2" } }, lctx);
+    const r3 = await lensRun("research", "reference-add", { params: { title: "Q3" } }, lctx);
+    await lensRun("research", "reference-set-status", { params: { id: r2.result.reference.id, status: "reading" } }, lctx);
+    await lensRun("research", "reference-set-status", { params: { id: r3.result.reference.id, status: "read" } }, lctx);
+
+    const q = await lensRun("research", "reading-queue", {}, lctx);
+    // r3 is "read" → excluded; r1 + r2 remain
+    assert.equal(q.result.queue.length, 2);
+    assert.equal(q.result.reading, 1);
+    assert.equal(q.result.toRead, 1);
+    assert.ok(!q.result.queue.some((r) => r.id === r3.result.reference.id));
+  });
+
+  it("tag-list: aggregates tag frequency across the library, descending", async () => {
+    const lctx = await depthCtx("research-t14-tags");
+    await lensRun("research", "reference-add", { params: { title: "T1", tags: ["ml", "nlp"] } }, lctx);
+    await lensRun("research", "reference-add", { params: { title: "T2", tags: ["ml"] } }, lctx);
+    const r = await lensRun("research", "tag-list", {}, lctx);
+    const byTag = Object.fromEntries(r.result.tags.map((t) => [t.tag, t.count]));
+    assert.equal(byTag.ml, 2);
+    assert.equal(byTag.nlp, 1);
+    // ml (count 2) sorts ahead of nlp (count 1)
+    assert.equal(r.result.tags[0].tag, "ml");
+  });
+});
+
+describe("research — collections + annotations + bibliography (wave 14 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("research-t14-col"); });
+
+  it("collection-create → collection-list → collection-delete: count tracks membership then removal", async () => {
+    const lctx = await depthCtx("research-t14-coldel");
+    const ref = await lensRun("research", "reference-add", { params: { title: "Member" } }, lctx);
+    const col = await lensRun("research", "collection-create", { params: { name: "Tracked" } }, lctx);
+    const colId = col.result.collection.id;
+    await lensRun("research", "collection-add-reference", {
+      params: { collectionId: colId, referenceId: ref.result.reference.id },
+    }, lctx);
+
+    const listed = await lensRun("research", "collection-list", {}, lctx);
+    assert.equal(listed.result.count, 1);
+    assert.equal(listed.result.collections[0].referenceCount, 1);
+
+    const del = await lensRun("research", "collection-delete", { params: { id: colId } }, lctx);
+    assert.equal(del.result.deleted, colId);
+    const after = await lensRun("research", "collection-list", {}, lctx);
+    assert.equal(after.result.count, 0);
+  });
+
+  it("validation: collection-create with a blank name is rejected", async () => {
+    const bad = await lensRun("research", "collection-create", { params: { name: "   " } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /collection name required/);
+  });
+
+  it("annotation-add → annotation-list: annotations sort by page and default to yellow", async () => {
+    const lctx = await depthCtx("research-t14-ann");
+    const ref = await lensRun("research", "reference-add", { params: { title: "Annotated" } }, lctx);
+    const refId = ref.result.reference.id;
+    await lensRun("research", "annotation-add", { params: { referenceId: refId, text: "later note", page: 42 } }, lctx);
+    const first = await lensRun("research", "annotation-add", { params: { referenceId: refId, quote: "early quote", page: 3 } }, lctx);
+    assert.equal(first.result.annotation.color, "yellow"); // default color
+
+    const list = await lensRun("research", "annotation-list", { params: { referenceId: refId } }, lctx);
+    assert.equal(list.result.count, 2);
+    // sorted ascending by page → page 3 first
+    assert.equal(list.result.annotations[0].page, 3);
+    assert.equal(list.result.annotations[1].page, 42);
+  });
+
+  it("validation: annotation-add with neither text nor quote is rejected", async () => {
+    const ref = await lensRun("research", "reference-add", { params: { title: "Empty Annot" } }, ctx);
+    const bad = await lensRun("research", "annotation-add", { params: { referenceId: ref.result.reference.id } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /text or quote required/);
+  });
+
+  it("bibliography-build: APA entries sort by author surname and join one-per-line", async () => {
+    const lctx = await depthCtx("research-t14-bib");
+    await lensRun("research", "reference-add", { params: { title: "Z Work", authors: "Zeta", year: 2020 } }, lctx);
+    await lensRun("research", "reference-add", { params: { title: "A Work", authors: "Alpha", year: 2019 } }, lctx);
+    const bib = await lensRun("research", "bibliography-build", { params: { style: "apa" } }, lctx);
+    assert.equal(bib.result.style, "apa");
+    assert.equal(bib.result.count, 2);
+    // sorted by author surname → Alpha entry precedes Zeta entry
+    assert.ok(bib.result.entries[0].startsWith("Alpha"));
+    assert.ok(bib.result.entries[1].startsWith("Zeta"));
+    assert.equal(bib.result.bibliography, bib.result.entries.join("\n"));
+  });
+});
+
+describe("research — canvas + PDF attachments (wave 14 top-up)", () => {
+  it("canvas-save → canvas-get → canvas-list → canvas-delete: cards round-trip then vanish", async () => {
+    const cctx = await depthCtx("research-t14-canvas");
+    const saved = await lensRun("research", "canvas-save", {
+      params: {
+        name: "Idea Board",
+        cards: [{ kind: "text", text: "node A", x: 10, y: 20 }, { kind: "text", text: "node B", x: 100, y: 5 }],
+        edges: [{ from: "a", to: "b", label: "leads to" }],
+      },
+    }, cctx);
+    const id = saved.result.canvas.id;
+    assert.equal(saved.result.canvas.cards.length, 2);
+    // x is rounded/coerced to an integer
+    assert.equal(saved.result.canvas.cards[0].x, 10);
+
+    const got = await lensRun("research", "canvas-get", { params: { id } }, cctx);
+    assert.equal(got.result.canvas.name, "Idea Board");
+    assert.equal(got.result.canvas.edges[0].label, "leads to");
+
+    const listed = await lensRun("research", "canvas-list", {}, cctx);
+    assert.equal(listed.result.count, 1);
+    assert.equal(listed.result.canvases[0].cardCount, 2);
+    assert.equal(listed.result.canvases[0].edgeCount, 1);
+
+    const del = await lensRun("research", "canvas-delete", { params: { id } }, cctx);
+    assert.equal(del.result.deleted, id);
+    const after = await lensRun("research", "canvas-get", { params: { id } }, cctx);
+    assert.equal(after.result.ok, false);
+    assert.match(after.result.error, /canvas not found/);
+  });
+
+  it("validation: canvas-save with a blank name is rejected", async () => {
+    const bad = await lensRun("research", "canvas-save", { params: { name: "  " } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /name required/);
+  });
+
+  it("reference-attach-pdf → reference-pdfs → reference-pdf-delete: attachment round-trips and clears hasPdf", async () => {
+    const pctx = await depthCtx("research-t14-pdf");
+    const ref = await lensRun("research", "reference-add", { params: { title: "PDF Host" } }, pctx);
+    const refId = ref.result.reference.id;
+    const att = await lensRun("research", "reference-attach-pdf", {
+      params: { referenceId: refId, url: "https://example.org/paper.pdf", pages: 12 },
+    }, pctx);
+    assert.equal(att.result.attachment.filename, "paper.pdf"); // derived from url tail
+    assert.equal(att.result.attachment.pages, 12);
+
+    const list = await lensRun("research", "reference-pdfs", { params: { referenceId: refId } }, pctx);
+    assert.equal(list.result.count, 1);
+
+    const detail = await lensRun("research", "reference-detail", { params: { id: refId } }, pctx);
+    assert.equal(detail.result.reference.hasPdf, true);
+
+    const del = await lensRun("research", "reference-pdf-delete", { params: { id: att.result.attachment.id } }, pctx);
+    assert.equal(del.result.deleted, att.result.attachment.id);
+    const after = await lensRun("research", "reference-detail", { params: { id: refId } }, pctx);
+    assert.equal(after.result.reference.hasPdf, false); // last pdf removed
+  });
+
+  it("validation: reference-attach-pdf rejects a non-http url", async () => {
+    const vctx = await depthCtx("research-t14-pdfbad");
+    const ref = await lensRun("research", "reference-add", { params: { title: "Bad URL Host" } }, vctx);
+    const bad = await lensRun("research", "reference-attach-pdf", {
+      params: { referenceId: ref.result.reference.id, url: "ftp://example.org/x.pdf" },
+    }, vctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /url must be http/);
+  });
+});
+
+describe("research — citationNetwork deeper signals (wave 14 top-up)", () => {
+  // Citation graph: a→b | b→(none) | c→a,b,d | d→a,b,c
+  // in-degrees: a=2(c,d), b=3(a,c,d), c=1(d), d=1(c). out-degrees: a=1,b=0,c=3,d=3.
+  const NET = {
+    data: { papers: [
+      { id: "a", title: "Alpha", year: 2015, references: ["b"],          keywords: ["x", "y"] },
+      { id: "b", title: "Beta",  year: 2012, references: [],             keywords: ["x", "y"] },
+      { id: "c", title: "Gamma", year: 2020, references: ["a", "b", "d"], keywords: ["x", "y"] },
+      { id: "d", title: "Delta", year: 2021, references: ["a", "b", "c"], keywords: [] },
+    ] },
+  };
+
+  it("frontier + foundational works are partitioned by degree, then ordered", async () => {
+    const r = await lensRun("research", "citationNetwork", NET);
+    // foundational = inDegree ≥ 3 → only Beta (in-degree 3)
+    assert.equal(r.result.foundationalWorks.length, 1);
+    assert.equal(r.result.foundationalWorks[0].id, "b");
+    assert.equal(r.result.foundationalWorks[0].citations, 3);
+    // frontier = outDegree ≥ 3 && inDegree ≤ 1 → Gamma + Delta, newest first
+    assert.equal(r.result.frontierWorks.length, 2);
+    assert.equal(r.result.frontierWorks[0].id, "d"); // 2021 before 2020
+    assert.equal(r.result.frontierWorks[1].id, "c");
+    assert.equal(r.result.frontierWorks[0].references, 3);
+  });
+
+  it("PageRank, network density, year distribution and topic clusters compute exactly", async () => {
+    const r = await lensRun("research", "citationNetwork", NET);
+    const byId = Object.fromEntries(r.result.rankedPapers.map((p) => [p.id, p]));
+    // most-cited sink (Beta) carries the highest PageRank
+    assert.equal(byId.b.pageRank, 0.12423);
+    assert.equal(byId.a.pageRank, 0.06715);
+    assert.equal(r.result.rankedPapers[0].id, "b"); // ranked desc by pageRank
+    // density = total out-edges (1+0+3+3=7) / (n*(n-1)=12) → 0.5833
+    assert.equal(r.result.networkDensity, 0.5833);
+    // year distribution counts each paper's year exactly once
+    assert.deepEqual(r.result.yearDistribution, { 2012: 1, 2015: 1, 2020: 1, 2021: 1 });
+    // keywords x,y co-occur in a,b,c (3 papers) → one cluster with 3 co-occurrences
+    assert.equal(r.result.topicClusters.length, 1);
+    assert.deepEqual(r.result.topicClusters[0].keywords.sort(), ["x", "y"]);
+    assert.equal(r.result.topicClusters[0].coOccurrences, 3);
+  });
+});
+
+describe("research — methodologyScore mid-tier grades (wave 14 top-up)", () => {
+  it("partial-credit methodology lands grade C with 2b cohort evidence level", async () => {
+    // Build a methodology hitting the partial branches:
+    //  sampleSize 150 (10/12), controlGroup partial (5/10), randomization quasi (5/10),
+    //  blinding single (5/8), data upon-request (2/4), conflicts declared (3/5).
+    const r = await lensRun("research", "methodologyScore", {
+      data: { methodology: {
+        sampleSize: 150, controlGroup: "partial", randomization: "quasi", blinding: "single",
+        measurementValidation: true, statisticalTests: true, effectSize: 0.3,
+        confidenceIntervals: true, reproducibilityInfo: true, preregistered: true,
+        conflictsOfInterest: "declared", ethicsApproval: true, dataAvailability: "upon-request",
+      } },
+    });
+    // 10+5+5+5+8+8+8+7+8+7+3+5+2 = 81 / 100 → 81% → grade B (≥75)
+    assert.equal(r.result.totalScore, 81);
+    assert.equal(r.result.percentage, 81);
+    assert.equal(r.result.grade, "B");
+    // controlGroup true? no (partial) → not RCT; controlGroup not strictly true → falls to sampleSize → "3 (Case-control study)"
+    assert.equal(r.result.evidenceLevel, "3 (Case-control study)");
+    const ss = r.result.criteria.find((c) => c.criterion === "Sample Size");
+    assert.equal(ss.score, 10); // 100–999 band
+    assert.ok(ss.note.includes("Adequate"));
+    // partial control scored 5/10 = 50% → neither strength (≥80) nor weakness (=0)
+    assert.ok(!r.result.strengths.includes("Control Group"));
+    assert.ok(!r.result.weaknesses.includes("Control Group"));
+  });
+
+  it("RCT-with-control but no double-blind resolves evidence level 1b", async () => {
+    const r = await lensRun("research", "methodologyScore", {
+      data: { methodology: { randomization: true, controlGroup: true, blinding: "single", sampleSize: 50 } },
+    });
+    assert.equal(r.result.evidenceLevel, "1b (Individual RCT)");
+    const ss = r.result.criteria.find((c) => c.criterion === "Sample Size");
+    assert.equal(ss.score, 7); // 30–99 band → small sample
+  });
+
+  it("control-only (no randomization) resolves evidence level 2b cohort", async () => {
+    const r = await lensRun("research", "methodologyScore", {
+      data: { methodology: { controlGroup: true, sampleSize: 5 } },
+    });
+    assert.equal(r.result.evidenceLevel, "2b (Cohort study)");
+    const ss = r.result.criteria.find((c) => c.criterion === "Sample Size");
+    assert.equal(ss.score, 3); // <30 → very small
+  });
+});
+
+describe("research — notes + annotation edge branches (wave 14 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("research-t14-edge"); });
+
+  it("note-create → note-update: title/body/tags edit in place and round-trip via note-get", async () => {
+    const created = await lensRun("research", "note-create", { params: { title: "Editable", body: "v1" } }, ctx);
+    const id = created.result.note.id;
+    const upd = await lensRun("research", "note-update", {
+      params: { id, title: "Edited Title", body: "v2 body", tags: ["t1", "t2"] },
+    }, ctx);
+    assert.equal(upd.result.note.title, "Edited Title");
+    assert.equal(upd.result.note.body, "v2 body");
+    assert.deepEqual(upd.result.note.tags, ["t1", "t2"]);
+    const got = await lensRun("research", "note-get", { params: { id } }, ctx);
+    assert.equal(got.result.note.body, "v2 body");
+  });
+
+  it("validation: note-update on a missing id is rejected as not found", async () => {
+    const bad = await lensRun("research", "note-update", { params: { id: "note_nope", body: "x" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /not found/);
+  });
+
+  it("annotation-add: an explicit color is preserved instead of the yellow default", async () => {
+    const ref = await lensRun("research", "reference-add", { params: { title: "Colored Annot" } }, ctx);
+    const ann = await lensRun("research", "annotation-add", {
+      params: { referenceId: ref.result.reference.id, text: "blue note", color: "blue" },
+    }, ctx);
+    assert.equal(ann.result.annotation.color, "blue");
+    assert.equal(ann.result.annotation.text, "blue note");
+  });
+
+  it("validation: annotation-add against a missing reference is rejected", async () => {
+    const bad = await lensRun("research", "annotation-add", {
+      params: { referenceId: "ref_missing", text: "orphan" },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /reference not found/);
+  });
+
+  it("reference-related: a reference with no relations returns an empty list", async () => {
+    const ref = await lensRun("research", "reference-add", { params: { title: "Lonely Ref" } }, ctx);
+    const rel = await lensRun("research", "reference-related", { params: { id: ref.result.reference.id } }, ctx);
+    assert.deepEqual(rel.result.related, []);
+  });
+});
+
+describe("research — citation styles + bibtex (wave 14 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("research-t14-cite"); });
+
+  it("cite-format chicago: parenthesized-year form derives from stored fields", async () => {
+    const added = await lensRun("research", "reference-add", {
+      params: { title: "Chicago Work", authors: "Ada Lovelace", year: 1843, journal: "Notes" },
+    }, ctx);
+    const c = await lensRun("research", "cite-format", { params: { id: added.result.reference.id, style: "chicago" } }, ctx);
+    assert.equal(c.result.style, "chicago");
+    // chicago: `${authors}. "${title}." ${journal} (${year}).`
+    assert.equal(c.result.citation, 'Ada Lovelace. "Chicago Work." Notes (1843).');
+    assert.equal(c.result.key, "lovelace1843");
+  });
+
+  it("cite-format bibtex on a book uses @book and emits the year/doi fields", async () => {
+    const added = await lensRun("research", "reference-add", {
+      params: { title: "BibTeX Book", authors: "Donald Knuth", year: 1984, type: "book", doi: "10.5/tex" },
+    }, ctx);
+    const c = await lensRun("research", "cite-format", { params: { id: added.result.reference.id, style: "bibtex" } }, ctx);
+    assert.ok(c.result.citation.startsWith("@book{knuth1984,"));
+    assert.ok(c.result.citation.includes("year={1984}"));
+    assert.ok(c.result.citation.includes("doi={10.5/tex}"));
+  });
+
+  it("bibliography-build bibtex: entries join on a blank line and sort by author surname", async () => {
+    const lctx = await depthCtx("research-t14-bibtex");
+    await lensRun("research", "reference-add", { params: { title: "Yonder", authors: "Young", year: 2001 } }, lctx);
+    await lensRun("research", "reference-add", { params: { title: "Aardvark", authors: "Abel", year: 2002 } }, lctx);
+    const bib = await lensRun("research", "bibliography-build", { params: { style: "bibtex" } }, lctx);
+    assert.equal(bib.result.count, 2);
+    // Abel sorts before Young
+    assert.ok(bib.result.entries[0].includes("Abel"));
+    assert.ok(bib.result.entries[1].includes("Young"));
+    // bibtex joins on a blank line (\n\n), not a single newline
+    assert.equal(bib.result.bibliography, bib.result.entries.join("\n\n"));
+  });
+});
+
+describe("research — academic-import + literature review (deterministic) (wave 14 top-up)", () => {
+  it("academic-import: an arxiv work imports as a preprint with joined authors", async () => {
+    const ictx = await depthCtx("research-t14-import");
+    const r = await lensRun("research", "academic-import", {
+      params: { work: {
+        title: "A Preprint", authors: ["First Author", "Second Author"], year: 2023,
+        source: "arxiv", venue: "arXiv", doi: "10.4/pre", citationCount: 7,
+      } },
+    }, ictx);
+    assert.equal(r.result.reference.type, "preprint");
+    assert.equal(r.result.reference.authors, "First Author, Second Author");
+    assert.equal(r.result.reference.year, 2023);
+    assert.equal(r.result.reference.citationCount, 7);
+    // the imported ref shows up in the live library
+    const list = await lensRun("research", "reference-list", {}, ictx);
+    assert.ok(list.result.references.some((x) => x.id === r.result.reference.id));
+  });
+
+  it("validation: academic-import without a title is rejected", async () => {
+    const bad = await lensRun("research", "academic-import", { params: { work: { year: 2020 } } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /title required/);
+  });
+
+  it("literature-review (heuristic, no abstracts) builds a matrix then list/get/delete round-trips", async () => {
+    // Papers WITHOUT abstracts force the deterministic heuristic path regardless of ctx.llm.
+    const rctx = await depthCtx("research-t14-review");
+    const built = await lensRun("research", "literature-review", {
+      params: {
+        title: "My Review", save: true,
+        dimensions: ["method", "finding"],
+        papers: [
+          { id: "p1", title: "Study One", year: 2018 },
+          { id: "p2", title: "Study Two", year: 2022 },
+        ],
+      },
+    }, rctx);
+    assert.equal(built.result.review.mode, "heuristic");
+    assert.equal(built.result.review.paperCount, 2);
+    assert.deepEqual(built.result.review.dimensions, ["method", "finding"]);
+    assert.equal(built.result.review.matrix.length, 2);
+    // every matrix cell exists for the requested dimensions
+    assert.ok("method" in built.result.review.matrix[0].cells);
+    assert.ok("finding" in built.result.review.matrix[0].cells);
+    // heuristic summary names the year span 2018–2022
+    assert.ok(built.result.review.summary.includes("2018–2022"));
+    const reviewId = built.result.review.id;
+
+    const list = await lensRun("research", "literature-reviews-list", {}, rctx);
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.reviews[0].id, reviewId);
+    assert.equal(list.result.reviews[0].mode, "heuristic");
+
+    const got = await lensRun("research", "literature-review-get", { params: { id: reviewId } }, rctx);
+    assert.equal(got.result.review.title, "My Review");
+    assert.equal(got.result.review.matrix.length, 2); // full matrix recovered
+
+    const del = await lensRun("research", "literature-review-delete", { params: { id: reviewId } }, rctx);
+    assert.equal(del.result.deleted, reviewId);
+    const after = await lensRun("research", "literature-reviews-list", {}, rctx);
+    assert.equal(after.result.count, 0);
+  });
+
+  it("validation: literature-review with no papers is rejected; get on a missing id is not found", async () => {
+    const rctx = await depthCtx("research-t14-review-bad");
+    const noPapers = await lensRun("research", "literature-review", { params: { papers: [] } }, rctx);
+    assert.equal(noPapers.result.ok, false);
+    assert.match(noPapers.result.error, /papers or referenceIds required/);
+
+    const missing = await lensRun("research", "literature-review-get", { params: { id: "review_nope" } }, rctx);
+    assert.equal(missing.result.ok, false);
+    assert.match(missing.result.error, /review not found/);
+  });
+});

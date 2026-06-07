@@ -206,4 +206,150 @@ describe("worldmodel — snapshots diff/restore + ingestion (shared ctx)", () =>
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /fromId snapshot not found/);
   });
+
+  it("capture_snapshot → list_snapshots_full: the captured snapshot is listed with its counts", async () => {
+    const lCtx = await depthCtx("worldmodel-snaplist");
+    await lensRun("worldmodel", "wm_create_entity", { params: { name: "L1", attributes: { value: 1 } } }, lCtx);
+    await lensRun("worldmodel", "wm_create_entity", { params: { name: "L2", attributes: { value: 1 } } }, lCtx);
+    const snap = await lensRun("worldmodel", "capture_snapshot", { params: { label: "listed-snap" } }, lCtx);
+    const list = await lensRun("worldmodel", "list_snapshots_full", {}, lCtx);
+    const found = list.result.snapshots.find((s) => s.id === snap.result.id);
+    assert.ok(found, "captured snapshot present in list");
+    assert.equal(found.label, "listed-snap");
+    assert.equal(found.entityCount, 2); // both entities captured
+  });
+});
+
+describe("worldmodel — relation editing (wave 12 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("worldmodel-t12-rel"); });
+
+  it("update_relation: edits type and clamps an out-of-range weight back into [0,1]", async () => {
+    const a = await lensRun("worldmodel", "wm_create_entity", { params: { name: "UR-A", attributes: { value: 1 } } }, ctx);
+    const b = await lensRun("worldmodel", "wm_create_entity", { params: { name: "UR-B", attributes: { value: 1 } } }, ctx);
+    const rel = await lensRun("worldmodel", "create_relation_typed", { params: { from: a.result.entity.id, to: b.result.entity.id, type: "old", weight: 0.5 } }, ctx);
+    const upd = await lensRun("worldmodel", "update_relation", { params: { id: rel.result.relation.id, type: "new-type", weight: 9 } }, ctx);
+    assert.equal(upd.result.relation.type, "new-type");
+    assert.equal(upd.result.relation.weight, 1); // clamp(9,0,1) = 1
+    // round-trip: the edit persists in the relations listing
+    const list = await lensRun("worldmodel", "wm_list_relations", {}, ctx);
+    const persisted = list.result.relations.find((r) => r.id === rel.result.relation.id);
+    assert.equal(persisted.type, "new-type");
+    assert.equal(persisted.weight, 1);
+  });
+
+  it("update_relation: missing relation is rejected", async () => {
+    const bad = await lensRun("worldmodel", "update_relation", { params: { id: "rel_nope", type: "x" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /relation not found/);
+  });
+
+  it("delete_relation: removes the relation so it no longer lists", async () => {
+    const a = await lensRun("worldmodel", "wm_create_entity", { params: { name: "DR-A", attributes: { value: 1 } } }, ctx);
+    const b = await lensRun("worldmodel", "wm_create_entity", { params: { name: "DR-B", attributes: { value: 1 } } }, ctx);
+    const rel = await lensRun("worldmodel", "create_relation_typed", { params: { from: a.result.entity.id, to: b.result.entity.id } }, ctx);
+    const del = await lensRun("worldmodel", "delete_relation", { params: { id: rel.result.relation.id } }, ctx);
+    assert.equal(del.result.deleted, rel.result.relation.id);
+    const list = await lensRun("worldmodel", "wm_list_relations", {}, ctx);
+    assert.equal(list.result.relations.some((r) => r.id === rel.result.relation.id), false);
+  });
+
+  it("delete_relation: missing relation is rejected", async () => {
+    const bad = await lensRun("worldmodel", "delete_relation", { params: { id: "rel_gone" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /relation not found/);
+  });
+});
+
+describe("worldmodel — typed schema deletion (wave 12 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("worldmodel-t12-types"); });
+
+  it("define_entity_type → delete_entity_type: the schema is removed from the registry", async () => {
+    await lensRun("worldmodel", "define_entity_type", { params: { name: "Disposable", fields: [{ key: "x", kind: "number" }] } }, ctx);
+    const before = await lensRun("worldmodel", "list_entity_types", {}, ctx);
+    assert.ok(before.result.types.some((t) => t.name === "Disposable"));
+    const del = await lensRun("worldmodel", "delete_entity_type", { params: { name: "Disposable" } }, ctx);
+    assert.equal(del.result.deleted, "Disposable");
+    const after = await lensRun("worldmodel", "list_entity_types", {}, ctx);
+    assert.equal(after.result.types.some((t) => t.name === "Disposable"), false);
+  });
+
+  it("delete_entity_type: unknown type name is rejected", async () => {
+    const bad = await lensRun("worldmodel", "delete_entity_type", { params: { name: "NeverDefined" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /type not found/);
+  });
+});
+
+describe("worldmodel — scenario library (wave 12 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("worldmodel-t12-scn"); });
+
+  it("save_scenario: clamps steps + growth and normalizes shock fields", async () => {
+    const saved = await lensRun("worldmodel", "save_scenario", { params: {
+      name: "Aggressive",
+      steps: 999,        // clamp(.,1,60) = 60
+      growth: 5,         // clamp(.,-0.5,0.5) = 0.5
+      shocks: [{ entityId: "ent_x", step: 999, delta: "12" }],
+      note: "stress test",
+    } }, ctx);
+    assert.equal(saved.result.scenario.name, "Aggressive");
+    assert.equal(saved.result.scenario.steps, 60);
+    assert.equal(saved.result.scenario.growth, 0.5);
+    assert.equal(saved.result.scenario.shocks.length, 1);
+    assert.equal(saved.result.scenario.shocks[0].step, 60); // clamped
+    assert.equal(saved.result.scenario.shocks[0].delta, 12); // "12" → 12
+    assert.equal(saved.result.scenario.note, "stress test");
+  });
+
+  it("save_scenario: empty name is rejected", async () => {
+    const bad = await lensRun("worldmodel", "save_scenario", { params: { name: "   " } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /scenario name required/);
+  });
+
+  it("save_scenario → list_scenarios → delete_scenario: full round-trip", async () => {
+    const sCtx = await depthCtx("worldmodel-t12-scn-rt");
+    const saved = await lensRun("worldmodel", "save_scenario", { params: { name: "Baseline", growth: 0.1 } }, sCtx);
+    const id = saved.result.scenario.id;
+    const list = await lensRun("worldmodel", "list_scenarios", {}, sCtx);
+    const found = list.result.scenarios.find((s) => s.id === id);
+    assert.ok(found, "saved scenario present in library");
+    assert.equal(found.name, "Baseline");
+    assert.equal(found.growth, 0.1);
+    const del = await lensRun("worldmodel", "delete_scenario", { params: { id } }, sCtx);
+    assert.equal(del.result.deleted, id);
+    const after = await lensRun("worldmodel", "list_scenarios", {}, sCtx);
+    assert.equal(after.result.scenarios.some((s) => s.id === id), false);
+  });
+
+  it("delete_scenario: unknown id is rejected", async () => {
+    const bad = await lensRun("worldmodel", "delete_scenario", { params: { id: "scn_missing" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /scenario not found/);
+  });
+});
+
+describe("worldmodel — aggregate status counters (wave 12 top-up)", () => {
+  it("wm_status: counts reflect each substrate after building a model", async () => {
+    const ctx = await depthCtx("worldmodel-t12-status");
+    const a = await lensRun("worldmodel", "wm_create_entity", { params: { name: "SA", attributes: { value: 10 } } }, ctx);
+    const b = await lensRun("worldmodel", "wm_create_entity", { params: { name: "SB", attributes: { value: 20 } } }, ctx);
+    await lensRun("worldmodel", "create_relation_typed", { params: { from: a.result.entity.id, to: b.result.entity.id } }, ctx);
+    await lensRun("worldmodel", "define_entity_type", { params: { name: "Gauge", fields: [{ key: "v", kind: "number" }] } }, ctx);
+    await lensRun("worldmodel", "capture_snapshot", { params: { label: "s1" } }, ctx);
+    await lensRun("worldmodel", "save_scenario", { params: { name: "scn1" } }, ctx);
+    await lensRun("worldmodel", "run_scenario", { params: { name: "r1", steps: 1, growth: 0 } }, ctx);
+    await lensRun("worldmodel", "ingest", { params: { entityId: a.result.entity.id, attribute: "value", mode: "increment", value: 1 } }, ctx);
+
+    const st = await lensRun("worldmodel", "wm_status", {}, ctx);
+    assert.equal(st.result.entities, 2);
+    assert.equal(st.result.relations, 1);
+    assert.equal(st.result.types, 1);
+    assert.equal(st.result.snapshots, 1);
+    assert.equal(st.result.scenarios, 1);
+    assert.equal(st.result.simulations, 1);
+    assert.equal(st.result.ingestEvents, 1);
+  });
 });

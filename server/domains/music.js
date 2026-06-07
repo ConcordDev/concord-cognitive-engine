@@ -1037,6 +1037,104 @@ export default function registerMusicActions(registerLensAction) {
     }
   });
 
+  // Shared dedup-and-merge for the ingestion macros. Takes an array of
+  // already-normalized track objects (matching the iTunes shape) and folds
+  // them into the caller's library, skipping ones already present by
+  // externalId. Keeps each provider macro to just its fetch + field mapping.
+  function ingestNormalizedTracks(s, ctx, normalized, source) {
+    const userId = muAid(ctx);
+    const lib = muListB(s.tracks, userId);
+    const existing = new Set(lib.map((t) => t.externalId).filter(Boolean));
+    let ingested = 0, skipped = 0;
+    const added = [];
+    for (const n of normalized) {
+      if (!n || !n.externalId) { skipped++; continue; }
+      if (existing.has(n.externalId)) { skipped++; continue; }
+      const track = {
+        id: muId("trk"),
+        title: muClean(n.title, 200) || "Untitled",
+        artist: muClean(n.artist, 120) || "Unknown Artist",
+        album: n.album ? muClean(n.album, 200) : null,
+        genre: muClean(n.genre, 60).toLowerCase() || "unknown",
+        durationSec: Math.max(1, Math.round(muNum(n.durationSec, 210))),
+        liked: false, playCount: 0, addedAt: muNow(),
+        externalId: n.externalId,
+        previewUrl: n.previewUrl || null,
+        artworkUrl: n.artworkUrl || null,
+        source,
+      };
+      lib.push(track); existing.add(n.externalId);
+      added.push(track); ingested++;
+    }
+    saveMusicState();
+    return { ok: true, result: { ingested, skipped, tracks: added, source } };
+  }
+
+  // ── 1b. [M] Free-API ingestion — Jamendo (CC-licensed, full streams) ─
+  // Jamendo returns a real streamable audio URL (not a 30s preview).
+  // Needs a free client_id — set JAMENDO_CLIENT_ID in the deploy env.
+  registerLensAction("music", "ingest-jamendo", async (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const clientId = process.env.JAMENDO_CLIENT_ID;
+    if (!clientId) return { ok: false, error: "JAMENDO_CLIENT_ID not configured" };
+    const term = muClean(params.term, 120);
+    if (!term) return { ok: false, error: "search term required" };
+    const limit = Math.max(1, Math.min(25, Math.round(muNum(params.limit, 10))));
+    const url = `https://api.jamendo.com/v3.0/tracks/?client_id=${encodeURIComponent(clientId)}&format=json&limit=${limit}&namesearch=${encodeURIComponent(term)}&include=musicinfo&audioformat=mp32`;
+    try {
+      const data = await cachedFetchJson(url, { ttlMs: 6 * 60 * 60 * 1000 });
+      const results = Array.isArray(data?.results) ? data.results : [];
+      const normalized = results.map((r) => ({
+        externalId: `jamendo:${r.id}`,
+        title: r.name,
+        artist: r.artist_name,
+        album: r.album_name || null,
+        genre: (Array.isArray(r.musicinfo?.tags?.genres) && r.musicinfo.tags.genres[0]) || "unknown",
+        durationSec: muNum(r.duration, 210),
+        previewUrl: r.audio || r.audiodownload || null,   // full streamable track
+        artworkUrl: r.album_image || r.image || null,
+      }));
+      return ingestNormalizedTracks(s, ctx, normalized, "jamendo");
+    } catch (e) {
+      return { ok: false, error: `jamendo search unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
+  // ── 1c. [M] Free-API ingestion — Audius (decentralized, no key) ──────
+  // Two-step: resolve a gateway host from api.audius.co, then search it.
+  // Stream URL is constructed (no extra fetch) and resolves on play.
+  registerLensAction("music", "ingest-audius", async (ctx, _a, params = {}) => {
+    const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const term = muClean(params.term, 120);
+    if (!term) return { ok: false, error: "search term required" };
+    const limit = Math.max(1, Math.min(25, Math.round(muNum(params.limit, 10))));
+    const APP = "concord";
+    try {
+      // 1. discover a healthy gateway host (cached 1h)
+      const hostsResp = await cachedFetchJson("https://api.audius.co", { ttlMs: 60 * 60 * 1000 });
+      const hosts = Array.isArray(hostsResp?.data) ? hostsResp.data.filter((h) => typeof h === "string" && h) : [];
+      if (hosts.length === 0) return { ok: false, error: "no audius gateway available" };
+      const host = String(hosts[0]).replace(/\/+$/, "");
+      // 2. search tracks on that host
+      const url = `${host}/v1/tracks/search?query=${encodeURIComponent(term)}&app_name=${APP}`;
+      const data = await cachedFetchJson(url, { ttlMs: 6 * 60 * 60 * 1000 });
+      const results = (Array.isArray(data?.data) ? data.data : []).slice(0, limit);
+      const normalized = results.map((r) => ({
+        externalId: `audius:${r.id}`,
+        title: r.title,
+        artist: r.user?.name || r.user?.handle || null,
+        album: null,
+        genre: r.genre || "unknown",
+        durationSec: muNum(r.duration, 210),
+        previewUrl: `${host}/v1/tracks/${encodeURIComponent(r.id)}/stream?app_name=${APP}`,
+        artworkUrl: r.artwork?.["480x480"] || r.artwork?.["150x150"] || null,
+      }));
+      return ingestNormalizedTracks(s, ctx, normalized, "audius");
+    } catch (e) {
+      return { ok: false, error: `audius search unreachable: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  });
+
   // ── 2. [S] Auto-fetched synced lyrics via LRCLIB (free, no key) ──────
   registerLensAction("music", "lyrics-autofetch", async (ctx, _a, params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };

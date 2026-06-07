@@ -245,3 +245,402 @@ describe("government — CRUD round-trips + validation (shared owner-scoped ctx)
     assert.match(bad.result.error, /at least 18 years old/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Wave-8 top-up: ~50 government macros were untested. Below adds behavioral
+// coverage for the remaining DETERMINISTIC ones (no network/LLM): the artifact
+// .data report/calc family (citizen_impact / docket / fee_collection / milestone
+// / permit_inspection / redaction / schedule_hearing / export / violationEscalation
+// / resourceStaging) plus more owner-scoped CRUD round-trips (fines, inspections,
+// assets, advocacy, meetings, voter registration, FOIA, routing rules, permit deny).
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("government — calc/report contracts (wave 8 top-up)", () => {
+  it("violationEscalation: a past-due compliance deadline escalates + counts days", async () => {
+    // 4.5 days ago → ceil(4.5) = 5, stable regardless of test-run timing jitter.
+    const pastDeadline = new Date(Date.now() - 4.5 * 86400000).toISOString();
+    const r = await lensRun("government", "violationEscalation", {
+      data: { complianceDeadline: pastDeadline },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.escalated, true);
+    assert.equal(r.result.daysPast, 5);              // ceil((now − deadline)/day) = ceil(4.5)
+    assert.equal(r.result.currentStatus, "escalated"); // status mutated on artifact
+  });
+
+  it("violationEscalation: a future deadline is not escalated", async () => {
+    const inTenDays = new Date(Date.now() + 10 * 86400000).toISOString();
+    const r = await lensRun("government", "violationEscalation", {
+      data: { complianceDeadline: inTenDays },
+    });
+    assert.equal(r.result.escalated, false);
+    assert.equal(r.result.daysPast, 0);
+  });
+
+  it("resourceStaging: assigns shared + zone-matched resources and counts totals", async () => {
+    const r = await lensRun("government", "resourceStaging", {
+      data: {
+        type: "flood",
+        activationLevel: "active",
+        zones: [
+          { id: "z1", name: "Riverside", population: 5000, riskLevel: "high" },
+          { id: "z2", name: "Uptown" },
+        ],
+        resources: [
+          { name: "Pump Truck", type: "vehicle", zone: "z1", quantity: 2 },
+          { name: "Sandbags", type: "supply" }, // no zone → assigned to all
+        ],
+      },
+    });
+    assert.equal(r.result.threatType, "flood");
+    assert.equal(r.result.totalZones, 2);
+    assert.equal(r.result.totalResources, 2);
+    assert.equal(r.result.activationLevel, "active");
+    const riverside = r.result.staging.find((z) => z.zone === "Riverside");
+    assert.equal(riverside.population, 5000);
+    assert.equal(riverside.riskLevel, "high");
+    // z1-matched pump truck + zoneless sandbags both staged at Riverside
+    assert.ok(riverside.resources.some((x) => x.name === "Pump Truck" && x.quantity === 2));
+    assert.ok(riverside.resources.some((x) => x.name === "Sandbags"));
+    // Uptown (z2) gets only the zoneless resource; riskLevel default
+    const uptown = r.result.staging.find((z) => z.zone === "Uptown");
+    assert.equal(uptown.riskLevel, "medium");
+    assert.ok(uptown.resources.some((x) => x.name === "Sandbags"));
+    assert.ok(!uptown.resources.some((x) => x.name === "Pump Truck"));
+  });
+
+  it("citizen_impact_report: derives severity from population + counts areas", async () => {
+    const r = await lensRun("government", "citizen_impact_report", {
+      data: {
+        affectedPopulation: 25000,
+        impactAreas: [{ name: "Downtown" }, { name: "Harbor" }, "Midtown"],
+      },
+    });
+    assert.equal(r.result.affectedPopulation, 25000);
+    assert.equal(r.result.areaCount, 3);             // 3 areas
+    assert.equal(r.result.severity, "high");         // 25000 > 10000
+    assert.deepEqual(r.result.impactAreas, ["Downtown", "Harbor", "Midtown"]);
+    assert.ok(r.result.summary.includes("25,000"));  // locale-formatted count
+  });
+
+  it("citizen_impact_report: small population is low severity", async () => {
+    const r = await lensRun("government", "citizen_impact_report", {
+      data: { population: 300, areas: ["Block A"] },
+    });
+    assert.equal(r.result.affectedPopulation, 300);
+    assert.equal(r.result.severity, "low");          // 300 <= 1000
+  });
+
+  it("docket_report: sorts hearings, picks the next future one, lists parties", async () => {
+    const future = new Date(Date.now() + 20 * 86400000).toISOString().slice(0, 10);
+    const past = new Date(Date.now() - 20 * 86400000).toISOString().slice(0, 10);
+    const r = await lensRun("government", "docket_report", {
+      data: {
+        caseId: "CV-2026-007",
+        status: "active",
+        hearings: [{ date: future }, { date: past }],
+        parties: [{ name: "City" }, "Acme Corp"],
+      },
+    });
+    assert.equal(r.result.caseId, "CV-2026-007");
+    assert.equal(r.result.hearingCount, 2);
+    assert.equal(r.result.nextHearing, future);      // only future hearing
+    assert.deepEqual(r.result.parties, ["City", "Acme Corp"]);
+  });
+
+  it("fee_collection_status: totals due vs collected, computes outstanding + rate", async () => {
+    const r = await lensRun("government", "fee_collection_status", {
+      data: {
+        fees: [
+          { amount: 100, status: "paid" },
+          { amount: 300, paid: 150 },
+        ],
+      },
+    });
+    assert.equal(r.result.feeCount, 2);
+    assert.equal(r.result.totalDue, 400);            // 100 + 300
+    assert.equal(r.result.collected, 250);           // 100(paid) + 150
+    assert.equal(r.result.outstanding, 150);         // 400 − 250
+    assert.equal(r.result.collectionRatePct, 62.5);  // 250/400 → 62.5
+    assert.equal(r.result.status, "partial");
+  });
+
+  it("fee_collection_status: everything paid reads paid_in_full at 100%", async () => {
+    const r = await lensRun("government", "fee_collection_status", {
+      data: { fees: [{ amount: 50, status: "paid" }, { amount: 50, paid: 50 }] },
+    });
+    assert.equal(r.result.outstanding, 0);
+    assert.equal(r.result.collectionRatePct, 100);
+    assert.equal(r.result.status, "paid_in_full");
+  });
+
+  it("milestone_update: advances to next milestone and computes percent complete", async () => {
+    const r = await lensRun("government", "milestone_update", {
+      data: {
+        milestones: [{ name: "Design" }, { name: "Permitting" }, { name: "Build" }, { name: "Inspect" }],
+        currentMilestone: 1,
+      },
+    });
+    assert.equal(r.result.totalMilestones, 4);
+    assert.equal(r.result.currentMilestone, 2);      // 1 + 1
+    assert.equal(r.result.currentName, "Permitting"); // milestones[2-1]
+    assert.equal(r.result.percentComplete, 50);      // 2/4 → 50
+    assert.equal(r.result.status, "in_progress");
+  });
+
+  it("milestone_update: final milestone marks the project complete at 100%", async () => {
+    const r = await lensRun("government", "milestone_update", {
+      data: { milestones: ["A", "B"], currentMilestone: 1 },
+    });
+    assert.equal(r.result.currentMilestone, 2);
+    assert.equal(r.result.percentComplete, 100);
+    assert.equal(r.result.status, "complete");
+  });
+
+  it("permit_inspection_schedule: returns the next stage + remaining sequence", async () => {
+    const r = await lensRun("government", "permit_inspection_schedule", {
+      data: { stage: "framing" },
+    });
+    assert.equal(r.result.currentStage, "framing");
+    assert.equal(r.result.nextInspection, "rough_in"); // sequence after framing
+    assert.deepEqual(r.result.remainingStages, ["rough_in", "insulation", "final"]);
+    assert.match(r.result.inspectionId, /^INSP-/);
+  });
+
+  it("redaction_review: flags sensitive field keys + inline PII matches", async () => {
+    const r = await lensRun("government", "redaction_review", {
+      data: {
+        ssn: "x",
+        phone: "y",
+        content: "Reach me at jane@example.com or 123-45-6789.",
+      },
+    });
+    // sensitive keys: ssn, phone (content/body are reader keys, not sensitive)
+    assert.ok(r.result.sensitiveFields.includes("ssn"));
+    assert.ok(r.result.sensitiveFields.includes("phone"));
+    assert.equal(r.result.inlinePiiMatches, 2);      // email + SSN pattern
+    assert.equal(r.result.redactionCount, r.result.sensitiveFields.length + 2);
+    assert.equal(r.result.status, "needs_redaction");
+  });
+
+  it("redaction_review: a clean record is cleared for release", async () => {
+    const r = await lensRun("government", "redaction_review", {
+      data: { content: "Public meeting was held at noon." },
+    });
+    assert.equal(r.result.redactionCount, 0);
+    assert.equal(r.result.status, "clean");
+    assert.ok(r.result.recommendation.includes("Cleared"));
+  });
+
+  it("schedule_hearing: lead time + proposed date derive from case type", async () => {
+    const r = await lensRun("government", "schedule_hearing", {
+      data: { caseType: "zoning", courtroom: "Room 4B", parties: [{ name: "Petitioner" }] },
+    });
+    assert.equal(r.result.caseType, "zoning");
+    assert.equal(r.result.leadTimeDays, 45);         // zoning lead time
+    assert.equal(r.result.location, "Room 4B");
+    assert.deepEqual(r.result.parties, ["Petitioner"]);
+    const expected = new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10);
+    assert.equal(r.result.proposedDate, expected);
+  });
+
+  it("export_record: serializes scalar data fields into an official-record body", async () => {
+    const r = await lensRun("government", "export_record", {
+      data: { caseNumber: "A-100", status: "filed", nested: { skip: true } },
+    });
+    assert.equal(r.result.format, "text");
+    assert.equal(r.result.fieldCount, 2);            // caseNumber + status (nested object excluded)
+    assert.match(r.result.recordId, /^REC-/);
+    assert.ok(r.result.content.includes("caseNumber: A-100"));
+    assert.ok(r.result.content.includes("status: filed"));
+    assert.ok(!r.result.content.includes("nested"));
+  });
+});
+
+describe("government — more CRUD round-trips + validation (wave 8 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("government-topup8"); });
+
+  it("foia-create → foia-list: a draft request reads back with normalized status", async () => {
+    const created = await lensRun("government", "foia-create", {
+      params: { agency: "EPA", subject: "Air quality logs", body: "Requesting Q1 monitoring data." },
+    }, ctx);
+    assert.equal(created.result.request.agency, "EPA");
+    assert.equal(created.result.request.status, "draft");
+    const list = await lensRun("government", "foia-list", {}, ctx);
+    assert.ok(list.result.requests.some((q) => q.id === created.result.request.id));
+  });
+
+  it("validation: foia-create rejects when a required field is blank", async () => {
+    const bad = await lensRun("government", "foia-create", {
+      params: { agency: "EPA", subject: "", body: "x" },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /agency, subject, body all required/);
+  });
+
+  it("fines-create → fines-list: amount is rounded to cents and reads back unpaid", async () => {
+    const created = await lensRun("government", "fines-create", {
+      params: { payerName: "Sam Vega", reason: "Illegal parking", amountUsd: 75.005, caseNumber: "PK-9" },
+    }, ctx);
+    assert.equal(created.result.fine.amountUsd, 75.01); // rounded to cents
+    assert.equal(created.result.fine.paid, false);
+    const list = await lensRun("government", "fines-list", {}, ctx);
+    assert.ok(list.result.fines.some((f) => f.id === created.result.fine.id));
+  });
+
+  it("validation: fines-create rejects a non-positive amount", async () => {
+    const bad = await lensRun("government", "fines-create", {
+      params: { payerName: "Sam", reason: "x", amountUsd: 0 },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /amountUsd must be positive/);
+  });
+
+  it("inspections-schedule → inspections-complete: status machine round-trips on a permit", async () => {
+    const applied = await lensRun("government", "permits-apply", {
+      params: { applicantName: "Ivy Park", applicantEmail: "ivy@example.com", kind: "building", feeUsd: 250 },
+    }, ctx);
+    const permitId = applied.result.permit.id;
+
+    const sched = await lensRun("government", "inspections-schedule", {
+      params: { permitId, kind: "framing", date: "2026-03-01", inspectorName: "Insp Lee" },
+    }, ctx);
+    assert.equal(sched.result.inspection.status, "scheduled");
+    const inspId = sched.result.inspection.id;
+
+    const done = await lensRun("government", "inspections-complete", {
+      params: { id: inspId, result: "pass", notes: "All clear" },
+    }, ctx);
+    assert.equal(done.result.inspection.status, "completed");
+    assert.equal(done.result.inspection.result, "pass");
+
+    // round-trip: scheduled inspection is listed under its permit
+    const list = await lensRun("government", "inspections-list", { params: { permitId } }, ctx);
+    assert.ok(list.result.inspections.some((i) => i.id === inspId));
+  });
+
+  it("validation: inspections-complete rejects an invalid result value", async () => {
+    const applied = await lensRun("government", "permits-apply", {
+      params: { applicantName: "Ed", applicantEmail: "ed@example.com", kind: "electrical", feeUsd: 120 },
+    }, ctx);
+    const sched = await lensRun("government", "inspections-schedule", {
+      params: { permitId: applied.result.permit.id, kind: "rough_in", date: "2026-04-01" },
+    }, ctx);
+    const bad = await lensRun("government", "inspections-complete", {
+      params: { id: sched.result.inspection.id, result: "maybe" },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /result must be pass\/fail\/needs_followup/);
+  });
+
+  it("assets-add → assets-log-maintenance: maintenance updates condition + reads back", async () => {
+    const added = await lensRun("government", "assets-add", {
+      params: { kind: "streetlight", label: "Lamp 14", lat: 40.7, lng: -74.0 },
+    }, ctx);
+    assert.equal(added.result.asset.condition, "good"); // default condition
+    const assetId = added.result.asset.id;
+
+    const logged = await lensRun("government", "assets-log-maintenance", {
+      params: { id: assetId, work: "Replaced bulb", crew: "Crew 3", condition: "fair" },
+    }, ctx);
+    assert.equal(logged.result.asset.condition, "fair"); // condition overwritten
+    assert.ok(logged.result.asset.maintenanceLog.some((m) => m.work === "Replaced bulb"));
+    assert.ok(logged.result.asset.lastInspectedAt); // stamped on maintenance
+
+    const list = await lensRun("government", "assets-list", { params: { kind: "streetlight" } }, ctx);
+    assert.ok(list.result.assets.some((a) => a.id === assetId));
+  });
+
+  it("validation: assets-add rejects an unknown asset kind", async () => {
+    const bad = await lensRun("government", "assets-add", {
+      params: { kind: "spaceport", lat: 1, lng: 2 },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /kind must be one of/);
+  });
+
+  it("advocacy-record → advocacy-bill-tally: stances tally per bill", async () => {
+    const billId = `bill-${randomUUID()}`;
+    await lensRun("government", "advocacy-record", {
+      params: { billId, billTitle: "Clean Air Act", stance: "support", channel: "email", message: "I support this." },
+    }, ctx);
+    await lensRun("government", "advocacy-record", {
+      params: { billId, stance: "support", channel: "call", representative: "Rep Diaz" },
+    }, ctx);
+    await lensRun("government", "advocacy-record", {
+      params: { billId, stance: "oppose", channel: "call" },
+    }, ctx);
+
+    const tally = await lensRun("government", "advocacy-bill-tally", { params: { billId } }, ctx);
+    assert.equal(tally.result.total, 3);
+    assert.equal(tally.result.tally.support, 2);
+    assert.equal(tally.result.tally.oppose, 1);
+    assert.equal(tally.result.tally.comment, 0);
+  });
+
+  it("validation: advocacy-record requires a message for email channel", async () => {
+    const bad = await lensRun("government", "advocacy-record", {
+      params: { billId: "b1", stance: "support", channel: "email" },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /message required for comment\/email\/letter/);
+  });
+
+  it("meetings-schedule → meetings-publish-minutes: status advances to minutes_published", async () => {
+    const scheduled = await lensRun("government", "meetings-schedule", {
+      params: { title: "Budget Review", body: "budget_committee", scheduledAt: "2026-05-01T18:00:00Z", location: "City Hall" },
+    }, ctx);
+    assert.equal(scheduled.result.meeting.status, "scheduled");
+    const id = scheduled.result.meeting.id;
+
+    const published = await lensRun("government", "meetings-publish-minutes", {
+      params: { id, minutes: "Quorum met. Budget approved 5-2." },
+    }, ctx);
+    assert.equal(published.result.meeting.status, "minutes_published");
+    assert.ok(published.result.meeting.minutes.includes("Budget approved"));
+
+    const list = await lensRun("government", "meetings-list", {}, ctx);
+    assert.ok(list.result.meetings.some((m) => m.id === id));
+  });
+
+  it("validation: meetings-schedule rejects an unknown governing body", async () => {
+    const bad = await lensRun("government", "meetings-schedule", {
+      params: { title: "X", body: "secret_cabal", scheduledAt: "2026-05-01T18:00:00Z" },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /body must be one of/);
+  });
+
+  it("voter-registration-submit → voter-registration-status: an adult registers + reads back", async () => {
+    const dob = new Date(Date.now() - 30 * 365 * 86400000).toISOString().slice(0, 10);
+    const submitted = await lensRun("government", "voter-registration-submit", {
+      params: { fullName: "Nora Adult", residentialAddress: "9 Oak Ave", dateOfBirth: dob, stateCode: "ny", partyPreference: "independent" },
+    }, ctx);
+    assert.equal(submitted.result.registration.status, "submitted");
+    assert.equal(submitted.result.registration.stateCode, "NY"); // upper-cased
+
+    const status = await lensRun("government", "voter-registration-status", {}, ctx);
+    assert.equal(status.result.registration.id, submitted.result.registration.id);
+  });
+
+  it("validation: voter-registration-submit rejects a malformed state code", async () => {
+    const dob = new Date(Date.now() - 25 * 365 * 86400000).toISOString().slice(0, 10);
+    const bad = await lensRun("government", "voter-registration-submit", {
+      params: { fullName: "Bad State", residentialAddress: "1 St", dateOfBirth: dob, stateCode: "CALIF" },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /stateCode must be a 2-letter code/);
+  });
+
+  it("validation: permits-deny before payment requires a reason", async () => {
+    const applied = await lensRun("government", "permits-apply", {
+      params: { applicantName: "Deny Me", applicantEmail: "d@example.com", kind: "plumbing", feeUsd: 110 },
+    }, ctx);
+    const denied = await lensRun("government", "permits-deny", {
+      params: { id: applied.result.permit.id, reason: "Incomplete drawings" },
+    }, ctx);
+    assert.equal(denied.result.permit.status, "denied");
+    assert.ok(denied.result.permit.denialReason.includes("Incomplete"));
+  });
+});

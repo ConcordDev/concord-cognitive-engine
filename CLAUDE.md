@@ -4,6 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## 🟢 ACTIVE CONTINUATION — read `docs/CONKAY_HONEST_HOLOGRAM_PLAN.md` first
+
+There is an **in-progress initiative** with a live handoff. Before starting work, open
+**`docs/CONKAY_HONEST_HOLOGRAM_PLAN.md`** (the "🟢 HANDOFF — start here" block at the top).
+
+- **Branch:** `claude/conkay-prod-audit-B3Mdk` · **PR:** #816 (open) · **Honest depth floor:** **0.628** (`node scripts/grade-macro-depth.mjs --honest`).
+- **Two parallel tracks (owner-locked):** **(A) Depth sweep** — resume the fleet loop toward the ~0.73 ceiling (`node scripts/depth-backlog.mjs` → 6 subagents → guard → commit → push; ~18–22 waves left). **(B) ConKay honest hologram** — start at **Phase 0** (emit AG-UI-shaped `macro:started/stage/completed` from `/api/lens/run` ~`server/server.js:38589`, subscribe the ConKay frontend, rebind the existing step-spine to the real lifecycle).
+- **Non-negotiable for Track B:** *honest by construction* — every animated element is a pure function of a real backend event; **no `setInterval`/fake-progress.** Audit: `grep -rE "setInterval|setTimeout" concord-frontend/components/conkay/`.
+- The strategic framing (verified + private compute-agent for R&D; verification IS the product) and the full design + research live in that doc. The `/root/.claude/plans/` copy is container-ephemeral — the repo doc is the source of truth.
+
+---
+
 ## What This Is
 
 Concord Cognitive Engine is a cognitive operating system — a knowledge platform with **259 frontend lens directories**, **352 backend domain files**, four parallel LLM brains + LLaVA vision, a self-compressing knowledge substrate (DTUs), a creator economy with perpetual royalties, a seven-layer mesh network, and a 3D civilization simulator (Concordia). Live at concord-os.org. **~2.05M lines of authored source (2.91M incl. shipped content/data), one developer** — reproduce with `npm run count-loc` (excludes node_modules/build/generated; transparently reclassifies data-modules masquerading as code — e.g. the deprecated 145k-line `server/dtus.js` seed pack at 0% code density — out of the source total). The earlier "~1.36M lines" headline was a stale *undercount*; cite the counter, not memory.

@@ -188,7 +188,11 @@ export default function registerHVACActions(registerLensAction) {
     const techs = s.technicians.get(userId) || [];
     let appts = s.appointments.get(userId) || [];
     if (date) appts = appts.filter((a) => a.date === date);
-    const unassigned = appts.filter((a) => !a.technicianId && a.status !== "cancelled");
+    // The unassigned queue is the dispatcher's triage list of work that still
+    // needs a technician — terminal statuses (cancelled/completed) are done and
+    // must not linger here. (Previously only "cancelled" was excluded, so a
+    // completed-but-never-assigned appointment stuck in the queue forever.)
+    const unassigned = appts.filter((a) => !a.technicianId && a.status !== "cancelled" && a.status !== "completed");
     const lanes = techs.map((t) => ({
       technician: { id: t.id, name: t.name, color: t.color },
       appointments: appts.filter((a) => a.technicianId === t.id && a.status !== "cancelled"),
