@@ -25292,6 +25292,9 @@ registerDtuPortabilityMacros(register);
 // lenses with one query.
 import registerDiscoveryMacros from "./domains/discovery.js";
 registerDiscoveryMacros(register);
+// reason.verify — claim verification (citation-resolution floor + council judge).
+import registerReasonMacros from "./domains/reason.js";
+registerReasonMacros(register);
 
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
