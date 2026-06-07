@@ -45,6 +45,28 @@ and `{ params }` for CRUD macros. `lens.run` reports outer `ok:true` on dispatch
 nests a handler refusal under `result` (so a rejection is `r.result.ok === false`).
 Share a `ctx` across calls for state round-trips.
 
+## Invoking gameplay/economy macros: `macroRuntime`
+The `register(domain, name, handler)` family (crime, kingdoms, romance, politics,
+religion, city, …) is NOT a lens action — it's dispatched by `runMacro` directly,
+so `lensRun` can't reach it. Use `_harness.js#macroRuntime`:
+```js
+import { macroRuntime } from "./_harness.js";
+let runMacro, ctx;
+before(async () => { ({ runMacro, ctx } = await macroRuntime("crime")); });
+const r = await runMacro("crime", "record", { ... }, ctx);   // literal strings → grader credit
+```
+- These handlers need `ctx.db` + `ctx.actor.userId` — `macroRuntime` supplies both.
+- The return comes back **directly** (no `lens.run` `.result` wrapper): success is
+  `r.<field>`, refusal is `{ ok:false, reason }`. Assert `r.<field>` — the guard
+  credits `assert.equal(r.bountyCents, 600)`, `r.reason`, and comparisons like
+  `assert.ok(last.affinity >= 0.85)` — never a bare `assert.equal(r.ok, true)`.
+- **Orphan check:** if `runMacro` returns `"macro domain not found: X"`, the domain
+  was never wired into `server.js` — add `import registerXMacros from "./domains/X.js";
+  registerXMacros(register);` near the other registrations (~`registerKingdomsMacros`).
+  This campaign revived 5 such dead domains (68 macros) that way.
+- Idempotency: the test DB persists across runs — use `randomUUID()` for any
+  fixed-key entity and assert existence (`.some`, `length >= 1`), not exact COUNT.
+
 ## Stopping rule
 With `utility` weighted 0.6, testing everything caps at the **~0.75–0.85 ceiling**,
 not 1.0 — correctly-small handlers can't become "production-grade" without padding.

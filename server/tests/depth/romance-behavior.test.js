@@ -62,7 +62,7 @@ describe("romance — courtship → marriage → lineage loop", () => {
   it("spouses: the wedded partner shows as a spouse", async () => {
     const s = await runMacro("romance", "spouses", {}, ctx);
     assert.equal(s.ok, true);
-    assert.ok(Array.isArray(s.spouses));
+    assert.ok(s.spouses.length >= 1, "the wedded partner should appear as a spouse");
   });
 });
 

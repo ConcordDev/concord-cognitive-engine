@@ -29,6 +29,7 @@ describe("city — budget / tax / policy / happiness", () => {
   it("set_allocations: returns the clamped allocation set", async () => {
     const r = await runMacro("city", "set_allocations", { worldId: W, allocations: { safety: 60, health: 40 } }, ctx);
     assert.equal(r.ok, true);
+    assert.equal(r.allocations.safety, 60);   // echoed back, clamped 0..100
   });
 
   it("enact: rejects an unknown policy kind, accepts a real one, lists + repeals it", async () => {

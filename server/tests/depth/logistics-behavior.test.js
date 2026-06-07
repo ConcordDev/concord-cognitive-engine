@@ -30,7 +30,7 @@ describe("logistics — calc contracts (exact computed values)", () => {
         { name: "Over", logs: [{ date: "2026-06-07", drivingHours: 12, onDutyHours: 13 }] },
         { name: "OK",   logs: [{ date: "2026-06-07", drivingHours: 5,  onDutyHours: 6  }] },
       ] },
-    }, );
+    });
     assert.equal(r.ok, true);
     assert.equal(r.result.driversChecked, 2);
     assert.equal(r.result.violationCount, 1);   // only the 12h driver
@@ -65,7 +65,7 @@ describe("logistics — CRUD round-trips + validation (shared ctx)", () => {
   });
 
   it("rates-quote: returns priced quotes once a carrier exists (deterministic)", async () => {
-    // carrier added in the first test (shared ctx) supports ltl
+    // the carrier added earlier in this shared-ctx block supports ltl
     const q = await lensRun("logistics", "rates-quote", { params: { origin: "NYC", destination: "LA", mode: "ltl", weightLbs: 500 } }, ctx);
     assert.equal(q.ok, true);
     assert.ok(Array.isArray(q.result.quotes) && q.result.quotes.length >= 1);

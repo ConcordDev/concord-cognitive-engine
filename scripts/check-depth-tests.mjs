@@ -63,10 +63,20 @@ function stripComments(s) {
 // an explicit rejection. Bare `assert.equal(r.ok, true)` / typeof-object do NOT
 // count (that's what the smoke harness already does).
 function isSubstantive(body) {
-  if (/\.result\.(?!ok\b)[a-zA-Z_]\w*/.test(body)) return true;          // reads a real result field
+  if (/\.result\.(?!ok\b)[a-zA-Z_]\w*/.test(body)) return true;          // reads a real result field (lens-family)
   if (/assert\.(match|deepEqual|deepStrictEqual|notEqual|notStrictEqual)\s*\(/.test(body)) return true;
   if (/\.(some|find|filter|includes)\s*\(/.test(body)) return true;       // round-trip / membership
-  if (/result\.ok\s*,\s*false|result\.ok\s*===\s*false/.test(body)) return true; // rejection
+  if (/result\.ok\s*,\s*false|result\.ok\s*===\s*false/.test(body)) return true; // rejection (lens-family)
+  // register()-family macros (macroRuntime path) return the result DIRECTLY — no
+  // `.result` wrapper — so a real assertion reads `r.<field>` not `r.result.<field>`.
+  // Credit an exact-value assertion on a direct field other than `ok`
+  // (assert.equal(r.bountyCents, 600); assert.equal(tally.total, 1)), a comparison
+  // (assert.ok(last.affinity >= 0.85)), or a rejection reason
+  // (assert.equal(r.reason, "no_courtship")). The (?!typeof)(?!Array\.) guards keep
+  // bare typeof/Array.isArray shape-checks from sneaking through.
+  if (/assert\.(?:equal|strictEqual)\s*\(\s*(?!typeof\b)(?!Array\.)\w+(?:\.\w+)*\.(?!ok\b)\w+\s*,/.test(body)) return true;
+  if (/assert\.ok\s*\(\s*(?!typeof\b)(?!Array\.)\w+(?:\.\w+)*\.(?!ok\b)\w+\s*(?:>=|<=|===|!==|<|>|&&|\))/.test(body)) return true;
+  if (/assert\.\w+\s*\(\s*\w+(?:\.\w+)*\.reason\b/.test(body)) return true; // rejection by reason (register-family)
   return false;
 }
 

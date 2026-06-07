@@ -81,7 +81,8 @@ describe("crime — bounties + territories round-trips", () => {
     const cancel = await runMacro("crime", "cancel_bounty", { bountyId: issued.bountyId }, ctx);
     assert.equal(cancel.ok, true);
     const claim = await runMacro("crime", "claim_bounty", { bountyId: issued.bountyId }, ctx);
-    assert.equal(claim.ok, false);             // cancelled
+    assert.equal(claim.ok, false);
+    assert.equal(claim.reason, "cancelled");   // can't claim a cancelled bounty
   });
 
   it("stake_territory → territories → advance_control: control moves and clamps at 100", async () => {
