@@ -8,7 +8,7 @@
       "description": "Complete a Wintersday quest while the festival is active.",
       "rarity": "silver",
       "icon": "Snowflake",
-      "rewardCc": 100,
+      "rewardSparks": 100,
       "festivalOnly": "wintersday",
       "triggers": [{ "kind": "event", "event": "quest:completed", "condition": { "festivalId": "wintersday" } }]
     },
@@ -18,7 +18,7 @@
       "description": "Submit three brews to the Harvest Moon judges.",
       "rarity": "silver",
       "icon": "Beer",
-      "rewardCc": 100,
+      "rewardSparks": 100,
       "festivalOnly": "harvest_moon",
       "triggers": [{ "kind": "stat", "stat": "harvest_brews_submitted", "threshold": 3 }]
     },
@@ -28,7 +28,7 @@
       "description": "Stay in a chain dance of 8+ for an entire song during the Lunar Dance.",
       "rarity": "gold",
       "icon": "Music",
-      "rewardCc": 150,
+      "rewardSparks": 150,
       "rewardTitle": "the Moonlit",
       "festivalOnly": "lunar_dance",
       "triggers": [{ "kind": "event", "event": "festival:dance-completed", "condition": { "festivalId": "lunar_dance" } }]
@@ -39,7 +39,7 @@
       "description": "Compose a founding-history DTU after hearing three elder tellings.",
       "rarity": "gold",
       "icon": "BookText",
-      "rewardCc": 200,
+      "rewardSparks": 200,
       "rewardTitle": "the Chronicler",
       "festivalOnly": "founders_day",
       "triggers": [{ "kind": "event", "event": "dtu:created", "condition": { "kind": "history", "festivalId": "founders_day" } }]

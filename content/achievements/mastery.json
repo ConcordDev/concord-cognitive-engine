@@ -8,7 +8,7 @@
       "description": "Complete your first quest.",
       "rarity": "bronze",
       "icon": "ScrollText",
-      "rewardCc": 15,
+      "rewardSparks": 15,
       "triggers": [{ "kind": "event", "event": "quest:completed", "condition": {} }]
     },
     {
@@ -17,7 +17,7 @@
       "description": "Complete 100 quests.",
       "rarity": "gold",
       "icon": "BookOpen",
-      "rewardCc": 500,
+      "rewardSparks": 500,
       "rewardTitle": "the Questbreaker",
       "triggers": [{ "kind": "stat", "stat": "quests_completed", "threshold": 100 }]
     },
@@ -27,7 +27,7 @@
       "description": "Cure your first patient.",
       "rarity": "bronze",
       "icon": "Heart",
-      "rewardCc": 20,
+      "rewardSparks": 20,
       "triggers": [{ "kind": "event", "event": "disease:cured", "condition": { "byOther": true } }]
     },
     {
@@ -36,7 +36,7 @@
       "description": "End a plague event.",
       "rarity": "legendary",
       "icon": "ShieldPlus",
-      "rewardCc": 1000,
+      "rewardSparks": 1000,
       "rewardTitle": "the Plaguebreaker",
       "hidden": true,
       "triggers": [{ "kind": "event", "event": "plague:resolved", "condition": {} }]
@@ -47,7 +47,7 @@
       "description": "Reach level 50 in any skill.",
       "rarity": "silver",
       "icon": "Star",
-      "rewardCc": 100,
+      "rewardSparks": 100,
       "triggers": [{ "kind": "stat", "stat": "max_skill_level", "threshold": 50 }]
     },
     {
@@ -56,7 +56,7 @@
       "description": "Evolve a skill to gen-2.",
       "rarity": "gold",
       "icon": "Sparkles",
-      "rewardCc": 250,
+      "rewardSparks": 250,
       "rewardTitle": "the Evolved",
       "triggers": [{ "kind": "event", "event": "skill:evolved", "condition": {} }]
     },
@@ -66,7 +66,7 @@
       "description": "Reach Honored reputation with any faction.",
       "rarity": "silver",
       "icon": "Award",
-      "rewardCc": 100,
+      "rewardSparks": 100,
       "triggers": [{ "kind": "stat", "stat": "highest_faction_rep_tier", "threshold": 4 }]
     },
     {
@@ -75,7 +75,7 @@
       "description": "Reach Exalted reputation with any faction.",
       "rarity": "legendary",
       "icon": "Crown",
-      "rewardCc": 1000,
+      "rewardSparks": 1000,
       "rewardTitle": "the Exalted",
       "triggers": [{ "kind": "stat", "stat": "highest_faction_rep_tier", "threshold": 5 }]
     },
@@ -85,7 +85,7 @@
       "description": "Deploy your first AI resident.",
       "rarity": "silver",
       "icon": "Bot",
-      "rewardCc": 50,
+      "rewardSparks": 50,
       "triggers": [{ "kind": "event", "event": "resident:deployed", "condition": {} }]
     },
     {
@@ -94,7 +94,7 @@
       "description": "Recover from a plague-tier disease and gain immunity.",
       "rarity": "gold",
       "icon": "ShieldCheck",
-      "rewardCc": 200,
+      "rewardSparks": 200,
       "rewardTitle": "the Unbroken",
       "triggers": [{ "kind": "event", "event": "disease:recovered", "condition": { "tier": "plague" } }]
     }

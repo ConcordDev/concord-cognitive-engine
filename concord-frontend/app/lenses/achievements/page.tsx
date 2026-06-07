@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Trophy, Lock, Sparkles, Coins, Star } from 'lucide-react';
+import { Trophy, Lock, Sparkles, Zap, Star } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 
@@ -21,7 +21,7 @@ interface CatalogEntry {
   icon?: string;
   rarity: 'bronze' | 'silver' | 'gold' | 'legendary';
   hidden: boolean;
-  rewardCc?: number;
+  rewardSparks?: number;
   rewardTitle?: string | null;
 }
 
@@ -137,9 +137,9 @@ export default function AchievementsLensPage() {
                       <div className="text-sm font-semibold text-slate-100 truncate">{a.title}</div>
                       <p className="mt-0.5 text-[11px] text-slate-400">{a.description}</p>
                       <div className="mt-2 flex flex-wrap gap-1 text-[10px]">
-                        {a.rewardCc != null && a.rewardCc > 0 && (
-                          <span className="flex items-center gap-1 rounded bg-yellow-500/20 px-1.5 py-0.5 text-yellow-200">
-                            <Coins className="h-2.5 w-2.5" /> +{a.rewardCc} CC
+                        {a.rewardSparks != null && a.rewardSparks > 0 && (
+                          <span className="flex items-center gap-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-200">
+                            <Zap className="h-2.5 w-2.5" /> +{a.rewardSparks} Sparks
                           </span>
                         )}
                         {a.rewardTitle && (

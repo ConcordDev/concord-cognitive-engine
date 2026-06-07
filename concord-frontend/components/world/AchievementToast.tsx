@@ -10,14 +10,14 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Trophy, X, Sparkles, Coins } from 'lucide-react';
+import { Trophy, X, Sparkles, Zap } from 'lucide-react';
 
 interface UnlockEvent {
   achievementId: string;
   title: string;
   rarity: 'bronze' | 'silver' | 'gold' | 'legendary';
   icon?: string;
-  rewardCc?: number;
+  rewardSparks?: number;
   rewardTitle?: string | null;
 }
 
@@ -70,9 +70,9 @@ export function AchievementToast() {
             </div>
             <div className="text-sm font-semibold truncate">{u.title}</div>
             <div className="mt-1 flex flex-wrap gap-1 text-[10px]">
-              {!!u.rewardCc && u.rewardCc > 0 && (
-                <span className="flex items-center gap-1 rounded bg-yellow-500/20 px-1.5 py-0.5">
-                  <Coins className="h-2.5 w-2.5" /> +{u.rewardCc} CC
+              {!!u.rewardSparks && u.rewardSparks > 0 && (
+                <span className="flex items-center gap-1 rounded bg-amber-500/20 px-1.5 py-0.5">
+                  <Zap className="h-2.5 w-2.5" /> +{u.rewardSparks} Sparks
                 </span>
               )}
               {u.rewardTitle && (
