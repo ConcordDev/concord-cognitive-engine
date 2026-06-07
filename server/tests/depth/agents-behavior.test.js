@@ -243,3 +243,146 @@ describe("agents — runtime CRUD round-trips + budget enforcement (shared ctx)"
     assert.match(bad.result.error, /template not found/);
   });
 });
+
+describe("agents — schedule/graph/thread lifecycle + templates + overview (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("agents-lifecycle"); });
+
+  it("createSchedule → listSchedules → toggleSchedule → deleteSchedule full lifecycle", async () => {
+    const sched = await lensRun("agents", "createSchedule", {
+      params: { agentId: "sg1", agentName: "Toggler", kind: "cron", spec: "0 * * * *", goal: "hourly" },
+    }, ctx);
+    assert.equal(sched.result.schedule.kind, "cron");
+    assert.equal(sched.result.schedule.enabled, true); // enabled !== false → true by default
+    const id = sched.result.schedule.id;
+
+    const list = await lensRun("agents", "listSchedules", {}, ctx);
+    assert.ok(list.result.schedules.some((x) => x.id === id));
+    assert.equal(list.result.total, list.result.schedules.length);
+
+    // toggle flips enabled true → false
+    const off = await lensRun("agents", "toggleSchedule", { params: { id } }, ctx);
+    assert.equal(off.result.schedule.enabled, false);
+    // toggle again flips back false → true
+    const on = await lensRun("agents", "toggleSchedule", { params: { id } }, ctx);
+    assert.equal(on.result.schedule.enabled, true);
+
+    const del = await lensRun("agents", "deleteSchedule", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, true);
+    const after = await lensRun("agents", "listSchedules", {}, ctx);
+    assert.ok(!after.result.schedules.some((x) => x.id === id));
+  });
+
+  it("toggleSchedule + deleteSchedule reject an unknown id", async () => {
+    const tog = await lensRun("agents", "toggleSchedule", { params: { id: "sched_missing" } }, ctx);
+    assert.equal(tog.result.ok, false);
+    assert.match(tog.result.error, /schedule not found/);
+    const del = await lensRun("agents", "deleteSchedule", { params: { id: "sched_missing" } }, ctx);
+    assert.equal(del.result.ok, false);
+    assert.match(del.result.error, /schedule not found/);
+  });
+
+  it("createSchedule rejects a missing agentId", async () => {
+    const bad = await lensRun("agents", "createSchedule", { params: { kind: "interval", spec: "1000" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /agentId required/);
+  });
+
+  it("createSchedule coerces an unknown kind to interval", async () => {
+    const sched = await lensRun("agents", "createSchedule", {
+      params: { agentId: "sg2", kind: "telepathy", spec: "5000" },
+    }, ctx);
+    assert.equal(sched.result.schedule.kind, "interval"); // not in SCHEDULE_KINDS → default
+    assert.equal(sched.result.schedule.agentName, "sg2"); // falls back to agentId
+  });
+
+  it("saveGraph → deleteGraph: deleting removes the graph from the list", async () => {
+    const save = await lensRun("agents", "saveGraph", {
+      params: { name: "Disposable", nodes: [{ id: "n1", label: "Solo", role: "worker" }], edges: [] },
+    }, ctx);
+    const graphId = save.result.graph.id;
+    const list1 = await lensRun("agents", "listGraphs", {}, ctx);
+    assert.ok(list1.result.graphs.some((g) => g.id === graphId));
+
+    const del = await lensRun("agents", "deleteGraph", { params: { id: graphId } }, ctx);
+    assert.equal(del.result.deleted, true);
+    const list2 = await lensRun("agents", "listGraphs", {}, ctx);
+    assert.ok(!list2.result.graphs.some((g) => g.id === graphId));
+  });
+
+  it("deleteGraph rejects an unknown id", async () => {
+    const bad = await lensRun("agents", "deleteGraph", { params: { id: "graph_missing" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /graph not found/);
+  });
+
+  it("postMessage → clearThread → getThread: clearing empties the thread", async () => {
+    await lensRun("agents", "postMessage", { params: { agentId: "th1", agentName: "Wipe", text: "remember this" } }, ctx);
+    const before = await lensRun("agents", "getThread", { params: { agentId: "th1" } }, ctx);
+    assert.equal(before.result.thread.messages.length, 2);
+
+    const cleared = await lensRun("agents", "clearThread", { params: { agentId: "th1" } }, ctx);
+    assert.equal(cleared.result.cleared, true);
+
+    // After clear, the thread map has no entry → getThread returns the empty default.
+    const after = await lensRun("agents", "getThread", { params: { agentId: "th1" } }, ctx);
+    assert.equal(after.result.thread.messages.length, 0);
+    assert.equal(after.result.thread.createdAt, null);
+  });
+
+  it("clearThread is idempotent for a non-existent thread", async () => {
+    const cleared = await lensRun("agents", "clearThread", { params: { agentId: "never_existed" } }, ctx);
+    assert.equal(cleared.result.cleared, true);
+  });
+
+  it("listTemplates: returns all 5 authored templates with consistent total", async () => {
+    const r = await lensRun("agents", "listTemplates", {}, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.total, 5);
+    assert.equal(r.result.templates.length, 5);
+    assert.ok(r.result.templates.some((t) => t.id === "tpl_swarm_orchestrator"));
+    const sentinel = r.result.templates.find((t) => t.id === "tpl_research_sentinel");
+    assert.equal(sentinel.type, "research");
+    assert.ok(sentinel.tools.includes("dtu_create"));
+  });
+
+  it("getBudget: derived projection fields (remaining/pctUsed/cost) compute exactly", async () => {
+    // tokenLimit 1000 @ costPer1k 3; commit ~ via a small run.
+    await lensRun("agents", "setBudget", { params: { agentId: "bu1", tokenLimit: 1000, costPer1k: 4, enforce: true } }, ctx);
+    // Read with zero usage first: remaining == limit, pctUsed 0, cost 0.
+    const fresh = await lensRun("agents", "getBudget", { params: { agentId: "bu1" } }, ctx);
+    assert.equal(fresh.result.remaining, 1000);
+    assert.equal(fresh.result.pctUsed, 0);
+    assert.equal(fresh.result.estCostUsed, 0);
+    // estCostLimit = 1000/1000 * 4 = 4
+    assert.equal(fresh.result.estCostLimit, 4);
+    assert.equal(fresh.result.exceeded, false);
+  });
+
+  it("getBudget: an agent with no budget returns budget: null", async () => {
+    const none = await lensRun("agents", "getBudget", { params: { agentId: "no_budget_agent" } }, ctx);
+    assert.equal(none.ok, true);
+    assert.equal(none.result.budget, null);
+  });
+
+  it("runtimeOverview: aggregates runs/schedules/graphs/budgets/threads for the user", async () => {
+    // Seed a couple of artifacts into this fresh ctx so the aggregate is non-trivial.
+    await lensRun("agents", "executeRun", { params: { agentId: "ov1", agentName: "Ov", goal: "g", tools: ["classify"], maxSteps: 2 } }, ctx);
+    await lensRun("agents", "createSchedule", { params: { agentId: "ov2", kind: "interval", spec: "1000", enabled: true } }, ctx);
+    await lensRun("agents", "saveGraph", { params: { name: "OvGraph", nodes: [{ id: "a", label: "A", role: "worker" }], edges: [] } }, ctx);
+    await lensRun("agents", "setBudget", { params: { agentId: "ov3", tokenLimit: 500 } }, ctx);
+    await lensRun("agents", "postMessage", { params: { agentId: "ov4", text: "hi" } }, ctx);
+
+    const ov = await lensRun("agents", "runtimeOverview", {}, ctx);
+    assert.equal(ov.ok, true);
+    assert.ok(ov.result.totalRuns >= 1);
+    assert.ok(ov.result.completed >= 1);
+    assert.ok(ov.result.totalTokensSpent > 0);
+    assert.ok(ov.result.activeSchedules >= 1);
+    assert.ok(ov.result.graphCount >= 1);
+    assert.ok(ov.result.budgetedAgents >= 1);
+    assert.ok(ov.result.threadCount >= 1);
+    assert.ok(ov.result.recentRuns.length >= 1);
+    assert.ok(ov.result.recentRuns.length <= 5);
+  });
+});
