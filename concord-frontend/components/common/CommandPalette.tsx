@@ -14,7 +14,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Search, CornerDownLeft, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, CornerDownLeft, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 import {
   getCommandPaletteLenses,
@@ -123,8 +123,24 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // All command-palette-eligible lenses (stable between renders)
-  const allLenses = useMemo(() => getCommandPaletteLenses(), []);
+  // All command-palette-eligible lenses (stable between renders). ConKay — Kay,
+  // Concord's voice-native AI majordomo — is prepended as a "hidden staple" so it
+  // can be summoned from anywhere; selecting it drops into ConKay chat mode.
+  const allLenses = useMemo(() => {
+    const conkay: LensEntry = {
+      id: 'conkay',
+      name: 'ConKay — Summon Kay',
+      icon: Sparkles,
+      description: 'Voice-native AI majordomo · your archives + research + live visualizations',
+      category: 'core',
+      showInSidebar: false,
+      showInCommandPalette: true,
+      path: '/lenses/chat?mode=conkay',
+      order: 0,
+      keywords: ['conkay', 'kay', 'jarvis', 'friday', 'assistant', 'majordomo', 'voice', 'ai', 'brief'],
+    };
+    return [conkay, ...getCommandPaletteLenses()];
+  }, []);
 
   // Filtered + scored results
   const results = useMemo(() => {
@@ -224,7 +240,14 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
   const navigateToLens = useCallback(
     (lens: LensEntry) => {
       setOpen(false);
-      router.push(lens.path);
+      // Paths carrying a query (e.g. ConKay's ?mode=conkay) use a full navigation
+      // so the destination's mount effect reliably picks up the param even when
+      // we're already on that pathname.
+      if (lens.path.includes('?') && typeof window !== 'undefined') {
+        window.location.href = lens.path;
+      } else {
+        router.push(lens.path);
+      }
     },
     [setOpen, router],
   );

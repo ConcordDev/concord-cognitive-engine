@@ -78,6 +78,7 @@ import { ConKayHud } from '@/components/conkay/ConKayHud';
 import { ConKayMessage } from '@/components/conkay/ConKayViz';
 import { useConKayVoice } from '@/components/conkay/useConKayVoice';
 import { CONKAY_PERSONA_PROMPT, type ConKayState } from '@/components/conkay/conkay-persona';
+import { matchConKaySkill, type ConKaySkill } from '@/components/conkay/conkay-skills';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { formatBytes } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -507,6 +508,9 @@ export default function ChatLensPage() {
   const [aiMode, setAiMode] = useState<AIMode>(AI_MODES[0]);
   const isConKay = aiMode.id === 'conkay';
   const [conkayMuted, setConkayMuted] = useState(false);
+  // Ambient "acting" flare + a "skill is running" flag (drives the processing state).
+  const [conkayActing, setConkayActing] = useState(false);
+  const [conkaySkillRunning, setConkaySkillRunning] = useState(false);
   const [showModeSelect, setShowModeSelect] = useState(false);
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [feedbackState, setFeedbackState] = useState<Record<string, 'up' | 'down'>>({});
@@ -588,6 +592,19 @@ export default function ChatLensPage() {
     try {
       const ctx = new URLSearchParams(window.location.search).get('context');
       if (ctx) setDomainContext(ctx);
+    } catch { /* SSR / no window */ }
+  }, []);
+
+  // Consume ?mode=<id> from the URL on mount — this is how ConKay becomes a
+  // "hidden staple" summonable from anywhere (command palette "Summon Kay",
+  // deep links). /lenses/chat?mode=conkay drops you straight into ConKay mode.
+  useEffect(() => {
+    try {
+      const m = new URLSearchParams(window.location.search).get('mode');
+      if (m) {
+        const found = AI_MODES.find((x) => x.id === m);
+        if (found) setAiMode(found);
+      }
     } catch { /* SSR / no window */ }
   }, []);
 
@@ -1702,6 +1719,60 @@ export default function ChatLensPage() {
     },
   });
 
+  // ── ConKay skills: Kay actually *does* things against real Concord data ──────
+  // (brief me / search my archive / my activity / world pulse / open a lens /
+  // enter the world). Runs instantly, even when the LLM brains are offline; the
+  // reply renders as spoken prose + a live viz + archive citations, and may
+  // navigate or flare the ambient "acting" state. Unmatched input falls through
+  // to the normal four-brain chat pipeline.
+  const runConKaySkill = useCallback(async (
+    text: string,
+    match: { skill: ConKaySkill; args: Record<string, string> },
+  ) => {
+    setLocalMessages((prev) => [...prev, {
+      id: `user-${Date.now()}`, role: 'user', content: text, timestamp: new Date().toISOString(),
+    }]);
+    setInput('');
+    setConkaySkillRunning(true);
+    setConkayActing(true);
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+      const result = await match.skill.run(match.args, {
+        apiBase,
+        fetchJson: async (path: string) => {
+          try {
+            const r = await fetch(`${apiBase}${path}`, { credentials: 'include' });
+            return await r.json();
+          } catch { return null; }
+        },
+      });
+      // Live viz rides the existing conkay-viz fence ConKayMessage already parses.
+      const fence = result.viz ? `\n\n\`\`\`conkay-viz\n${JSON.stringify(result.viz)}\n\`\`\`` : '';
+      setLocalMessages((prev) => [...prev, {
+        id: `asst-${Date.now()}`, role: 'assistant',
+        content: `${result.spoken}${fence}`,
+        timestamp: new Date().toISOString(),
+        model: 'kay',
+        dtuRefs: result.dtuRefs,
+        sources: result.sources,
+        toolCalls: result.toolCalls,
+      }]);
+      if (result.navigate) {
+        const dest = result.navigate;
+        setTimeout(() => { window.location.href = dest; }, 900);
+      }
+    } catch {
+      setLocalMessages((prev) => [...prev, {
+        id: `asst-${Date.now()}`, role: 'assistant',
+        content: 'I hit a snag running that — mind trying again?',
+        timestamp: new Date().toISOString(),
+      }]);
+    } finally {
+      setConkaySkillRunning(false);
+      setTimeout(() => setConkayActing(false), 2500);
+    }
+  }, [setLocalMessages, setInput]);
+
   const handleSend = useCallback(() => {
     // ConKay vision: an attached image is "look at this" — runs even with no text.
     if (isConKay && !conkayVisionMutation.isPending) {
@@ -1729,8 +1800,15 @@ export default function ChatLensPage() {
       return;
     }
 
+    // ConKay: a matching imperative ("brief me", "open music") runs a skill
+    // directly; everything else falls through to the chat pipeline.
+    if (isConKay) {
+      const m = matchConKaySkill(input.trim());
+      if (m) { runConKaySkill(input.trim(), m); return; }
+    }
+
     sendMutation.mutate(input);
-  }, [input, sendMutation, executeSlashCommand, isConKay, attachments, conkayVisionMutation]);
+  }, [input, sendMutation, executeSlashCommand, isConKay, attachments, conkayVisionMutation, runConKaySkill]);
 
   // ── ConKay: voice-native STT in / TTS out when the mode is active ───────────
   const conkayVoice = useConKayVoice({
@@ -1740,19 +1818,21 @@ export default function ChatLensPage() {
       const text = t.trim();
       if (!text || sendMutation.isPending) return;
       if (text.startsWith('/')) { executeSlashCommand(text); return; }
+      const m = matchConKaySkill(text);
+      if (m) { runConKaySkill(text, m); return; }
       sendMutation.mutate(text);
     },
   });
   // React to each new assistant reply: speak it, and flare "acting" when the
   // reply actually touched a system (real toolCalls — ambient action feedback).
-  const [conkayActing, setConkayActing] = useState(false);
   const conkaySpokeRef = useRef<string | null>(null);
   useEffect(() => {
     if (!isConKay) return;
     const last = [...localMessages].reverse().find((m) => m.role === 'assistant');
     if (!last || last.id === conkaySpokeRef.current) return;
     conkaySpokeRef.current = last.id;
-    if (!conkayMuted) conkayVoice.speak(last.content || '');
+    // Strip any conkay-viz fence so Kay never reads raw JSON aloud.
+    if (!conkayMuted) conkayVoice.speak((last.content || '').replace(/```conkay-viz[\s\S]*?```/gi, '').trim());
     if (Array.isArray(last.toolCalls) && last.toolCalls.length > 0) {
       setConkayActing(true);
       const tmr = setTimeout(() => setConkayActing(false), 3500);
@@ -1771,7 +1851,7 @@ export default function ChatLensPage() {
 
   // ConKay state machine — driven by real signals (not a screensaver).
   const conkayState: ConKayState =
-    (sendMutation.isPending || conkayVisionMutation.isPending) ? 'processing'
+    (sendMutation.isPending || conkayVisionMutation.isPending || conkaySkillRunning) ? 'processing'
       : conkayActing ? 'acting'
         : conkayVoice.speaking ? 'presenting'
           : conkayVoice.listening ? 'listening'
