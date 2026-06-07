@@ -36,7 +36,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          # Pinned to 20 (the rest of CI's version) — Node 22.x intermittently
+          # crashes the ESM value-assertion harnesses with a V8 fatal
+          # (`Check failed: (location_) != nullptr` in AsyncModuleExecutionFulfilled,
+          # exit 133) AFTER the script's own checks pass. The scripts run clean on
+          # 20 (and engines is >=18), and 20 is the version every other green CI
+          # job uses, so this also makes the audit job consistent.
+          node-version: '20'
           cache: 'npm'
 
       - name: Install server deps
