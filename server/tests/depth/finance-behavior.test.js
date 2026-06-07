@@ -175,3 +175,503 @@ describe("finance — validation rejections", () => {
     assert.ok(bad.result.error.includes("account not found"));
   });
 });
+
+describe("finance — net worth + dashboard (wave 8 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("finance-topup8-nw"); });
+
+  it("net-worth-snapshot: total = cash+inv+realEstate+crypto − liabilities", async () => {
+    const r = await lensRun("finance", "net-worth-snapshot", { params: {
+      cash: 20000, investments: 80000, realEstate: 300000, crypto: 5000, liabilities: 150000,
+    } }, ctx);
+    assert.equal(r.ok, true);
+    // 20000 + 80000 + 300000 + 5000 − 150000 = 255000
+    assert.equal(r.result.snapshot.total, 255000);
+    assert.equal(r.result.snapshot.cash, 20000);
+    assert.equal(r.result.snapshot.liabilities, 150000);
+  });
+
+  it("net-worth-history reads the logged snapshot back (round-trip via .some)", async () => {
+    const r = await lensRun("finance", "net-worth-history", { params: { range: "5Y" } }, ctx);
+    assert.equal(r.ok, true);
+    assert.ok(r.result.snapshots.some((s) => s.total === 255000));
+    assert.equal(r.result.total >= 1, true);
+  });
+
+  it("net-worth-snapshot clamps negative inputs to 0 (liabilities only subtract)", async () => {
+    const r2 = await lensRun("finance", "net-worth-snapshot", { params: {
+      cash: -500, investments: 1000, realEstate: 0, crypto: 0, liabilities: 200, date: "2020-01-01",
+    } }, ctx);
+    assert.equal(r2.ok, true);
+    // cash clamps to 0 → 0 + 1000 + 0 + 0 − 200 = 800
+    assert.equal(r2.result.snapshot.total, 800);
+    assert.equal(r2.result.snapshot.cash, 0);
+  });
+
+  it("dashboard-summary: netWorth = cash + investments − credit − loans", async () => {
+    const dctx = await depthCtx("finance-topup8-dash");
+    await lensRun("finance", "accounts-link", { params: { institution: "Chase", name: "Chk", kind: "checking", balance: 5000 } }, dctx);
+    await lensRun("finance", "accounts-link", { params: { institution: "Ally", name: "Sav", kind: "savings", balance: 3000 } }, dctx);
+    await lensRun("finance", "accounts-link", { params: { institution: "Amex", name: "Card", kind: "credit", balance: -1200 } }, dctx);
+    await lensRun("finance", "holdings-add", { params: { symbol: "VOO", shares: 10, price: 400 } }, dctx);
+    const r = await lensRun("finance", "dashboard-summary", {}, dctx);
+    assert.equal(r.ok, true);
+    // cash 5000+3000=8000, investments 10*400=4000, credit 1200, loans 0 → netWorth 10800
+    assert.equal(r.result.breakdown.cash, 8000);
+    assert.equal(r.result.breakdown.investments, 4000);
+    assert.equal(r.result.breakdown.credit, 1200);
+    assert.equal(r.result.netWorth, 10800);
+    assert.equal(r.result.buyingPower, 8000);     // cash
+    assert.equal(r.result.accountCount, 3);
+    assert.equal(r.result.positionCount, 1);
+  });
+});
+
+describe("finance — holdings + investment-checkup + dividends (wave 8 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("finance-topup8-hold"); });
+
+  it("holdings-add averages cost basis when adding to an existing symbol", async () => {
+    await lensRun("finance", "holdings-add", { params: { symbol: "AAPL", shares: 10, price: 100 } }, ctx);
+    const r = await lensRun("finance", "holdings-add", { params: { symbol: "AAPL", shares: 10, price: 200 } }, ctx);
+    assert.equal(r.ok, true);
+    const aapl = r.result.holdings.find((h) => h.symbol === "AAPL");
+    // (10*100 + 10*200)/20 = 150 weighted-average cost basis; 20 shares total
+    assert.equal(aapl.shares, 20);
+    assert.equal(aapl.costBasis, 150);
+  });
+
+  it("investment-checkup: single 100% equity_us holding → drift 50, concentration 100%", async () => {
+    const ictx = await depthCtx("finance-topup8-checkup");
+    await lensRun("finance", "holdings-add", { params: { symbol: "VTI", shares: 100, price: 100, assetClass: "equity_us", sector: "Broad" } }, ictx);
+    const r = await lensRun("finance", "investment-checkup", {}, ictx);
+    assert.equal(r.ok, true);
+    const usEquity = r.result.allocation.find((a) => a.assetClass === "equity_us");
+    // 10000/10000 = 100% current vs 50% target → drift 50, action sell
+    assert.equal(usEquity.current, 100);
+    assert.equal(usEquity.drift, 50);
+    assert.equal(usEquity.rebalanceAction, "sell");
+    assert.equal(r.result.concentrationRisk.topHoldingPct, 100);
+    // score = 100 − min(40, 50*3) − max(0,(100−20)*1.5) − feePenalty → clamps to 0
+    assert.equal(r.result.score, 0);
+  });
+
+  it("investment-checkup rejects when the user has no holdings (real data only)", async () => {
+    const empty = await depthCtx("finance-topup8-empty");
+    const bad = await lensRun("finance", "investment-checkup", {}, empty);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("no holdings"));
+  });
+
+  it("dividends-summary: annualDividend = value × yield, portfolioYield exact", async () => {
+    const dctx = await depthCtx("finance-topup8-div");
+    await lensRun("finance", "holdings-add", { params: { symbol: "SCHD", shares: 100, price: 100, dividendYield: 0.04 } }, dctx);
+    const r = await lensRun("finance", "dividends-summary", {}, dctx);
+    assert.equal(r.ok, true);
+    const schd = r.result.perHolding.find((p) => p.symbol === "SCHD");
+    // value 10000 * 0.04 = 400 annual; 400/12 = 33.33 monthly
+    assert.equal(schd.annualDividend, 400);
+    assert.equal(schd.monthlyDividend, 33.33);
+    assert.equal(r.result.totalAnnual, 400);
+    assert.equal(r.result.portfolioYieldPct, 4);    // 400/10000 = 4%
+  });
+
+  it("tax-loss-candidates: unrealisedLoss = (price − costBasis) × shares; tax benefit at 24%", async () => {
+    const tctx = await depthCtx("finance-topup8-tlh");
+    const add = await lensRun("finance", "holdings-add", { params: { symbol: "ARKK", shares: 100, price: 50 } }, tctx);
+    const holdId = add.result.holdings.find((h) => h.symbol === "ARKK").id;
+    // bought at 50 (costBasis), drop price to 30 → loss (30−50)*100 = −2000
+    await lensRun("finance", "holdings-update-price", { params: { id: holdId, price: 30 } }, tctx);
+    const r = await lensRun("finance", "tax-loss-candidates", { params: { minLoss: 100 } }, tctx);
+    assert.equal(r.ok, true);
+    const cand = r.result.candidates.find((c) => c.symbol === "ARKK");
+    assert.equal(cand.unrealisedLoss, -2000);
+    assert.equal(r.result.totalHarvestableLoss, 2000);
+    assert.equal(r.result.estimatedTaxBenefit, 480);   // 2000 * 0.24
+  });
+});
+
+describe("finance — ledger analytics: sankey + monthly-trend + spending-insights (wave 8 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("finance-topup8-ledger"); });
+
+  it("cashflow-sankey: Income → Spending/Savings split from the real ledger", async () => {
+    await lensRun("finance", "transactions-ingest", { params: { description: "Payroll deposit", amount: 4000, date: "2026-03-01" } }, ctx);
+    await lensRun("finance", "transactions-ingest", { params: { description: "Whole Foods", amount: -300, date: "2026-03-05", category: "Groceries" } }, ctx);
+    await lensRun("finance", "transactions-ingest", { params: { description: "Rent payment", amount: -1700, date: "2026-03-02", category: "Bills" } }, ctx);
+    const r = await lensRun("finance", "cashflow-sankey", { params: { month: "2026-03" } }, ctx);
+    assert.equal(r.ok, true);
+    // income 4000, spend 300+1700=2000, savings 2000
+    assert.equal(r.result.income, 4000);
+    assert.equal(r.result.totalSpend, 2000);
+    assert.equal(r.result.netCashFlow, 2000);
+    assert.ok(r.result.links.some((l) => l.source === "income" && l.target === "savings" && l.value === 2000));
+    assert.ok(r.result.nodes.some((n) => n.id === "cat:Bills"));
+  });
+
+  it("monthly-trend: per-month net + savingsRate exact (uses the wave-8 ledger)", async () => {
+    const r = await lensRun("finance", "monthly-trend", { params: { months: 12 } }, ctx);
+    assert.equal(r.ok, true);
+    const mar = r.result.series.find((m) => m.month === "2026-03");
+    assert.equal(mar.income, 4000);
+    assert.equal(mar.spend, 2000);
+    assert.equal(mar.net, 2000);
+    assert.equal(mar.savingsRate, 50);   // (4000−2000)/4000 = 50%
+  });
+
+  it("spending-insights: MoM delta + anomaly flag on a >50% jump", async () => {
+    const ictx = await depthCtx("finance-topup8-insights");
+    const r = await lensRun("finance", "spending-insights", { params: { transactions: [
+      { description: "Dining", amount: -100, category: "Dining", date: "2026-02-10" },
+      { description: "Dining", amount: -300, category: "Dining", date: "2026-03-10" },
+    ] } }, ictx);
+    assert.equal(r.ok, true);
+    const dining = r.result.trends.find((t) => t.category === "Dining");
+    // prior 100, current 300 → delta 200, deltaPct 200 → anomaly (>50% and >$20)
+    assert.equal(dining.current, 300);
+    assert.equal(dining.prior, 100);
+    assert.equal(dining.delta, 200);
+    assert.equal(dining.deltaPct, 200);
+    assert.equal(dining.anomaly, true);
+    assert.ok(r.result.anomalies.some((a) => a.category === "Dining"));
+  });
+});
+
+describe("finance — household + credit + rollover (wave 8 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("finance-topup8-misc"); });
+
+  it("household-create → budget-create → budget-spend computes remaining + overBudget", async () => {
+    await lensRun("finance", "household-create", { params: { name: "Smith Family" } }, ctx);
+    const b = await lensRun("finance", "household-budget-create", { params: { category: "Groceries", monthlyTarget: 800 } }, ctx);
+    const budgetId = b.result.budget.id;
+    const spend = await lensRun("finance", "household-budget-spend", { params: { budgetId, amount: 900 } }, ctx);
+    assert.equal(spend.ok, true);
+    assert.equal(spend.result.budget.spent, 900);
+    assert.equal(spend.result.remaining, -100);   // 800 − 900
+    assert.equal(spend.result.overBudget, true);  // 900 > 800
+    assert.ok(spend.result.budget.contributions.some((c) => c.amount === 900));
+  });
+
+  it("household-create twice is rejected (one household per owner)", async () => {
+    const bad = await lensRun("finance", "household-create", { params: { name: "Second" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("already exists"));
+  });
+
+  it("credit-score-record → report computes band + delta from history", async () => {
+    const cctx = await depthCtx("finance-topup8-credit");
+    await lensRun("finance", "credit-score-record", { params: { score: 680, date: "2026-01-01", utilisationPct: 45 } }, cctx);
+    await lensRun("finance", "credit-score-record", { params: { score: 720, date: "2026-03-01", utilisationPct: 20 } }, cctx);
+    const r = await lensRun("finance", "credit-score-report", {}, cctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.latest.score, 720);
+    assert.equal(r.result.band, "good");   // 670–739
+    assert.equal(r.result.delta, 40);      // 720 − 680 (first)
+    // first reading had 45% utilisation → advice surfaced from the *latest* (20%, no advice on util)
+    assert.ok(r.result.history.some((e) => e.score === 680));
+  });
+
+  it("credit-score-record rejects an out-of-range score", async () => {
+    const cctx = await depthCtx("finance-topup8-credit-bad");
+    const bad = await lensRun("finance", "credit-score-record", { params: { score: 900 } }, cctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("300-850"));
+  });
+
+  it("envelopes-create → rollover-rule-set(capped) → rollover-apply carries cap + sends surplus to goal", async () => {
+    const ectx = await depthCtx("finance-topup8-roll");
+    const env = await lensRun("finance", "envelopes-create", { params: { category: "Fun", monthlyTarget: 500 } }, ectx);
+    const envelopeId = env.result.envelope.id;
+    // capped at 100, attached goal target 1000. Envelope spent 0 → leftover 500.
+    await lensRun("finance", "rollover-rule-set", { params: { envelopeId, mode: "capped", cap: 100, goalTarget: 1000 } }, ectx);
+    const r = await lensRun("finance", "rollover-apply", {}, ectx);
+    assert.equal(r.ok, true);
+    const applied = r.result.applied.find((a) => a.envelopeId === envelopeId);
+    // leftover 500, carried = min(500,100) = 100, toGoal = 500 − 100 = 400
+    assert.equal(applied.leftover, 500);
+    assert.equal(applied.carried, 100);
+    assert.equal(applied.toGoal, 400);
+    assert.equal(applied.newBalance, 100);
+    assert.equal(applied.goalProgress.accumulated, 400);
+    assert.equal(applied.goalProgress.pct, 40);   // 400/1000
+  });
+
+  it("rollover-rule-set on a missing envelope is rejected", async () => {
+    const ectx = await depthCtx("finance-topup8-roll-bad");
+    const bad = await lensRun("finance", "rollover-rule-set", { params: { envelopeId: "nope", mode: "full" } }, ectx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("envelope not found"));
+  });
+});
+
+describe("finance — rules + sync ingestion (wave 8 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("finance-topup8-rules"); });
+
+  it("rules-create → rules-apply matches a user rule over the default categoriser", async () => {
+    await lensRun("finance", "rules-create", { params: { matchText: "blue bottle", category: "Coffee", matchKind: "contains", priority: 10 } }, ctx);
+    const r = await lensRun("finance", "rules-apply", { params: { description: "BLUE BOTTLE COFFEE #42" } }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.category, "Coffee");
+    assert.equal(r.result.source, "user_rule");
+  });
+
+  it("rules-create without a category is rejected", async () => {
+    const bad = await lensRun("finance", "rules-create", { params: { matchText: "x" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("matchText and category required"));
+  });
+
+  it("accounts-sync-link → accounts-sync-pull ingests + dedups by externalId", async () => {
+    const sctx = await depthCtx("finance-topup8-sync");
+    const acct = await lensRun("finance", "accounts-sync-link", { params: { institution: "Chase", name: "Plaid Checking", kind: "checking" } }, sctx);
+    const accountId = acct.result.account.id;
+    const batch = [
+      { externalId: "t1", description: "Netflix", amount: -15.99, date: "2026-03-01" },
+      { externalId: "t2", description: "Whole Foods", amount: -80, date: "2026-03-02" },
+      { externalId: "t1", description: "Netflix", amount: -15.99, date: "2026-03-01" }, // dup
+    ];
+    const r = await lensRun("finance", "accounts-sync-pull", { params: { accountId, transactions: batch } }, sctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.added, 2);
+    assert.equal(r.result.deduped, 1);
+    // Netflix auto-categorised to Entertainment by the default categoriser
+    assert.ok(r.result.transactions.some((t) => t.category === "Entertainment"));
+  });
+
+  it("accounts-sync-pull on a non-synced (plain) account is rejected", async () => {
+    const sctx = await depthCtx("finance-topup8-sync-bad");
+    const plain = await lensRun("finance", "accounts-link", { params: { institution: "X", name: "Plain", kind: "checking" } }, sctx);
+    const bad = await lensRun("finance", "accounts-sync-pull", { params: { accountId: plain.result.account.id, transactions: [{ description: "a", amount: -1, date: "2026-01-01" }] } }, sctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("not sync-enabled"));
+  });
+});
+
+describe("finance — cashflow-forecast + bill-reminders (wave 8 top-up)", () => {
+  it("cashflow-forecast: finalBalance = startBalance + Σcredit − Σdebit (recomputed from the real series)", async () => {
+    const cctx = await depthCtx("finance-topup8-forecast");
+    await lensRun("finance", "monthly-income-set", { params: { monthlyIncome: 5000 } }, cctx);
+    await lensRun("finance", "bills-add", { params: { name: "Rent", amount: 1800, dueDay: 15, cadence: "monthly" } }, cctx);
+    const r = await lensRun("finance", "cashflow-forecast", { params: { horizonDays: 60, startBalance: 1000 } }, cctx);
+    assert.equal(r.ok, true);
+    // series length is exactly the horizon
+    assert.equal(r.result.series.length, 60);
+    // finalBalance is the start plus every credit minus every debit in the projected series.
+    const recomputed = r.result.series.reduce((bal, s) => bal + s.credit - s.debit, r.result.startBalance);
+    assert.equal(r.result.finalBalance, Math.round(recomputed * 100) / 100);
+    // the monthly rent bill shows up as a 1800 debit on some day in the horizon
+    assert.ok(r.result.series.some((s) => s.debit === 1800));
+    // monthly income of 5000 credits on day 1 of the month
+    assert.ok(r.result.series.some((s) => s.credit === 5000));
+    // lowestBalance is the minimum balance point in the series
+    assert.equal(r.result.lowestBalance, Math.min(...r.result.series.map((s) => s.balance)));
+  });
+
+  it("bill-reminders: a paid bill reads status 'paid' (no notify); an unpaid one surfaces", async () => {
+    const bctx = await depthCtx("finance-topup8-reminders");
+    const b1 = await lensRun("finance", "bills-add", { params: { name: "Water", amount: 60, dueDay: 10, cadence: "monthly" } }, bctx);
+    const b2 = await lensRun("finance", "bills-add", { params: { name: "Internet", amount: 80, dueDay: 20, cadence: "monthly" } }, bctx);
+    await lensRun("finance", "bills-pay", { params: { id: b1.result.bill.id } }, bctx);
+    const r = await lensRun("finance", "bill-reminders", { params: { leadDays: 31 } }, bctx);
+    assert.equal(r.ok, true);
+    const water = r.result.reminders.find((x) => x.billId === b1.result.bill.id);
+    // Water was paid this cycle → status paid, never an actionable notify
+    assert.equal(water.status, "paid");
+    assert.equal(water.notify, false);
+    // Internet is unpaid; with a 31-day lead window every monthly bill is in scope
+    const internet = r.result.reminders.find((x) => x.billId === b2.result.bill.id);
+    assert.ok(["due_soon", "overdue"].includes(internet.status));
+    assert.equal(internet.amount, 80);
+  });
+
+  it("bill-reminder-snooze on a missing bill is rejected", async () => {
+    const bctx = await depthCtx("finance-topup8-snooze-bad");
+    const bad = await lensRun("finance", "bill-reminder-snooze", { params: { id: "no-such-bill", days: 3 } }, bctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("bill not found"));
+  });
+});
+
+describe("finance — holdings + accounts CRUD round-trips (wave 8 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("finance-topup8-crud2"); });
+
+  it("holdings-update-price recomputes value; holdings-remove deletes; list reflects both", async () => {
+    const add = await lensRun("finance", "holdings-add", { params: { symbol: "MSFT", shares: 5, price: 100 } }, ctx);
+    const holdId = add.result.holdings.find((h) => h.symbol === "MSFT").id;
+    const upd = await lensRun("finance", "holdings-update-price", { params: { id: holdId, price: 250 } }, ctx);
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.holding.price, 250);
+    assert.equal(upd.result.holding.value, 1250);   // 5 * 250
+    const rem = await lensRun("finance", "holdings-remove", { params: { id: holdId } }, ctx);
+    assert.equal(rem.result.deleted, true);
+    const list = await lensRun("finance", "holdings-list", {}, ctx);
+    assert.equal(list.result.holdings.some((h) => h.id === holdId), false);
+  });
+
+  it("holdings-update-price rejects a negative price", async () => {
+    const bad = await lensRun("finance", "holdings-update-price", { params: { id: "x", price: -1 } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("non-negative"));
+  });
+
+  it("accounts-update-balance writes through to accounts-list net worth", async () => {
+    const actx = await depthCtx("finance-topup8-acctbal");
+    const link = await lensRun("finance", "accounts-link", { params: { institution: "Ally", name: "Sav", kind: "savings", balance: 1000 } }, actx);
+    const acctId = link.result.account.id;
+    const upd = await lensRun("finance", "accounts-update-balance", { params: { id: acctId, balance: 4500 } }, actx);
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.account.balance, 4500);
+    const list = await lensRun("finance", "accounts-list", {}, actx);
+    const found = list.result.accounts.find((a) => a.id === acctId);
+    assert.equal(found.balance, 4500);
+    assert.equal(list.result.totalAssets, 4500);   // single positive account
+    assert.equal(list.result.netWorth, 4500);
+  });
+
+  it("accounts-update-balance rejects a missing balance field", async () => {
+    const actx = await depthCtx("finance-topup8-acctbal-bad");
+    const link = await lensRun("finance", "accounts-link", { params: { institution: "Z", name: "Chk", kind: "checking", balance: 0 } }, actx);
+    const bad = await lensRun("finance", "accounts-update-balance", { params: { id: link.result.account.id } }, actx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("balance required"));
+  });
+});
+
+describe("finance — transactions edit + recurring DCA + monthly-income (wave 8 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("finance-topup8-txedit"); });
+
+  it("transactions-recategorise overrides the auto category; list reads it back", async () => {
+    const tx = await lensRun("finance", "transactions-ingest", { params: { description: "Some Cafe", amount: -25, date: "2026-04-01" } }, ctx);
+    const txId = tx.result.transaction.id;
+    assert.equal(tx.result.transaction.category, "Dining");   // ruleBasedCategorize: cafe → Dining
+    const re = await lensRun("finance", "transactions-recategorise", { params: { id: txId, category: "Entertainment" } }, ctx);
+    assert.equal(re.result.transaction.category, "Entertainment");
+    assert.equal(re.result.transaction.categorySource, "manual");
+    const list = await lensRun("finance", "transactions-list", {}, ctx);
+    assert.equal(list.result.transactions.find((t) => t.id === txId).category, "Entertainment");
+  });
+
+  it("transactions-delete removes the row from the ledger", async () => {
+    const tx = await lensRun("finance", "transactions-ingest", { params: { description: "Junk", amount: -9, date: "2026-04-02" } }, ctx);
+    const txId = tx.result.transaction.id;
+    const del = await lensRun("finance", "transactions-delete", { params: { id: txId } }, ctx);
+    assert.equal(del.result.deleted, true);
+    const list = await lensRun("finance", "transactions-list", {}, ctx);
+    assert.equal(list.result.transactions.some((t) => t.id === txId), false);
+  });
+
+  it("transactions-recategorise on a missing transaction is rejected", async () => {
+    const bad = await lensRun("finance", "transactions-recategorise", { params: { id: "nope", category: "Food" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("transaction not found"));
+  });
+
+  it("recurring-create → recurring-pause toggles status → recurring-cancel deletes", async () => {
+    const rctx = await depthCtx("finance-topup8-dca");
+    const plan = await lensRun("finance", "recurring-create", { params: { symbol: "voo", amount: 500, cadence: "weekly" } }, rctx);
+    assert.equal(plan.result.plan.symbol, "VOO");   // upcased
+    assert.equal(plan.result.plan.status, "active");
+    const planId = plan.result.plan.id;
+    const paused = await lensRun("finance", "recurring-pause", { params: { id: planId } }, rctx);
+    assert.equal(paused.result.plan.status, "paused");   // active → paused
+    const resumed = await lensRun("finance", "recurring-pause", { params: { id: planId } }, rctx);
+    assert.equal(resumed.result.plan.status, "active");  // paused → active (toggle)
+    const cancel = await lensRun("finance", "recurring-cancel", { params: { id: planId } }, rctx);
+    assert.equal(cancel.result.deleted, true);
+    const list = await lensRun("finance", "recurring-list", {}, rctx);
+    assert.equal(list.result.plans.some((p) => p.id === planId), false);
+  });
+
+  it("recurring-create without an amount is rejected", async () => {
+    const rctx = await depthCtx("finance-topup8-dca-bad");
+    const bad = await lensRun("finance", "recurring-create", { params: { symbol: "VTI" } }, rctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("symbol and amount required"));
+  });
+
+  it("monthly-income-set clamps a negative income to 0; envelopes-list reads it back", async () => {
+    const mctx = await depthCtx("finance-topup8-income");
+    const set = await lensRun("finance", "monthly-income-set", { params: { monthlyIncome: -200 } }, mctx);
+    assert.equal(set.result.monthlyIncome, 0);   // Math.max(0, …)
+    const set2 = await lensRun("finance", "monthly-income-set", { params: { monthlyIncome: 6200 } }, mctx);
+    assert.equal(set2.result.monthlyIncome, 6200);
+    const env = await lensRun("finance", "envelopes-list", {}, mctx);
+    assert.equal(env.result.monthlyIncome, 6200);
+  });
+});
+
+describe("finance — subscriptions + dividends-calendar + envelopes/household (wave 8 top-up)", () => {
+  it("subscriptions-detect groups recurring Netflix debits into a monthly subscription", async () => {
+    const sctx = await depthCtx("finance-topup8-subs");
+    // 3 charges exactly 30 days apart at a stable amount → monthly cadence detected
+    for (const date of ["2026-01-05", "2026-02-04", "2026-03-06"]) {
+      await lensRun("finance", "transactions-ingest", { params: { description: "NETFLIX.COM", amount: -15.99, date } }, sctx);
+    }
+    const r = await lensRun("finance", "subscriptions-detect", {}, sctx);
+    assert.equal(r.ok, true);
+    const netflix = r.result.subscriptions.find((s) => s.category === "Entertainment");
+    assert.ok(netflix);
+    assert.equal(netflix.cadence, "monthly");
+    assert.equal(netflix.chargeAmount, 15.99);
+    assert.equal(netflix.monthlyAmount, 15.99);   // monthly cadence → no annualisation
+    assert.equal(netflix.occurrences, 3);
+    // subscriptions-cancel flips its status
+    const cancel = await lensRun("finance", "subscriptions-cancel", { params: { id: netflix.id } }, sctx);
+    assert.equal(cancel.result.status, "cancelled");
+  });
+
+  it("subscriptions-cancel on a missing subscription is rejected", async () => {
+    const sctx = await depthCtx("finance-topup8-subs-bad");
+    const bad = await lensRun("finance", "subscriptions-cancel", { params: { id: "sub_nope" } }, sctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("subscription not found"));
+  });
+
+  it("dividends-calendar: quarterly amount = value × yield / 4 per holding", async () => {
+    const dctx = await depthCtx("finance-topup8-divcal");
+    // value 10000 * 0.04 = 400 annual → 100 per quarter
+    await lensRun("finance", "holdings-add", { params: { symbol: "SCHD", shares: 100, price: 100, dividendYield: 0.04 } }, dctx);
+    const r = await lensRun("finance", "dividends-calendar", { params: { days: 365 } }, dctx);
+    assert.equal(r.ok, true);
+    const schdEvents = r.result.events.filter((e) => e.symbol === "SCHD");
+    assert.ok(schdEvents.length >= 1);
+    assert.ok(schdEvents.every((e) => e.amount === 100));
+    assert.ok(schdEvents.every((e) => e.kind === "dividend"));
+  });
+
+  it("envelopes-create → envelopes-delete round-trips; delete on missing id rejects", async () => {
+    const ectx = await depthCtx("finance-topup8-env");
+    const env = await lensRun("finance", "envelopes-create", { params: { category: "Travel", monthlyTarget: 400 } }, ectx);
+    const envId = env.result.envelope.id;
+    assert.equal(env.result.envelope.monthlyTarget, 400);
+    const del = await lensRun("finance", "envelopes-delete", { params: { id: envId } }, ectx);
+    assert.equal(del.result.deleted, true);
+    const list = await lensRun("finance", "envelopes-list", {}, ectx);
+    assert.equal(list.result.envelopes.some((e) => e.id === envId), false);
+    const bad = await lensRun("finance", "envelopes-delete", { params: { id: "no-env" } }, ectx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("envelope not found"));
+  });
+
+  it("household-add-member → household-remove-member round-trips; owner can't be removed", async () => {
+    const hctx = await depthCtx("finance-topup8-hh");
+    const create = await lensRun("finance", "household-create", { params: { name: "Doe Household" } }, hctx);
+    const ownerId = create.result.household.ownerId;
+    const add = await lensRun("finance", "household-add-member", { params: { memberId: "partner-42" } }, hctx);
+    assert.equal(add.ok, true);
+    assert.equal(add.result.member.userId, "partner-42");
+    assert.ok(add.result.household.members.some((m) => m.userId === "partner-42" && m.role === "member"));
+    // removing the owner is rejected
+    const badRm = await lensRun("finance", "household-remove-member", { params: { memberId: ownerId } }, hctx);
+    assert.equal(badRm.result.ok, false);
+    assert.ok(badRm.result.error.includes("owner"));
+    // removing the added member succeeds + drops them from the roster
+    const rm = await lensRun("finance", "household-remove-member", { params: { memberId: "partner-42" } }, hctx);
+    assert.equal(rm.ok, true);
+    assert.equal(rm.result.household.members.some((m) => m.userId === "partner-42"), false);
+  });
+});
