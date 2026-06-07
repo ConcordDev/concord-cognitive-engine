@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-06-07T23:07:17.381Z",
-  "head": "0a78547510ca1dc33520c72e4cfa35a7d7827b56",
+  "generatedAt": "2026-06-07T23:09:23.536Z",
+  "head": "53a5c357bca582b1748bdbaa73448caf7075ae4f",
   "mode": "honest",
   "totals": {
     "stub": 551,
-    "functional": 2526,
-    "utility": 2950,
-    "production-grade": 2713
+    "functional": 2520,
+    "utility": 2951,
+    "production-grade": 2718
   },
   "total": 8740,
   "weightedScore": 0.629,
@@ -1048,9 +1048,9 @@
     },
     "federation": {
       "stub": 4,
-      "functional": 16,
-      "utility": 0,
-      "production-grade": 10,
+      "functional": 10,
+      "utility": 1,
+      "production-grade": 15,
       "total": 30
     },
     "feed": {
@@ -57599,7 +57599,7 @@
       "domain": "federation",
       "macro": "checkPeerAllowed",
       "file": "server/domains/federation.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 15,
       "combinedLoc": 50,
       "stateTouch": true,
@@ -57609,7 +57609,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -57743,7 +57743,7 @@
       "domain": "federation",
       "macro": "listModerationQueue",
       "file": "server/domains/federation.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 22,
       "combinedLoc": 51,
       "stateTouch": true,
@@ -57753,7 +57753,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -57761,7 +57761,7 @@
       "domain": "federation",
       "macro": "listPeerPolicies",
       "file": "server/domains/federation.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 15,
       "combinedLoc": 44,
       "stateTouch": true,
@@ -57771,7 +57771,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -57797,7 +57797,7 @@
       "domain": "federation",
       "macro": "listSyncPolicies",
       "file": "server/domains/federation.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 10,
       "combinedLoc": 39,
       "stateTouch": true,
@@ -57807,7 +57807,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -57815,7 +57815,7 @@
       "domain": "federation",
       "macro": "metricsDashboard",
       "file": "server/domains/federation.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 33,
       "combinedLoc": 65,
       "stateTouch": true,
@@ -57825,7 +57825,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -57897,7 +57897,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -57915,7 +57915,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -57951,7 +57951,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -57969,7 +57969,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -57987,7 +57987,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -58005,7 +58005,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -58023,7 +58023,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -58049,7 +58049,7 @@
       "domain": "federation",
       "macro": "trustHistory",
       "file": "server/domains/federation.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 19,
       "combinedLoc": 54,
       "stateTouch": true,
@@ -58059,7 +58059,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
