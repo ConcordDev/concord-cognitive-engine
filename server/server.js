@@ -51600,7 +51600,7 @@ app.get("/api/achievements/catalog", (req, res) => {
     const catalog = listAchievementCatalog().map(a => ({
       id: a.id, title: a.title, description: a.description,
       category: a.category, icon: a.icon, rarity: a.rarity,
-      hidden: !!a.hidden, rewardCc: a.rewardCc || 0, rewardTitle: a.rewardTitle || null,
+      hidden: !!a.hidden, rewardSparks: (a.rewardSparks ?? a.rewardCc) || 0, rewardTitle: a.rewardTitle || null,
     }));
     res.json({ ok: true, catalog });
   } catch (e) {
