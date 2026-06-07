@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-06-05T18:53:49.265Z",
-  "head": "49c8bc27255b344d8dea40b0aa2f900d4a64b0f8",
+  "generatedAt": "2026-06-07T16:05:12.712Z",
+  "head": "612bda9d525cff7b5eed82158c4c8a4a8cffeae6",
   "mode": "honest",
   "totals": {
     "stub": 680,
-    "functional": 4285,
-    "utility": 2176,
-    "production-grade": 1596
+    "functional": 4276,
+    "utility": 2182,
+    "production-grade": 1600
   },
-  "total": 8737,
-  "weightedScore": 0.528,
+  "total": 8738,
+  "weightedScore": 0.529,
   "tierWeights": {
     "stub": 0,
     "functional": 0.4,
@@ -347,16 +347,16 @@
       "total": 1
     },
     "byo_keys": {
-      "stub": 1,
-      "functional": 9,
-      "utility": 12,
+      "stub": 3,
+      "functional": 10,
+      "utility": 9,
       "production-grade": 0,
       "total": 22
     },
     "cache": {
-      "stub": 3,
+      "stub": 4,
       "functional": 1,
-      "utility": 1,
+      "utility": 0,
       "production-grade": 0,
       "total": 5
     },
@@ -627,9 +627,9 @@
       "total": 22
     },
     "crime": {
-      "stub": 5,
+      "stub": 1,
       "functional": 1,
-      "utility": 8,
+      "utility": 12,
       "production-grade": 0,
       "total": 14
     },
@@ -690,9 +690,9 @@
       "total": 37
     },
     "db": {
-      "stub": 0,
+      "stub": 1,
       "functional": 1,
-      "utility": 3,
+      "utility": 2,
       "production-grade": 0,
       "total": 4
     },
@@ -1622,9 +1622,9 @@
     },
     "logistics": {
       "stub": 1,
-      "functional": 37,
-      "utility": 13,
-      "production-grade": 8,
+      "functional": 28,
+      "utility": 19,
+      "production-grade": 11,
       "total": 59
     },
     "lore": {
@@ -1713,9 +1713,9 @@
     },
     "math": {
       "stub": 0,
-      "functional": 11,
+      "functional": 10,
       "utility": 0,
-      "production-grade": 0,
+      "production-grade": 1,
       "total": 11
     },
     "mcp": {
@@ -2284,6 +2284,13 @@
       "utility": 5,
       "production-grade": 0,
       "total": 8
+    },
+    "reason": {
+      "stub": 0,
+      "functional": 0,
+      "utility": 1,
+      "production-grade": 0,
+      "total": 1
     },
     "reasoning": {
       "stub": 2,
@@ -22636,7 +22643,7 @@
       "domain": "byo_keys",
       "macro": "available_providers",
       "file": "server/domains/byo-keys.js",
-      "tier": "utility",
+      "tier": "stub",
       "handlerLoc": 3,
       "combinedLoc": 3,
       "stateTouch": false,
@@ -22647,7 +22654,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -22708,7 +22715,7 @@
       "domain": "byo_keys",
       "macro": "list",
       "file": "server/domains/byo-keys.js",
-      "tier": "utility",
+      "tier": "stub",
       "handlerLoc": 6,
       "combinedLoc": 6,
       "stateTouch": false,
@@ -22719,7 +22726,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -22917,7 +22924,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -22996,7 +23003,7 @@
       "domain": "byo_keys",
       "macro": "test",
       "file": "server/domains/byo-keys.js",
-      "tier": "utility",
+      "tier": "functional",
       "handlerLoc": 18,
       "combinedLoc": 24,
       "stateTouch": false,
@@ -23007,7 +23014,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -23050,7 +23057,7 @@
       "domain": "cache",
       "macro": "get",
       "file": "server/server.js",
-      "tier": "utility",
+      "tier": "stub",
       "handlerLoc": 7,
       "combinedLoc": 7,
       "stateTouch": false,
@@ -23061,7 +23068,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -38566,7 +38573,7 @@
       "domain": "crime",
       "macro": "bounties_on",
       "file": "server/domains/crime.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 5,
       "combinedLoc": 5,
       "stateTouch": false,
@@ -38576,7 +38583,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -38620,7 +38627,7 @@
       "domain": "crime",
       "macro": "constants",
       "file": "server/domains/crime.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 3,
       "combinedLoc": 3,
       "stateTouch": false,
@@ -38630,7 +38637,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -38764,7 +38771,7 @@
       "domain": "crime",
       "macro": "territories",
       "file": "server/domains/crime.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 5,
       "combinedLoc": 5,
       "stateTouch": false,
@@ -38774,7 +38781,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -38782,7 +38789,7 @@
       "domain": "crime",
       "macro": "wanted",
       "file": "server/domains/crime.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 5,
       "combinedLoc": 5,
       "stateTouch": false,
@@ -38792,7 +38799,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -42436,7 +42443,7 @@
       "domain": "db",
       "macro": "query",
       "file": "server/server.js",
-      "tier": "utility",
+      "tier": "stub",
       "handlerLoc": 7,
       "combinedLoc": 7,
       "stateTouch": false,
@@ -42447,7 +42454,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -44705,8 +44712,8 @@
       "macro": "search",
       "file": "server/domains/discovery.js",
       "tier": "utility",
-      "handlerLoc": 11,
-      "combinedLoc": 12,
+      "handlerLoc": 19,
+      "combinedLoc": 20,
       "stateTouch": false,
       "externalIO": false,
       "tryCatch": false,
@@ -46865,8 +46872,8 @@
       "macro": "list",
       "file": "server/server.js",
       "tier": "production-grade",
-      "handlerLoc": 74,
-      "combinedLoc": 142,
+      "handlerLoc": 81,
+      "combinedLoc": 149,
       "stateTouch": false,
       "externalIO": false,
       "tryCatch": true,
@@ -92836,7 +92843,7 @@
       "domain": "logistics",
       "macro": "carriers-add",
       "file": "server/domains/logistics.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 19,
       "combinedLoc": 37,
       "stateTouch": true,
@@ -92846,7 +92853,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -92872,7 +92879,7 @@
       "domain": "logistics",
       "macro": "carriers-list",
       "file": "server/domains/logistics.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 6,
       "combinedLoc": 18,
       "stateTouch": true,
@@ -92882,7 +92889,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -93412,7 +93419,7 @@
       "domain": "logistics",
       "macro": "hosCheck",
       "file": "server/domains/logistics.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 80,
       "combinedLoc": 80,
       "stateTouch": false,
@@ -93422,7 +93429,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -93556,7 +93563,7 @@
       "domain": "logistics",
       "macro": "maintenanceDue",
       "file": "server/domains/logistics.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 62,
       "combinedLoc": 62,
       "stateTouch": false,
@@ -93566,7 +93573,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -93682,7 +93689,7 @@
       "domain": "logistics",
       "macro": "rates-quote",
       "file": "server/domains/logistics.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 31,
       "combinedLoc": 47,
       "stateTouch": true,
@@ -93692,7 +93699,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -93738,7 +93745,7 @@
       "file": "server/domains/logistics.js",
       "tier": "functional",
       "handlerLoc": 79,
-      "combinedLoc": 85,
+      "combinedLoc": 90,
       "stateTouch": true,
       "externalIO": true,
       "tryCatch": true,
@@ -93754,7 +93761,7 @@
       "domain": "logistics",
       "macro": "shipments-create",
       "file": "server/domains/logistics.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 26,
       "combinedLoc": 39,
       "stateTouch": true,
@@ -93764,7 +93771,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -93790,7 +93797,7 @@
       "domain": "logistics",
       "macro": "shipments-get",
       "file": "server/domains/logistics.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 8,
       "combinedLoc": 20,
       "stateTouch": true,
@@ -93800,7 +93807,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -93808,9 +93815,9 @@
       "domain": "logistics",
       "macro": "shipments-list",
       "file": "server/domains/logistics.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 5,
-      "combinedLoc": 11,
+      "combinedLoc": 16,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": false,
@@ -93818,7 +93825,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -93826,7 +93833,7 @@
       "domain": "logistics",
       "macro": "shipments-set-status",
       "file": "server/domains/logistics.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 18,
       "combinedLoc": 36,
       "stateTouch": true,
@@ -93836,7 +93843,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -99028,7 +99035,7 @@
       "domain": "math",
       "macro": "naturalQuery",
       "file": "server/domains/math.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 80,
       "combinedLoc": 388,
       "stateTouch": false,
@@ -99039,7 +99046,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -126975,6 +126982,24 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "reason",
+      "macro": "verify",
+      "file": "server/domains/reason.js",
+      "tier": "utility",
+      "handlerLoc": 13,
+      "combinedLoc": 14,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
