@@ -251,9 +251,16 @@ function EngineTab() {
     // Bands are zeroed when the EQ toggle is off. (preamp/normalize left at 0 —
     // true loudness normalization is still a flagged approximation, not faked.)
     const b = cfgVal?.config?.eq;
-    getPlayer().applyAudioSettings(b?.enabled
+    const player = getPlayer();
+    player.applyAudioSettings(b?.enabled
       ? { bassDb: b.bands.bass, midDb: b.bands.mid, trebleDb: b.bands.treble }
       : { bassDb: 0, midDb: 0, trebleDb: 0 });
+    // Karaoke toggle now genuinely cancels center-panned vocals (OOPS L−R) on the
+    // live graph — previously karaoke-set only persisted + scrolled lyrics.
+    player.setKaraoke(!!cfgVal?.config?.karaoke?.enabled);
+    // Crossfade seconds drives the real equal-power track-to-track crossfade in
+    // NowPlayingBar (was persisted but never applied to playback).
+    player.setCrossfadeSeconds(Number(cfgVal?.config?.crossfadeSec) || 0);
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
 

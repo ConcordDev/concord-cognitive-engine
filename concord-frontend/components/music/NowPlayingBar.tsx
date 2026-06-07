@@ -9,7 +9,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useMusicStore } from '@/lib/music/store';
 import { getPlayer } from '@/lib/music/player';
-import type { RepeatMode } from '@/lib/music/types';
+import type { RepeatMode, MusicTrack } from '@/lib/music/types';
 
 function formatTime(seconds: number): string {
   if (!seconds || !isFinite(seconds)) return '0:00';
@@ -45,8 +45,21 @@ export function NowPlayingBar() {
   const frequencyRef = useRef<Uint8Array | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number | null>(null);
+  // True once the pre-end crossfade has been kicked off for the current track,
+  // so the timeupdate watcher fires it exactly once. Reset on each track change.
+  const crossfadeArmedRef = useRef(false);
 
   const { track, playbackState, currentTime, duration, volume, muted, repeat, shuffle } = nowPlaying;
+
+  // Advance to a track with a TRUE equal-power crossfade when one is configured
+  // AND something is already playing to fade FROM; otherwise a plain load+play.
+  // Centralised so next/prev/ended/auto-advance all behave identically.
+  const advance = useCallback((next: MusicTrack) => {
+    const player = getPlayer();
+    const cf = player.getCrossfadeSeconds();
+    if (cf > 0 && player.hasActiveTrack()) void player.crossfadeTo(next, cf);
+    else player.loadTrack(next).then(() => player.play());
+  }, []);
 
   // ---- Player Event Sync ----
 
@@ -60,16 +73,25 @@ export function NowPlayingBar() {
       player.on('loading', () => setPlaybackState('loading')),
       player.on('buffering', () => setPlaybackState('buffering')),
       player.on('timeupdate', (data) => {
-        if (!seeking) {
-          setCurrentTime((data?.currentTime as number) || 0);
-          setDuration((data?.duration as number) || 0);
+        const ct = (data?.currentTime as number) || 0;
+        const dur = (data?.duration as number) || 0;
+        if (!seeking) { setCurrentTime(ct); setDuration(dur); }
+        // True overlapping crossfade: start the next track `cf` seconds before
+        // this one ends, so both play at once through the equal-power curve.
+        const cf = player.getCrossfadeSeconds();
+        if (cf > 0 && dur > 0 && !crossfadeArmedRef.current && !player.isCrossfading()
+            && repeat !== 'one' && hasNext() && ct >= dur - cf) {
+          crossfadeArmedRef.current = true;
+          const next = nextTrack();
+          if (next) advance(next);
         }
       }),
       player.on('ended', () => {
+        // If the pre-end crossfade already fired, the queue has advanced — don't
+        // double-advance. Otherwise (cf off, or track too short to pre-arm) advance now.
+        if (crossfadeArmedRef.current) { crossfadeArmedRef.current = false; return; }
         const next = nextTrack();
-        if (next) {
-          player.loadTrack(next).then(() => player.play());
-        }
+        if (next) advance(next);
       }),
       player.on('error', (data) => {
         console.error('Playback error:', data?.message);
@@ -78,12 +100,17 @@ export function NowPlayingBar() {
     ];
 
     return () => unsubs.forEach(u => u());
-  }, [seeking, setPlaybackState, setCurrentTime, setDuration, nextTrack]);
+  }, [seeking, setPlaybackState, setCurrentTime, setDuration, nextTrack, advance, repeat, hasNext]);
 
   // ---- Load track into player when it changes ----
 
   useEffect(() => {
-    if (track && playbackState === 'loading') {
+    // New track in the spotlight → re-arm the pre-end crossfade watcher.
+    crossfadeArmedRef.current = false;
+    // A crossfade already loaded + is playing the incoming track on the idle
+    // deck, so skip the hard load here (it would re-cut the track from the start
+    // and kill the fade-in). The crossfade path drives playback itself.
+    if (track && playbackState === 'loading' && !getPlayer().isCrossfading()) {
       const player = getPlayer();
       player.loadTrack(track).then(() => player.play());
     }
@@ -147,19 +174,13 @@ export function NowPlayingBar() {
 
   const handlePrevious = useCallback(() => {
     const prev = previousTrack();
-    if (prev) {
-      const player = getPlayer();
-      player.loadTrack(prev).then(() => player.play());
-    }
-  }, [previousTrack]);
+    if (prev) advance(prev);
+  }, [previousTrack, advance]);
 
   const handleNext = useCallback(() => {
     const next = nextTrack();
-    if (next) {
-      const player = getPlayer();
-      player.loadTrack(next).then(() => player.play());
-    }
-  }, [nextTrack]);
+    if (next) advance(next);
+  }, [nextTrack, advance]);
 
   const handleSeekStart = useCallback((e: React.MouseEvent) => {
     setSeeking(true);
