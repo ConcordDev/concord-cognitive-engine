@@ -213,7 +213,7 @@ function PresenceCard() {
           <div className="text-sm font-semibold text-zinc-100">Who’s around</div>
           <div className="text-[11px] text-zinc-500">{users.length} active in the commons</div>
         </div>
-        <Link href="/chat" className="rounded-lg bg-neon-purple/20 px-2.5 py-1 text-[11px] font-medium text-fuchsia-200 hover:bg-neon-purple/30">Ask Concord</Link>
+        <Link href="/lenses/chat" className="rounded-lg bg-neon-purple/20 px-2.5 py-1 text-[11px] font-medium text-fuchsia-200 hover:bg-neon-purple/30">Ask Concord</Link>
       </div>
       {users.length === 0
         ? <div className="text-[12px] text-zinc-500">Quiet right now. You could be the spark.</div>

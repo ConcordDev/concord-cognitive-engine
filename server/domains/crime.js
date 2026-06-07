@@ -92,6 +92,7 @@ export default function registerCrimeMacros(register) {
   });
 
   register("crime", "execute_heist", async (ctx, input = {}) => {
+  try {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     return executeHeist(db, {
@@ -100,7 +101,8 @@ export default function registerCrimeMacros(register) {
       rollOverride: input?.rollOverride,
       witnessRollOverride: input?.witnessRollOverride,
     });
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   register("crime", "my_heists", async (ctx) => {
     const db = ctx?.db;

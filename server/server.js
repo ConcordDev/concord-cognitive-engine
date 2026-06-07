@@ -23879,10 +23879,12 @@ register("shield", "prophet", (ctx, input) => {
 }, { description: "Run Prophet analysis on a specific threat family." });
 
 register("shield", "surgeon", (ctx, input) => {
+  try {
   const threatId = input.threatId || input.id;
   const threatDtu = threatId ? STATE.dtus?.get(threatId) : null;
   if (!threatDtu) return { ok: false, error: "Threat DTU not found" };
   return shieldSurgeon(threatDtu);
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "Run Surgeon reverse engineering on a specific threat." });
 
 register("shield", "guardian", (ctx, input) => {
@@ -24212,7 +24214,9 @@ register("atlas", "live", (ctx, input) => {
 }, { description: "Get real-time signal tomography feed status." });
 
 register("atlas", "query", (ctx, input) => {
+  try {
   return executeSpatialQuery(input);
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "Execute a custom spatial query against the atlas." });
 
 register("atlas", "metrics", (ctx, input) => {

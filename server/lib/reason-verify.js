@@ -29,11 +29,14 @@ import logger from "../logger.js";
 function resolveCitations(db, citationIds, requesterId) {
   const resolved = [];
   const unresolved = [];
+  // Prepare once, reuse per id — avoids an N+1 statement-compile on every cite.
+  let stmt = null;
+  try { stmt = db.prepare("SELECT id, creator_id, title, data FROM dtus WHERE id = ?"); } catch { stmt = null; }
   for (const raw of citationIds) {
     const id = String(raw);
     let row = null;
     try {
-      row = db.prepare("SELECT id, creator_id, title, data FROM dtus WHERE id = ?").get(id);
+      row = stmt ? stmt.get(id) : null;
     } catch { row = null; }
     if (!row) { unresolved.push(id); continue; }
     // Personal-scoped DTUs are only "resolvable" for their owner — citing one you

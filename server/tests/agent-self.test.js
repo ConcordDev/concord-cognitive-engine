@@ -20,7 +20,7 @@ function setupDb() {
   migDisclosure(db);
   migAgent(db);
   // a minimal dtus table so the identity DTU can mint
-  db.exec(`CREATE TABLE dtus (id TEXT PRIMARY KEY, creator_id TEXT, world_id TEXT, kind TEXT, title TEXT, data TEXT, created_at INTEGER)`);
+  db.exec(`CREATE TABLE dtus (id TEXT PRIMARY KEY, creator_id TEXT, world_id TEXT, type TEXT, title TEXT, data TEXT, created_at INTEGER)`);
   return db;
 }
 
@@ -43,8 +43,8 @@ test("Track B1-B3 — autonomous agent core", async (t) => {
     assert.equal(self.status, "active");
     // identity DTU minted
     assert.ok(self.identity_dtu_id, "a continuous identity DTU exists");
-    const dtu = db.prepare(`SELECT kind FROM dtus WHERE id = ?`).get(self.identity_dtu_id);
-    assert.equal(dtu.kind, "agent_identity");
+    const dtu = db.prepare(`SELECT type FROM dtus WHERE id = ?`).get(self.identity_dtu_id);
+    assert.equal(dtu.type, "agent_identity");
   });
 
   await t.test("C1 disclosure: the backing account is flagged is_agent", () => {

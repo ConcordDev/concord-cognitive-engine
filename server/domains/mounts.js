@@ -228,13 +228,15 @@ export default function registerMountMacros(register) {
   // call this before submitting `dtu.create` to surface validation errors
   // without writing a row. Read-only, no auth needed.
   register("mounts", "validate_gear_recipe", async (_ctx, input = {}) => {
+  try {
     if (!getFlag("FF_MOUNT_GEAR", 1)) return { ok: false, reason: "feature_disabled" };
     if (!input.recipe || typeof input.recipe !== "object") {
       return { ok: false, reason: "missing_recipe" };
     }
     const recipe = { kind: "mount_gear", meta: input.recipe.meta || input.recipe };
     return validateMountGear(recipe);
-  }, { note: "validate a mount_gear recipe shape pre-author" });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "validate a mount_gear recipe shape pre-author" });
 
   // mounts.craft_gear — Wave 7a glue #5. The "craft a saddle" entry point that
   // was entirely missing: the mount_gear DTU kind was defined + validated +

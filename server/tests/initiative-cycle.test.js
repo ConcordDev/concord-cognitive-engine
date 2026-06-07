@@ -9,7 +9,7 @@ import { runInitiativeCycle } from "../emergent/initiative-cycle.js";
 function setupDb() {
   const db = new Database(":memory:");
   migAffect(db);
-  db.exec(`CREATE TABLE dtus (id TEXT PRIMARY KEY, creator_id TEXT, kind TEXT, title TEXT, created_at INTEGER DEFAULT (unixepoch()))`);
+  db.exec(`CREATE TABLE dtus (id TEXT PRIMARY KEY, creator_id TEXT, type TEXT, title TEXT, created_at INTEGER DEFAULT (unixepoch()))`);
   db.exec(`CREATE TABLE forward_predictions (id TEXT PRIMARY KEY, user_id TEXT, subject_kind TEXT, subject_id TEXT, anticipated TEXT, confidence REAL, composed_at INTEGER DEFAULT (unixepoch()), expires_at INTEGER, realised_at INTEGER)`);
   return db;
 }
@@ -49,7 +49,7 @@ test("Living chat — the pulse (initiative cycle)", async (t) => {
   await t.test("an unsurfaced morning brief surfaces (path to the surface)", () => {
     const db = setupDb();
     feelChatTurn(db, "u1", "hello there friend"); // makes them recently-active
-    db.prepare(`INSERT INTO dtus (id, creator_id, kind, title) VALUES ('b1', 'u1', 'morning_brief', 'three threads from overnight')`).run();
+    db.prepare(`INSERT INTO dtus (id, creator_id, type, title) VALUES ('b1', 'u1', 'morning_brief', 'three threads from overnight')`).run();
     const eng = stubEngine();
     const r = runInitiativeCycle({ db, engine: eng });
     assert.equal(r.fired, 1);

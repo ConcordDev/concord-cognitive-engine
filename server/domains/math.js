@@ -532,6 +532,7 @@ export default function registerMathActions(registerLensAction) {
    * from artifact.data.values (array of numbers).
    */
   registerLensAction("math", "statisticalAnalysis", (ctx, artifact, _params) => {
+  try {
     const raw = artifact.data?.values || [];
     const values = raw.map(Number).filter(v => !isNaN(v));
     if (values.length === 0) {
@@ -599,7 +600,8 @@ export default function registerMathActions(registerLensAction) {
         outliers: { count: outliers.length, values: outliers.slice(0, 20), lowerFence: r(lowerFence), upperFence: r(upperFence) },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * matrixOperations
@@ -782,6 +784,7 @@ export default function registerMathActions(registerLensAction) {
    * Evaluate at points, find roots (for degree ≤ 4), compute derivative/integral.
    */
   registerLensAction("math", "polynomialAnalysis", (ctx, artifact, params) => {
+  try {
     const coefficients = artifact.data?.coefficients || params.coefficients || [];
     if (coefficients.length === 0) return { ok: false, error: "No coefficients provided." };
 
@@ -875,7 +878,8 @@ export default function registerMathActions(registerLensAction) {
         rootsDetail: roots ? { values: roots, method: degree <= 2 ? "analytic" : "newton-raphson" } : { note: "Root-finding for degree > 4 not implemented" },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * regressionFit
@@ -885,6 +889,7 @@ export default function registerMathActions(registerLensAction) {
    * params.degree: number (for polynomial, default 2)
    */
   registerLensAction("math", "regressionFit", (ctx, artifact, params) => {
+  try {
     // Accept EITHER points:[{x,y}] OR separate x:[] / y:[] arrays (the math-lens UI sends
     // the latter; reading only `points` made every regression error "Need 2 data points").
     const _d = artifact.data || {};
@@ -1020,7 +1025,8 @@ export default function registerMathActions(registerLensAction) {
         fit: rSquared > 0.9 ? "excellent" : rSquared > 0.7 ? "good" : rSquared > 0.5 ? "moderate" : "poor",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /* ════════════════ symbolic computation (CAS) ════════════════ */
 

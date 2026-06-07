@@ -141,7 +141,7 @@ function mintAffectMemory(db, worldId, c, drive) {
       machine: { tags: ["affect_memory", "creature"], composer: "affect_trace", quale },
     };
     db.prepare(`
-      INSERT INTO dtus (id, creator_id, world_id, kind, title, data, created_at)
+      INSERT INTO dtus (id, creator_id, world_id, type, title, data, created_at)
       VALUES (?, ?, ?, 'affect_memory', ?, ?, unixepoch())
     `).run(dtuId, c.creatureId, worldId, "Affect memory", JSON.stringify(data));
     return dtuId;

@@ -51,10 +51,12 @@ export default function registerCityMacros(register) {
   });
 
   register("city", "snapshot_happiness", async (ctx, input = {}) => {
+  try {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     return snapshotHappiness(db, String(input?.worldId || ""));
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   register("city", "latest_happiness", async (ctx, input = {}) => {
     const db = ctx?.db;
