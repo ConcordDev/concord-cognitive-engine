@@ -72,6 +72,13 @@ import {
   Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+// ConKay ("Kay") — Concord's JARVIS-style majordomo, as a voice-native chat MODE.
+import { ConKayBackdrop } from '@/components/conkay/ConKayBackdrop';
+import { ConKayHud } from '@/components/conkay/ConKayHud';
+import { ConKayMessage } from '@/components/conkay/ConKayViz';
+import { useConKayVoice } from '@/components/conkay/useConKayVoice';
+import { CONKAY_PERSONA_PROMPT, type ConKayState } from '@/components/conkay/conkay-persona';
+import { matchConKaySkill, type ConKaySkill } from '@/components/conkay/conkay-skills';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { formatBytes } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -126,6 +133,7 @@ import MeshStatusCard from '@/components/chat/MeshStatusCard';
 import IntelligenceCard from '@/components/chat/IntelligenceCard';
 import AtlasPrivacyMonitor from '@/components/chat/AtlasPrivacyMonitor';
 import { InitiativeChip, type Initiative } from '@/components/chat/InitiativeChip';
+import { AssistantMoodChip } from '@/components/chat/AssistantMoodChip';
 import { ToolPalette } from '@/components/chat/ToolPalette';
 import { SafeCard } from '@/components/common/SafeCard';
 import { GracefulFallback } from '@/components/common/GracefulFallback';
@@ -250,6 +258,7 @@ const AI_MODES: AIMode[] = [
   { id: 'code', name: 'Code', icon: Code, description: 'Programming help' },
   { id: 'research', name: 'Research', icon: BookOpen, description: 'Research mode with citations' },
   { id: 'creti', name: 'CRETI', icon: Zap, description: 'Structured CRETI format' },
+  { id: 'conkay', name: 'ConKay', icon: Sparkles, description: 'Voice-native majordomo — archives + research, holographic' },
 ];
 
 const PERSONAS: Persona[] = [
@@ -497,6 +506,12 @@ export default function ChatLensPage() {
     loadSessionId()
   );
   const [aiMode, setAiMode] = useState<AIMode>(AI_MODES[0]);
+  const isConKay = aiMode.id === 'conkay';
+  const [conkayMuted, setConkayMuted] = useState(false);
+  // Ambient "acting" flare + a "skill is running" flag (drives the processing state).
+  const [conkayActing, setConkayActing] = useState(false);
+  const [conkaySkillRunning, setConkaySkillRunning] = useState(false);
+  const conkayBottomRef = useRef<HTMLDivElement>(null);
   const [showModeSelect, setShowModeSelect] = useState(false);
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [feedbackState, setFeedbackState] = useState<Record<string, 'up' | 'down'>>({});
@@ -570,6 +585,29 @@ export default function ChatLensPage() {
   // New state — Domain context
   const [domainContext, setDomainContext] = useState<string>('');
   const [inspectingDtuId, setInspectingDtuId] = useState<string | null>(null);
+
+  // Consume ?context=<domain> from the URL on mount — this is what the per-lens
+  // "Ask about {lens}" button (SmartContextBar) passes, so arriving here actually
+  // sets the domain context (previously it was dropped → the button looked broken).
+  useEffect(() => {
+    try {
+      const ctx = new URLSearchParams(window.location.search).get('context');
+      if (ctx) setDomainContext(ctx);
+    } catch { /* SSR / no window */ }
+  }, []);
+
+  // Consume ?mode=<id> from the URL on mount — this is how ConKay becomes a
+  // "hidden staple" summonable from anywhere (command palette "Summon Kay",
+  // deep links). /lenses/chat?mode=conkay drops you straight into ConKay mode.
+  useEffect(() => {
+    try {
+      const m = new URLSearchParams(window.location.search).get('mode');
+      if (m) {
+        const found = AI_MODES.find((x) => x.id === m);
+        if (found) setAiMode(found);
+      }
+    } catch { /* SSR / no window */ }
+  }, []);
 
   // New state — Wired orphan components
   const [chatMode, setChatMode] = useState<'welcome' | 'assist' | 'explore' | 'connect' | 'chat'>(
@@ -1220,9 +1258,11 @@ export default function ChatLensPage() {
           signal: abortController.signal,
           body: JSON.stringify({
             message: messageContent,
-            mode: aiMode.id,
+            // ConKay presents as its own mode but rides the citation-oriented
+            // "research" backend path + its persona prompt (archives + research).
+            mode: isConKay ? 'research' : aiMode.id,
             sessionId: activeSessionId,
-            ...(systemPrompt ? { systemPrompt } : {}),
+            ...(isConKay ? { systemPrompt: CONKAY_PERSONA_PROMPT } : systemPrompt ? { systemPrompt } : {}),
             ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
           }),
         });
@@ -1287,9 +1327,11 @@ export default function ChatLensPage() {
           '/api/chat',
           {
             message: messageContent,
-            mode: aiMode.id,
+            // ConKay presents as its own mode but rides the citation-oriented
+            // "research" backend path + its persona prompt (archives + research).
+            mode: isConKay ? 'research' : aiMode.id,
             sessionId: activeSessionId,
-            ...(systemPrompt ? { systemPrompt } : {}),
+            ...(isConKay ? { systemPrompt: CONKAY_PERSONA_PROMPT } : systemPrompt ? { systemPrompt } : {}),
             ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
           },
           { signal: abortController.signal }
@@ -1328,6 +1370,11 @@ export default function ChatLensPage() {
           typeof data.reasoningSessionId === 'string' ? data.reasoningSessionId : undefined,
         wasSynthesized: !!data.wasSynthesized,
         shadowsUsed: typeof data.shadowsUsed === 'number' ? data.shadowsUsed : undefined,
+        // Which brain/source produced this (ConKay surfaces it when present).
+        model: (typeof data.brain === 'string' && data.brain)
+          || (typeof data.source === 'string' && data.source)
+          || (typeof data.model === 'string' && data.model)
+          || undefined,
       };
 
       setLocalMessages((prev) => [...prev, assistantMsg]);
@@ -1640,7 +1687,112 @@ export default function ChatLensPage() {
     });
   }, []);
 
+  // ── ConKay vision: an image attachment in ConKay mode is a "look at this" —
+  // POST the raw image to /api/vision/analyze (the vision brain). Honest offline
+  // fallback when no vision model is connected. Reuses JARVIS-style perception.
+  const conkayVisionMutation = useMutation({
+    mutationFn: async ({ file, prompt }: { file: File; prompt: string }) => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const res = await fetch(`${apiUrl}/api/vision/analyze?prompt=${encodeURIComponent(prompt)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type || 'image/png' },
+        credentials: 'include',
+        body: file,
+      });
+      return res.json().catch(() => ({ ok: false, error: 'unreadable response' }));
+    },
+    onSuccess: (data: { ok?: boolean; description?: string; model?: string; error?: string }) => {
+      const ok = !!data?.ok;
+      const content = ok
+        ? (data.description?.trim() || 'I looked, but the vision brain returned nothing.')
+        : `I can't see that right now — the vision brain isn't reachable in this environment${data?.error ? ` (${data.error})` : ''}.`;
+      setLocalMessages((prev) => [...prev, {
+        id: `asst-${Date.now()}`, role: 'assistant', content,
+        timestamp: new Date().toISOString(), model: ok ? (data.model || 'vision') : undefined,
+      }]);
+    },
+    onError: () => {
+      setLocalMessages((prev) => [...prev, {
+        id: `asst-${Date.now()}`, role: 'assistant',
+        content: "I couldn't reach the vision brain just now. Try again, or check that a vision model is connected.",
+        timestamp: new Date().toISOString(),
+      }]);
+    },
+  });
+
+  // ── ConKay skills: Kay actually *does* things against real Concord data ──────
+  // (brief me / search my archive / my activity / world pulse / open a lens /
+  // enter the world). Runs instantly, even when the LLM brains are offline; the
+  // reply renders as spoken prose + a live viz + archive citations, and may
+  // navigate or flare the ambient "acting" state. Unmatched input falls through
+  // to the normal four-brain chat pipeline.
+  const runConKaySkill = useCallback(async (
+    text: string,
+    match: { skill: ConKaySkill; args: Record<string, string> },
+  ) => {
+    setLocalMessages((prev) => [...prev, {
+      id: `user-${Date.now()}`, role: 'user' as const, content: text, timestamp: new Date().toISOString(),
+    }]);
+    setInput('');
+    setConkaySkillRunning(true);
+    setConkayActing(true);
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+      const result = await match.skill.run(match.args, {
+        apiBase,
+        fetchJson: async (path: string) => {
+          try {
+            const r = await fetch(`${apiBase}${path}`, { credentials: 'include' });
+            return await r.json();
+          } catch { return null; }
+        },
+      });
+      // Live viz rides the existing conkay-viz fence ConKayMessage already parses.
+      const fence = result.viz ? `\n\n\`\`\`conkay-viz\n${JSON.stringify(result.viz)}\n\`\`\`` : '';
+      setLocalMessages((prev) => [...prev, {
+        id: `asst-${Date.now()}`, role: 'assistant' as const,
+        content: `${result.spoken}${fence}`,
+        timestamp: new Date().toISOString(),
+        model: 'kay',
+        dtuRefs: result.dtuRefs,
+        sources: result.sources,
+        toolCalls: result.toolCalls,
+      }]);
+      if (result.navigate) {
+        const dest = result.navigate;
+        setTimeout(() => { window.location.href = dest; }, 900);
+      }
+    } catch {
+      setLocalMessages((prev) => [...prev, {
+        id: `asst-${Date.now()}`, role: 'assistant',
+        content: 'I hit a snag running that — mind trying again?',
+        timestamp: new Date().toISOString(),
+      }]);
+    } finally {
+      setConkaySkillRunning(false);
+      setTimeout(() => setConkayActing(false), 2500);
+    }
+  }, [setLocalMessages, setInput]);
+
   const handleSend = useCallback(() => {
+    // ConKay vision: an attached image is "look at this" — runs even with no text.
+    if (isConKay && !conkayVisionMutation.isPending) {
+      const img = attachments.find((a) => a.type.startsWith('image/'));
+      if (img) {
+        const prompt = input.trim() || 'Describe this image in detail.';
+        setLocalMessages((prev) => [...prev, {
+          id: `user-${Date.now()}`, role: 'user',
+          content: input.trim() || 'What do you see?',
+          timestamp: new Date().toISOString(),
+          attachments: [{ name: img.name, size: img.size, type: img.type }],
+        }]);
+        setInput('');
+        setAttachments([]);
+        conkayVisionMutation.mutate({ file: img.file, prompt });
+        return;
+      }
+    }
+
     if (!input.trim() || sendMutation.isPending) return;
 
     // Check for slash commands
@@ -1649,8 +1801,68 @@ export default function ChatLensPage() {
       return;
     }
 
+    // ConKay: a matching imperative ("brief me", "open music") runs a skill
+    // directly; everything else falls through to the chat pipeline.
+    if (isConKay) {
+      const m = matchConKaySkill(input.trim());
+      if (m) { runConKaySkill(input.trim(), m); return; }
+    }
+
     sendMutation.mutate(input);
-  }, [input, sendMutation, executeSlashCommand]);
+  }, [input, sendMutation, executeSlashCommand, isConKay, attachments, conkayVisionMutation, runConKaySkill]);
+
+  // ── ConKay: voice-native STT in / TTS out when the mode is active ───────────
+  const conkayVoice = useConKayVoice({
+    enabled: isConKay,
+    muted: conkayMuted,
+    onFinalTranscript: (t) => {
+      const text = t.trim();
+      if (!text || sendMutation.isPending) return;
+      if (text.startsWith('/')) { executeSlashCommand(text); return; }
+      const m = matchConKaySkill(text);
+      if (m) { runConKaySkill(text, m); return; }
+      sendMutation.mutate(text);
+    },
+  });
+  // React to each new assistant reply: speak it, and flare "acting" when the
+  // reply actually touched a system (real toolCalls — ambient action feedback).
+  const conkaySpokeRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isConKay) return;
+    const last = [...localMessages].reverse().find((m) => m.role === 'assistant');
+    if (!last || last.id === conkaySpokeRef.current) return;
+    conkaySpokeRef.current = last.id;
+    // Strip any conkay-viz fence so Kay never reads raw JSON aloud.
+    if (!conkayMuted) conkayVoice.speak((last.content || '').replace(/```conkay-viz[\s\S]*?```/gi, '').trim());
+    if (Array.isArray(last.toolCalls) && last.toolCalls.length > 0) {
+      setConkayActing(true);
+      const tmr = setTimeout(() => setConkayActing(false), 3500);
+      return () => clearTimeout(tmr);
+    }
+  }, [isConKay, conkayMuted, localMessages, conkayVoice]);
+
+  // ConKay greets on entering the mode — a spoken presence, no fabricated data.
+  const conkayGreetedRef = useRef(false);
+  useEffect(() => {
+    if (!isConKay) { conkayGreetedRef.current = false; return; }
+    if (conkayGreetedRef.current) return;
+    conkayGreetedRef.current = true;
+    if (!conkayMuted) conkayVoice.speak("Kay here. I'm listening — ask me anything, or say brief me.");
+  }, [isConKay, conkayMuted, conkayVoice]);
+
+  // ConKay's plain (non-virtualized) list needs explicit follow-output.
+  useEffect(() => {
+    if (!isConKay) return;
+    conkayBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [isConKay, localMessages.length]);
+
+  // ConKay state machine — driven by real signals (not a screensaver).
+  const conkayState: ConKayState =
+    (sendMutation.isPending || conkayVisionMutation.isPending || conkaySkillRunning) ? 'processing'
+      : conkayActing ? 'acting'
+        : conkayVoice.speaking ? 'presenting'
+          : conkayVoice.listening ? 'listening'
+            : 'idle';
 
   // Lens-scoped keyboard commands. Send via mod+enter is the power-user
   // shortcut (Enter still sends from inside the textarea); slash focuses
@@ -2085,6 +2297,20 @@ export default function ChatLensPage() {
                       </button>
                     </div>
                   </div>
+                ) : isConKay && message.role === 'assistant' ? (
+                  <ConKayMessage
+                    fields={{
+                      content: message.content,
+                      computed: message.computed,
+                      dtuRefs: message.dtuRefs,
+                      refs: message.refs,
+                      sources: message.sources,
+                      toolCalls: message.toolCalls,
+                      webAugmented: message.webAugmented,
+                      brain: message.model,
+                    }}
+                    renderProse={(t) => <MessageRenderer content={t} />}
+                  />
                 ) : (
                   <MessageRenderer content={message.content} />
                 )}
@@ -2703,8 +2929,30 @@ export default function ChatLensPage() {
         </aside>
 
         {/* Main Chat Area */}
-        <main className="flex-1 flex flex-col" aria-label="Chat messages">
-          <header className="px-4 lg:px-6 py-4 border-b border-lattice-border flex items-center justify-between bg-lattice-surface">
+        <main className={cn('flex-1 flex flex-col', isConKay && 'relative isolate')} aria-label="Chat messages">
+          {/* ConKay holographic world-tree — full-column, behind translucent chrome.
+              Mounted at the lens column level (not the small messages panel) so it
+              genuinely fills the screen. */}
+          {isConKay && (
+            <>
+              <ConKayBackdrop
+                state={conkayState}
+                listening={conkayVoice.listening}
+                muted={conkayMuted}
+                className="pointer-events-none absolute inset-0 -z-10"
+              />
+              <ConKayHud
+                state={conkayState}
+                muted={conkayMuted}
+                onToggleMute={() => setConkayMuted((m) => !m)}
+                listening={conkayVoice.listening}
+                speaking={conkayVoice.speaking}
+                voiceSupported={conkayVoice.supported}
+                className="pointer-events-auto absolute right-3 top-3 z-20"
+              />
+            </>
+          )}
+          <header className={cn('px-4 lg:px-6 py-4 border-b border-lattice-border flex items-center justify-between', isConKay ? 'relative z-10 bg-lattice-surface/40 backdrop-blur-md border-cyan-400/15' : 'bg-lattice-surface')}>
             <div className="flex items-center gap-3 lg:gap-4">
               {/* Mobile: toggle conversation sidebar */}
               <button
@@ -2905,6 +3153,9 @@ export default function ChatLensPage() {
                 <Activity className="w-3 h-3" />
                 <span>Systems</span>
               </button>
+              {/* Living chat / Layer 4b — the assistant's felt state (a qualeOf mood
+                  label), surfaced honestly as a correlate. Renders only when lit. */}
+              <AssistantMoodChip />
               {/* 2026 parity — Projects, Prompts, Scheduled, Search.
                   Parity with Claude Projects / ChatGPT Projects-Tasks /
                   Perplexity Spaces. */}
@@ -3106,11 +3357,13 @@ export default function ChatLensPage() {
           </header>
 
           {/* Chat Mode Selector Rail */}
-          <ModeSelector activeMode={chatMode} onModeChange={setChatMode} />
+          <div className={cn(isConKay && 'relative z-10')}>
+            <ModeSelector activeMode={chatMode} onModeChange={setChatMode} />
+          </div>
 
           {/* Chat Mode Panel — shown when in chat mode */}
           {chatMode === 'chat' && messages.length > 0 && (
-            <div className="px-4 py-2 border-b border-lattice-border/30">
+            <div className={cn('px-4 py-2 border-b border-lattice-border/30', isConKay && 'relative z-10')}>
               <ChatModePanel
                 currentLens="chat"
                 onSendMessage={(msg) => {
@@ -3122,7 +3375,7 @@ export default function ChatLensPage() {
 
           {/* Messages */}
           <div
-            className="flex-1 overflow-hidden flex flex-col"
+            className={cn('flex-1 overflow-hidden flex flex-col', isConKay && 'relative z-10')}
             role="log"
             aria-label="Chat messages"
             aria-live="polite"
@@ -3228,13 +3481,29 @@ export default function ChatLensPage() {
                     Concord wrote you {unreadInitiativesCount} time{unreadInitiativesCount === 1 ? '' : 's'} while you were away.
                   </div>
                 )}
-                <Virtuoso
-                  data={threadItems}
-                  followOutput="smooth"
-                  initialTopMostItemIndex={threadItems.length - 1}
-                  className="flex-1"
-                  itemContent={renderThreadItem}
-                />
+                {isConKay ? (
+                  // ConKay renders a plain, non-virtualized list: conversations
+                  // are short and the immersive holographic layout doesn't give
+                  // Virtuoso a stable scroll height (which silently unmounts the
+                  // newest rows). A simple scroll container keeps every reply —
+                  // including skill viz/citations — reliably mounted.
+                  <div className="flex-1 overflow-y-auto relative z-10">
+                    {threadItems.map((item, i) => (
+                      <div key={item.__kind === 'message' ? item.id : `${item.__kind}-${i}`}>
+                        {renderThreadItem(i, item)}
+                      </div>
+                    ))}
+                    <div ref={conkayBottomRef} aria-hidden="true" />
+                  </div>
+                ) : (
+                  <Virtuoso
+                    data={threadItems}
+                    followOutput="smooth"
+                    initialTopMostItemIndex={threadItems.length - 1}
+                    className="flex-1"
+                    itemContent={renderThreadItem}
+                  />
+                )}
               </>
             )}
 
@@ -3295,7 +3564,7 @@ export default function ChatLensPage() {
           </div>
 
           {/* Input Area */}
-          <div className="p-4 border-t border-lattice-border bg-lattice-surface">
+          <div className={cn('p-4 border-t', isConKay ? 'relative z-10 border-cyan-400/15 bg-lattice-surface/40 backdrop-blur-md' : 'border-lattice-border bg-lattice-surface')}>
             <div className="max-w-4xl mx-auto">
               {/* Quoted message indicator */}
               {quotedMessage && (

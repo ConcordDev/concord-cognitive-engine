@@ -18,6 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { awardSparks } from "./currency.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONTENT_DIR = path.resolve(__dirname, "..", "..", "content", "achievements");
@@ -82,7 +83,7 @@ export function initAchievementCatalog(db) {
               a.rarity || "bronze",
               a.hidden ? 1 : 0,
               JSON.stringify(a.rewardDtuIds || []),
-              Number(a.rewardCc) || 0,
+              Number(a.rewardSparks ?? a.rewardCc) || 0,  // sparks reward (legacy column name reward_cc)
               a.rewardTitle || null,
             );
             // Refresh triggers — clear existing, re-insert.
@@ -201,9 +202,14 @@ export function unlockAchievement(db, userId, achievementId, ctx = {}) {
     `).run(userId, achievementId, cal.season_idx, cal.year_idx);
     if (r.changes === 0) return { unlocked: false, alreadyEarned: true };
 
-    // Apply rewards. CC via the same lightweight wallet helpers as mail.
-    const rewardCc = Number(a.rewardCc) || 0;
-    if (rewardCc > 0) _walletCredit(db, userId, rewardCc, `achievement:${achievementId}`);
+    // Gameplay rewards are SPARKS, never CC. CC (concordia_credits) is the
+    // real-money currency and must never be awarded for gameplay; sparks go to
+    // users.sparks + sparks_ledger via the canonical awardSparks helper.
+    const rewardSparks = Number(a.rewardSparks ?? a.rewardCc) || 0;
+    if (rewardSparks > 0) {
+      try { awardSparks(db, userId, rewardSparks, `achievement:${achievementId}`); }
+      catch (err) { logger.warn?.("achievement-engine", "sparks_award_failed", { userId, achievementId, error: err?.message }); }
+    }
 
     // Title reward: insert into player_titles (table from migration 192).
     if (a.rewardTitle) {
@@ -222,11 +228,11 @@ export function unlockAchievement(db, userId, achievementId, ctx = {}) {
       globalThis._concordRealtimeEmit?.("achievement:unlocked", {
         userId, achievementId,
         title: a.title, rarity: a.rarity, icon: a.icon,
-        rewardCc, rewardTitle: a.rewardTitle || null,
+        rewardSparks, rewardTitle: a.rewardTitle || null,
       });
     } catch { /* emit best-effort */ }
 
-    return { unlocked: true, id: achievementId, title: a.title, rewardCc, rewardTitle: a.rewardTitle || null };
+    return { unlocked: true, id: achievementId, title: a.title, rewardSparks, rewardTitle: a.rewardTitle || null };
   } catch (err) {
     logger.warn?.("achievement-engine", "unlock_failed", { userId, achievementId, error: err?.message });
     return { unlocked: false, error: err?.message };
@@ -251,7 +257,7 @@ export function listEarned(db, userId) {
   try {
     const rows = db.prepare(`
       SELECT pa.achievement_id, pa.earned_at,
-             c.title, c.description, c.category, c.icon, c.rarity, c.reward_cc AS rewardCc, c.reward_title AS rewardTitle
+             c.title, c.description, c.category, c.icon, c.rarity, c.reward_cc AS rewardSparks, c.reward_title AS rewardTitle
       FROM player_achievements pa
       LEFT JOIN achievement_catalog c ON c.id = pa.achievement_id
       WHERE pa.player_id = ?
@@ -278,21 +284,6 @@ export function listRecent(db, opts = {}) {
   } catch {
     return [];
   }
-}
-
-function _walletCredit(db, userId, amount, reason) {
-  if (!Number.isFinite(amount) || amount <= 0) return;
-  try {
-    db.prepare(`
-      UPDATE users SET concordia_credits = concordia_credits + ? WHERE id = ?
-    `).run(amount, userId);
-    try {
-      db.prepare(`
-        INSERT INTO reward_ledger (id, user_id, kind, amount_cc, ts, ref_id)
-        VALUES (?, ?, 'achievement_credit', ?, unixepoch(), ?)
-      `).run(`led_${crypto.randomBytes(6).toString("hex")}`, userId, amount, reason);
-    } catch { /* ledger optional */ }
-  } catch { /* wallet table may not exist on minimal builds */ }
 }
 
 /** Test-only — reset between specs. */

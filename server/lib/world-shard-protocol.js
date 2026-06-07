@@ -32,6 +32,7 @@ export const CHILD_TO_PARENT = Object.freeze({
  */
 export const PER_WORLD_WRITE_TABLES = Object.freeze(new Set([
   "world_npcs",
+  "creature_affect_trace",
   "city_presence",
   "npc_routine_state",
   "world_events",

@@ -8,7 +8,7 @@
       "description": "Land your first hit in combat.",
       "rarity": "bronze",
       "icon": "Swords",
-      "rewardCc": 5,
+      "rewardSparks": 5,
       "triggers": [{ "kind": "event", "event": "combat:hit", "condition": { "isPlayer": true } }]
     },
     {
@@ -17,7 +17,7 @@
       "description": "Defeat your first opponent.",
       "rarity": "bronze",
       "icon": "Skull",
-      "rewardCc": 10,
+      "rewardSparks": 10,
       "triggers": [{ "kind": "event", "event": "combat:kill", "condition": {} }]
     },
     {
@@ -26,7 +26,7 @@
       "description": "Win 25 duels.",
       "rarity": "silver",
       "icon": "Crown",
-      "rewardCc": 50,
+      "rewardSparks": 50,
       "rewardTitle": "the Duelist",
       "triggers": [{ "kind": "stat", "stat": "duels_won", "threshold": 25 }]
     },
@@ -36,7 +36,7 @@
       "description": "Slay a world boss.",
       "rarity": "gold",
       "icon": "Trophy",
-      "rewardCc": 200,
+      "rewardSparks": 200,
       "rewardTitle": "Slayer of Giants",
       "triggers": [{ "kind": "event", "event": "boss:defeated", "condition": {} }]
     },
@@ -46,7 +46,7 @@
       "description": "Win a duel without taking damage.",
       "rarity": "gold",
       "icon": "Shield",
-      "rewardCc": 100,
+      "rewardSparks": 100,
       "triggers": [{ "kind": "event", "event": "combat:flawless-victory", "condition": {} }]
     },
     {
@@ -55,7 +55,7 @@
       "description": "Place 1st in any tournament.",
       "rarity": "gold",
       "icon": "Medal",
-      "rewardCc": 300,
+      "rewardSparks": 300,
       "rewardTitle": "the Crowned",
       "triggers": [{ "kind": "event", "event": "tournament:complete", "condition": { "placement": 1 } }]
     },
@@ -65,7 +65,7 @@
       "description": "Win 1000 fights across all worlds.",
       "rarity": "legendary",
       "icon": "Flame",
-      "rewardCc": 5000,
+      "rewardSparks": 5000,
       "rewardTitle": "the Legendary",
       "hidden": true,
       "triggers": [{ "kind": "stat", "stat": "fights_won", "threshold": 1000 }]
@@ -76,7 +76,7 @@
       "description": "Win 5 unarmed brawls.",
       "rarity": "bronze",
       "icon": "Beer",
-      "rewardCc": 25,
+      "rewardSparks": 25,
       "triggers": [{ "kind": "stat", "stat": "brawls_won", "threshold": 5 }]
     },
     {
@@ -85,7 +85,7 @@
       "description": "Parry within the active window (50ms tolerance) ten times.",
       "rarity": "gold",
       "icon": "Timer",
-      "rewardCc": 150,
+      "rewardSparks": 150,
       "rewardTitle": "the Reflexive",
       "triggers": [{ "kind": "stat", "stat": "perfect_parries", "threshold": 10 }]
     }

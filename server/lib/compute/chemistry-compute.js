@@ -247,7 +247,9 @@ export function solutionChemistry({ type = 'acid', concentration = 0, Ka = null,
 
   if (type === 'strong-acid') {
     pH   = concentration > 0 ? -Math.log10(concentration) : 7;
-    pOH  = 14 + Math.log10(Kw) / Math.log10(10) + pH; // pOH = pKw - pH
+    // BUGFIX: this computed `14 + log10(Kw) + pH` = pH (since log10(Kw)=−14), so a 0.01 M
+    // strong acid returned pOH=2 instead of 12 (pH+pOH must = pKw). Correct: pOH = pKw − pH.
+    pOH  = -Math.log10(Kw) - pH;
     detail = 'Strong acid: [H⁺] = C';
   } else if (type === 'strong-base') {
     pOH  = concentration > 0 ? -Math.log10(concentration) : 7;

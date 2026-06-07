@@ -25,7 +25,8 @@ import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, isForbidden } from '@/lib/api/client';
+import { AdminRequiredState } from '@/components/common/EmptyState';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -102,6 +103,13 @@ export default function OpsLensPage() {
     { key: 'explore',        label: 'Explorations',  icon: Compass,  count: explore.data?.explorations?.length },
     { key: 'dtu',            label: 'DTU substrate', icon: Cpu },
   ];
+
+  const forbidden = [attention, repairNet, physical, explore].some(q => isForbidden(q.error));
+  if (forbidden) return (
+    <LensShell lensId="ops" asMain={false}>
+      <AdminRequiredState roles={['admin', 'operator']} />
+    </LensShell>
+  );
 
   return (
     <LensShell lensId="ops" asMain={false}>

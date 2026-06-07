@@ -13,9 +13,25 @@ set -euo pipefail
 
 log() { echo "[pin] $*"; }
 
-# ── Detect core count ─────────────────────────────────────────────────────────
-TOTAL=$(nproc)
-log "Detected $TOTAL CPU cores"
+# ── Detect the REAL allowed core set (cgroup-aware) ───────────────────────────
+# CRITICAL: `nproc` reports the HOST core count, not the pod's cgroup slice — on RunPod
+# it can read 128 while you have ~16, so a 0..nproc-1 layout pins to cores OUTSIDE the
+# cpuset and every taskset fails ("Invalid argument"). Read the actual allowed ids from
+# /proc/self/status (Cpus_allowed_list). (github.com/moby/moby/issues/43205)
+read_allowed_cpus() {
+  local spec parts part lo hi i; local -a ids=()
+  spec="$(grep -i '^Cpus_allowed_list:' /proc/self/status 2>/dev/null | awk '{print $2}')"
+  [ -z "$spec" ] && spec="0-$(( $(nproc 2>/dev/null || echo 4) - 1 ))"
+  IFS=',' read -ra parts <<< "$spec"
+  for part in "${parts[@]}"; do
+    if [[ "$part" == *-* ]]; then lo="${part%-*}"; hi="${part#*-}"; for ((i=lo;i<=hi;i++)); do ids+=("$i"); done
+    else ids+=("$part"); fi
+  done
+  echo "${ids[@]}"
+}
+ALLOWED=( $(read_allowed_cpus) ); TOTAL=${#ALLOWED[@]}
+idslice() { local a=$1 b=$2 out=() i; for ((i=a;i<=b && i<TOTAL;i++)); do out+=("${ALLOWED[$i]}"); done; (IFS=,; echo "${out[*]}"); }
+log "Detected $TOTAL allowed CPU cores (cgroup set)"
 
 if [ "$TOTAL" -lt 4 ]; then
   log "WARNING: Only $TOTAL cores — skipping pinning (need at least 4)"
@@ -58,24 +74,20 @@ fi
 OLLAMA_PCT="${OLLAMA_CORE_PCT:-35}"
 FRONTEND_PCT="${FRONTEND_CORE_PCT:-10}"
 
-OLLAMA_COUNT=$(( TOTAL * OLLAMA_PCT / 100 ))
-[ "$OLLAMA_COUNT" -lt 1 ] && OLLAMA_COUNT=1
-FRONTEND_COUNT=$(( TOTAL * FRONTEND_PCT / 100 ))
-[ "$FRONTEND_COUNT" -lt 1 ] && FRONTEND_COUNT=1
-FRONTEND_START=$((TOTAL - FRONTEND_COUNT))
-BACKEND_END=$((FRONTEND_START - 1))
+OLLAMA_COUNT=$(( TOTAL * OLLAMA_PCT / 100 )); [ "$OLLAMA_COUNT" -lt 1 ] && OLLAMA_COUNT=1
+FRONTEND_COUNT=$(( TOTAL * FRONTEND_PCT / 100 )); [ "$FRONTEND_COUNT" -lt 1 ] && FRONTEND_COUNT=1
+[ $(( OLLAMA_COUNT + FRONTEND_COUNT )) -ge "$TOTAL" ] && FRONTEND_COUNT=$(( TOTAL - OLLAMA_COUNT - 1 )); [ "$FRONTEND_COUNT" -lt 1 ] && FRONTEND_COUNT=1
+BACKEND_END_IDX=$(( TOTAL - FRONTEND_COUNT - 1 ))
 
-OLLAMA_CORES="0-$((OLLAMA_COUNT - 1))"
-BACKEND_CORES="${OLLAMA_COUNT}-${BACKEND_END}"
-FRONTEND_CORES="${FRONTEND_START}-$((TOTAL - 1))"
+# map index ranges onto the ACTUAL allowed core ids (taskset -c accepts the comma list)
+OLLAMA_CORES="$(idslice 0 $((OLLAMA_COUNT - 1)))"
+# honor the band runpod-cognition.sh already computed + exported, so the two scripts agree.
+BACKEND_CORES="${CONCORD_WORLD_CORES:-$(idslice "$OLLAMA_COUNT" "$BACKEND_END_IDX")}"
+FRONTEND_CORES="$(idslice $((BACKEND_END_IDX + 1)) $((TOTAL - 1)))"
 
-# Edge case guards
-[ "$OLLAMA_COUNT" -ge "$BACKEND_END" ] && BACKEND_CORES="$OLLAMA_COUNT"
-[ "$FRONTEND_START" -gt "$((TOTAL - 1))" ] && FRONTEND_CORES="$((TOTAL - 1))"
-
-log "Core allocation:"
+log "Core allocation (cgroup-allowed ids):"
 log "  Ollama:   cores $OLLAMA_CORES"
-log "  Backend:  cores $BACKEND_CORES"
+log "  Backend:  cores $BACKEND_CORES${CONCORD_WORLD_CORES:+  (from CONCORD_WORLD_CORES)}"
 log "  Frontend: cores $FRONTEND_CORES"
 
 # ── Pin each process ──────────────────────────────────────────────────────────

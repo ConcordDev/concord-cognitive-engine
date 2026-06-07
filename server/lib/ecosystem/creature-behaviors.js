@@ -29,6 +29,13 @@ import crypto from "node:crypto";
 import {
   freshCreatureNeeds, decayCreatureNeeds, satisfyCreatureNeed, creatureIntent,
 } from "./creature-needs.js";
+// Wave 7 affect/instinct substrate (Layers 1-4). Pure libs; the wire below is
+// additive + behind CONCORD_AFFECT_INSTINCT (default on when ecology is on).
+import { umweltForSpecies, perceiveSignals } from "./umwelt.js";
+import { computeCoreAffect } from "./core-affect.js";
+import { restingDrivesForSpecies, updateDrives, dominantDrive } from "./drives.js";
+import { releasersForSpecies, matchReleaser } from "./releasers.js";
+import { signalsForWorld } from "../embodied/signals.js";
 
 const SEP_R         = 4;     // separation radius (m)
 const NBR_R         = 12;    // neighbour radius for alignment + cohesion (m)
@@ -99,6 +106,28 @@ export function tickFlock(db, state, worldId, opts = {}) {
   // boids. Off (CONCORD_CREATURE_ECOLOGY=0) → byte-identical to the original
   // flock pass. Caller may force via opts.ecology for tests.
   const ecology = opts.ecology ?? (process.env.CONCORD_CREATURE_ECOLOGY !== "0");
+  // Wave 7 Layer 1-4 affect/instinct overlay. Rides inside the ecology block; its
+  // only effects are additive fields on motion[m.id] (_affect/_perceived/_drives)
+  // + a force-gain multiplier from a released FAP. Off → byte-identical ecology pass.
+  const affect = ecology && (opts.affect ?? (process.env.CONCORD_AFFECT_INSTINCT !== "0"));
+
+  // One world-signal bundle per tickFlock (not per creature) — the umwelt filter
+  // weights this same bundle differently per species. signalsForWorld degrades to
+  // { hasData:false } when the embodied substrate is empty, so perception is a
+  // graceful no-op on minimal builds.
+  let worldSignals = null;
+  if (affect) {
+    try { worldSignals = signalsForWorld(db, worldId); }
+    catch { worldSignals = { hasData: false }; }
+  }
+  // Per-species memoisation so the catalog lookups (umwelt/resting-drives/releasers)
+  // run once per species per tick, not once per creature.
+  const _umweltCache = new Map();
+  const _restingCache = new Map();
+  const _releaserCache = new Map();
+  const umweltFor = (sp) => { let v = _umweltCache.get(sp); if (!v) { v = umweltForSpecies(sp); _umweltCache.set(sp, v); } return v; };
+  const restingFor = (sp) => { let v = _restingCache.get(sp); if (!v) { v = restingDrivesForSpecies(sp); _restingCache.set(sp, v); } return v; };
+  const releasersFor = (sp) => { let v = _releaserCache.get(sp); if (!v) { v = releasersForSpecies(sp); _releaserCache.set(sp, v); } return v; };
 
   let creatures;
   try {
@@ -218,12 +247,47 @@ export function tickFlock(db, state, worldId, opts = {}) {
             if (d2 > 0 && d2 < bestD2) { bestD2 = d2; predatorNear = true; pdx = dx; pdz = dz; pd = Math.sqrt(d2); }
           }
         }
-        const intent = creatureIntent(needs, { diet }, { predatorNear });
+        // ── Wave 7 Layers 1-4: perceive → feel → drive → release ──
+        // Cheap, always-on. Produces a per-individual affect/drive state + maybe a
+        // released fixed-action-pattern whose gain amplifies the flee/hunt force.
+        let released = null;
+        let releasedGain = 1;
+        if (affect && m._species) {
+          const sp = m._species;
+          const perceived = perceiveSignals(worldSignals, umweltFor(sp));
+          const priorMotion = motion[m.id] || {};
+          const coreAffect = computeCoreAffect(
+            perceived, needs,
+            { predatorNear, predatorDist: pd, isHunting: m._lifestyle === "carnivore" },
+            priorMotion._affect || null,
+          );
+          const priorDrives = priorMotion._drives || restingFor(sp);
+          const drives = updateDrives(priorDrives, restingFor(sp), coreAffect, {
+            predatorNear, needs, isHunting: m._lifestyle === "carnivore",
+          });
+          // Releaser appraisal bundle: the perceived signal aliases (noise/light/…)
+          // plus the boolean threat flag we already sensed.
+          released = matchReleaser(releasersFor(sp), { ...perceived, predatorNear }, drives);
+          releasedGain = released?.gain || 1;
+          m._affect = coreAffect;
+          m._perceived = perceived;
+          m._drives = drives;
+          m._dominantDrive = dominantDrive(drives).name;
+          m._released = released ? released.fap : null;
+          // Mergeable bag persisted onto motion[m.id] at every write site below so
+          // the affect/drive state survives across ticks (drive decay continuity).
+          m._affectFields = {
+            _affect: coreAffect, _drives: drives,
+            _released: m._released, _dominantDrive: m._dominantDrive,
+          };
+        }
+
+        const intent = creatureIntent(needs, { diet }, { predatorNear }, released);
         const hungryHunter = m._lifestyle === "carnivore" && intent === "hunt" && needs.hunger >= HUNGER_HUNT_THRESHOLD;
         // A hungry scavenger with a carcass available will go pick at it (easy
         // food) — that's what draws the crowd to a kill.
         const wantsScavenge = m._scavenger && corpses.length > 0 && needs.hunger >= HUNGER_HUNT_THRESHOLD;
-        ecoCtx = { needs, predatorNear, pdx, pdz, pd, hungryHunter, wantsScavenge };
+        ecoCtx = { needs, predatorNear, pdx, pdz, pd, hungryHunter, wantsScavenge, releasedGain };
         m._needs = needs;
         m._hunting = hungryHunter;
         m._scavenging = wantsScavenge;
@@ -238,9 +302,9 @@ export function tickFlock(db, state, worldId, opts = {}) {
         // re-accelerate next pass. Preserve the decayed needs.
         const cur = motion[m.id];
         if (cur) {
-          motion[m.id] = { vx: cur.vx * 0.5, vz: cur.vz * 0.5, lastTickAt: Date.now(), needs: ecoCtx?.needs ?? cur.needs };
+          motion[m.id] = { vx: cur.vx * 0.5, vz: cur.vz * 0.5, lastTickAt: Date.now(), needs: ecoCtx?.needs ?? cur.needs, ...(m._affectFields || {}) };
         } else if (ecoCtx) {
-          motion[m.id] = { vx: 0, vz: 0, lastTickAt: Date.now(), needs: ecoCtx.needs };
+          motion[m.id] = { vx: 0, vz: 0, lastTickAt: Date.now(), needs: ecoCtx.needs, ...(m._affectFields || {}) };
         }
         continue;
       }
@@ -363,8 +427,10 @@ export function tickFlock(db, state, worldId, opts = {}) {
 
       // Hunt seek (predator → prey) adds before the flee overwrite, so a
       // predator that's itself fleeing the player abandons the hunt (survival
-      // first) but otherwise commits toward its quarry.
-      if (hunting) { vx += huntX; vz += huntZ; }
+      // first) but otherwise commits toward its quarry. A released hunt FAP
+      // (stoop/pursue) multiplies the seek; default gain 1 → unchanged.
+      const releasedGain = ecoCtx?.releasedGain || 1;
+      if (hunting) { vx += huntX * releasedGain; vz += huntZ * releasedGain; }
 
       if (fleeing) {
         // Flee dominates — overwrite velocity rather than add. Prevents
@@ -387,12 +453,15 @@ export function tickFlock(db, state, worldId, opts = {}) {
       if (m.z >  boundsM) vz -= (m.z - boundsM) * 0.02;
       if (m.z < -boundsM) vz += (-boundsM - m.z) * 0.02;
 
-      // Clamp magnitude so creatures don't streak.
-      const cl = clampSpeed(vx, vz, fleeing ? MAX_SPEED * 1.6 : MAX_SPEED);
+      // Clamp magnitude so creatures don't streak. A released flee FAP
+      // (freeze_then_bolt/bolt) raises the flee speed cap by its gain — the bolt
+      // is genuinely faster, not just a re-aimed walk. Default gain 1 → unchanged.
+      const fleeCap = MAX_SPEED * 1.6 * (fleeing ? releasedGain : 1);
+      const cl = clampSpeed(vx, vz, fleeing ? fleeCap : MAX_SPEED);
       const newX = m.x + cl.vx * STEP_S * 0.05; // 0.05 per-second factor: keeps moves under ~6m/pass
       const newZ = m.z + cl.vz * STEP_S * 0.05;
 
-      motion[m.id] = { vx: cl.vx, vz: cl.vz, lastTickAt: Date.now(), needs: ecoCtx?.needs ?? motion[m.id]?.needs };
+      motion[m.id] = { vx: cl.vx, vz: cl.vz, lastTickAt: Date.now(), needs: ecoCtx?.needs ?? motion[m.id]?.needs, ...(m._affectFields || {}) };
       updates.push({ id: m.id, x: newX, z: newZ });
     }
   }

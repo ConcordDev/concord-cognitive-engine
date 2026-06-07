@@ -4,6 +4,14 @@
 import express from "express";
 import crypto from "crypto";
 import logger from "../logger.js";
+import { npcDialogueSalience } from "../lib/npc-dialogue-salience.js";
+import { makeEscalationBudget } from "../lib/affect-salience.js";
+import { recordInferenceSpan } from "../lib/inference-metering.js";
+// Wave 7 B4/D1 — per-world budget so a crowd of NPCs can't stampede the LLM even
+// when many exchanges are salient at once. Module-scoped → persists across requests.
+const _npcDialogueBudget = makeEscalationBudget({
+  perWorldPerMin: Number(process.env.CONCORD_NPC_DIALOGUE_LLM_PER_MIN) || 120,
+});
 import { moodFromStress } from "../lib/npc-mood.js";
 import { getSkillCeiling as getWorldSkillCeiling } from "../lib/world-flavor.js";
 import { npcNameFromRow } from "../lib/npc-name.js";
@@ -1064,6 +1072,15 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const state   = _tryParseJSON(npc.state, {});
       const npcName = state.name || npc.archetype || 'NPC';
 
+      // Wave 7 / C1 HARD DISCLOSURE — is this NPC an autonomous AI? Computed once,
+      // surfaced on every dialogue response so the human always knows.
+      let isAgentNpc = false;
+      try {
+        const _nc = _tryParseJSON(npc.narrative_context, {});
+        isAgentNpc = _nc?.ai_resident === true
+          || !!db.prepare(`SELECT 1 FROM ai_residents WHERE npc_id = ?`).get(npcId);
+      } catch { /* ai_residents table optional */ }
+
       // Phase 2: idempotent seed of grudge/preoccupation/desire on first
       // dialogue. Best-effort — never blocks the dialogue path.
       try {
@@ -1133,6 +1150,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
           mood: interactResult.mood === 'warm' ? 'friendly' : interactResult.mood,
           options,
           reputation, opinion: interactResult.opinion,
+          isAgent: isAgentNpc || undefined,
         });
       }
 
@@ -1224,8 +1242,34 @@ export default function createWorldsRouter({ requireAuth, db }) {
         isHostileRep ? 'Player is hated/feared — mood must be hostile. Do not offer trade or quests.' : '',
       ].filter(Boolean).join('\n');
 
-      // 7. Call LLM
-      const raw = await handle.generate(promptLines);
+      // 7. Call LLM — Wave 7 B4/D1: ONLY when the exchange is salient. A calm, routine
+      // greeting uses the deterministic fallback (already composed above) for ZERO LLM
+      // cost — "feeling decides when to think" applied to the town. Reversible:
+      // CONCORD_AFFECT_SALIENCE=0 → always-LLM (the prior behaviour).
+      let raw = null;
+      let _useLLM = true;
+      let _dialogueSalience = null;
+      if (process.env.CONCORD_AFFECT_SALIENCE !== "0") {
+        _dialogueSalience = npcDialogueSalience({
+          mood: interactResult.mood, opinion: interactResult.opinion, isHostileRep,
+          asymmetry: asymForFallback, questCount: quests.length,
+          griefLevel: npc.grief_level, isConscious: npc.is_conscious,
+        });
+        _useLLM = _dialogueSalience.salient && _npcDialogueBudget.tryConsume(worldId);
+      }
+      if (_useLLM && handle) {
+        const _spanStart = Date.now();
+        raw = await handle.generate(promptLines);
+        // D2: record the inference span (the previously-unwritten cost ledger). Token
+        // counts are a ~chars/4 estimate; metering must never break the dialogue path.
+        try {
+          recordInferenceSpan(db, {
+            spanType: "npc_dialogue", brainUsed: "subconscious", lensId: "world",
+            callerId: `npc:${npcId}`, latencyMs: Date.now() - _spanStart,
+            tokensIn: Math.ceil(promptLines.length / 4), tokensOut: Math.ceil((raw?.length || 0) / 4),
+          });
+        } catch { /* metering best-effort */ }
+      }
 
       // 8. Parse JSON from LLM response. T1.1: default to the grounded
       // deterministic compose (not the flat npc-relations 1-liner) so an
@@ -1285,7 +1329,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* weaponise consumption best-effort — never blocks dialogue */ }
 
-      // 10. Return structured response
+      // 10. Return structured response (isAgent computed once at fetch — C1 disclosure).
       res.json({
         ok: true, npcId, npcName,
         greeting,
@@ -1294,6 +1338,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         subtext: subtext || undefined,
         reputation,
         opinion: interactResult.opinion,
+        isAgent: isAgentNpc || undefined,
         weaponiseFired: weaponiseFired.length ? weaponiseFired : undefined,
       });
     } catch (e) {
@@ -1589,13 +1634,18 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // composite. world_id must be scoped (mig 101). Quality is stored
       // in metadata JSON to preserve gather-time rarity.
       for (const item of result.gathered) {
+        // User-global inventory (one universe, many worlds): stack onto the
+        // player's single global row for this item (PK is (user_id,item_id)).
+        // A world-scoped existing-check would miss a row tagged another world
+        // and then hit a PK violation on INSERT. world_id on the INSERT below
+        // is "where-gathered" metadata only.
         const existing = db.prepare(
-          'SELECT quantity FROM player_inventory WHERE user_id = ? AND item_id = ? AND world_id = ?'
-        ).get(req.user.id, item.item, worldId);
+          'SELECT quantity FROM player_inventory WHERE user_id = ? AND item_id = ?'
+        ).get(req.user.id, item.item);
         if (existing) {
           db.prepare(
-            'UPDATE player_inventory SET quantity = quantity + ? WHERE user_id = ? AND item_id = ? AND world_id = ?'
-          ).run(item.quantity, req.user.id, item.item, worldId);
+            'UPDATE player_inventory SET quantity = quantity + ? WHERE user_id = ? AND item_id = ?'
+          ).run(item.quantity, req.user.id, item.item);
         } else {
           db.prepare(`
             INSERT INTO player_inventory (user_id, item_id, quantity, world_id, metadata)

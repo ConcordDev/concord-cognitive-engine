@@ -543,6 +543,12 @@ function seedQuestFile(quests) {
  * @returns {{ ok: boolean, counts?: object, error?: string }}
  */
 export async function seedContent({ db = null } = {}) {
+  // Operational skip: when CONCORD_SKIP_SEED=1, skip the (idempotent) boot
+  // re-seed entirely. Useful for fast restarts on an already-seeded DB where
+  // the heavy synchronous seed pass would otherwise block startup.
+  if (process.env.CONCORD_SKIP_SEED === "1") {
+    return { ok: true, skipped: true, reason: "CONCORD_SKIP_SEED" };
+  }
   if (_seeded) {
     return { ok: true, counts: null, cached: true };
   }

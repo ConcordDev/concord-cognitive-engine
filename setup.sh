@@ -81,7 +81,7 @@ MODELS=(
   "qwen2.5:7b-instruct-q4_K_M"        # Subconscious brain    (~4 GB)
   "qwen2.5:3b"                         # Utility brain         (~2 GB)
   "qwen2.5:0.5b"                       # Repair brain          (~0.3 GB)
-  "llava:13b-v1.6-vicuna-q4_K_M"       # Vision / multimodal   (~8 GB)
+  "qwen2.5vl:7b"                       # Vision / multimodal   (~7 GB) — Apache-2.0; swapped off llava (CC-BY-NC lineage) per docs/LICENSING.md
   "nomic-embed-text"                   # Embeddings            (~275 MB)
 )
 

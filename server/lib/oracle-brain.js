@@ -86,6 +86,21 @@ async function callUtilityBrain(prompt, maxTokens = 600, opts = {}) {
       } catch { /* logging never blocks */ }
     }
 
+    // Wave 7 / E7 — also record the inference span (the D2 cost ledger) so oracle-brain
+    // quest/lore/dialogue generation counts toward the cost story, not just dialogue +
+    // the agent loop. Real token counts from Ollama. Best-effort; never blocks.
+    if (_trainingDb) {
+      try {
+        const { recordInferenceSpan } = await import("./inference-metering.js");
+        recordInferenceSpan(_trainingDb, {
+          spanType: "oracle_brain", brainUsed: "utility", modelUsed: activeModel,
+          callerId: opts.callerId || opts.domain || "oracle", latencyMs: elapsed,
+          tokensIn: data.prompt_eval_count || Math.ceil((prompt?.length || 0) / 4),
+          tokensOut: data.eval_count || Math.ceil((text?.length || 0) / 4),
+        });
+      } catch { /* metering never blocks */ }
+    }
+
     return text ? { ok: true, text } : { ok: false, error: "empty_response" };
   } catch (err) {
     clearTimeout(timer);

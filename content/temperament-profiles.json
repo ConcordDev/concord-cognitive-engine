@@ -1,0 +1,29 @@
+{
+  "_doc": "Layer 3 — Panksepp's 7 primary affective systems as a per-species RESTING drive balance (temperament made numerical). Scalars 0..1: SEEKING, RAGE, FEAR, CARE, PANIC, PLAY, LUST. Composition (lib/ecosystem/drives.js): flat 0.3 baseline ← cladeDefaults[clade] ← dimodel[diet] (partial) ← species (override). A wolf is SEEKING+RAGE prey-drive; a deer is FEAR/PANIC-dominant; a social creature is CARE+PLAY+PANIC; the humanoid agent is a balanced human blend. Unknown species are total via clade/diet fallback.",
+  "cladeDefaults": {
+    "mammal":     { "SEEKING": 0.5, "RAGE": 0.2, "FEAR": 0.3, "CARE": 0.3, "PANIC": 0.2, "PLAY": 0.3, "LUST": 0.2 },
+    "avian":      { "SEEKING": 0.6, "RAGE": 0.15, "FEAR": 0.4, "CARE": 0.25, "PANIC": 0.3, "PLAY": 0.2, "LUST": 0.2 },
+    "reptile":    { "SEEKING": 0.45, "RAGE": 0.35, "FEAR": 0.3, "CARE": 0.05, "PANIC": 0.15, "PLAY": 0.05, "LUST": 0.2 },
+    "fish":       { "SEEKING": 0.5, "RAGE": 0.2, "FEAR": 0.45, "CARE": 0.1, "PANIC": 0.35, "PLAY": 0.1, "LUST": 0.2 },
+    "cephalopod": { "SEEKING": 0.65, "RAGE": 0.25, "FEAR": 0.35, "CARE": 0.1, "PANIC": 0.2, "PLAY": 0.25, "LUST": 0.15 },
+    "arthropod":  { "SEEKING": 0.5, "RAGE": 0.3, "FEAR": 0.3, "CARE": 0.05, "PANIC": 0.2, "PLAY": 0.05, "LUST": 0.2 },
+    "construct":  { "SEEKING": 0.5, "RAGE": 0.1, "FEAR": 0.1, "CARE": 0.1, "PANIC": 0.05, "PLAY": 0.1, "LUST": 0.05 },
+    "sprite":     { "SEEKING": 0.4, "RAGE": 0.05, "FEAR": 0.2, "CARE": 0.4, "PANIC": 0.2, "PLAY": 0.5, "LUST": 0.1 },
+    "drift-kin":  { "SEEKING": 0.5, "RAGE": 0.2, "FEAR": 0.35, "CARE": 0.3, "PANIC": 0.3, "PLAY": 0.25, "LUST": 0.2 },
+    "humanoid":   { "SEEKING": 0.5, "RAGE": 0.25, "FEAR": 0.3, "CARE": 0.4, "PANIC": 0.3, "PLAY": 0.4, "LUST": 0.3 }
+  },
+  "dimodel": {
+    "carnivore":  { "SEEKING": 0.7, "RAGE": 0.4, "FEAR": 0.2 },
+    "herbivore":  { "FEAR": 0.55, "PANIC": 0.45, "RAGE": 0.1 },
+    "omnivore":   { "SEEKING": 0.55, "RAGE": 0.25 },
+    "filter":     { "SEEKING": 0.3, "FEAR": 0.4, "PLAY": 0.1 },
+    "photosynth": { "SEEKING": 0.2, "FEAR": 0.2, "RAGE": 0.05, "PLAY": 0.4 }
+  },
+  "species": {
+    "deer":  { "SEEKING": 0.4, "RAGE": 0.1, "FEAR": 0.6, "CARE": 0.4, "PANIC": 0.5, "PLAY": 0.2, "LUST": 0.2 },
+    "rabbit":{ "SEEKING": 0.4, "RAGE": 0.05, "FEAR": 0.7, "CARE": 0.3, "PANIC": 0.6, "PLAY": 0.3, "LUST": 0.3 },
+    "wolf":  { "SEEKING": 0.7, "RAGE": 0.5, "FEAR": 0.2, "CARE": 0.45, "PANIC": 0.2, "PLAY": 0.3, "LUST": 0.3 },
+    "bear":  { "SEEKING": 0.6, "RAGE": 0.55, "FEAR": 0.2, "CARE": 0.35, "PANIC": 0.15, "PLAY": 0.2, "LUST": 0.25 },
+    "hawk":  { "SEEKING": 0.75, "RAGE": 0.45, "FEAR": 0.25, "CARE": 0.2, "PANIC": 0.2, "PLAY": 0.15, "LUST": 0.2 }
+  }
+}

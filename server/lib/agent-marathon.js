@@ -109,6 +109,34 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
     return { ok: true, status: "failed", reason: "max_turns_exceeded" };
   }
 
+  // Wave 7 / Track B4 — "feeling decides when to think". If the caller supplies the
+  // agent's live self-state (opts.salienceGate), only spend an expensive deliberation
+  // turn on a tier-3 wake (a real dilemma / affect spike / human contact); otherwise the
+  // agent stays on cheap instinct/routine this tick. Opt-in + reversible
+  // (CONCORD_AFFECT_SALIENCE=0) — absent gate → always deliberate (prior behaviour).
+  if (opts.salienceGate && process.env.CONCORD_AFFECT_SALIENCE !== "0") {
+    try {
+      const { decideDeliberation } = await import("./agent-brain-loop.js");
+      const g = opts.salienceGate;
+      const d = decideDeliberation(g.self, g.world, g.others, g.prior, g.opts);
+      if (!d.deliberate) {
+        return { ok: true, deliberated: false, reason: `instinct:${d.reason}`, tier: d.tier };
+      }
+    } catch { /* gate optional → fall through and deliberate */ }
+  }
+
+  // Wave 7 / Track B6 — this IS a tier-3 wake (we got past the gate, so the agent is
+  // deliberating). Run the awareness loop ONCE: attend → read self-model + interoception
+  // → predict-error → write a durable reasoning trace + the awareness-index sample.
+  // Env-gated CONCORD_AWARENESS_LOOP; never throws; purely additive to the deliberation.
+  if (opts.salienceGate && process.env.CONCORD_AWARENESS_LOOP === "1") {
+    try {
+      const { runAwarenessLoop } = await import("./awareness-loop.js");
+      const g = opts.salienceGate;
+      runAwarenessLoop({ force: true, db, agentId: g.agentId || session.user_id, self: g.self, world: g.world, others: g.others, prior: g.prior, system: g.system, prediction: g.prediction, actual: g.actual });
+    } catch { /* awareness loop is best-effort — never blocks the marathon */ }
+  }
+
   // Mark running.
   db.prepare(`UPDATE agent_marathon_sessions SET status = 'running', updated_at = unixepoch() WHERE id = ?`).run(sessionId);
 

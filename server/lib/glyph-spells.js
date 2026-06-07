@@ -193,8 +193,8 @@ export function mintSpell(db, { userId, worldId, componentIds, name, fuelItemIds
       for (const itemId of fuelIds) {
         const row = db.prepare(`
           SELECT COALESCE(SUM(quantity), 0) AS qty
-          FROM player_inventory WHERE user_id = ? AND world_id = ? AND item_id = ?
-        `).get(userId, worldId, itemId);
+          FROM player_inventory WHERE user_id = ? AND item_id = ?
+        `).get(userId, itemId);
         if ((row?.qty ?? 0) >= 1) owned.push(itemId);
       }
       if (owned.length > 0) {

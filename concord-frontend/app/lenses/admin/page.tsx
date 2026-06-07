@@ -10,7 +10,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useQuery } from '@tanstack/react-query';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, isForbidden } from '@/lib/api/client';
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRunArtifact, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -40,7 +40,7 @@ import {
 } from 'lucide-react';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { useUIStore } from '@/store/ui';
-import { ErrorState } from '@/components/common/EmptyState';
+import { ErrorState, AdminRequiredState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -569,6 +569,13 @@ export default function AdminDashboardPage() {
   const organHealth =
     (dashboard?.organs.healthy || 0) / (dashboard?.organs.total || 1) > 0.7 ? 'healthy' : 'warning';
 
+  if ([error, error2, error3].some(isForbidden)) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <AdminRequiredState roles={['admin']} />
+      </div>
+    );
+  }
   if (isError || isError2 || isError3) {
     return (
       <div className="flex items-center justify-center h-full p-8">

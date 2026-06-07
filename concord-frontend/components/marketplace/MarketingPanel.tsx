@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Loader2, Plus, ToggleLeft, ToggleRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
 
 interface Promotion {
   id: string; number: string; code: string;
@@ -80,7 +81,9 @@ export function MarketingPanel() {
         {loading ? (
           <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : list.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-400">No promotions yet.</div>
+          <EmptyStateCTA lensId="marketplace" accent="amber" headline="No promotions yet"
+            caption="Create a promotion to drive sales on your listings."
+            buttonLabel="Create a promotion" onAction={() => setCreating(true)} className="py-8" />
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(p => (

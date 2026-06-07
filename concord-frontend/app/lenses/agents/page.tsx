@@ -35,6 +35,8 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { AgentRoster } from '@/components/agents/AgentRoster';
 import { AgentRuntime } from '@/components/agents/AgentRuntime';
+import { AgentSelfPanel } from '@/components/agents/AgentSelfPanel';
+import { AgentDisclosureBadge } from '@/components/world/AgentDisclosureBadge';
 
 // --- Types ---
 interface Agent {
@@ -561,8 +563,14 @@ export default function AgentsLensPage() {
                     {(() => { const Icon = typeInfo(selectedAgent.type).icon; return <Icon className="w-7 h-7" />; })()}
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-white">{selectedAgent.name}</h2>
+                    <h2 className="flex items-center gap-2 text-xl font-bold text-white">
+                      {selectedAgent.name}
+                      <AgentDisclosureBadge isAgent={(selectedAgent as { isAgent?: boolean }).isAgent} />
+                    </h2>
                     <p className="text-sm text-gray-400 mt-0.5">{selectedAgent.description}</p>
+                    {/* Wave 7 / E6 — the autonomous-agent self-model (values anchor, drives,
+                        awareness correlate, felt peaks). Renders nothing for non-Concord agents. */}
+                    <AgentSelfPanel agentId={selectedAgent.id} />
                     <div className="flex items-center gap-3 mt-2">
                       <span className="flex items-center gap-1.5 text-xs">
                         <span className={`w-2 h-2 rounded-full ${getStatusColor(selectedAgent.enabled ? selectedAgent.status : 'dormant')}`} />

@@ -14,7 +14,7 @@ import { HomeClient } from '@/components/home/HomeClient';
 export const metadata: Metadata = {
   title: 'Concordos — Sovereign Cognitive Engine',
   description:
-    'A sovereign knowledge operating system that grows with you. 175 domain lenses, DTU-based memory, lattice governance, local-first AI. No ads, no extraction, no surveillance.',
+    'A sovereign knowledge operating system that grows with you. 259 domain lenses, DTU-based memory, lattice governance, local-first AI. No ads, no extraction, no surveillance.',
   alternates: {
     canonical: '/',
   },
@@ -68,9 +68,9 @@ export default function HomePage() {
 
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-20">
             <div className="bg-lattice-surface border border-lattice-border rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-2">175 Domain Lenses</h3>
+              <h3 className="text-lg font-semibold text-white mb-2">259 Domain Lenses</h3>
               <p className="text-gray-400 text-sm">
-                Healthcare, education, legal, trades, manufacturing, creative arts, science, AI, and 160+ more specialized lenses.
+                Healthcare, education, legal, trades, manufacturing, creative arts, science, AI, and 250+ more specialized lenses.
               </p>
             </div>
             <div className="bg-lattice-surface border border-lattice-border rounded-xl p-6">

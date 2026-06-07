@@ -12,6 +12,7 @@ import {
   processWithdrawal, cancelWithdrawal, getUserWithdrawals, getAllWithdrawals,
 } from "./withdrawals.js";
 import { adminOnly, authRequired } from "./guards.js";
+import { isCcBlockedForActor } from "../lib/agent-guardrails.js";
 import { economyAudit, auditCtx } from "./audit.js";
 import {
   createCheckoutSession, handleWebhook, createConnectOnboarding,
@@ -301,6 +302,11 @@ export function registerEconomyRoutes(app, db, opts = {}) {
       const amount = Math.round(parseFloat(req.body.amount) * 100) / 100;
 
       if (!userId) return res.status(400).json({ ok: false, error: "missing_user_id" });
+      // Wave 7 / Track C2 — Sparks-only: an autonomous agent can never reach the
+      // real-money (CC) withdrawal surface. Earning/spending Sparks is untouched.
+      if (isCcBlockedForActor(req.user)) {
+        return res.status(403).json({ ok: false, error: "agent_cc_forbidden" });
+      }
       if (!Number.isFinite(amount) || amount <= 0) {
         return res.status(400).json({ ok: false, error: "invalid_amount" });
       }

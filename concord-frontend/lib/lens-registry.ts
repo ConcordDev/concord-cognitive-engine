@@ -178,7 +178,7 @@ export interface LensEntry {
 // ── Core Lens Consolidation ──────────────────────────────────────
 
 /** The five primary workspace lenses */
-export type CoreLensId = 'chat' | 'board' | 'graph' | 'code' | 'studio';
+export type CoreLensId = 'chat' | 'board' | 'graph' | 'code' | 'studio' | 'world';
 
 export interface CoreLensConfig {
   id: CoreLensId;
@@ -246,6 +246,16 @@ export const CORE_LENSES: CoreLensConfig[] = [
     path: '/lenses/studio',
     color: 'neon-pink',
     absorbedLensIds: ['music', 'art', 'fractal', 'game', 'sim', 'ar', 'podcast'],
+  },
+  {
+    id: 'world',
+    name: 'World',
+    icon: Globe,
+    description: 'Concordia — the 3D world: enter via the Concord Link, live events, quests, inventory anywhere',
+    tagline: 'Enter Concordia',
+    path: '/lenses/world',
+    color: 'neon-cyan',
+    absorbedLensIds: [],
   },
 ];
 

@@ -12,9 +12,11 @@ import { asyncHandler } from "../lib/async-handler.js";
 import logger from '../logger.js';
 
 // See server/routes/sovereign.js — sovereign role is god-mode and must
-// not be assignable by simply registering a default username. The prod
-// guard lives there; we mirror the default here for the dev path only.
-const SOVEREIGN_USERNAME = process.env.SOVEREIGN_USERNAME || "dutch";
+// not be assignable by simply registering a default username. So the "dutch"
+// convenience default applies ONLY in dev; in production an unset env means no
+// username matches (role:"owner" is the only path), never a public "dutch" backdoor.
+const _SE_NODE_ENV = process.env.NODE_ENV || "development";
+const SOVEREIGN_USERNAME = process.env.SOVEREIGN_USERNAME || (_SE_NODE_ENV === "production" ? null : "dutch");
 
 function uid(prefix = "id") {
   return `${prefix}_${crypto.randomBytes(10).toString("hex")}`;
@@ -67,7 +69,7 @@ export default function createSovereignEmergentRouter({ STATE }) {
   function requireSovereign(req, res, next) {
     const user = req.user?.username || req.user?.handle || req.user?.id || req.session?.user?.username || "";
     const role = req.user?.role || "";
-    if (user === SOVEREIGN_USERNAME || role === "owner") return next();
+    if ((SOVEREIGN_USERNAME && user === SOVEREIGN_USERNAME) || role === "owner") return next();
     return res.status(403).json({ ok: false, error: "sovereign access required" });
   }
 

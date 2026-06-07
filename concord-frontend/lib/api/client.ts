@@ -389,6 +389,25 @@ export async function lensRun<T = any>(
   }
 }
 
+/**
+ * True when a value represents a 403/forbidden — handles all three shapes the
+ * admin lenses encounter:
+ *   • a ConcordError from fromAxiosError() (useQuery/axios path): statusCode 403 / code FORBIDDEN
+ *   • a raw axios error or fetch Response:                        response?.status / status === 403
+ *   • a lensRun() envelope {ok:false, error}:                     the message string (statusCode is
+ *     lost in the catch, so we match "forbidden" / "insufficient permission" / "403")
+ * Used by admin-gated lens pages to render <AdminRequiredState/> instead of a blank page.
+ */
+export function isForbidden(x: unknown): boolean {
+  if (!x || typeof x !== 'object') return false;
+  const o = x as Record<string, any>;
+  if (o.statusCode === 403 || o.status === 403 || o.response?.status === 403) return true;
+  if (o.code === 'FORBIDDEN') return true;
+  if (o.ok === false && typeof o.error === 'string'
+      && /forbidden|insufficient permission|status code 403|(^|\D)403(\D|$)/i.test(o.error)) return true;
+  return false;
+}
+
 // Typed API helper functions matching actual backend endpoints
 export const apiHelpers = {
   // System status

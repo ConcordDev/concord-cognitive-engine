@@ -25,6 +25,8 @@
 
 import crypto from "node:crypto";
 import { runEmpiricalGates } from "./empirical-gates.js";
+import { assessGrounding, stampGrounding, classifyGrounding, collectWebSources } from "../lib/dtu-grounding.js";
+import { DEFAULT_RUNNERS } from "../lib/grounding-runners.js";
 import { formatAndValidate as formatGRC } from "../grc/index.js";
 import { runCouncilVoices } from "./council-voices.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
@@ -534,7 +536,7 @@ export function criticPhase(candidate, pack) {
  * Synthesizer: canonicalize, minimize redundancy, finalize provenance.
  * Takes builder output + critic feedback → final candidate.
  */
-export function synthesizerPhase(candidate, criticResult) {
+export function synthesizerPhase(candidate, criticResult, runners = DEFAULT_RUNNERS) {
   // Apply critic feedback
   const revised = { ...candidate };
   revised.core = { ...candidate.core };
@@ -577,6 +579,18 @@ export function synthesizerPhase(candidate, criticResult) {
     ...(revised.human.bullets || []),
     `Critic: ${criticResult.issues.length} issues (${criticResult.hasCritical ? "CRITICAL" : "clean"})`,
   ];
+
+  // "Show your work" gate — the subconscious-quality bar. An autonomous DTU that asserts a
+  // feasibility CLAIM must carry an EXTERNAL web source (internal DTU citations alone are
+  // confidence laundering); a CREATIVE generation must be reproducibly EXECUTABLE. Anything
+  // that can't show its work is PROBATIONED here (confidence-capped, not promoted/published)
+  // — it can still exist, it just can't launder into verified/global knowledge ungrounded.
+  // Definitional DTUs owe no external grounding and pass untouched.
+  try {
+    const grounding = assessGrounding(revised, runners);
+    stampGrounding(revised, grounding);
+    revised.meta.criticTrace.grounding = grounding.kind + (grounding.grounded ? ":grounded" : ":probation(" + (grounding.gaps?.[0] || "ungrounded") + ")");
+  } catch (_e) { /* grounding is best-effort; never block synthesis */ }
 
   return { ok: true, candidate: revised };
 }
@@ -1022,8 +1036,30 @@ export async function runPipeline(STATE, opts = {}) {
     empiricalStats: criticResult.empiricalStats,
   };
 
-  //   Synthesizer
-  const synthResult = synthesizerPhase(candidate, criticResult);
+  //   Web grounding — for an EMPIRICAL claim with no external source yet, fetch REAL web
+  //   sources so the synthesizer's grounding gate can verify it instead of probationing it.
+  //   webSearch is injected (server.js → tools.web_search). If absent, the claim simply stays
+  //   ungrounded → probation, which is the safe default (no laundering on internal vibes).
+  if (typeof opts.webSearch === "function") {
+    try {
+      if (classifyGrounding(candidate) === "empirical" && collectWebSources(candidate).length === 0) {
+        const q = (candidate.core?.claims?.[0] || candidate.human?.summary || candidate.title || "").toString().slice(0, 200);
+        if (q) {
+          const sr = await opts.webSearch(q);
+          const results = Array.isArray(sr?.results) ? sr.results : (Array.isArray(sr) ? sr : []);
+          const urls = results.map(r => r?.url || r?.link || r?.href).filter(u => typeof u === "string" && /^https?:\/\//.test(u)).slice(0, 5);
+          if (urls.length) {
+            candidate.meta = candidate.meta || {};
+            candidate.meta.sources = [...(candidate.meta.sources || []), ...urls.map(url => ({ url, via: "autogen_web_research", q }))];
+            trace.stages.webGrounding = { searched: q, sources: urls.length };
+          }
+        }
+      }
+    } catch (_e) { /* web research is best-effort; ungrounded → probation downstream */ }
+  }
+
+  //   Synthesizer (runners verify creative reproducibility; default arithmetic/recipe runners)
+  const synthResult = synthesizerPhase(candidate, criticResult, opts.runners);
   candidate = synthResult.candidate;
   trace.stages.synthesis = { ok: synthResult.ok };
 

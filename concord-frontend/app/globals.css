@@ -857,3 +857,44 @@ html.a11y-reduce-motion *::after {
   transition-duration: 0.001ms !important;
   scroll-behavior: auto !important;
 }
+
+/* ── ConKay work-animation primitives (JARVIS "you can see it building") ──
+   A small motif set driven by ConKay's phase: assemble-then-settle reveal,
+   counter-rotating arc rings, core breathing, step-card draw-in, and a
+   token/skeleton shimmer. Namespaced ck-* to avoid collisions. All honor
+   prefers-reduced-motion via the global guard above. */
+@keyframes ck-draw-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes ck-step-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ck-ring-spin { to { transform: rotate(360deg); } }
+@keyframes ck-ring-spin-rev { to { transform: rotate(-360deg); } }
+@keyframes ck-pulse {
+  0%, 100% { transform: scale(1);   opacity: 0.85; }
+  50%      { transform: scale(1.12); opacity: 1; }
+}
+@keyframes ck-shimmer { to { background-position: 200% 0; } }
+@keyframes ck-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* assemble-then-settle: each ConKay reply + viz panel settles in */
+.ck-reveal { animation: ck-draw-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.ck-step   { animation: ck-step-in 240ms ease-out both; }
+
+/* arc-reactor rings: counter-rotating, additive cyan */
+.ck-ring     { animation: ck-ring-spin 3.2s linear infinite; }
+.ck-ring-rev { animation: ck-ring-spin-rev 2.1s linear infinite; }
+.ck-core     { animation: ck-pulse 1.6s ease-in-out infinite; }
+.ck-blink    { animation: ck-blink 1.1s ease-in-out infinite; }
+
+/* token / skeleton shimmer for "still working" text */
+.ck-shimmer {
+  background: linear-gradient(90deg, rgba(34,211,238,0.25) 0%, rgba(125,211,252,0.9) 50%, rgba(34,211,238,0.25) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  animation: ck-shimmer 1.6s linear infinite;
+}

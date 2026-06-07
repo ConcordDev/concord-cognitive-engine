@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Briefcase, Loader2, Plus, X, Archive, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
 
 interface Contact { id: string; name: string; kind: string }
 interface Matter {
@@ -128,7 +129,9 @@ export function MattersPanel() {
             {loading ? (
               <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
             ) : list.length === 0 ? (
-              <div className="px-3 py-10 text-center text-xs text-gray-400"><Briefcase className="w-6 h-6 mx-auto mb-2 opacity-30" />No matters yet.</div>
+              <EmptyStateCTA lensId="legal" accent="amber" headline="No matters yet"
+                caption="Open your first matter to track work, time, and billing."
+                buttonLabel="Open a matter" onAction={() => setCreating(true)} className="py-8" />
             ) : (
               <ul className="divide-y divide-white/5">
                 {list.map(m => (

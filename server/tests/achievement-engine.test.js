@@ -52,14 +52,14 @@ function memDb() {
       t.earned.set(k, { player_id: userId, achievement_id: achievementId, earned_at: Math.floor(Date.now() / 1000) });
       return { changes: 1 };
     }
-    // CC now lives in users.concordia_credits + logs to reward_ledger.
-    if (n.startsWith("UPDATE users SET concordia_credits = concordia_credits + ?")) {
+    // Gameplay rewards = SPARKS (users.sparks + sparks_ledger via awardSparks).
+    if (n.startsWith("UPDATE users SET sparks = sparks + ?")) {
       const [amount, userId] = args;
       t.wallets.set(userId, (t.wallets.get(userId) || 0) + amount);
       return { changes: 1 };
     }
-    if (n.startsWith("INSERT INTO reward_ledger")) {
-      t.ledger.push({ userId: args[1], amount: args[2], ref: args[3] });
+    if (n.startsWith("INSERT INTO sparks_ledger")) {
+      t.ledger.push({ userId: args[1], amount: args[2], reason: args[3] });
       return { changes: 1 };
     }
     if (n.startsWith("INSERT INTO player_titles")) {
@@ -75,7 +75,7 @@ function memDb() {
       const userId = args[0];
       return [...t.earned.values()].filter(e => e.player_id === userId).map(e => {
         const c = t.catalog.get(e.achievement_id) || {};
-        return { achievement_id: e.achievement_id, earned_at: e.earned_at, title: c.title, description: c.description, category: c.category, icon: c.icon, rarity: c.rarity, rewardCc: c.reward_cc, rewardTitle: c.reward_title };
+        return { achievement_id: e.achievement_id, earned_at: e.earned_at, title: c.title, description: c.description, category: c.category, icon: c.icon, rarity: c.rarity, rewardSparks: c.reward_cc, rewardTitle: c.reward_title };
       });
     }
     return [];
@@ -154,10 +154,10 @@ describe("Phase U2 — achievement engine", () => {
     assert.ok(earned.some(e => e.achievement_id === "legendary_combatant"));
   });
 
-  it("CC rewards credit the wallet on unlock", () => {
+  it("sparks rewards credit on unlock (gameplay = sparks, never CC)", () => {
     initAchievementCatalog(db);
     evaluateAchievement(db, "u1", "combat:hit", { isPlayer: true });
-    // first_blood has rewardCc: 5
+    // first_blood has rewardSparks: 5
     assert.equal(db._t.wallets.get("u1"), 5);
   });
 

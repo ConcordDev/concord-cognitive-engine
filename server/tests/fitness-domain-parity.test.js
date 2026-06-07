@@ -90,29 +90,50 @@ describe("fitness.activity-summary (real device data only)", () => {
 });
 
 describe("fitness.workout-plan-generate", () => {
-  it("rejects when LLM unavailable", async () => {
+  it("falls back to a deterministic plan when LLM unavailable", async () => {
+    // The macro now ALWAYS returns a guaranteed deterministic plan (LLM is opt-in
+    // enhancement via CONCORD_FITNESS_PLAN_LLM). The old "reject when LLM unavailable"
+    // assertion was stale — an LLM-off box must still produce a usable program.
     const r = await call("workout-plan-generate", ctxA, { goal: "strength" });
-    assert.equal(r.ok, false);
-    assert.match(r.error, /llm/);
-  });
-
-  it("parses JSON plan from conscious brain", async () => {
-    const ctx = {
-      actor: { userId: "user_a" }, userId: "user_a",
-      llm: { chat: async () => ({
-        text: '{"plan":{"goal":"strength","weeks":8,"daysPerWeek":4,"template":[{"day":"Monday","focus":"Upper","duration":60,"exercises":[{"name":"Bench","sets":4,"reps":"5","restSec":180}]}],"progression":"+5lb each week","nutrition":"surplus 200 kcal"}}',
-      }) },
-    };
-    const r = await call("workout-plan-generate", ctx, { goal: "strength" });
     assert.equal(r.ok, true);
     assert.equal(r.result.plan.goal, "strength");
-    assert.equal(r.result.plan.template[0].exercises[0].name, "Bench");
+    assert.notEqual(r.result.plan.composedBy, "llm");
+    assert.ok(Array.isArray(r.result.plan.template) && r.result.plan.template.length > 0);
   });
 
-  it("returns parse error on garbage LLM output", async () => {
-    const ctx = { actor: { userId: "user_a" }, userId: "user_a", llm: { chat: async () => ({ text: "can't help" }) } };
-    const r = await call("workout-plan-generate", ctx, { goal: "strength" });
-    assert.equal(r.ok, false);
+  it("parses JSON plan from conscious brain (LLM enhancement enabled)", async () => {
+    // LLM is opt-in (CONCORD_FITNESS_PLAN_LLM); enable it to exercise the conscious-brain path.
+    const prev = process.env.CONCORD_FITNESS_PLAN_LLM;
+    process.env.CONCORD_FITNESS_PLAN_LLM = "true";
+    try {
+      const ctx = {
+        actor: { userId: "user_a" }, userId: "user_a",
+        llm: { chat: async () => ({
+          text: '{"plan":{"goal":"strength","weeks":8,"daysPerWeek":4,"template":[{"day":"Monday","focus":"Upper","duration":60,"exercises":[{"name":"Bench","sets":4,"reps":"5","restSec":180}]}],"progression":"+5lb each week","nutrition":"surplus 200 kcal"}}',
+        }) },
+      };
+      const r = await call("workout-plan-generate", ctx, { goal: "strength" });
+      assert.equal(r.ok, true);
+      assert.equal(r.result.plan.goal, "strength");
+      assert.equal(r.result.plan.template[0].exercises[0].name, "Bench");
+    } finally {
+      if (prev === undefined) delete process.env.CONCORD_FITNESS_PLAN_LLM; else process.env.CONCORD_FITNESS_PLAN_LLM = prev;
+    }
+  });
+
+  it("garbage LLM output degrades gracefully to the deterministic plan", async () => {
+    // Current design: a bad/garbled LLM response falls through to the guaranteed
+    // deterministic plan (ok:true), NOT a hard reject — an LLM-off/garbled box still works.
+    const prev = process.env.CONCORD_FITNESS_PLAN_LLM;
+    process.env.CONCORD_FITNESS_PLAN_LLM = "true";
+    try {
+      const ctx = { actor: { userId: "user_a" }, userId: "user_a", llm: { chat: async () => ({ text: "can't help" }) } };
+      const r = await call("workout-plan-generate", ctx, { goal: "strength" });
+      assert.equal(r.ok, true);
+      assert.notEqual(r.result.plan.composedBy, "llm");
+    } finally {
+      if (prev === undefined) delete process.env.CONCORD_FITNESS_PLAN_LLM; else process.env.CONCORD_FITNESS_PLAN_LLM = prev;
+    }
   });
 });
 

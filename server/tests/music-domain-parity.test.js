@@ -232,7 +232,9 @@ describe("backlog 4 — music.download-add/list/remove (offline)", () => {
   it("adds, lists and removes an offline download", () => {
     resetState();
     const t = addTrack();
-    assert.equal(call("download-add", ctxA, { id: null, data: {}, meta: {} }, { trackId: t.id }).result.downloaded, true);
+    // download-add is an honest offline metadata QUEUE (queuedForOffline / bytesStored:false),
+    // not a real audio download — the old `result.downloaded` field was renamed in that rework.
+    assert.equal(call("download-add", ctxA, { id: null, data: {}, meta: {} }, { trackId: t.id }).result.queuedForOffline, true);
     assert.equal(call("download-list", ctxA, { id: null, data: {}, meta: {} }, {}).result.count, 1);
     assert.equal(call("download-remove", ctxA, { id: null, data: {}, meta: {} }, { trackId: t.id }).result.count, 0);
   });

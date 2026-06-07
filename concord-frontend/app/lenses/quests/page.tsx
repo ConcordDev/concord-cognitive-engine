@@ -27,6 +27,7 @@ type Tab = 'active' | 'completed' | 'available';
 export default function QuestsLensPage() {
   const [tab, setTab] = useState<Tab>('active');
   const [quests, setQuests] = useState<Quest[]>([]);
+  const [loading, setLoading] = useState(true);
   const [partyId, setPartyId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
@@ -46,6 +47,7 @@ export default function QuestsLensPage() {
       if (p?.ok && p.party) setPartyId(p.party.party_id);
       else setPartyId(null);
     } catch { /* network blip */ }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -104,7 +106,11 @@ export default function QuestsLensPage() {
         </header>
 
         <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
-          {filtered.length === 0 ? (
+          {loading ? (
+            <ul className="space-y-3" aria-busy="true" aria-label="Loading quests">
+              {[0, 1, 2].map((i) => <li key={i} className="h-16 animate-pulse rounded-xl border border-amber-500/15 bg-amber-500/5" />)}
+            </ul>
+          ) : filtered.length === 0 ? (
             <p className="px-4 py-8 text-center text-[12px] text-slate-500">No quests in this list.</p>
           ) : (
             <ul className="space-y-3">

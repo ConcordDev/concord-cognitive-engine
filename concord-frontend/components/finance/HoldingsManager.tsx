@@ -118,7 +118,7 @@ export function HoldingsManager() {
         ) : (
           <table className="w-full text-xs">
             <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
-              <tr><th className="text-left px-3 py-1.5">Symbol</th><th className="text-right">Shares</th><th className="text-right">Cost</th><th className="text-right">Price</th><th className="text-right">Value</th><th className="text-right pr-3">G/L</th><th /></tr>
+              <tr><th scope="col" className="text-left px-3 py-1.5">Symbol</th><th scope="col" className="text-right">Shares</th><th scope="col" className="text-right">Cost</th><th scope="col" className="text-right">Price</th><th scope="col" className="text-right">Value</th><th scope="col" className="text-right pr-3">G/L</th><th /></tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {holdings.map(h => {

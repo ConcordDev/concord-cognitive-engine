@@ -185,23 +185,24 @@ export default function configureMiddleware(app, deps) {
         if (allowedOrigins.includes(origin)) {
           return callback(null, true);
         }
-        console.warn("[CORS] Rejected origin:", origin);
-        const err = new Error("Origin blocked");
-        err.code = "ORIGIN_BLOCKED";
-        err.reason = `Origin not allowed: ${origin}`;
-        return callback(err, false);
+        // DENY CLEANLY — do NOT throw. Passing an Error to the cors callback turns a
+        // simple "origin not allowed" into a 500 INTERNAL_ERROR (the cors lib calls
+        // next(err) → the global error handler). That made every cross-origin/mismatched
+        // request surface in the browser UI as a scary 500 "error code" + log spam, when
+        // the correct behaviour is a normal CORS denial (no ACAO header → the browser
+        // blocks it client-side). callback(null,false) still fails CLOSED — it just does
+        // so gracefully. Set ALLOWED_ORIGINS to the EXACT browser origin (apex AND www,
+        // https) to allow it.
+        console.warn("[CORS] Rejected origin (not in ALLOWED_ORIGINS):", origin);
+        return callback(null, false);
       }
       // ALLOWED_ORIGINS not configured
       if (NODE_ENV === "production") {
-        // M2: fail CLOSED. Previously this inferred a same-host allow from
-        // SERVER_HOST/HOSTNAME/NEXT_PUBLIC_API_URL — with credentials:true that silently
-        // relaxes CORS on a misconfigured deploy. With no explicit ALLOWED_ORIGINS we now
-        // reject every cross-origin request. ALLOWED_ORIGINS is a required prod env
-        // (validateEnvironment warns at boot).
-        console.error("[CORS] REJECTED: ALLOWED_ORIGINS is not configured in production. Origin:", origin, "— Set ALLOWED_ORIGINS=https://your-frontend-domain");
-        const err = new Error("CORS not configured");
-        err.code = "CORS_NOT_CONFIGURED";
-        return callback(err, false);
+        // M2: still fail CLOSED (deny), but gracefully — see the note above. A missing
+        // ALLOWED_ORIGINS must not 500 every request; it denies cross-origin cleanly.
+        // ALLOWED_ORIGINS is a required prod env (validateEnvironment warns at boot).
+        console.error("[CORS] DENIED: ALLOWED_ORIGINS is not configured in production. Origin:", origin, "— Set ALLOWED_ORIGINS=https://your-frontend-domain (include apex AND www)");
+        return callback(null, false);
       }
       // In development, allow all origins with a warning
       console.warn("[CORS] WARNING: No ALLOWED_ORIGINS set. Allowing origin:", origin, "— Set ALLOWED_ORIGINS env var to restrict.");

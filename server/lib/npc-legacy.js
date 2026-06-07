@@ -24,6 +24,10 @@ import crypto from "node:crypto";
 import logger from "../logger.js";
 import { inheritHooks } from "./hooks.js";
 import { handleNpcDeathVacancy } from "./settlements.js";
+import { birthTemperament } from "./ecosystem/temperament.js";
+import { DRIVE_KINDS } from "./ecosystem/drives.js";
+import { appraiseExperience } from "./felt-per.js";
+import { qualeOf } from "./qualia-space.js";
 
 // Living Society Phase 1.5c — open a settlement vacancy when a role-holder dies.
 function _openSettlementVacancyOnDeath(db, npc, opts) {
@@ -236,6 +240,64 @@ function inheritRecipes(db, deceased, heir) {
   return n;
 }
 
+/**
+ * Wave 7 / A3b — the heir inherits a DECAYED blend of the deceased's temperament.
+ * "Your temperament is a fossil of what tried to erase your ancestors and failed" —
+ * a fearful parent biases a fearful child, but inheritance is partial (the heir keeps
+ * its own character too). Reuses birthTemperament's stability-gated parent blend.
+ * Column-optional: a no-op when world_npcs.temperament_json isn't present (mig pending).
+ */
+export function inheritTemperament(db, deceased, heir) {
+  if (!db || !deceased?.id || !heir?.id) return 0;
+  try {
+    const dRow = db.prepare(`SELECT temperament_json FROM world_npcs WHERE id = ?`).get(deceased.id);
+    const parentTemp = dRow?.temperament_json ? JSON.parse(dRow.temperament_json) : null;
+    if (!parentTemp || typeof parentTemp !== "object") return 0;
+    const hRow = db.prepare(`SELECT temperament_json FROM world_npcs WHERE id = ?`).get(heir.id);
+    const heirTemp = hRow?.temperament_json ? JSON.parse(hRow.temperament_json) : null;
+    // Blend deceased + heir (or the deceased alone if the heir has none yet); the
+    // seed keys to the pair so the inheritance is deterministic/idempotent.
+    const parents = heirTemp ? [parentTemp, heirTemp] : [parentTemp];
+    const blended = birthTemperament({ speciesId: heir.archetype || "humanoid", parents, seed: `${deceased.id}|${heir.id}|inherit` });
+    // Validate shape before writing.
+    if (!DRIVE_KINDS.every((k) => Number.isFinite(blended[k]))) return 0;
+    db.prepare(`UPDATE world_npcs SET temperament_json = ? WHERE id = ?`).run(JSON.stringify(blended), heir.id);
+    recordInheritanceLink(db, deceased.id, heir.id, "temperament", "temperament");
+    return 1;
+  } catch {
+    return 0; // column/table optional — never blocks the legacy
+  }
+}
+
+/**
+ * Wave 7 / E4 (Context 9) — death is the appraisal where feeling ENDS, the worst value
+ * there is. We don't code a `survive()` goal; instead the cessation appraises as
+ * maximal-negative valence, so self-preservation EMERGES from the felt-per (an agent
+ * that feels its day as good or bad has a stake in there being more days). Stamps the
+ * felt-per + quale onto the legacy row's `final_feltper_json`. Column-optional; never throws.
+ */
+export function recordDeathAppraisal(db, npc, killerId = null, legacyId = null) {
+  try {
+    let affect = null;
+    try {
+      const a = db.prepare(`SELECT v, a FROM affect_state WHERE entity_id = ? AND world_id = ?`)
+        .get(`npc:${npc.world_id || "concordia-hub"}:${npc.id}`, npc.world_id || "concordia-hub");
+      if (a) affect = { v: a.v, a: a.a };
+    } catch { /* affect optional */ }
+    const feltPer = appraiseExperience({ kind: "death", magnitude: 1.0 }, { affect: affect || {} });
+    const quale = qualeOf(feltPer)?.label || "grief";
+    const payload = JSON.stringify({ feltPer, quale, killerId: killerId || null });
+    // best-effort: stamp onto the legacy row if the column exists; else a no-op.
+    try {
+      db.prepare(`UPDATE npc_legacies SET final_feltper_json = ? WHERE ${legacyId ? "id = ?" : "npc_id = ?"}`)
+        .run(payload, legacyId || npc.id);
+    } catch { /* column optional (additive) */ }
+    return { ok: true, feltPer, quale };
+  } catch {
+    return { ok: false };
+  }
+}
+
 function inheritWealth(db, deceased, heirs) {
   if (!db || !deceased?.id || !Array.isArray(heirs) || heirs.length === 0) return 0;
   let total = 0;
@@ -329,6 +391,11 @@ export function onNpcDeath(db, npc, opts = {}) {
     return { ok: false, reason: "legacy_insert_failed" };
   }
 
+  // E4 — death appraises as the worst value there is (Context 9). Best-effort; the
+  // self-preservation drive emerges from this felt-per, not from a coded survive().
+  try { recordDeathAppraisal(db, npc, opts.killerId || opts.killer || null, legacyId); }
+  catch { /* never blocks the death cascade */ }
+
   const heirs = findHeirs(db, npc);
   const inherited = { grudge: 0, preoccupation: 0, desire: 0, recipe: 0, wealth: 0 };
 
@@ -339,6 +406,7 @@ export function onNpcDeath(db, npc, opts = {}) {
     inherited.desire        = inheritDesires(db, npc, primary);
     inherited.recipe        = inheritRecipes(db, npc, primary);
     inherited.wealth        = inheritWealth(db, npc, heirs);
+    inherited.temperament   = inheritTemperament(db, npc, primary); // A3b — the fossil of resistance
     // D5 — hooks held over the deceased re-point to the heir; hooks the
     // deceased held pass to the heir. Synchronous + guarded (table-optional).
     try {

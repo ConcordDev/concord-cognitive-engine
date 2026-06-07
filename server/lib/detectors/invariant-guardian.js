@@ -92,16 +92,18 @@ const CODEPATH_INVARIANTS = [
     ],
   },
   {
-    id: "player_inventory_per_world",
+    id: "player_inventory_user_global",
     severity: "high",
-    description: "player_inventory queries must scope by world_id (migration 101).",
+    description: "player_inventory reads must NOT gate by world_id — inventory is USER-GLOBAL. It's one universe with many worlds connected by the Concord Link; a player carries their inventory between worlds, so an item earned anywhere is usable everywhere (the keystone the cross-world economy / trade routes / factions / wars / schemes are built on). Per-world variation lives in item EFFECTIVENESS/POTENCY (lib/embodied/skill-environment.js), not visibility. world_id is acquisition metadata, never a read filter. (Reverses the former per-world rule.)",
     customCheck: async (root) => {
       const f = path.join(root, "server/routes/player-inventory.js");
       const c = await readSafe(f);
       if (!c) return [{ ok: false, reason: "file_missing" }];
-      const scopedRe = /FROM\s+player_inventory[\s\S]{0,400}?world_id\s*=\s*\?/i;
-      if (!scopedRe.test(c)) {
-        return [{ ok: false, reason: "missing_world_id_scope" }];
+      // Regression guard: a SELECT from player_inventory that re-introduces a
+      // world_id filter would strand items in the world they were earned in.
+      const worldGatedRead = /SELECT[\s\S]{0,300}?FROM\s+player_inventory[\s\S]{0,300}?world_id\s*=\s*\?/i;
+      if (worldGatedRead.test(c)) {
+        return [{ ok: false, reason: "world_gated_inventory_read" }];
       }
       return [{ ok: true }];
     },

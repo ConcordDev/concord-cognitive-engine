@@ -3076,10 +3076,13 @@ function init({ register, STATE, helpers }) {
       } else if (STATE.dtus instanceof Map) {
         dtusIterable = STATE.dtus;
       } else if (typeof STATE.dtus.entries === 'function') {
-        // DTU store or Map-like object with .entries() method
-        dtusIterable = new Map(STATE.dtus.entries());
+        // DTU store or Map-like object with .entries(). Guard the result: some stores
+        // return a non-iterable (a plain object / undefined), which makes `new Map(x)`
+        // throw "object is not iterable" — the cause of the repeated lattice-audit error.
+        const ent = STATE.dtus.entries();
+        dtusIterable = (ent && typeof ent[Symbol.iterator] === 'function') ? new Map(ent) : new Map();
       } else if (Array.isArray(STATE.dtus)) {
-        dtusIterable = new Map(STATE.dtus.map(d => [d.id, d]));
+        dtusIterable = new Map(STATE.dtus.filter(d => d && d.id).map(d => [d.id, d]));
       } else if (typeof STATE.dtus === 'object') {
         dtusIterable = new Map(Object.entries(STATE.dtus));
       } else {

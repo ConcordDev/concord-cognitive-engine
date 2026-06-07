@@ -45,14 +45,15 @@ hacking, karaoke, mahjong, trivia, brawl invites → zero sound.
 **Fix:** an alias/normalize table in `triggerSFX` (underscore↔hyphen) + register the
 missing ids. Highest ROI in the codebase.
 
-### T0.3 PvP combat has no server-authoritative feel
-The momentum→poise→stagger→`combat:impact`→hitstop/knockback/wince chain is emitted
-**only** on the NPC HTTP route (`server/routes/worlds.js:2271`). The socket PvP path
-(`server/server.js:8273`, `cityPresence.applyAttack`) emits `combat:attack:ack`/`combat:hit`
-only — player-vs-player falls back to GameJuice's `damage>25` heuristic, so it has no
-poise, no momentum, no server-driven stagger.
-**Fix:** run the `combat-impact.js`→`impact-feel.js` chain in the socket `combat:attack`
-handler and emit `combat:impact` for player targets.
+### T0.3 PvP combat has no server-authoritative feel — ✅ DONE (2026-06)
+The socket PvP `combat:attack` handler now runs the `impact-feel.js` chain and emits
+`combat:impact` for player targets at `server/server.js:8767` via `buildImpactPayload`
+(PvP-specific `derivePvpSeverity` / `pvpMomentumFromDamage`), reusing the same payload
+builder as the NPC HTTP route so the client `CombatImpactFeelBridge` applies identical
+hitstop/knockback/wince. Pinned by `server/tests/combat-impact-pvp-feel.test.js` (4/4).
+(The original claim that the socket path "emits `combat:attack:ack`/`combat:hit` only"
+was stale.) The related `combat:hit`/`combat:impact` double-fire dedupe is now also
+✅ **DONE (2026-06)** — `lib/concordia/strike-fx-dedup.ts`, see T2.7.
 
 ---
 
@@ -114,7 +115,7 @@ then `connect` to it — so tree content carries the puzzle.
 | T2.4 | **`CombatMotorBridge` is dead** — wrong event source, empty poses, unbound skeleton, output consumed by nothing; runs a per-frame rAF loop | `components/world/CombatMotorBridge.tsx`, mounted `page.tsx:4848` | wire to skeleton or delete |
 | T2.5 | **`ReflexBridge` is dead** — emits nothing; `falling`/`slip` hardcoded false | `components/world/ReflexBridge.tsx`, mounted `page.tsx:4850` | wire `contribute()`/emit or delete |
 | T2.6 | **`AnimationManager.tsx` (444 LOC) animates nothing** — `setTimeout` then flips a boolean; never touches the mixer | `AnimationManager.tsx:195-199` | delete or connect to mixer |
-| T2.7 | ✅ **DONE (2026-06).** Shake is now one trauma authority — `lib/concordia/screen-trauma.ts` (the Eiserloh model). `ConcordiaScene` constructs one `createTraumaShake` for the 3D camera (world-unit amplitudes) instead of its own inline noise+math; `GameJuice`'s 2D HUD shake (a separate, legitimate render target) scales by the shared `traumaForSeverity` curve. One model, one severity map, two surfaces. (The `combat:hit`/`combat:impact` double-fire dedupe is a separate, still-open concern.) | `ConcordiaScene.tsx`, `GameJuice.tsx`, `screen-trauma.ts` | (done) |
+| T2.7 | ✅ **DONE (2026-06).** Shake is now one trauma authority — `lib/concordia/screen-trauma.ts` (the Eiserloh model). `ConcordiaScene` constructs one `createTraumaShake` for the 3D camera (world-unit amplitudes) instead of its own inline noise+math; `GameJuice`'s 2D HUD shake (a separate, legitimate render target) scales by the shared `traumaForSeverity` curve. One model, one severity map, two surfaces. The `combat:hit`/`combat:impact` double-fire dedupe is now also **✅ DONE (2026-06)** — `lib/concordia/strike-fx-dedup.ts` extends the `hit-pause.ts` first-wins window to knockback + hit-reaction, and both bridges (`ImpactMomentumBridge` on combat:hit, `CombatImpactFeelBridge` on combat:impact) route all three effects through the shared authorities, so a PvP hit no longer double-freezes / double-shoves / double-winces (pinned by `tests/strike-fx-dedup.test.ts`). | `ConcordiaScene.tsx`, `GameJuice.tsx`, `screen-trauma.ts`, `strike-fx-dedup.ts` | (done) |
 | T2.8 | ❌ **STALE — already shipped.** A combat-wired camera FOV punch exists: `ConcordiaScene.tsx` consumes `concordia:camera-punch` (FOV kick via `cameraPunchRef.fov`), dispatched live from `CombatBridges.tsx:529,742` on crit/kill, with regression test `tests/combat-prediction-camera-punch.test.ts`. The "no FOV punch" claim is contradicted by the code. | `ConcordiaScene.tsx`, `CombatBridges.tsx:529,742` | (none — already done) |
 | T2.9 | **Shared 250ms attack cooldown drops chained inputs** — a kick within 250ms of a light attack is silently dropped server-side after the client predicted it → visible desync | `server.js:8188` | per-action-type cooldowns / combo window |
 | T2.10 | ✅ **DONE (2026-06).** Dodge/parry cancel window wired. `CombatInputController` now tracks each offensive action's recovery window (`lastOffenseRef`) and gates a defensive (Q/F) press through `cancelState` — it commits to the swing's active frames, then cancels the recovery once ≥`CANCEL_THRESHOLD` (50%) through; before the window opens the press waits in `pendingDefensiveRef` and the 50ms tick flushes it the instant it does (250ms grace), so the escape stays responsive without aborting a committed swing on frame 1. No live commitment → dodges fire instantly as before. | `CombatInputController.tsx`, `combat-input-buffer.ts` | (done) |

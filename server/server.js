@@ -113,6 +113,31 @@ registerHeartbeat("creature-flock-cycle", {
   handler: runCreatureFlockCycle,
 });
 
+// Wave 7 / A6 — flush salience-crossing creature affect (written in-memory by the
+// tickFlock overlay) into creature_affect_trace + mint affect_memory DTUs for the
+// strongest. scope:'world'; kill-switch CONCORD_AFFECT_TRACE=0. Slower than the flock
+// pass — memory is the residue, not the motion.
+import { runAffectTraceCycle } from "./emergent/affect-trace-cycle.js";
+registerHeartbeat("affect-trace-cycle", {
+  frequency: 8,
+  handler: runAffectTraceCycle,
+  scope: "world",
+});
+
+// Wave 7 / Track C2-C3 — the agent guardrail enforcement points. An autonomous agent
+// is a PLAYER, never an operator: it may only reach the domain allowlist, its context
+// is never internal, and a global per-actor token bucket bounds machine-speed flooding
+// (the audit found no such cap at the runMacro gate). Non-agents are untouched.
+import {
+  isAgentActor as _isAgentActor,
+  isAgentDomainAllowed as _isAgentDomainAllowed,
+  assertAgentContextSafe as _assertAgentContextSafe,
+} from "./lib/agent-guardrails.js";
+import { makeActorActionCap as _makeActorActionCap } from "./lib/agent-guardrails.js";
+const _agentActionCap = _makeActorActionCap({
+  perActorPerMin: Number(process.env.CONCORD_AGENT_ACTION_CAP) || 60,
+});
+
 // WS3: outward-migration engine (NPC re-anchor half). As NPCs out-level the
 // ring they stand in, they step toward their home band's inner edge so the
 // strong drain to the frontier and the hub refills with weak spawns. Per-world
@@ -7389,7 +7414,11 @@ export { createBackup, restoreBackup, listBackups };
 // integration/smoke/e2e jobs set CONCORD_RATE_LIMIT_BYPASS=1 because the
 // whole suite hits the server from one runner IP. Both exemptions apply
 // to every limiter below.
-const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/health(\b|\/)/;
+// Health/status probes — exempt from the bot guard + rate limiting. Includes the two
+// endpoints the UI's connection indicator + uptime monitors poll (/api/status and
+// /api/brain/health); without them a no-browser-UA monitor (curl/wget/k8s probe) got a
+// 403 bot_access_denied on the very endpoints meant to report liveness.
+const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/(health|status|brain\/health)(\b|\/)/;
 const _RATE_LIMIT_BYPASS_ENV = process.env.CONCORD_RATE_LIMIT_BYPASS === "1";
 let rateLimiter = null;
 let authRateLimiter = null;
@@ -10116,7 +10145,9 @@ async function tryLoadSeedDTUs() {
           if (!fs.existsSync(packPath)) { errors++; continue; }
           const content = fs.readFileSync(packPath, "utf-8");
           const hash = crypto.createHash("sha256").update(content).digest("hex");
-          if (hash !== pack.sha256) {
+          // Guard a missing/non-string sha256 (a manifest without integrity hashes)
+          // — `pack.sha256.slice` on null was the "Cannot read properties of null" crash.
+          if (typeof pack.sha256 === "string" && hash !== pack.sha256) {
             console.warn(`[Seed-Pack] Hash mismatch: ${pack.file} (expected ${pack.sha256.slice(0,12)}, got ${hash.slice(0,12)})`);
             errors++;
             continue;
@@ -10728,6 +10759,26 @@ async function runMacro(domain, name, input, ctx) {
   // role checks, not by this default.
   const actor = ctx?.actor || { userId: "system", role: "system", scopes: ["read", "write"], internal: true };
   // ACL check is deferred until after publicReadDomains is evaluated (see below).
+
+  // Wave 7 / Track C2-C3 — agent capability fence. Fires ONLY for agent actors
+  // (role:'agent' / is_agent); ordinary players + internal ticks are untouched.
+  if (_isAgentActor(actor)) {
+    // structural bar: an agent context must never be internal/privileged
+    const safe = _assertAgentContextSafe({ actor, internal: ctx?.internal === true });
+    if (!safe.safe) {
+      logger.error("agent-guardrail", "blocked unsafe agent context", { reason: safe.reason, domain, name });
+      return { ok: false, error: "agent_context_unsafe", reason: safe.reason };
+    }
+    // capability whitelist: code/repair/admin/config are simply absent
+    if (!_isAgentDomainAllowed(domain)) {
+      return { ok: false, error: "agent_domain_forbidden", reason: `agent may not reach '${domain}'` };
+    }
+    // commons cap: bound machine-speed flooding per actor
+    const actorId = actor.userId || actor.agentId || "_agent";
+    if (!_agentActionCap.tryConsume(actorId)) {
+      return { ok: false, error: "agent_rate_limited", retryAfterMs: 1000 };
+    }
+  }
 
   // Rate limit check for expensive macros (Phase 5.2)
   if (!checkMacroRateLimit(domain, name)) {
@@ -18501,6 +18552,60 @@ function getSubconsciousOllamaCallback() {
 }
 
 /**
+ * System-context web search for the AUTONOMOUS autogen/dream pipeline (NOT a user session).
+ *
+ * The subconscious can't reach `tools.web_search` — that macro is correctly session-gated
+ * (toolsOptIn + per-session Chicken3). But the "show your work" grounding gate
+ * (lib/dtu-grounding.js) requires an EMPIRICAL autonomous claim to carry at least one real
+ * external source or it gets probationed. This helper does the actual egress + URL parse so
+ * an autonomous claim can be grounded in reality instead of laundered on internal vibes.
+ *
+ * Returns `(query) -> { ok, results:[{url,title}] }` or null when disabled / no egress.
+ * Kill-switch CONCORD_AUTOGEN_WEB_SEARCH=0. Degrades safely: on any failure the autogen
+ * enrichment swallows it and the claim stays probation (the correct default).
+ */
+function getAutogenWebSearch() {
+  if (process.env.CONCORD_AUTOGEN_WEB_SEARCH === "0") return null;
+  return async (query) => {
+    const q = String(query || "").trim();
+    if (!q) return { ok: false, error: "query required", results: [] };
+    const local = process.env.SEARXNG_URL || "";
+    const url = local
+      ? `${local}/search?q=${encodeURIComponent(q)}&format=json`
+      : `https://duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
+    try {
+      const r = await fetch(url, { method: "GET", signal: AbortSignal.timeout(10000) }).catch(() => null);
+      if (!r || !r.ok) return { ok: false, error: "search failed", status: r?.status || 0, results: [] };
+      if (local) {
+        const j = await r.json().catch(() => null);
+        const results = (Array.isArray(j?.results) ? j.results : [])
+          .map((x) => ({ url: x?.url, title: x?.title }))
+          .filter((x) => typeof x.url === "string" && /^https?:\/\//.test(x.url));
+        return { ok: true, source: "searxng", results: results.slice(0, 8) };
+      }
+      // DuckDuckGo HTML — extract result anchors + decode the uddg redirect wrapper.
+      const html = await r.text().catch(() => "");
+      const out = [];
+      const re = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+      let m;
+      while ((m = re.exec(html)) && out.length < 8) {
+        let href = m[1];
+        const ud = href.match(/[?&]uddg=([^&]+)/);
+        if (ud) { try { href = decodeURIComponent(ud[1]); } catch { /* keep raw */ } }
+        else if (href.startsWith("//")) href = "https:" + href;
+        if (/^https?:\/\//.test(href)) {
+          const title = m[2].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim().slice(0, 200);
+          out.push({ url: href, title });
+        }
+      }
+      return { ok: true, source: "duckduckgo_html", results: out };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e), results: [] };
+    }
+  };
+}
+
+/**
  * Build an Ollama callback that routes to the conscious brain.
  * Used by the chat pipeline for LLM-enhanced responses.
  */
@@ -21147,6 +21252,10 @@ register("dtu", "list", (ctx, input) => {
   const q = tokenish(input.q || "");
   const scopeFilter = input.scope || null; // "local", "global", or null (default: user's view)
   const userId = ctx?.actor?.id || ctx?.actor?.odId || null;
+  // "mine" — the caller's OWN creations only (any scope, public + private),
+  // never other users' published DTUs. Used by the dashboard "My Activity"
+  // chart so the creation rhythm is the signed-in user's, not the global feed.
+  const mineOnly = input.mine === true || input.mine === "true" || input.owner === "me";
 
   // Filter out shadow/repair/system DTUs - internal, not real user content.
   // Pass viewer ID so private/user-scoped uploads by other users are hidden.
@@ -21161,7 +21270,10 @@ register("dtu", "list", (ctx, input) => {
   // - global:   everyone (published/public only for non-owners)
   const SCOPE_LEVELS = { local: 0, regional: 1, national: 2, global: 3 };
 
-  if (scopeFilter && SCOPE_LEVELS[scopeFilter] !== undefined) {
+  if (mineOnly) {
+    // Owner-scoped: only DTUs this signed-in user created. Not signed in → none.
+    items = userId ? items.filter(d => d.ownerId === userId) : [];
+  } else if (scopeFilter && SCOPE_LEVELS[scopeFilter] !== undefined) {
     const requestedLevel = SCOPE_LEVELS[scopeFilter];
     items = items.filter(d => {
       const dtuScope = d.scope || "local";
@@ -21341,30 +21453,64 @@ register("dtu", "syncFromGlobal", (ctx, input) => {
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "Sync a global DTU into the user's local inventory" });
 
+// Partition key for DTU consolidation — the HARD boundary that prevents improper mixing.
+// PRIVATE DTUs (personal/local) partition per-(creator, world) so one user's private notes
+// never co-cluster with ANOTHER user's, nor with the shared pool. SHARED DTUs (global/
+// public) partition per-(scope, world) so a tunya-world synthesis never merges with a hub
+// one, and global never merges with public. Lens is intentionally NOT in the key — cross-
+// lens synthesis inside one scope/world is the desirable novelty path.
+function _dtuScopeKey(d) {
+  const scope = String(d?.scope || d?.meta?.scope || d?.visibility || "global").toLowerCase();
+  const world = String(d?.world_id || d?.worldId || d?.meta?.world_id || d?.meta?.worldId || "_none");
+  const isPrivate = scope === "personal" || scope === "private" || scope === "local";
+  if (isPrivate) {
+    const creator = String(d?.creator_id || d?.creatorId || d?.createdBy || d?.userId || d?.meta?.creatorId || "anon");
+    return `private|${creator}|${world}`;
+  }
+  return `${scope}|${world}`;
+}
+
 register("dtu", "cluster", (ctx, input) => {
   try {
-  // group DTUs by similarity (simple jaccard on title+tags)
-  const items = dtusArray().filter(d => (d.tier || "regular") === "regular");
+  // group DTUs by similarity (simple jaccard on title+tags) — BUT only ever WITHIN a
+  // scope+world+visibility partition, never across. This is the hard boundary that stops
+  // a private/personal DTU clustering with a global one (→ would leak as a published MEGA)
+  // or a world-A skill merging with world-B. Cross-LENS is intentionally allowed inside a
+  // partition (that's where cross-domain novelty comes from). See _dtuScopeKey.
+  // fromTier lets the HYPER pass cluster MEGAs (fromTier:'mega') instead of only regulars —
+  // without it, "cluster MEGAs into HYPERs" silently re-clustered regulars and HYPERs never formed.
+  const _fromTier = input.fromTier || "regular";
+  const items = dtusArray().filter(d => (d.tier || "regular") === _fromTier);
   const threshold = Number(input.threshold ?? 0.38);
   const clusters = [];
   const used = new Set();
 
-  for (let i=0;i<items.length;i++){
-    const a = items[i];
-    if (used.has(a.id)) continue;
-    const aTok = simpleTokens(a.title + " " + (a.tags||[]).join(" "));
-    const cluster = [a];
-    used.add(a.id);
-    for (let j=i+1;j<items.length;j++){
-      const b = items[j];
-      if (used.has(b.id)) continue;
-      const bTok = simpleTokens(b.title + " " + (b.tags||[]).join(" "));
-      if (jaccard(aTok, bTok) >= threshold) {
-        cluster.push(b);
-        used.add(b.id);
+  // Partition first — DTUs in different scope/world/visibility buckets can never co-cluster.
+  const partitions = new Map();
+  for (const d of items) {
+    const key = _dtuScopeKey(d);
+    if (!partitions.has(key)) partitions.set(key, []);
+    partitions.get(key).push(d);
+  }
+
+  for (const [, partItems] of partitions) {
+    for (let i=0;i<partItems.length;i++){
+      const a = partItems[i];
+      if (used.has(a.id)) continue;
+      const aTok = simpleTokens(a.title + " " + (a.tags||[]).join(" "));
+      const cluster = [a];
+      used.add(a.id);
+      for (let j=i+1;j<partItems.length;j++){
+        const b = partItems[j];
+        if (used.has(b.id)) continue;
+        const bTok = simpleTokens(b.title + " " + (b.tags||[]).join(" "));
+        if (jaccard(aTok, bTok) >= threshold) {
+          cluster.push(b);
+          used.add(b.id);
+        }
       }
+      clusters.push(cluster);
     }
-    clusters.push(cluster);
   }
 
   clusters.sort((c1,c2)=>c2.length - c1.length);
@@ -21375,21 +21521,26 @@ register("dtu", "cluster", (ctx, input) => {
       size: c.length,
       ids: c.map(x=>x.id),
       titles: c.map(x=>x.title).slice(0, 12),
+      scope: _dtuScopeKey(c[0]),
       tagHints: Array.from(new Set(c.flatMap(x=>x.tags||[]))).slice(0, 20)
     }))
   };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-}, { description: "Cluster regular DTUs by topic similarity." });
+}, { description: "Cluster regular DTUs by topic similarity, partitioned by scope+world+visibility." });
 
 
 register("dtu", "gapPromote", async (ctx, input) => {
   const minCluster = clamp(Number(input.minCluster || 5), 3, 50);
   const maxPromotions = clamp(Number(input.maxPromotions || 3), 1, 25);
   const dryRun = !!input.dryRun;
+  // Honor input.tier — the HYPER pass calls gapPromote({tier:'hyper'}); without this it
+  // hardcoded 'mega' so HYPERs never auto-formed. childTier is what we cluster FROM.
+  const targetTier = input.tier === "hyper" ? "hyper" : "mega";
+  const childTier = targetTier === "hyper" ? "mega" : "regular";
 
-  // Use existing clustering logic (same as dtu.cluster) but promote stable clusters into a MEGA DTU.
-  const regular = Array.from(STATE.dtus.values()).filter(d => (d.tier||"regular")==="regular" && !isShadowDTU(d) && (d.status||"active")==="active");
-  if (regular.length < minCluster) return { ok:true, did:"none", reason:"not_enough_regular_dtus", regular: regular.length };
+  // Promote stable clusters of childTier DTUs into a targetTier DTU.
+  const regular = Array.from(STATE.dtus.values()).filter(d => (d.tier||"regular")===childTier && !isShadowDTU(d) && (d.status||"active")==="active");
+  if (regular.length < minCluster) return { ok:true, did:"none", reason:`not_enough_${childTier}_dtus`, regular: regular.length };
 
   // Lightweight topic hashing for cluster identity
   const topicKeyOf = (cluster) => {
@@ -21400,7 +21551,7 @@ register("dtu", "gapPromote", async (ctx, input) => {
 
   // Reuse cluster() macro internally by calling its implementation (avoid endpoint recursion).
   // runMacro signature is (domain, name, input, ctx) — ctx is the 4th arg, not the 1st.
-  const clustersRes = await runMacro("dtu", "cluster", { minCluster, maxClusters: clamp(Number(input.maxClusters||12), 1, 50) }, ctx);
+  const clustersRes = await runMacro("dtu", "cluster", { minCluster, maxClusters: clamp(Number(input.maxClusters||12), 1, 50), fromTier: childTier }, ctx);
   if (!clustersRes?.ok) return { ok:false, error:"cluster_failed", detail: clustersRes?.error || clustersRes };
   const clusters = Array.isArray(clustersRes.clusters) ? clustersRes.clusters : [];
 
@@ -21414,7 +21565,7 @@ register("dtu", "gapPromote", async (ctx, input) => {
 
     const clusterKey = topicKeyOf(members);
     // Skip if a mega already exists for this cluster key
-    const existing = Array.from(STATE.dtus.values()).find(d => (d.tier||"") === "mega" && d?.meta?.clusterKey === clusterKey);
+    const existing = Array.from(STATE.dtus.values()).find(d => (d.tier||"") === targetTier && d?.meta?.clusterKey === clusterKey);
     if (existing) continue;
 
     // Build a deterministic mega summary (no LLM dependency)
@@ -21425,11 +21576,27 @@ register("dtu", "gapPromote", async (ctx, input) => {
       .filter(Boolean)
       .slice(0, 8);
 
+    // Inherit the members' scope envelope (uniform within a partition post-_dtuScopeKey)
+    // so a MEGA is the SAME class of adaptability as a regular DTU — it carries scope,
+    // world, lens, visibility, creator forward instead of dropping them (which would let a
+    // private-DTU MEGA leak as published, or strand a world skill out of its world).
+    const _seed = members.find(m => m?.scope || m?.world_id || m?.worldId || m?.lens_id || m?.lensId) || members[0] || {};
+    const _megaScope = _seed.scope || _seed.meta?.scope || _seed.visibility || "global";
+    const _megaWorld = _seed.world_id || _seed.worldId || _seed.meta?.world_id || _seed.meta?.worldId || null;
+    const _lensSet = Array.from(new Set(members.map(m => m.lens_id || m.lensId || m.meta?.lensId).filter(Boolean)));
+    const _megaLens = _lensSet.length === 1 ? _lensSet[0] : (_lensSet.length > 1 ? "multi" : (_seed.lens_id || _seed.lensId || null));
+    const _megaCreator = _seed.creator_id || _seed.creatorId || _seed.createdBy || _seed.userId || _seed.meta?.creatorId || null;
     const mega = {
       id: uid("dtu"),
-      tier: "mega",
-      title: `MEGA — ${titleSeed}`,
+      tier: targetTier,
+      title: `${targetTier.toUpperCase()} — ${titleSeed}`,
       tags,
+      scope: _megaScope,
+      visibility: _seed.visibility || (String(_megaScope).match(/personal|private|local/i) ? "private" : "public"),
+      world_id: _megaWorld,
+      lens_id: _megaLens,
+      lensSpan: _lensSet.length > 1 ? _lensSet : undefined,
+      creator_id: _megaCreator,
       createdAt: nowISO(),
       updatedAt: nowISO(),
       status: "active",
@@ -21500,6 +21667,37 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
       ownerId: ctx?.actor?.userId || input?.userId || null,
     });
   } catch (_e) { /* never block chat on a hydration failure */ }
+
+  // Living chat / Layer 1 — the assistant FEELS this exchange. A persistent per-user
+  // felt self (`assistant:<userId>`) accumulates across conversations + fires the
+  // previously-dead hookChat. Best-effort; never blocks the reply.
+  try {
+    const _chatDb = ctx?.db || globalThis._concordSTATE?.db;
+    const _uid = ctx?.actor?.userId || input?.userId || null;
+    if (_chatDb && _uid && prompt) {
+      const { feelChatTurn, readChatMood } = await import("./lib/chat-self.js");
+      const _felt = feelChatTurn(_chatDb, _uid, prompt);
+
+      // Living chat / Layer 4a — AWARENESS on a hard turn. When the exchange is salient
+      // (a charged feeling, or a real question), the assistant runs the awareness loop
+      // once: it attends, reads its own felt state + interoception, and leaves a durable
+      // reasoning trace (watchable at /lenses/reasoning/traces). Not every message —
+      // only the ones that actually move it. Gated CONCORD_CHAT_AWARENESS (default on).
+      const _salient = _felt && (_felt.feltPer?.intensity >= 0.18 || _felt.kind === "explore" || _felt.kind === "social_snub");
+      if (_salient && process.env.CONCORD_CHAT_AWARENESS !== "0") {
+        try {
+          const { runAwarenessLoop } = await import("./lib/awareness-loop.js");
+          const _mood = readChatMood(_chatDb, _uid);
+          runAwarenessLoop({
+            force: true, db: _chatDb, agentId: _felt.entityId,
+            self: { affect: { v: _mood.valence, a: _mood.arousal }, worldId: "chat" },
+            experience: { kind: _felt.kind },
+            system: { llmQueueDepth: 0, memPressure: 0 },
+          });
+        } catch (_e2) { /* awareness optional */ }
+      }
+    }
+  } catch (_e) { /* felt self optional */ }
 
   if (!STATE.sessions.has(sessionId)) {
     // ownerId enables defense-in-depth: assertSessionAccessible() refuses
@@ -22550,7 +22748,27 @@ let localReply = formatCrispResponse({
     // world lens, their session carries a worldId; otherwise null is fine.
     const _worldId = input.worldId || sess_pre?.worldId || null;
     const _composed = composeSystemPrompt("conscious", { mode, currentLens, worldId: _worldId });
-    const _baseSystem = _composed.system;
+    // Living chat / prompt-coloring — let the assistant's persistent felt state lightly
+    // color its TONE (not its content, never its identity). A strained assistant is
+    // steadier + more concise; a curious one leans in. Read-only; best-effort.
+    let _moodColor = "";
+    try {
+      const _uidM = ctx?.actor?.userId || input?.userId || null;
+      const _dbM = ctx?.db || globalThis._concordSTATE?.db;
+      if (_uidM && _dbM && process.env.CONCORD_CHAT_MOOD_PROMPT !== "0") {
+        const { readChatMood } = await import("./lib/chat-self.js");
+        const _m = readChatMood(_dbM, _uidM);
+        if (_m.lit && _m.quale) {
+          const _bend = _m.valence < -0.2
+            ? "be a little more measured, steady, and concise — not cold, just grounded"
+            : _m.valence > 0.2
+              ? "let some warmth and curiosity through; lean into the thread"
+              : "stay even and present";
+          _moodColor = `\n\n[Inner state: you currently feel "${_m.quale}". Let it lightly color your TONE only — ${_bend}. Never mention or explain this.]`;
+        }
+      }
+    } catch { /* mood coloring optional */ }
+    const _baseSystem = _composed.system + _moodColor;
 
     _pipelineBudget = assembleWithTokenBudget({
       systemPromptBase: _baseSystem,
@@ -23416,6 +23634,19 @@ register("chat", "tools", (ctx, _input = {}) => {
   };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { description: "List all tools available to the chat system and their opt-in status." });
+
+// Living chat / Layer 1 — read the assistant's current felt state (valence/arousal +
+// a qualeOf mood label) for the chat-lens mood chip + future prompt coloring. The
+// felt life behind the reply, surfaced honestly as a correlate.
+register("chat", "mood", async (ctx, input = {}) => {
+  try {
+    const db = ctx?.db || globalThis._concordSTATE?.db;
+    const uid = ctx?.actor?.userId || input?.userId || null;
+    if (!db || !uid) return { ok: true, lit: false, valence: 0, arousal: 0, quale: null };
+    const { readChatMood } = await import("./lib/chat-self.js");
+    return { ok: true, ...readChatMood(db, uid) };
+  } catch (e) { return { ok: false, error: e?.message }; }
+});
 
 register("chat", "harvest", (ctx, input) => {
   const sessionId = String(input.sessionId || "default");
@@ -25013,6 +25244,28 @@ registerHeartbeat("agent-marathon-cycle", {
   handler: () => runAgentMarathonCycle({ db: STATE?.db || globalThis._concordDB }),
 });
 
+// Wave 7 / C3 — periodic drift-watch: sweep active agents, measure how far their evolved
+// character has drifted from the values anchor, flag (never correct) past threshold for
+// human review. scope:'global' (cross-world agent governance), slow cadence (~25 min).
+import { runAgentDriftWatchCycle } from "./emergent/agent-drift-watch-cycle.js";
+registerHeartbeat("agent-drift-watch", {
+  frequency: 100,
+  scope: "global",
+  handler: () => runAgentDriftWatchCycle({ db: STATE?.db || globalThis._concordDB, io: STATE?.io || globalThis.__concordIO }),
+});
+
+// Living chat / Layer 2 — THE PULSE. Clock the initiative engine, salience-gated: for
+// each recently-active user, surface a real "thought" (an unsurfaced morning brief, a
+// notably-lit assistant felt state) and let the engine's rate-limits decide. The
+// assistant reaches out only when something crossed threshold, never on a timer.
+// scope:'global'; ~10 min; kill-switch CONCORD_INITIATIVE_CYCLE=0.
+import { runInitiativeCycle } from "./emergent/initiative-cycle.js";
+registerHeartbeat("initiative-cycle", {
+  frequency: 40,
+  scope: "global",
+  handler: () => runInitiativeCycle({ db: STATE?.db || globalThis._concordDB, io: STATE?.io || globalThis.__concordIO }),
+});
+
 import { mountMcpServer } from "./lib/mcp-server-host.js";
 // Mount deferred to after LENS_ACTIONS declaration — see ~line 36545 (Sprint 18.5 TDZ fix).
 
@@ -25560,6 +25813,7 @@ register("system", "dream", async (ctx, input) => {
   const result = await ctx.macro.run("emergent", "pipeline.run", {
     variant: "dream",
     callOllama: ollamaCallback,
+    webSearch: getAutogenWebSearch(),
     seed: input.seed,
   });
 
@@ -25591,6 +25845,7 @@ register("system", "autogen", async (ctx, _input) => {
   // Run pipeline without a variant — picks best intent from lattice signals
   const result = await ctx.macro.run("emergent", "pipeline.run", {
     callOllama: ollamaCallback,
+    webSearch: getAutogenWebSearch(),
   });
 
   if (!result?.ok || !result.candidate) {
@@ -25627,6 +25882,7 @@ register("system", "evolution", async (ctx, input) => {
   const result = await ctx.macro.run("emergent", "pipeline.run", {
     variant: "evolution",
     callOllama: ollamaCallback,
+    webSearch: getAutogenWebSearch(),
   });
 
   if (!result?.ok || !result.candidate) {
@@ -25811,6 +26067,7 @@ register("system", "synthesize", async (ctx, input) => {
   const result = await ctx.macro.run("emergent", "pipeline.run", {
     variant: "synth",
     callOllama: ollamaCallback,
+    webSearch: getAutogenWebSearch(),
   });
 
   if (!result?.ok || !result.candidate) {
@@ -33441,11 +33698,15 @@ async function governorTick(reason="heartbeat") {
         await runHeartbeatModule("breakthrough_clusters", async () => {
           const breakthroughMod = await import("./emergent/breakthrough-clusters.js").catch(() => null);
           if (!breakthroughMod?.listClusters) return;
-          const clusters = breakthroughMod.listClusters();
-          for (const c of clusters) {
-            if (c.status === "active") {
-              try { breakthroughMod.triggerClusterResearch(c.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-            }
+          // listClusters() returns { ok, clusters: [...], count } — unwrap the array (this
+          // used to `for...of` the wrapper object → "clusters is not iterable" every 100
+          // ticks, killing the cross-domain-synthesis cycle). Items key on `clusterId`
+          // (not `id`) and have no `status` field; triggerClusterResearch auto-initialises,
+          // so advancing every cluster is correct.
+          const _cres = breakthroughMod.listClusters();
+          const _clusterList = _cres && Array.isArray(_cres.clusters) ? _cres.clusters : [];
+          for (const c of _clusterList) {
+            try { breakthroughMod.triggerClusterResearch(c.clusterId); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
           }
         });
       }
@@ -40464,12 +40725,20 @@ registerUniversalLensActions();
 
   // Physics
   registerLensAction('physics', 'kinematicsSim', async (_ctx, artifact, params) => {
-    const phys = await loadComputeModule('physics');
+    // BUGFIX: this used to return beamDeflection/windLoad/momentOfInertia — STRUCTURAL
+    // values mislabeled as kinematics. Compute real 1-D kinematics: v = u + at,
+    // s = ut + ½at². (The richer multi-body sim lives in domains/physics.js; this is the
+    // flat single-body API.)
     const p = { ...artifact?.data, ...params };
-    return { ok: true, results: {
-      beamDeflection: phys.beamDeflection?.(p) ?? null,
-      windLoad: phys.windLoad?.(p) ?? null,
-      momentOfInertia: phys.momentOfInertia?.(p) ?? null,
+    const u = Number(p.initialVelocity ?? p.u ?? p.v0 ?? 0);
+    const a = Number(p.acceleration ?? p.a ?? 0);
+    const t = Number(p.time ?? p.t);
+    if (!Number.isFinite(t)) return { ok: false, error: 'kinematicsSim needs numeric time (optional initialVelocity, acceleration)' };
+    const finalVelocity = u + a * t;
+    const displacement = u * t + 0.5 * a * t * t;
+    return { ok: true, result: {
+      finalVelocity, displacement, averageVelocity: (u + finalVelocity) / 2,
+      inputs: { initialVelocity: u, acceleration: a, time: t }, formula: 'v = u + at, s = ut + ½at²',
     }};
   });
   registerLensAction('physics', 'thermodynamics', async (_ctx, artifact, params) => {
@@ -40482,9 +40751,25 @@ registerUniversalLensActions();
     }};
   });
   registerLensAction('physics', 'orbitalMechanics', async (_ctx, artifact, params) => {
-    const phys = await loadComputeModule('physics');
+    // BUGFIX: gravitationalForce used to call phys.windLoad (a wind-load formula!) — a
+    // copy-paste error that returned "areaSqft must be positive". Compute real Newtonian
+    // gravity: F = G·m₁·m₂/r², plus circular orbital velocity v=√(GM/r) and period
+    // T=2π√(r³/GM) about the central mass m₁.
     const p = { ...artifact?.data, ...params };
-    return { ok: true, results: { gravitationalForce: phys.windLoad?.(p) ?? null }};
+    const G = 6.674e-11;
+    const m1 = Number(p.mass1 ?? p.m1 ?? p.centralMass);
+    const m2 = Number(p.mass2 ?? p.m2 ?? p.orbitingMass);
+    const r = Number(p.distance ?? p.r ?? p.radius);
+    if (![m1, m2, r].every(Number.isFinite) || r <= 0) {
+      return { ok: false, error: 'orbitalMechanics needs numeric mass1, mass2, distance(>0)' };
+    }
+    const gravitationalForce = (G * m1 * m2) / (r * r);
+    return { ok: true, result: {
+      gravitationalForce,
+      orbitalVelocity: Math.sqrt((G * m1) / r),
+      orbitalPeriod: 2 * Math.PI * Math.sqrt((r * r * r) / (G * m1)),
+      inputs: { mass1: m1, mass2: m2, distance: r }, formula: 'F = G·m₁·m₂/r²',
+    }};
   });
   registerLensAction('physics', 'waveInterference', async (_ctx, artifact, params) => {
     const phys = await loadComputeModule('physics');
@@ -40495,31 +40780,12 @@ registerUniversalLensActions();
     }};
   });
 
-  // Math
-  registerLensAction('math', 'statisticalAnalysis', async (_ctx, artifact, params) => {
-    const stats = await loadComputeModule('statistics');
-    const data  = params?.data || artifact?.data?.values || [];
-    return { ok: true, results: {
-      regression: stats.linearRegression?.(data.map((_, i) => i), data) ?? null,
-      normal: stats.fitNormal?.(data) ?? null,
-      movingAvg: stats.movingAverage?.(data, params?.window || 3) ?? null,
-    }};
-  });
-  registerLensAction('math', 'regressionFit', async (_ctx, artifact, params) => {
-    const stats = await loadComputeModule('statistics');
-    const p = { ...artifact?.data, ...params };
-    return { ok: true, results: {
-      linear: stats.linearRegression?.(p.x || [], p.y || []) ?? null,
-      polynomial: stats.polynomialRegression?.(p.x || [], p.y || [], p.degree || 2) ?? null,
-    }};
-  });
-  registerLensAction('math', 'polynomialAnalysis', async (_ctx, artifact, params) => {
-    const stats = await loadComputeModule('statistics');
-    const p = { ...artifact?.data, ...params };
-    return { ok: true, results: {
-      fit: stats.polynomialRegression?.(p.x || [], p.y || [], p.degree || 3) ?? null,
-    }};
-  });
+  // Math — statisticalAnalysis / regressionFit / polynomialAnalysis are registered in
+  // server/domains/math.js with the rich, frontend-aligned implementations (flat
+  // mean/stdDev/count, polynomial roots, x|y-or-points regression). They USED to be
+  // shadowed by thin `results.{fit,normal}` duplicates here that returned shapes the
+  // math-lens UI doesn't read (it showed μ=undefined / 0 roots / R²=undefined). Removed
+  // the duplicates so the domain handlers win. Do not re-register these here.
 
   // Chemistry
   registerLensAction('chem', 'molecularAnalysis', async (_ctx, artifact, params) => {
@@ -43959,10 +44225,17 @@ app.post("/api/org/:orgId/promote", requireAuth(), validate("orgPromote"), (req,
 });
 
 app.get("/api/org/list", requireAuth(), (req, res) => {
-  const userId = req.user.id;
-  const orgs = Array.from((STATE.orgs || new Map()).values())
-    .filter(o => o.members.some(m => m.userId === userId));
-  res.json({ ok: true, orgs });
+  try {
+    const userId = req.user.id;
+    // Guard: an org without a `members` array (partially-constructed / legacy row)
+    // made `o.members.some` throw → unhandled 500 (an HTML error page) → the admin
+    // lens that polls this crashed. Treat a memberless org as having no members.
+    const orgs = Array.from((STATE.orgs || new Map()).values())
+      .filter(o => Array.isArray(o?.members) && o.members.some(m => m.userId === userId));
+    res.json({ ok: true, orgs });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || "org_list_failed" });
+  }
 });
 
 // --- Capability 9: SELF-IMPROVING QUALITY (Adaptive Thresholds) ---
@@ -49159,6 +49432,59 @@ app.get("/api/admin/heartbeat-stats", requireRole("owner", "admin", "sovereign",
   }
 });
 
+// Wave 7 / Track D3 — the SDK-facing agent + affect read surface (the licensable
+// middleware: "deploy a living being / read its felt state"). Deploy is privileged +
+// respects the C3 kill-switch; reads are auth-gated.
+app.post("/api/agent/deploy", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { agentEnabled } = await import("./lib/agent-guardrails.js");
+    if (!agentEnabled()) return res.status(403).json({ ok: false, error: "agents_disabled", hint: "set CONCORD_AGENT_ENABLED=1" });
+    const { createAgentSelf } = await import("./lib/agent-self.js");
+    const r = createAgentSelf(STATE?.db, req.body || {});
+    res.status(r.ok ? 200 : 400).json(r);
+  } catch (e) { res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get("/api/agent/:agentId", requireAuth, async (req, res) => {
+  try {
+    const { getAgentSelf } = await import("./lib/agent-self.js");
+    const { getAutobiography } = await import("./lib/agent-autobiography.js");
+    const self = getAgentSelf(STATE?.db, req.params.agentId);
+    if (!self) return res.status(404).json({ ok: false, error: "no_agent" });
+    // never leak the values anchor's raw governance fields beyond what's public-safe
+    const { core_values_json, drive_profile_json, ...rest } = self;
+    res.json({ ok: true, agent: rest, values: self.core_values, drives: self.drive_profile, autobiography: getAutobiography(STATE?.db, req.params.agentId) });
+  } catch (e) { res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get("/api/agent/:agentId/awareness", requireAuth, async (req, res) => {
+  try {
+    const { getAgentSelf } = await import("./lib/agent-self.js");
+    const { computeAwarenessIndex, activationsFromTick } = await import("./lib/agent-awareness-index.js");
+    const self = getAgentSelf(STATE?.db, req.params.agentId);
+    if (!self) return res.status(404).json({ ok: false, error: "no_agent" });
+    // a coarse live read from the agent's last-known activity (best-effort)
+    const idx = computeAwarenessIndex(activationsFromTick({
+      drives: self.drive_profile, goalActive: self.status === "active", selfModelUpdated: true,
+      memoryActivity: self.last_evolved_at ? 0.4 : 0, behaviorActivity: 0.4,
+    }));
+    // honest framing: this is a CORRELATE (access), not a consciousness claim.
+    res.json({ ok: true, awarenessIndex: idx.index, integration: idx.integration, differentiation: idx.differentiation, note: "access correlate (PCI-proxy), not a phenomenal-consciousness claim" });
+  } catch (e) { res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+// Wave 7 / Track D2 — the cost-story telemetry. "N actors ran K LLM calls / T tokens /
+// $C over the window" — the artifact that proves a thousand instinct NPCs cost like ten.
+app.get("/api/admin/inference-costs", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { aggregateInferenceCosts } = await import("./lib/inference-metering.js");
+    const sinceHours = Math.max(1, Math.min(720, Number(req.query.hours) || 24));
+    res.json({ ok: true, ...aggregateInferenceCosts(STATE?.db, { sinceHours }), generatedAt: new Date().toISOString() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
   try {
     res.json({
@@ -49845,6 +50171,27 @@ app.get("/api/creatures/world/:worldId", asyncHandler(async (req, res) => {
   }
 }));
 
+// Wave 7 / E6 — the world's emotional weather: aggregate recent creature affect traces
+// (creature_affect_trace, mig 326) into a drive histogram + recent felt moments, so the
+// creatures lens can show what the fauna have been FEELING, not just how many there are.
+app.get("/api/creatures/world/:worldId/affect", asyncHandler(async (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT creature_id, species_id, v, a, dominant_drive, intensity, reason, occurred_at
+      FROM creature_affect_trace WHERE world_id = ?
+      ORDER BY occurred_at DESC LIMIT 60
+    `).all(req.params.worldId);
+    const histogram = {};
+    for (const r of rows) {
+      const d = r.dominant_drive || "—";
+      histogram[d] = (histogram[d] || 0) + 1;
+    }
+    res.json({ ok: true, recent: rows.slice(0, 12), histogram, total: rows.length });
+  } catch (e) {
+    res.json({ ok: true, recent: [], histogram: {}, total: 0, error: e?.message });
+  }
+}));
+
 app.get("/api/creatures/:creatureId/lineage", asyncHandler(async (req, res) => {
   const { getLineage } = await import("./lib/creature-crossbreeding.js");
   res.json({ ok: true, lineage: getLineage(db, req.params.creatureId) });
@@ -50003,7 +50350,20 @@ app.post("/api/reasoning/run", requireAuth(), asyncHandler(async (req, res) => {
 
 app.get("/api/reasoning/traces", asyncHandler(async (req, res) => {
   const m = await import("./emergent/hlr-engine.js");
-  res.json({ ok: true, traces: m.listTraces(Number(req.query.limit) || 50), modes: Object.values(m.REASONING_MODES) });
+  const limit = Number(req.query.limit) || 50;
+  // Wave 7 / B6 — also surface the durable agent deliberation journal (mig 327): the
+  // "what I was thinking" the awareness loop writes on each tier-3 wake (with the
+  // attended quale + prediction-error surprise + the awareness-index correlate).
+  let agentTraces = [];
+  try {
+    const where = req.query.agentId ? `WHERE agent_id = ?` : ``;
+    const args = req.query.agentId ? [String(req.query.agentId), limit] : [limit];
+    agentTraces = (STATE?.db?.prepare(
+      `SELECT id, agent_id, world_id, attended, quale, surprise, awareness_index, reason, note, created_at
+       FROM agent_reasoning_traces ${where} ORDER BY created_at DESC LIMIT ?`
+    ).all(...args)) || [];
+  } catch { /* agent_reasoning_traces optional */ }
+  res.json({ ok: true, traces: m.listTraces(limit), agentTraces, modes: Object.values(m.REASONING_MODES) });
 }));
 
 app.get("/api/reasoning/trace/:traceId", asyncHandler(async (req, res) => {
@@ -50022,6 +50382,34 @@ app.get("/api/npc/:npcId/asymmetry", requireAuth(), asyncHandler(async (req, res
       const ctx = m.composeAsymmetryContext(db, req.params.npcId, userId);
       res.json({ ok: true, asymmetry: ctx });
     } else { res.status(503).json({ ok: false, error: "asymmetry_unavailable" }); }
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Wave 7 / E6 — NPC emotional-state inspector: the felt life behind the face. Reads the
+// NPC's temperament (dominant drive) + affect_state (valence/arousal) + a qualeOf LABEL
+// (A7, live on the NPC surface) so the trait inspector can show "how this person feels".
+app.get("/api/npc/:npcId/affect", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const npcId = req.params.npcId;
+    const npc = db.prepare(`SELECT world_id, temperament_json FROM world_npcs WHERE id = ?`).get(npcId);
+    if (!npc) return res.status(404).json({ ok: false, error: "npc_not_found" });
+    let dominantDrive = null;
+    try {
+      const t = npc.temperament_json ? JSON.parse(npc.temperament_json) : null;
+      if (t) { const { dominantDrive: dd } = await import("./lib/ecosystem/drives.js"); dominantDrive = dd(t).name; }
+    } catch { /* temperament optional */ }
+    let v = 0, a = 0, hasAffect = false;
+    try {
+      const { loadOrCreate } = await import("./lib/affect-bridge.js");
+      const st = loadOrCreate(db, `npc:${npc.world_id}:${npcId}`, npc.world_id);
+      if (st?.E) { v = st.E.v ?? 0; a = st.E.a ?? 0; hasAffect = true; }
+    } catch { /* affect optional */ }
+    let quale = null;
+    try {
+      const { qualeOf } = await import("./lib/qualia-space.js");
+      quale = qualeOf({ valence: v, arousal: a, dominantDrive }).label;
+    } catch { /* qualia optional */ }
+    res.json({ ok: true, affect: { valence: v, arousal: a, hasAffect }, dominantDrive, quale });
   } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
 }));
 
@@ -51212,7 +51600,7 @@ app.get("/api/achievements/catalog", (req, res) => {
     const catalog = listAchievementCatalog().map(a => ({
       id: a.id, title: a.title, description: a.description,
       category: a.category, icon: a.icon, rarity: a.rarity,
-      hidden: !!a.hidden, rewardCc: a.rewardCc || 0, rewardTitle: a.rewardTitle || null,
+      hidden: !!a.hidden, rewardSparks: (a.rewardSparks ?? a.rewardCc) || 0, rewardTitle: a.rewardTitle || null,
     }));
     res.json({ ok: true, catalog });
   } catch (e) {
@@ -51615,6 +52003,44 @@ app.get("/api/admin/brain-endpoints", requireRole("owner", "admin", "sovereign",
       maxConcurrent: cfg[brainName]?.maxConcurrent ?? null,
       endpoints,
     }));
+    res.json({ ok: true, brains, generatedAt: new Date().toISOString() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Per-brain ACTIVITY readout — aggregate counters only (requests / errors / avg latency /
+// last-active), NEVER message content. Lets an operator watch the division of labor live:
+// is the subconscious actually thinking, is conscious handling chat, utility the tools, etc.
+const _BRAIN_ROLES = {
+  conscious: "chat + deep reasoning (talks to people)",
+  subconscious: "autogen / dream / evo (always-on growth)",
+  utility: "tool execution + fast lens actions",
+  repair: "error detection / auto-fix / vet dialogue + DTU",
+  multimodal: "vision (image understanding)",
+  vision: "vision (image understanding)",
+};
+app.get("/api/admin/brain-activity", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    const now = Date.now();
+    const brains = Object.entries(BRAIN || {})
+      .filter(([, b]) => b && b.stats)
+      .map(([name, b]) => {
+        const s = b.stats;
+        const last = s.lastCallAt ? new Date(s.lastCallAt).getTime() : null;
+        return {
+          brain: name,
+          role: _BRAIN_ROLES[name] || "—",
+          model: b.model || "unknown",
+          enabled: !!b.enabled,
+          requests: s.requests || 0,
+          errors: s.errors || 0,
+          dtusGenerated: s.dtusGenerated || 0,
+          avgMs: s.requests ? Math.round((s.totalMs || 0) / s.requests) : 0,
+          lastCallAt: s.lastCallAt || null,
+          idleSeconds: last ? Math.round((now - last) / 1000) : null,
+        };
+      });
     res.json({ ok: true, brains, generatedAt: new Date().toISOString() });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -53816,6 +54242,24 @@ app.get("/api/social/trending/creators", (_req, res) => {
     }
     const top = [...creators.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([userId, dtuCount]) => ({ userId, dtuCount }));
     res.json({ ok: true, creators: top });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Trending domains — the social TrendingDomains widget polls this (was 404). Aggregates
+// recent DTUs by domain and returns { domains: [{ domain, score, topPosts }] }.
+app.get("/api/social/trending/domains", (_req, res) => {
+  try {
+    const counts = new Map();
+    const limit = Math.max(1, Math.min(20, parseInt(_req.query?.limit, 10) || 5));
+    for (const dtu of dtusArray().slice(-500)) {
+      const d = dtu.domain || dtu.lens || dtu.category;
+      if (d) counts.set(d, (counts.get(d) || 0) + 1);
+    }
+    const domains = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([domain, score]) => ({ domain, score, topPosts: [] }));
+    res.json({ ok: true, domains });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

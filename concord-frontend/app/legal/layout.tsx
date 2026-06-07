@@ -6,10 +6,14 @@ import { usePathname } from 'next/navigation';
 const NAV_ITEMS = [
   { href: '/legal/terms', label: 'Terms of Service' },
   { href: '/legal/privacy', label: 'Privacy Policy' },
+  { href: '/legal/cookies', label: 'Cookie Policy' },
+  { href: '/legal/acceptable-use', label: 'Acceptable Use' },
+  { href: '/legal/ai-disclosure', label: 'AI Disclosure' },
   { href: '/legal/dmca', label: 'DMCA Policy' },
+  { href: '/legal/security', label: 'Security' },
 ];
 
-const LAST_UPDATED = 'March 1, 2026';
+const LAST_UPDATED = 'June 7, 2026';
 
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

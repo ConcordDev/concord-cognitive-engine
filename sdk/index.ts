@@ -176,6 +176,12 @@ export class ConcordClient {
   public readonly federation: FederationClient;
   /** Intelligence views (knowledge weather / drift / diary) sub-client. */
   public readonly intelligence: IntelligenceClient;
+  /** Instinct-NPC spawn / inspect / drive sub-client (Wave 7 affect substrate). */
+  public readonly npc: NpcClient;
+  /** Affect read sub-client — {umwelt, v, a, drives} for a creature/NPC/agent. */
+  public readonly affect: AffectClient;
+  /** Autonomous-agent deploy / inspect / awareness sub-client. */
+  public readonly agent: AgentClient;
 
   /**
    * Create a new Concord client.
@@ -201,6 +207,9 @@ export class ConcordClient {
     this.combat = new CombatClient(this);
     this.federation = new FederationClient(this);
     this.intelligence = new IntelligenceClient(this);
+    this.npc = new NpcClient(this);
+    this.affect = new AffectClient(this);
+    this.agent = new AgentClient(this);
   }
 
   // ── Internal HTTP helpers ──────────────────────────────────────────────
@@ -267,6 +276,19 @@ export class ConcordClient {
   /** POST shorthand. */
   async post<T = unknown>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("POST", path, body);
+  }
+
+  /**
+   * Generic domain accessor — reach ANY of the ~495 registered macro domains, not just
+   * the hand-written sub-clients. `client.domain("music").run("ai-playlist", {...})` maps
+   * to `POST /api/lens/music/ai-playlist`. This is the "every domain is reachable"
+   * guarantee (the auto-generated-wrapper equivalent) without shipping 495 stub classes.
+   */
+  domain(name: string) {
+    return {
+      run: <T = LensActionResult>(action: string, input: Record<string, unknown> = {}): Promise<T> =>
+        this.lens.run(name, action, input) as unknown as Promise<T>,
+    };
   }
 
   /** PUT shorthand. */
@@ -645,6 +667,61 @@ class IntelligenceClient {
   }
 }
 
+// ── Wave 7 — the affect/agent substrate sub-clients (the licensable middleware) ──
+
+/**
+ * Instinct-NPC sub-client. Spawn a living NPC, inspect it, or nudge its drives —
+ * all through the macro surface. The NPC then runs on the 4-tier instinct loop for
+ * ~zero idle cost; the LLM wakes only on salience (B4). "Drop a thousand for the
+ * cost of ten."
+ */
+class NpcClient {
+  constructor(private client: ConcordClient) {}
+  /** Spawn an instinct NPC in a world (routes through the world lens macro). */
+  async spawn(worldId: string, input: Record<string, unknown> = {}): Promise<LensActionResult> {
+    return this.client.lens.run("world", "spawn-npc", { worldId, ...input });
+  }
+  /** Inspect an NPC's live state. */
+  async inspect(worldId: string, npcId: string): Promise<ApiResponse> {
+    return this.client.get<ApiResponse>(`/api/worlds/${worldId}/npcs/${npcId}`);
+  }
+  /** Generic macro passthrough so EVERY world/creature macro is reachable, not just these. */
+  async run(domain: string, action: string, input: Record<string, unknown> = {}): Promise<LensActionResult> {
+    return this.client.lens.run(domain, action, input);
+  }
+}
+
+/** Affect read sub-client — the felt state {umwelt, v, a, drives} of an entity. */
+class AffectClient {
+  constructor(private client: ConcordClient) {}
+  /** An agent's persisted motivation profile (its 7-drive Panksepp seed + values). */
+  async ofAgent(agentId: string): Promise<ApiResponse> {
+    return this.client.get<ApiResponse>(`/api/agent/${agentId}`);
+  }
+}
+
+/**
+ * Autonomous-agent sub-client. Deploy a persistent, player-tier being (Sparks-only,
+ * fenced by the three guardrails), inspect its self-model + autobiography, and read
+ * its awareness index — a measured ACCESS correlate (PCI-proxy), never a phenomenal-
+ * consciousness claim.
+ */
+class AgentClient {
+  constructor(private client: ConcordClient) {}
+  /** Deploy an agent (privileged; respects CONCORD_AGENT_ENABLED). */
+  async deploy(input: Record<string, unknown> = {}): Promise<ApiResponse> {
+    return this.client.post<ApiResponse>(`/api/agent/deploy`, input);
+  }
+  /** Inspect the agent's self-model, values anchor, drives, and autobiography. */
+  async inspect(agentId: string): Promise<ApiResponse> {
+    return this.client.get<ApiResponse>(`/api/agent/${agentId}`);
+  }
+  /** The agent's awareness index — watch it rise as it wakes, dip as it sleeps. */
+  async awarenessIndex(agentId: string): Promise<ApiResponse> {
+    return this.client.get<ApiResponse>(`/api/agent/${agentId}/awareness`);
+  }
+}
+
 // ── Internal: socket.io subscribe helper ─────────────────────────────────
 
 function subscribeViaSocket(
@@ -658,7 +735,9 @@ function subscribeViaSocket(
   (async () => {
     try {
       // Lazy-load socket.io-client so consumers without realtime needs don't
-      // pull the dependency.
+      // pull the dependency. Optional peer dep — suppress the missing-module type
+      // error; the surrounding try/catch handles the not-installed case at runtime.
+      // @ts-ignore - optional peer dependency, resolved at runtime if present
       const mod: { io: (url: string, opts: Record<string, unknown>) => typeof sock } = await import("socket.io-client");
       if (cancelled) return;
       sock = mod.io((client as unknown as { baseUrl: string }).baseUrl, {

@@ -9,18 +9,21 @@ import { getItemEffectiveness, effectivenessLabel, listPlayerKnowledge, learnSch
 export default function createPlayerInventoryRouter({ requireAuth, db }) {
   const router = Router();
 
-  // GET /api/player-inventory?worldId=… — list current player's items in
-  // a specific world. world_id was added to player_inventory in
-  // migration 101 so a player's inventory follows them per world rather
-  // than spilling across all worlds. Defaults to the canonical hub when
-  // the caller doesn't specify (legacy clients).
+  // GET /api/player-inventory?worldId=… — list the current player's items.
+  // Inventory is USER-GLOBAL: it's one universe with many worlds, and you carry
+  // your inventory between them via the Concord Link. An item earned anywhere is
+  // usable everywhere — what varies per world is item EFFECTIVENESS/POTENCY
+  // (lib/embodied/skill-environment.js: elementalEnvBoost / terrainResourceBoost),
+  // NOT visibility. `world_id` on a row is now "where-acquired" metadata only and
+  // never gates the read. `worldId` is still accepted (response context + future
+  // per-world effectiveness enrichment) but does not filter the inventory.
   router.get("/", requireAuth, (req, res) => {
     try {
       const userId = req.user.id;
       const worldId = String(req.query.worldId || "concordia-hub");
       const items  = db.prepare(
-        'SELECT * FROM player_inventory WHERE user_id = ? AND world_id = ? ORDER BY acquired_at DESC'
-      ).all(userId, worldId);
+        'SELECT * FROM player_inventory WHERE user_id = ? ORDER BY acquired_at DESC'
+      ).all(userId);
 
       const playerSkills = _getPlayerSkills(db, userId);
       const enriched = items.map(item => {
@@ -39,15 +42,13 @@ export default function createPlayerInventoryRouter({ requireAuth, db }) {
     }
   });
 
-  // GET /api/player-inventory/:userId?worldId=…  — admin/debug: another
-  // player's items. World scope optional; without it, returns ALL of
-  // their items across worlds (admin debugging).
+  // GET /api/player-inventory/:userId  — admin/debug: another player's items.
+  // User-global inventory (see GET /): always returns the player's full inventory;
+  // world_id no longer gates visibility (it's acquisition metadata).
   router.get("/:userId", requireAuth, (req, res) => {
     try {
       const worldId = req.query.worldId ? String(req.query.worldId) : null;
-      const items = worldId
-        ? db.prepare('SELECT * FROM player_inventory WHERE user_id = ? AND world_id = ? ORDER BY acquired_at DESC').all(req.params.userId, worldId)
-        : db.prepare('SELECT * FROM player_inventory WHERE user_id = ? ORDER BY acquired_at DESC').all(req.params.userId);
+      const items = db.prepare('SELECT * FROM player_inventory WHERE user_id = ? ORDER BY acquired_at DESC').all(req.params.userId);
       res.json({ ok: true, items, worldId: worldId || null });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });

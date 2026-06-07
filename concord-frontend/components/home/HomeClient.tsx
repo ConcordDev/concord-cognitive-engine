@@ -14,6 +14,8 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import dynamic from 'next/dynamic';
+import { MyDashboard } from '@/components/home/MyDashboard';
+import { useDashboardPrefs } from '@/lib/hooks/useDashboardPrefs';
 const KnowledgeSpace3D = dynamic(
   () =>
     import('@/components/graphs/KnowledgeSpace3DCanvas').then((mod) => ({
@@ -183,8 +185,32 @@ function HomeClient() {
     );
   }
 
-  // Show dashboard for authenticated returning users
-  return <DashboardPage />;
+  // Show dashboard for authenticated returning users.
+  return <DashboardSwitch />;
+}
+
+/**
+ * The new "My Dashboard" (clean operator-console feel) is the default home
+ * surface; a per-user "Classic view" toggle (persisted via useDashboardPrefs)
+ * falls back to the legacy 28-panel DashboardPage. Both read the same prefs
+ * instance so the toggle flips live.
+ */
+function DashboardSwitch() {
+  const dash = useDashboardPrefs();
+  if (dash.prefs.classic) {
+    return (
+      <div className="relative">
+        <button
+          onClick={() => dash.setClassic(false)}
+          className="fixed bottom-4 right-4 z-40 rounded-full border border-lattice-border bg-lattice-surface px-3 py-1.5 text-[12px] text-neon-purple shadow-lg hover:border-neon-purple/50"
+        >
+          ← New dashboard
+        </button>
+        <DashboardPage />
+      </div>
+    );
+  }
+  return <MyDashboard dash={dash} />;
 }
 
 // ============================================================================

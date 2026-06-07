@@ -58,11 +58,23 @@ export function satisfyCreatureNeed(needs, kind, amount) {
  * a predator nearby forces flee). Returns one of:
  *   seek_water | graze | hunt | seek_shade | rest | flee | mate | wander
  */
-export function creatureIntent(needs, taxonomy = {}, env = {}) {
+export function creatureIntent(needs, taxonomy = {}, env = {}, released = null) {
   const n = normalizeCreatureNeeds(needs);
   const tax = taxonomy || {};
   const e = env || {};
   const diet = tax.diet || "omnivore";
+  // Layer 4: a released fixed-action-pattern (releasers.matchReleaser) overrides
+  // need-ranking — an instinct fires before deliberative need arbitration. The FAP
+  // name maps onto a movement intent the flock loop understands. Back-compat: when
+  // `released` is absent the original need-ranking path runs unchanged.
+  if (released && released.fap) {
+    const FAP_TO_INTENT = {
+      freeze_then_bolt: "flee", bolt: "flee", flee: "flee", take_flight: "flee",
+      school_dart: "flee", retaliate: "hunt", stoop: "hunt", pursue: "hunt",
+      rally: "wander",
+    };
+    return FAP_TO_INTENT[released.fap] || released.fap;
+  }
   if (e.predatorNear) return "flee";
   const hot = Number(e.temp ?? 18) >= 30;
   // Heat amplifies thirst; pick the dominant pressure.

@@ -46,6 +46,24 @@ jobs:
       - name: Install repo deps (audit scripts)
         run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
+      - name: Value-assertion & CRUD-invariant harnesses
+        env:
+          JWT_SECRET: ci-value-assert-secret-key-32plus-characters-long-2026
+        run: |
+          # In-process gates that lock in the 2026-06 verification sweep:
+          #   • ~150 hand-derived value assertions across ~56 compute-bearing lens
+          #     domains (the answer is checked against the real-world standard
+          #     formula, not the code — catches "renders fine, math wrong" bugs)
+          #   • stateful CRUD round-trip + per-user isolation + delete + update
+          #     across 40+ entities (catches data-leak / no-op-update regressions)
+          # Each harness boots the macro registry in-process and exits non-zero on
+          # the first failure. No live server needed.
+          node scripts/value-assertions-batch2.mjs
+          node scripts/value-assertions-batch3.mjs
+          node scripts/value-assertions-batch4.mjs
+          node scripts/crud-invariants.mjs
+          node scripts/crud-update-invariants.mjs
+
       - name: Lens wiring verifier
         run: |
           node scripts/verify-lens-backends.mjs > /tmp/verify.log

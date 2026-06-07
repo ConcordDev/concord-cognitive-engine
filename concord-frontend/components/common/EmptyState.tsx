@@ -16,7 +16,8 @@ import {
   MessageSquare,
   Calendar,
   Layers,
-  Sparkles
+  Sparkles,
+  ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -259,6 +260,25 @@ export function ErrorState({
       title="Something went wrong"
       description={error || 'An unexpected error occurred. Please try again.'}
       action={onRetry ? { label: 'Try again', onClick: onRetry } : undefined}
+    />
+  );
+}
+
+/**
+ * Friendly state for admin/operator-gated lenses when the backend returns 403.
+ * Replaces the prior raw error string / blank page / stuck spinner. Render this
+ * when `isForbidden(...)` (from @/lib/api/client) matches the lens's load error.
+ */
+export function AdminRequiredState({ roles }: { roles?: string[] }) {
+  return (
+    <EmptyState
+      icon={<ShieldAlert className="w-8 h-8 text-amber-400" />}
+      title="Admin access required"
+      description={
+        roles?.length
+          ? `This operator surface needs one of: ${roles.join(', ')}. Ask an administrator for access.`
+          : 'This operator surface is restricted to administrators. Ask an administrator for access.'
+      }
     />
   );
 }

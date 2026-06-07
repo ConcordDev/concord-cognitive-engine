@@ -1,6 +1,18 @@
 {
   "wired": [
     {
+      "file": "affect-trace-cycle.js",
+      "handlers": [
+        "runAffectTraceCycle"
+      ]
+    },
+    {
+      "file": "agent-drift-watch-cycle.js",
+      "handlers": [
+        "runAgentDriftWatchCycle"
+      ]
+    },
+    {
       "file": "agent-marathon-cycle.js",
       "handlers": [
         "runAgentMarathonCycle"
@@ -75,6 +87,12 @@
       "handlers": [
         "runBeaconCheck",
         "runHeartbeatBridgeTick"
+      ]
+    },
+    {
+      "file": "capture-cycle.js",
+      "handlers": [
+        "runCaptureCycle"
       ]
     },
     {
@@ -189,6 +207,12 @@
       "file": "ecology-quest-cycle.js",
       "handlers": [
         "runEcologyQuestCycle"
+      ]
+    },
+    {
+      "file": "economy-anomaly-cycle.js",
+      "handlers": [
+        "runEconomyAnomalyCycle"
       ]
     },
     {
@@ -319,6 +343,12 @@
       ]
     },
     {
+      "file": "initiative-cycle.js",
+      "handlers": [
+        "runInitiativeCycle"
+      ]
+    },
+    {
       "file": "kingdom-decree-cycle.js",
       "handlers": [
         "runKingdomDecreeCycle"
@@ -350,6 +380,12 @@
       "file": "lens-learning.js",
       "handlers": [
         "runLensLearningCycle"
+      ]
+    },
+    {
+      "file": "mercy-fund-cycle.js",
+      "handlers": [
+        "runMercyFundCycle"
       ]
     },
     {
@@ -573,6 +609,12 @@
       "file": "social-npc-bridge.js",
       "handlers": [
         "runSocialNpcBridge"
+      ]
+    },
+    {
+      "file": "tessera-parity-cycle.js",
+      "handlers": [
+        "runTesseraParity"
       ]
     },
     {
@@ -1055,5 +1097,5 @@
     }
   ],
   "orphan": [],
-  "scannedAt": "2026-06-01T00:04:39.624Z"
+  "scannedAt": "2026-06-05T18:54:02.232Z"
 }

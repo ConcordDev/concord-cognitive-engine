@@ -17,8 +17,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ShieldCheck, Activity } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { lensRun } from '@/lib/api/client';
+import { lensRun, isForbidden } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
+import { AdminRequiredState } from '@/components/common/EmptyState';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -78,6 +79,7 @@ export default function PsyopsPage() {
   ], { lensId: 'psyops' });
 
   const [tab, setTab] = useState<Tab>('console');
+  const [forbidden, setForbidden] = useState(false);
 
   // Console state (server/domains/psyops.js).
   const [rules, setRules] = useState<PsyopsRule[]>([]);
@@ -102,6 +104,7 @@ export default function PsyopsPage() {
       lensRun<{ notifications: PsyopsNotification[]; unacknowledged: number }>('psyops', 'notifications_list', {}),
       lensRun<{ log: QuarantineLogEntry[] }>('psyops', 'quarantine_log', {}),
     ]);
+    if ([ru, al, inc, nt, ql].some(r => isForbidden(r.data))) { setForbidden(true); return; }
     if (ru.data?.ok && ru.data.result) setRules(ru.data.result.rules);
     if (al.data?.ok && al.data.result) {
       setAlerts(al.data.result.alerts);
@@ -147,6 +150,12 @@ export default function PsyopsPage() {
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
+
+  if (forbidden) return (
+    <LensShell lensId="psyops">
+      <AdminRequiredState roles={['admin', 'operator']} />
+    </LensShell>
+  );
 
   return (
     <LensShell lensId="psyops">

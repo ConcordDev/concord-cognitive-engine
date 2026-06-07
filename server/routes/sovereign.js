@@ -20,11 +20,16 @@ import logger from '../logger.js';
 // "dutch" as the historical default for convenience; in production the
 // env var is required.
 const _NODE_ENV = process.env.NODE_ENV || "development";
+// Sovereign routes are gated to a specific username AND/OR anyone with role "owner".
+// The username is OPTIONAL — the platform must never refuse to boot just because it
+// isn't set. When unset in production we do NOT silently fall back to a public default
+// (that would let anyone registering that name grab sovereign powers); instead we leave
+// it null so ONLY role:"owner" reaches these routes. In dev the historical "dutch"
+// default stays for convenience.
 if (_NODE_ENV === "production" && !process.env.SOVEREIGN_USERNAME) {
-  console.error("[Sovereign] FATAL: SOVEREIGN_USERNAME env var must be set in production. There is no default.");
-  process.exit(1);
+  console.warn('[sovereign] SOVEREIGN_USERNAME not set — sovereign routes gated to role:"owner" only. Set it to also lock to a username.');
 }
-const SOVEREIGN_USERNAME = process.env.SOVEREIGN_USERNAME || "dutch";
+const SOVEREIGN_USERNAME = process.env.SOVEREIGN_USERNAME || (_NODE_ENV === "production" ? null : "dutch");
 
 /**
  * Get the global STATE object. Inspects known patterns in the codebase.
@@ -112,8 +117,9 @@ export default function createSovereignRouter({ STATE, makeCtx, runMacro, saveSt
     const user = req.user?.username || req.user?.handle || req.user?.id || req.session?.user?.username || "";
     const role = req.user?.role || "";
 
-    // Allow owner/admin role even if username doesn't exactly match
-    if (user === SOVEREIGN_USERNAME || role === "owner") {
+    // Allow owner role always; match the username only when one is configured
+    // (SOVEREIGN_USERNAME may be null in prod — never let an empty user match it).
+    if ((SOVEREIGN_USERNAME && user === SOVEREIGN_USERNAME) || role === "owner") {
       return next();
     }
 

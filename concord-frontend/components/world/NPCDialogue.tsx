@@ -284,6 +284,7 @@ function NPCFace({ mood, isTalking, moodRing }: NPCFaceProps) {
 
 export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialogueProps) {
   const [phase, setPhase] = useState<'loading' | 'greeting' | 'responding' | 'done'>('loading');
+  const [isAgent, setIsAgent] = useState(false); // Wave 7 / C1 — AI disclosure
   const [greeting, setGreeting] = useState('');
   const [mood, setMood] = useState<Mood>('neutral');
   const [options, setOptions] = useState<DialogueOption[]>([]);
@@ -503,6 +504,7 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
         setMood((data.mood as Mood) || 'neutral');
         setOptions(data.options || [{ label: 'Leave', key: 'goodbye' }]);
         setSubtext(data.subtext);
+        setIsAgent(!!data.isAgent); // Wave 7 / C1 — hard AI disclosure
         setPhase('greeting');
       })
       .catch(() => {
@@ -616,6 +618,14 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
               {npc.isConscious && (
                 <span className="text-[10px] bg-violet-500/20 text-violet-300 border border-violet-500/30 px-1.5 py-0.5 rounded">
                   EMERGENT
+                </span>
+              )}
+              {isAgent && (
+                <span
+                  title="This character is controlled by an autonomous AI agent."
+                  className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/40 px-1.5 py-0.5 rounded font-medium"
+                >
+                  AI
                 </span>
               )}
             </div>

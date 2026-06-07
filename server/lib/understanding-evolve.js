@@ -147,9 +147,28 @@ export function evaluatePromotion(db, understandingId) {
     return { ok: true, decision: "hold", reason: "model_inconsistent" };
   }
 
+  // Wave 7 / A6 — felt weighting. An understanding the agent felt STRONGLY about
+  // (high-intensity feltPer on its confirming evidence) needs less raw repetition to
+  // become character — what you felt strongly is what you become. The felt bonus can
+  // substitute for at most FELT_EVIDENCE_CAP confirmations (it never overrides the
+  // contradiction/consistency gates above). Rides on the evidence payload — no schema.
+  let feltBonus = 0;
+  try {
+    const m = parseJSON(db.prepare(`SELECT model_json FROM understandings WHERE id = ?`).get(understandingId)?.model_json, {});
+    const log = Array.isArray(m.evidenceLog) ? m.evidenceLog : [];
+    for (const e of log) {
+      const fp = e?.payload?.feltPer;
+      if (e?.kind === "confirm" && fp && Number.isFinite(Number(fp.intensity))) {
+        feltBonus += Math.max(0, Math.min(1, Number(fp.intensity)));
+      }
+    }
+  } catch { /* model_json optional */ }
+  const FELT_EVIDENCE_CAP = 2;
+  const effectiveEvidence = row.evidence_count + Math.min(feltBonus, FELT_EVIDENCE_CAP);
+
   // Promote: enough confirming evidence, confidence floor met, and the
   // contradiction-to-evidence ratio is sane.
-  const evidenceOk = row.evidence_count >= PROMOTE_MIN_EVIDENCE;
+  const evidenceOk = effectiveEvidence >= PROMOTE_MIN_EVIDENCE;
   const confidenceOk = row.confidence >= PROMOTE_MIN_CONFIDENCE;
   const ratioOk = row.contradiction_count === 0
     || row.evidence_count / row.contradiction_count >= 3;

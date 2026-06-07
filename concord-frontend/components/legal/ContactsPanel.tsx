@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Users, Loader2, Plus, Trash2, AlertTriangle, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { EmptyStateCTA } from '@/components/lens/EmptyStateCTA';
 
 interface Contact {
   id: string; number: string; name: string; kind: string;
@@ -144,7 +145,9 @@ export function ContactsPanel() {
           {loading ? (
             <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
           ) : list.length === 0 ? (
-            <div className="px-3 py-10 text-center text-xs text-gray-400"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No contacts yet.</div>
+            <EmptyStateCTA lensId="legal" accent="amber" headline="No contacts yet"
+              caption="Add a client or contact to link them to matters and invoices."
+              buttonLabel="Add a contact" onAction={() => setCreating(true)} className="py-8" />
           ) : (
             <ul className="divide-y divide-white/5">
               {list.map(c => (

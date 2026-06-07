@@ -587,6 +587,10 @@ export default function registerMathActions(registerLensAction) {
     return {
       ok: true, result: {
         n,
+        // Flat fields the math-lens UI reads directly (StatsResult: count/mean/median/
+        // stdDev/min/max/q1/q3). Without these the lens rendered "μ=undefined".
+        count: n, mean: r(mean), median: r(median), stdDev: r(stdDev),
+        min: sorted[0], max: sorted[n - 1], q1: r(q1), q3: r(q3),
         centralTendency: { mean: r(mean), median: r(median), modes },
         spread: { stdDev: r(stdDev), sampleStdDev: r(sampleStdDev), variance: r(variance), range: r(range), iqr: r(iqr), coefficientOfVariation: r(coefficientOfVariation) },
         shape: { skewness: r(skewness), kurtosis: r(kurtosis), classification: shape, tailWeight },
@@ -842,13 +846,33 @@ export default function registerMathActions(registerLensAction) {
       }
     }
 
+    // Flat shapes the math-lens UI reads (PolyResult: roots:number[], derivative:string).
+    // It does roots.map(x => x.toFixed(3)), so roots must be a number array; complex roots
+    // are surfaced separately. Without these the lens showed "deg undefined, 0 roots".
+    const realRoots = Array.isArray(roots) ? roots.filter(x => typeof x === "number") : [];
+    const complexRoots = Array.isArray(roots) ? roots.filter(x => x && typeof x === "object") : [];
+    const fmtPoly = (coefs) => {
+      const d = coefs.length - 1;
+      const terms = coefs.map((c, i) => {
+        if (c === 0) return null;
+        const p = d - i, mag = Math.abs(c);
+        const co = (mag === 1 && p > 0) ? "" : String(r(mag));
+        const v = p > 1 ? `x^${p}` : p === 1 ? "x" : "";
+        return { sign: c < 0 ? "-" : "+", body: co + v };
+      }).filter(Boolean);
+      if (terms.length === 0) return "0";
+      return terms.map((t, i) => (i === 0 ? (t.sign === "-" ? "-" : "") : ` ${t.sign} `) + t.body).join("");
+    };
     return {
       ok: true, result: {
         degree, coefficients,
-        derivative: { degree: Math.max(degree - 1, 0), coefficients: derivative },
+        roots: realRoots,
+        complexRoots,
+        derivative: fmtPoly(derivative),
+        derivativeDetail: { degree: Math.max(degree - 1, 0), coefficients: derivative },
         integral: { degree: degree + 1, coefficients: integral.map(r), note: "+C" },
         evaluations,
-        roots: roots ? { values: roots, method: degree <= 2 ? "analytic" : "newton-raphson" } : { note: "Root-finding for degree > 4 not implemented" },
+        rootsDetail: roots ? { values: roots, method: degree <= 2 ? "analytic" : "newton-raphson" } : { note: "Root-finding for degree > 4 not implemented" },
       },
     };
   });
@@ -861,11 +885,18 @@ export default function registerMathActions(registerLensAction) {
    * params.degree: number (for polynomial, default 2)
    */
   registerLensAction("math", "regressionFit", (ctx, artifact, params) => {
-    const points = artifact.data?.points || [];
-    if (points.length < 2) return { ok: false, error: "Need at least 2 data points." };
-
-    const xs = points.map(p => p.x);
-    const ys = points.map(p => p.y);
+    // Accept EITHER points:[{x,y}] OR separate x:[] / y:[] arrays (the math-lens UI sends
+    // the latter; reading only `points` made every regression error "Need 2 data points").
+    const _d = artifact.data || {};
+    let xs, ys;
+    if (Array.isArray(_d.x) && Array.isArray(_d.y) && _d.x.length === _d.y.length && _d.x.length >= 2) {
+      xs = _d.x.map(Number); ys = _d.y.map(Number);
+    } else {
+      const pts = _d.points || [];
+      xs = pts.map(p => p.x); ys = pts.map(p => p.y);
+    }
+    const points = xs.map((x, i) => ({ x, y: ys[i] }));
+    if (points.length < 2) return { ok: false, error: "Need at least 2 data points (x/y arrays or points)." };
     const n = points.length;
     const type = params.type || "linear";
     const r = (v) => Math.round(v * 1e8) / 1e8;
