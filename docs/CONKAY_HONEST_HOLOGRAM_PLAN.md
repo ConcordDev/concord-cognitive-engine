@@ -7,7 +7,7 @@
 
 ## 🟢 HANDOFF — start here (next instance reads this first)
 
-**Branch:** `claude/conkay-honest-hologram-handoff-GvghP` (all work below is pushed here)  ·  **Honest floor:** **0.645** (`node scripts/grade-macro-depth.mjs --honest`) — climbing ~+0.004/6-domain wave toward the ~0.73 ceiling.
+**Branch:** `claude/conkay-honest-hologram-handoff-GvghP` (all work below is pushed here)  ·  **Honest floor:** **0.648** (`node scripts/grade-macro-depth.mjs --honest`) — climbing ~+0.003/6-domain wave toward the ~0.73 ceiling (6 waves done; ~12–15 remain).
 
 **What the latest session did (2026-06-07, continuation):**
 - **Track B — Phase 0 DONE + Phase 1 DONE.** Phase 0 honest event spine: `/api/lens/run`
