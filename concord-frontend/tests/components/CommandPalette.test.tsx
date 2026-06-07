@@ -170,19 +170,24 @@ describe('CommandPalette', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('navigates to the first lens on Enter and closes', () => {
+  it('navigates to the first registry lens on Enter and closes', () => {
     const onClose = vi.fn();
     render(<CommandPalette isOpen={true} onClose={onClose} />);
     const input = screen.getByRole('combobox');
+    // Index 0 is the ConKay summon staple (dispatches an event, no nav);
+    // ArrowDown once reaches the first registry lens (Resonance).
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(mockPush).toHaveBeenCalledWith('/lenses/resonance');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('navigates with ArrowDown then Enter to the second lens', () => {
+  it('navigates with ArrowDown then Enter to the second registry lens', () => {
     const onClose = vi.fn();
     render(<CommandPalette isOpen={true} onClose={onClose} />);
     const input = screen.getByRole('combobox');
+    // Indices: 0 ConKay staple, 1 Resonance, 2 Marketplace.
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(mockPush).toHaveBeenCalledWith('/lenses/marketplace');
@@ -192,14 +197,14 @@ describe('CommandPalette', () => {
     const onClose = vi.fn();
     render(<CommandPalette isOpen={true} onClose={onClose} />);
     const input = screen.getByRole('combobox');
-    // Two lenses in the mock (indices 0, 1). 20 ArrowDowns wraps via
-    // (prev < length - 1 ? prev + 1 : 0) — 20 even presses land back at 0.
+    // Three items (ConKay staple + two mock lenses), indices 0,1,2. ArrowDown
+    // wraps via (prev < length - 1 ? prev + 1 : 0); 20 presses from index 0
+    // land at index 2 (20 mod 3 = 2) → Marketplace.
     for (let i = 0; i < 20; i++) {
       fireEvent.keyDown(input, { key: 'ArrowDown' });
     }
     fireEvent.keyDown(input, { key: 'Enter' });
-    // 20 wraps cleanly (even count → index 0 → Resonance).
-    expect(mockPush).toHaveBeenCalledWith('/lenses/resonance');
+    expect(mockPush).toHaveBeenCalledWith('/lenses/marketplace');
   });
 
   it('wraps the selection when ArrowUp is held past the first item', () => {
@@ -227,9 +232,11 @@ describe('CommandPalette', () => {
   it('exposes role=option on each lens entry with stable ids', () => {
     render(<CommandPalette {...defaultProps} />);
     const options = screen.getAllByRole('option');
-    expect(options).toHaveLength(2);
-    expect(options[0]).toHaveAttribute('id', 'palette-item-resonance');
-    expect(options[1]).toHaveAttribute('id', 'palette-item-marketplace');
+    // ConKay summon staple is prepended ahead of the two mock lenses.
+    expect(options).toHaveLength(3);
+    expect(options[0]).toHaveAttribute('id', 'palette-item-conkay');
+    expect(options[1]).toHaveAttribute('id', 'palette-item-resonance');
+    expect(options[2]).toHaveAttribute('id', 'palette-item-marketplace');
   });
 
   it('marks the selected option with aria-selected=true', () => {
@@ -242,8 +249,9 @@ describe('CommandPalette', () => {
   it('updates aria-activedescendant as the selection moves', () => {
     render(<CommandPalette {...defaultProps} />);
     const input = screen.getByRole('combobox');
-    expect(input).toHaveAttribute('aria-activedescendant', 'palette-item-resonance');
+    // Default selection is the ConKay staple at index 0.
+    expect(input).toHaveAttribute('aria-activedescendant', 'palette-item-conkay');
     fireEvent.keyDown(input, { key: 'ArrowDown' });
-    expect(input).toHaveAttribute('aria-activedescendant', 'palette-item-marketplace');
+    expect(input).toHaveAttribute('aria-activedescendant', 'palette-item-resonance');
   });
 });

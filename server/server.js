@@ -16009,8 +16009,16 @@ async function initFiveBrains() {
 // Initialize brains after a short delay (let Ollama instances start)
 // Layer 12.5 (cartographer): CONCORD_DISABLE_BRAINS short-circuits brain init
 // so cartographer's runtime-introspect child can boot server.js without
-// requiring Ollama. Production never sets this.
-if (process.env.CONCORD_DISABLE_BRAINS !== "true") {
+// requiring Ollama. Production never sets this. NODE_ENV=test ALSO skips it:
+// the many server-booting tests (depth harness, behavior smoke, integration)
+// don't need Ollama, and the T+3s probe (nvidia-smi GPU spawn + 5 unreachable
+// host fetch-probes per boot) is pure churn that, under the parallel suite's
+// contention, can starve a server-booting test past its timeout. LLM-dependent
+// tests are gated behind CONCORD_BEHAVIOR_TEST_LLM and opt back in explicitly.
+const _brainsDisabled = process.env.CONCORD_DISABLE_BRAINS === "true"
+  || (String(process.env.NODE_ENV).toLowerCase() === "test"
+      && String(process.env.CONCORD_BEHAVIOR_TEST_LLM).toLowerCase() !== "true");
+if (!_brainsDisabled) {
   setTimeout(() => initFiveBrains(), 3000);
   // Retry brain init after 30s (Ollama containers may still be pulling models)
   // Then preload/warm all models for instant first response
