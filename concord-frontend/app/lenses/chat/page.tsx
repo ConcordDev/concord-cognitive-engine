@@ -581,6 +581,16 @@ export default function ChatLensPage() {
   const [domainContext, setDomainContext] = useState<string>('');
   const [inspectingDtuId, setInspectingDtuId] = useState<string | null>(null);
 
+  // Consume ?context=<domain> from the URL on mount — this is what the per-lens
+  // "Ask about {lens}" button (SmartContextBar) passes, so arriving here actually
+  // sets the domain context (previously it was dropped → the button looked broken).
+  useEffect(() => {
+    try {
+      const ctx = new URLSearchParams(window.location.search).get('context');
+      if (ctx) setDomainContext(ctx);
+    } catch { /* SSR / no window */ }
+  }, []);
+
   // New state — Wired orphan components
   const [chatMode, setChatMode] = useState<'welcome' | 'assist' | 'explore' | 'connect' | 'chat'>(
     'chat'
