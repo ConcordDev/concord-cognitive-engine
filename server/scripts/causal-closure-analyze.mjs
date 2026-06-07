@@ -31,15 +31,31 @@ if (!logPath) {
   process.exit(2);
 }
 
-const FEATURES = ["affect", "drives", "goal", "memory", "forwardSim", "drift", "salience", "selfModel", "behavior"];
-const targetKey = flags.target || "surprise";
+const FEATURES_9 = ["affect", "drives", "goal", "memory", "forwardSim", "drift", "salience", "selfModel", "behavior"];
+const META = new Set(["awarenessIndex", "integration", "differentiation", "_t", "tick", "agentId", "worldId"]);
 const historyWindow = Number(flags.history ?? 1);
 
 const rows = await loadLog(logPath);
+const first = rows[0] || {};
+// Resolve the target first (so it can be excluded from auto-detected features).
+const targetKey = flags.target
+  || ("surprise" in first ? "surprise" : "dtuDelta" in first ? "dtuDelta" : "awarenessIndex");
+// Feature keys: explicit --features wins; else the 9 cognitive modules if this
+// is an awareness-loop log; else auto-detect numeric columns (system tick log).
+let FEATURES;
+if (flags.features) FEATURES = String(flags.features).split(",").map((s) => s.trim()).filter(Boolean);
+else if (FEATURES_9.every((k) => k in first)) FEATURES = FEATURES_9;
+else FEATURES = Object.keys(first).filter((k) => typeof first[k] === "number" && !META.has(k) && k !== targetKey);
+
 console.log(`\n● Causal-closure analysis — ${rows.length} logged in-basis states`);
 console.log(`  log:     ${logPath}`);
 console.log(`  basis:   [${FEATURES.join(", ")}]  (history window ${historyWindow})`);
 console.log(`  target:  ${targetKey} (next-tick)\n`);
+
+if (!FEATURES.length) {
+  console.error("  ✗ no numeric feature columns found — pass --features=a,b,c");
+  process.exit(1);
+}
 
 if (rows.length < 50) {
   console.log("  ⚠ Few samples — the determinism (surrogate) test needs a few hundred ticks to be meaningful.");

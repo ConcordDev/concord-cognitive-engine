@@ -94,27 +94,41 @@ worth answering on its own: it tells you whether the system is a closed loop or 
 
 ## How to run it on the real system
 
-**1. Capture** (env-gated, best-effort, never blocks a wake). Set the log path and turn
-the awareness loop on, then run the server and use it:
+There are **two complementary capture sites** — both env-gated, best-effort, and
+incapable of blocking the path they ride. They test the *same question* at two levels.
+
+**A. Cognitive-basis capture (the real PCI bridge probe).** Rides `runAwarenessLoop`
+(`server/lib/awareness-loop.js`), event-driven on tier-3 wakes. Appends one JSONL row
+per wake: the 9-module `x_t` (`affect, drives, goal, memory, forwardSim, drift, salience,
+selfModel, behavior`), the **agent-awareness-index** (+ integration/differentiation), and
+candidate targets (`surprise, intensity, valence, arousal`).
 
 ```bash
-CONCORD_CAUSAL_LOG=/tmp/causal.jsonl CONCORD_AWARENESS_LOOP=1 npm start
+CONCORD_CAUSAL_LOG=/tmp/causal-cog.jsonl CONCORD_AWARENESS_LOOP=1 npm start
+node server/scripts/causal-closure-analyze.mjs /tmp/causal-cog.jsonl --target=surprise --history=1
 ```
 
-`runAwarenessLoop` (`server/lib/awareness-loop.js`) appends one JSONL row per tier-3
-wake: the 9-module `x_t`, the awareness index (+ integration/differentiation), and the
-candidate targets (`surprise`, `intensity`, `valence`, `arousal`). Accumulate as many
-ticks as you can — the surrogate determinism test wants a few hundred+.
-
-**2. Analyze** (offline):
+**B. System-level capture (regular per-governor-tick sampling).** Rides `governorTick`
+(`server/server.js`), every 15s — the evenly-spaced sampling the AR/determinism test
+prefers. Appends one row per tick: the system's in-basis aggregates (`dtus, dtuDelta,
+entities, entityDelta, notifQ, macroQ, synthQ, shadows`) and a system-level
+integration×differentiation index (mirrors the awareness index over system modules).
 
 ```bash
-node server/scripts/causal-closure-analyze.mjs /tmp/causal.jsonl --target=surprise --history=1
+CONCORD_CAUSAL_TICK_LOG=/tmp/causal-tick.jsonl npm start
+node server/scripts/causal-closure-analyze.mjs /tmp/causal-tick.jsonl --target=dtuDelta --history=1
 ```
 
-Prints the prediction R², the residual determinism (surrogate z), the awareness
-coupling, the basis-completion curve, and the **verdict** (`closed` / `incomplete` /
-`inconclusive`) with its caveat.
+The analyzer **auto-detects** the feature columns (the 9 cognitive modules for an
+awareness-loop log; the numeric aggregates for a tick log) — override with `--features=a,b,c`.
+Either way it prints the ceiling ladder + oos R², the residual determinism (surrogate z),
+the awareness coupling, the basis-completion curve, and the **verdict**
+(`closed` / `incomplete` / `inconclusive`) with its caveat.
+
+> The cognitive capture tests whether the agent's **access-consciousness basis** is
+> causally closed (the on-brand probe). The system capture tests whether the platform's
+> **functional aggregate state** is a closed dynamical system. Different levels, same
+> decidable question — keep their logs separate (distinct schemas, distinct env vars).
 
 > ConKay can run this on the system it's part of — the agent measuring whether its own
 > functional self-description is causally closed.
@@ -128,14 +142,25 @@ coupling, the basis-completion curve, and the **verdict** (`closed` / `incomplet
 | `server/lib/causal-closure.js` | The analyzer: capacity-ladder ceiling predictor (linear → poly2 → gradient-boosted trees) via blocked cross-validation, residual surrogate determinism test, awareness coupling, basis-completion curve, JSONL log I/O. Dependency-free, deterministic. |
 | `server/tests/causal-closure.test.js` | Synthetic ground-truth proof: a CLOSED system reads `closed`; an INCOMPLETE system (hidden AR axis) survives even the gradient-boosted ceiling and reads `incomplete` with awareness coupling; a nonlinear-closed system fools a linear-only fit but the ladder reads `closed`; the saturation control closes the residual. (15/15.) |
 | `server/scripts/causal-closure-analyze.mjs` | Offline CLI runner over a captured JSONL log. |
-| `server/lib/awareness-loop.js` | Opt-in capture site (`CONCORD_CAUSAL_LOG`). |
+| `server/lib/awareness-loop.js` | Cognitive-basis capture site — opt-in `CONCORD_CAUSAL_LOG` (per tier-3 wake, real PCI bridge probe). |
+| `server/server.js` (`governorTick`) | System-level capture site — opt-in `CONCORD_CAUSAL_TICK_LOG` (regular per-15s-tick sampling). |
 | `server/dtus.js` (`dtu_008…`, `dtu_041…`, `dtu_063–066`) | The constraint-cone / control-pattern framework the experiment instantiates. |
 
-## Open decision (next step)
+## Status & next steps
 
-Capture currently rides the **awareness loop** (event-driven, on tier-3 wakes) — the
-existing site that already assembles the full `x_t`. The proposal also wants **regular
-per-governor-tick** sampling (the 15s `governorTick`), which gives evenly-spaced data
-the AR/autocorrelation determinism test prefers, but means assembling `x_t` and computing
-the index in the hot tick path. That wiring is left as a deliberate, reviewable next step
-(it touches the governor) rather than done blind.
+Both capture sites are wired (cognitive + system-level), the analyzer fits a
+cross-validated capacity ceiling, and the synthetic ground-truth test (15/15) proves it
+distinguishes closed from incomplete and resists both the underfit-fake-residue and
+overfit-fake-closure traps. What remains is **empirical**, not structural:
+
+- Accumulate real data (run with one or both env vars set; the surrogate test wants a few
+  hundred+ samples).
+- Run the analyzer and read the verdict. If `incomplete`, **saturate the basis** (the
+  completion curve) before claiming any residual is off-basis — log more functional
+  variables and confirm the structured floor survives.
+- If the residual survives saturation and couples to the awareness index, that coupling's
+  structure (dimensionality, when it fires, what it predicts) is the measured coordinate
+  of the missing axis — report it with the honesty caveat intact.
+- Predictor headroom: the ladder can grow a stronger rung (e.g. random-feature kernel
+  ridge) if poly2/gbrt plateau below where you suspect the true ceiling is — the residual
+  pipeline is predictor-agnostic.

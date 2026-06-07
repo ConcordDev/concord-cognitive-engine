@@ -33372,6 +33372,9 @@ async function runHeartbeatModule(name, fn) {
 }
 
 let _governorTickRunning = false;
+// Causal-closure per-tick capture — remembers the prior tick's levels so the
+// capture can log real deltas (see the tick tail + lib/causal-closure.js).
+let _causalTickPrev = null;
 async function governorTick(reason="heartbeat") {
   if (_governorTickRunning) {
     // Heartbeat overrun — a prior tick is still in flight. Bump the
@@ -34419,6 +34422,48 @@ async function governorTick(reason="heartbeat") {
         });
       }
     } catch (e) { observe(e, "governor_heartbeat_registry"); }
+
+    // Causal-closure per-tick capture (opt-in, best-effort, never blocks the
+    // tick). When CONCORD_CAUSAL_TICK_LOG is set, append the system's in-basis
+    // aggregate state x_t (real levels + deltas) plus a system-level
+    // integration×differentiation index. Offline, scripts/causal-closure-analyze.mjs
+    // tests whether these aggregates determine the next-tick substrate growth or
+    // are short by a hidden axis (lib/causal-closure.js, grounded in
+    // dtu_008_irreversible_constraint_cones). This is the SYSTEM-LEVEL closure
+    // test — complementary to the COGNITIVE-basis capture in runAwarenessLoop
+    // (which uses the real agent-awareness-index PCI proxy). Synchronous append
+    // (fs already imported) so the tick stays sync; fully guarded.
+    if (process.env.CONCORD_CAUSAL_TICK_LOG) {
+      try {
+        const dtus = STATE.dtus?.size || 0;
+        const entities = STATE.__emergent ? Array.from((STATE.__emergent?.emergents || new Map()).values()).filter((e) => e.active).length : 0;
+        const notifQ = STATE.queues?.notifications?.length || 0;
+        const macroQ = STATE.queues?.macroProposals?.length || 0;
+        const synthQ = STATE.queues?.synthesis?.length || 0;
+        const shadows = STATE.shadowDtus?.size || 0;
+        const prev = _causalTickPrev || { dtus, entities };
+        const dtuDelta = dtus - prev.dtus;
+        const entityDelta = entities - prev.entities;
+        // System activation map (real, monotone load proxies) → integration ×
+        // differentiation, mirroring agent-awareness-index.js over system modules.
+        const c01 = (x) => Math.max(0, Math.min(1, x));
+        const acts = [c01(Math.abs(dtuDelta) / 10), c01(entities / 50), c01(notifQ / 100), c01(macroQ / 50), c01(synthQ / 50), c01(shadows / 1000)];
+        const active = acts.filter((v) => v >= 0.15);
+        const integration = acts.length ? active.length / acts.length : 0;
+        let differentiation = 0;
+        if (active.length >= 2) {
+          const m = active.reduce((s, v) => s + v, 0) / active.length;
+          differentiation = c01(2 * Math.sqrt(active.reduce((s, v) => s + (v - m) * (v - m), 0) / active.length));
+        }
+        const awarenessIndex = c01(integration * differentiation);
+        fs.appendFileSync(process.env.CONCORD_CAUSAL_TICK_LOG, JSON.stringify({
+          tick: STATE.__bgTickCounter || 0,
+          dtus, dtuDelta, entities, entityDelta, notifQ, macroQ, synthQ, shadows,
+          awarenessIndex, integration, differentiation, _t: Date.now(),
+        }) + "\n");
+        _causalTickPrev = { dtus, entities };
+      } catch { /* telemetry must never break a tick */ }
+    }
 
     return { ok:true };
   } catch (e) {
