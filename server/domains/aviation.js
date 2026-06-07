@@ -194,7 +194,9 @@ export default function registerAviationActions(registerLensAction) {
 
     alerts.sort((a, b) => {
       const priorityOrder = { critical: 0, high: 1, normal: 2, low: 3 };
-      return (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
+      // Use ?? not || — `critical` maps to 0, which `||` would wrongly treat
+      // as missing and demote to 2, so critical alerts never sorted to the top.
+      return (priorityOrder[a.priority] ?? 2) - (priorityOrder[b.priority] ?? 2);
     });
 
     return {
