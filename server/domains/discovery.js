@@ -16,7 +16,9 @@ export default function registerDiscoveryMacros(register) {
     const opts = {
       kind: input.kind,
       lens: input.lens || input.lensHint || null,
-      creatorId: input.creatorId,
+      // mine:true scopes to the caller's OWN DTUs ("search my archive"); else
+      // search the whole visible corpus.
+      creatorId: input.mine ? (ctx?.actor?.userId || null) : input.creatorId,
       limit: input.limit,
       requesterId: ctx?.actor?.userId || null,
     };

@@ -332,13 +332,35 @@ export const CONKAY_SKILLS: ConKaySkill[] = [
     },
     run: async (a, ctx) => {
       const q = a.q;
-      const dtus = readDtus(await ctx.fetchJson(`/api/dtus?mine=true&q=${encodeURIComponent(q)}&limit=40`));
-      if (dtus.length === 0) {
+      let items: Array<{ id: string; title: string; tier: string | null }> = [];
+      let semantic = false;
+      let usedMacro = false;
+      // Prefer the semantic discovery macro (embedding re-rank when the brains
+      // are up; keyword+recency fallback server-side otherwise). The `semantic`
+      // flag reports honestly which ranking actually ran.
+      if (ctx.runMacro) {
+        const env = await ctx.runMacro('discovery', 'search', { query: q, mine: true, limit: 12 }) as
+          { ok?: boolean; results?: Array<Record<string, unknown>>; semantic?: boolean } | null;
+        if (env && env.ok !== false && Array.isArray(env.results)) {
+          usedMacro = true;
+          semantic = env.semantic === true;
+          items = env.results
+            .map((r) => ({ id: String(r.id ?? ''), title: String(r.title ?? 'Untitled'), tier: r.kind != null ? String(r.kind) : null }))
+            .filter((d) => d.id);
+        }
+      }
+      // Fallback to the keyword endpoint only if the macro bridge is unavailable.
+      if (!usedMacro) {
+        const dtus = readDtus(await ctx.fetchJson(`/api/dtus?mine=true&q=${encodeURIComponent(q)}&limit=40`));
+        items = dtus.map((d) => ({ id: d.id, title: d.title, tier: d.tier }));
+      }
+      if (items.length === 0) {
         return { spoken: `I searched your archive for "${q}" and came up empty. Nothing there yet.`, acting: true };
       }
+      const how = semantic ? ', ranked by meaning' : '';
       return {
-        spoken: `Found ${dtus.length} ${dtus.length === 1 ? 'entry' : 'entries'} for "${q}" in your archive.`,
-        dtuRefs: dtus.slice(0, 8).map((d) => ({ id: d.id, title: d.title, tier: d.tier })),
+        spoken: `Found ${items.length} ${items.length === 1 ? 'entry' : 'entries'} for "${q}" in your archive${how}.`,
+        dtuRefs: items.slice(0, 8),
         acting: true,
       };
     },
