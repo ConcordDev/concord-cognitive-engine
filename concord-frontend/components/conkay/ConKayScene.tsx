@@ -60,8 +60,8 @@ function GalaxyCanopy({ stateRef, amplitudeRef, tex }: {
       const f = i / (N - 1);
       const ang = Math.PI * (0.12 + 0.76 * f); // left→right across the top
       const radius = 3.0 + Math.sin(f * Math.PI) * 1.4 + (i % 3) * 0.35;
-      const x = Math.cos(ang) * radius * 1.25;
-      const y = 1.1 + Math.sin(ang) * radius * 0.85;
+      const x = Math.cos(ang) * radius * 1.7;
+      const y = 1.1 + Math.sin(ang) * radius * 0.9;
       const z = -1.2 - (i % 4) * 0.5;
       const rx = 0.55 + Math.random() * 0.7;
       out.push({
@@ -126,7 +126,7 @@ function EnergyTrunk({ stateRef, amplitudeRef }: {
     for (let b = 0; b < BR; b++) {
       const f = b / (BR - 1);
       const ang = Math.PI * (0.18 + 0.64 * f);
-      const top = new THREE.Vector3(Math.cos(ang) * 3.4 * 1.2, 1.2 + Math.sin(ang) * 2.6, -1.0 - (b % 3) * 0.4);
+      const top = new THREE.Vector3(Math.cos(ang) * 3.4 * 1.7, 1.2 + Math.sin(ang) * 2.8, -1.0 - (b % 3) * 0.4);
       const mid = new THREE.Vector3(base.x + (top.x) * 0.32 + (Math.random() - 0.5) * 0.5, -0.7 + Math.random() * 0.6, base.z + (top.z) * 0.4);
       const mid2 = new THREE.Vector3(top.x * 0.7 + (Math.random() - 0.5) * 0.4, 0.5 + Math.random() * 0.5, top.z * 0.7);
       curves.push(new THREE.CatmullRomCurve3([base.clone(), mid, mid2, top]));
@@ -208,8 +208,10 @@ function Scene({ stateRef, amplitudeRef }: {
   amplitudeRef: React.MutableRefObject<number>;
 }) {
   const tex = useMemo(() => makeGlowTexture(), []);
+  // Scaled up + dropped so the trunk roots near the bottom edge and the canopy
+  // reaches the top — the world-tree fills the frame rather than floating small.
   return (
-    <group position={[0, -0.3, 0]}>
+    <group position={[0, -1.0, 0]} scale={1.35}>
       <Shards />
       <EnergyTrunk stateRef={stateRef} amplitudeRef={amplitudeRef} />
       <GalaxyCanopy stateRef={stateRef} amplitudeRef={amplitudeRef} tex={tex} />
@@ -227,7 +229,7 @@ export function ConKayScene({ state, amplitudeRef, className }: {
   return (
     <div className={className} aria-hidden>
       <Canvas
-        camera={{ position: [0, 0.6, 7.5], fov: 60 }}
+        camera={{ position: [0, 0.5, 5.6], fov: 64 }}
         gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
         style={{ background: 'transparent' }}
         dpr={[1, 1.75]}
