@@ -7,37 +7,60 @@
 
 ## 🟢 HANDOFF — start here (next instance reads this first)
 
-**Branch:** `claude/conkay-prod-audit-B3Mdk`  ·  **PR:** [#816](https://github.com/ryttps94jq-gif/concord-cognitive-engine/pull/816) (open)  ·  **Last floor:** **0.628** honest.
+**Branch:** `claude/conkay-honest-hologram-handoff-GvghP` (all work below is pushed here)  ·  **Honest floor:** **0.639** (`node scripts/grade-macro-depth.mjs --honest`).
 
-**What this session did:** raised the honest macro-depth floor 0.527→0.628 over 17 fleet
-waves (2,712 behavioral tests / 116 files), caught + fixed 9 real bugs, shipped music
-ingestion + crossfade + karaoke, audited integration/security (all hold), and designed the
-ConKay honest-hologram build (below). Everything is committed + pushed; PR #816 is open.
+**What the latest session did (2026-06-07, continuation):**
+- **Track B — Phase 0 DONE + Phase 1 DONE.** Phase 0 honest event spine: `/api/lens/run`
+  emits real `macro:started/completed` (with `{ok,ms}`) to the caller's `user:<id>` room,
+  gated on an opt-in `x-conkay-run-id`; `realtimeEmit` gained `{userId}` targeting; shapes
+  registered; `ConKayOverlay` binds a step 1:1 to the real events (no fake progress). Phase 1
+  verification climax: the `reason.verify` macro now drives the TrustBadge (real verdict —
+  grounded / citations_resolve / unsupported / fabricated_citation / unverified). Tests:
+  `server/tests/conkay-macro-lifecycle.test.js` (9/9). Frontend type-check clean.
+- **Track A — Depth sweep: floor 0.628 → 0.639.** ~20 domains landed across 3 fleet waves +
+  2 direct (observe, federation, gallery, daily, mining, supplychain, reasoning, pharmacy,
+  music, organ, hr, energy, pets, hypothesis, + extends to agents/government/billing/
+  reflection/food/healthcare). **1 real bug caught + fixed** (`supplychain.scenarioSimulate`
+  `Math.max(1,…)` phantom-alternate-supplier). Guard: 3108 behavioral tests / 129 files.
+  **The subagent fleet works reliably** (the standardized prompt + the EXTEND-an-existing-file
+  variant are both proven this session).
+- **Causal-closure experiment built** (the user's dtus.js / "is the in-basis state causally
+  closed?" direction): `server/lib/causal-closure.js` (capacity-ladder ceiling predictor —
+  linear→poly2→gradient-boosted-trees — via blocked CV; residual surrogate-determinism test;
+  awareness-index bridge probe; basis-completion saturation control), `tests/causal-closure.test.js`
+  (15/15 synthetic ground truth), CLI `scripts/causal-closure-analyze.mjs`, two opt-in capture
+  sites (`CONCORD_CAUSAL_LOG` in `runAwarenessLoop`, `CONCORD_CAUSAL_TICK_LOG` in `governorTick`),
+  doc `docs/CAUSAL_CLOSURE_EXPERIMENT.md` (grounded in `dtu_008_irreversible_constraint_cones`).
 
 **Two tracks, run in parallel (owner-locked):**
 
-- **Track A — Depth sweep (mechanical, background).** Resume the proven loop to push the
-  honest floor toward the ~0.73 ceiling. One command to find the next batch:
-  `node scripts/depth-backlog.mjs` → dispatch 6 parallel subagents (one domain each) with the
-  standardized prompt → per-agent self-verify green + guard → commit per domain → per-wave
+- **Track A — Depth sweep (mechanical, background).** Continue the proven loop to the ~0.73
+  ceiling. `node scripts/depth-backlog.mjs` → dispatch 6 parallel subagents (one domain each) →
+  per-agent self-verify green + guard (commit doesn't boot the server) → per-wave
   `node scripts/check-depth-tests.mjs` + `node scripts/grade-macro-depth.mjs --honest` → push.
-  **~18–22 waves remain.** Full mechanics in the "Track A" section below.
+  **The clean (no-test) high-leverage domains are mostly exhausted** — most remaining gain is in
+  **EXTENDING existing partial-coverage test files** (use the append-only EXTEND prompt: read the
+  existing file + the domain source, append `describe` blocks for UNCOVERED macros, never modify
+  existing cases). **~15–18 waves remain.** Wrapping/gotchas in the "Track A" section below.
 
-- **Track B — ConKay honest hologram (the build).** Start at **Phase 0, the honest event
-  spine** (the keystone — small, ~20 lines backend + a frontend subscribe). It makes ConKay's
-  *existing* UI honest end-to-end before any new visuals. Full design in the "Track B" section.
+- **Track B — ConKay honest hologram (the build).** Phase 0 + Phase 1 are shipped. Next is
+  **Phase 2 — FUI holographic scene** (upgrade `ConKayScene` to the JARVIS HUD: orbital rings
+  that spin only while a real macro is in flight, telemetry panels showing real returned values,
+  selective Bloom where glow ∝ a real value, zustand store written ONLY by the socket adapter).
+  Full design in the "Track B" section.
 
 **The one non-negotiable rule (Track B):** *honest by construction* — every animated element
 is a pure function of a real backend event; **zero ambient/`setInterval` "progress."** A ring
-lights iff a real `STEP_STARTED` arrived; a telemetry number is the actual returned value; the
+lights iff a real `macro:started` arrived; a telemetry number is the actual returned value; the
 trust badge is the actual `reason.verify` verdict. Enforce:
 `grep -rE "setInterval|setTimeout" concord-frontend/components/conkay/` → none may drive "work."
 
 **To resume right now:**
-1. `git checkout claude/conkay-prod-audit-B3Mdk && git pull` (and check PR #816 CI/reviews).
-2. Track B: open `server/server.js` `/api/lens/run` handler (~38589) → emit AG-UI-shaped
-   `macro:started/stage/completed` (see Phase 0). Track A: `node scripts/depth-backlog.mjs`.
-3. Keep `CLAUDE.md`'s depth table + `audit/macro-depth-honest.json` updated each wave.
+1. `git checkout claude/conkay-honest-hologram-handoff-GvghP && git pull`.
+2. Track A: `node scripts/depth-backlog.mjs` → dispatch a fleet wave (EXTEND variant for
+   partial-coverage domains). Track B: start Phase 2 (`ConKayScene` FUI scene, bound to the
+   `macro:*` lifecycle already emitted by Phase 0).
+3. Keep `audit/macro-depth-honest.json` refreshed + this floor number updated each wave.
 
 ---
 
