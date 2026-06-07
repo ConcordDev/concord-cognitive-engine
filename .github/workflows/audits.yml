@@ -36,13 +36,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          # Pinned to 20 (the rest of CI's version) — Node 22.x intermittently
-          # crashes the ESM value-assertion harnesses with a V8 fatal
+          # MUST be 22: `node --test` only expands the recursive `tests/**/*.test.js`
+          # glob natively on Node >= 21. On Node 20 the suite silently collapses to
+          # ~2 files / 2.5k tests (test discovery breaks). Node 22.x does
+          # intermittently V8-abort the ESM harness scripts
           # (`Check failed: (location_) != nullptr` in AsyncModuleExecutionFulfilled,
-          # exit 133) AFTER the script's own checks pass. The scripts run clean on
-          # 20 (and engines is >=18), and 20 is the version every other green CI
-          # job uses, so this also makes the audit job consistent.
-          node-version: '20'
+          # exit 133) AFTER their own checks pass — that is absorbed by the
+          # signal-level retry on the harness step below, not by downgrading Node.
+          node-version: '22'
           cache: 'npm'
 
       - name: Install server deps
@@ -63,12 +64,27 @@ jobs:
           #   • stateful CRUD round-trip + per-user isolation + delete + update
           #     across 40+ entities (catches data-leak / no-op-update regressions)
           # Each harness boots the macro registry in-process and exits non-zero on
-          # the first failure. No live server needed.
-          node scripts/value-assertions-batch2.mjs
-          node scripts/value-assertions-batch3.mjs
-          node scripts/value-assertions-batch4.mjs
-          node scripts/crud-invariants.mjs
-          node scripts/crud-update-invariants.mjs
+          # the first failure. No live server needed. The harnesses are read-only
+          # (no persistent writes), so re-running the block is idempotent — we
+          # retry on a SIGNAL-level abort (exit > 128, e.g. the intermittent Node
+          # 22 V8 `AsyncModuleExecutionFulfilled` crash, exit 133) but fail fast on
+          # a real assertion failure (exit 1..128).
+          run_harnesses() {
+            node scripts/value-assertions-batch2.mjs &&
+            node scripts/value-assertions-batch3.mjs &&
+            node scripts/value-assertions-batch4.mjs &&
+            node scripts/crud-invariants.mjs &&
+            node scripts/crud-update-invariants.mjs
+          }
+          for attempt in 1 2 3; do
+            run_harnesses; rc=$?
+            if [ "$rc" -eq 0 ]; then exit 0; fi
+            if [ "$rc" -le 128 ]; then
+              echo "::error::value-assertion harness real failure (exit $rc)"; exit "$rc"
+            fi
+            echo "::warning::value-assertion harness crashed with a signal (exit $rc) on attempt $attempt — retrying (intermittent Node 22 V8 abort)"
+          done
+          echo "::error::value-assertion harness kept crashing after 3 attempts (exit $rc)"; exit 1
 
       - name: Lens wiring verifier
         run: |
