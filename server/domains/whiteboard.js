@@ -1075,7 +1075,8 @@ export default function registerWhiteboardActions(registerLensAction) {
     const format = ['png', 'svg', 'pdf'].includes(String(params.format).toLowerCase())
       ? String(params.format).toLowerCase() : 'png';
     const scale = Math.max(1, Math.min(4, Number(params.scale) || 2));
-    const padding = Math.max(0, Math.min(200, Number(params.padding) || 40));
+    const _pad = Number(params.padding);
+    const padding = Math.max(0, Math.min(200, Number.isFinite(_pad) ? _pad : 40));
     const elements = Array.isArray(lookup.board.scene?.elements) ? lookup.board.scene.elements : [];
     if (elements.length === 0) {
       return { ok: true, result: { format, empty: true, message: "Board has no elements to export." } };
