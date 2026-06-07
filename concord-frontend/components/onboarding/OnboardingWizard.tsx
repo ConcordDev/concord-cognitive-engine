@@ -363,6 +363,20 @@ export function useOnboarding() {
     }).catch(() => { /* server sync is best-effort */ });
   };
 
+  // Dismiss/skip MUST persist. Previously close() only flipped isOpen=false, so
+  // the welcome reopened on the next route change / first-run-advance and
+  // "bled through" on every surface. Skipping the tour now sticks (the user can
+  // replay it via reset()).
+  const dismiss = () => {
+    try { localStorage.setItem('concord-onboarding-completed', 'true'); } catch { /* private mode */ }
+    setHasCompleted(true);
+    setIsOpen(false);
+    fetch('/api/onboarding/wizard-complete', {
+      method: 'POST',
+      credentials: 'same-origin',
+    }).catch(() => { /* server sync is best-effort */ });
+  };
+
   const reset = () => {
     localStorage.removeItem('concord-onboarding-completed');
     setHasCompleted(false);
@@ -373,7 +387,7 @@ export function useOnboarding() {
     isOpen,
     hasCompleted,
     open: () => setIsOpen(true),
-    close: () => setIsOpen(false),
+    close: dismiss,
     complete,
     reset
   };
