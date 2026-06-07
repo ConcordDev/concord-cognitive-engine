@@ -44,12 +44,22 @@ each template is the design, not decoration:
 2. **Predict the target.** Next-tick **invariant set + behavior** (default proxy:
    `surprise`, the prediction error). Asking the basis to determine the future of the
    things it claims to govern.
-3. **Ceiling in-basis predictor.** Fit the strongest `f(x_t, history) → target_{t+1}`
-   using **only** in-basis variables, with a state-space (history) embedding. *Baseline
-   today: ridge regression* (deterministic, dependency-free). The residual pipeline is
-   predictor-agnostic — swap `ridgeFit` for a stronger learner and push capacity until
-   in-basis prediction **plateaus**. **You must hit the ceiling before any residual
-   means anything** — underfitting manufactures a fake residue.
+3. **Ceiling in-basis predictor (a capacity ladder, cross-validated).** Fit the
+   strongest `f(x_t, history) → target_{t+1}` using **only** in-basis variables, with a
+   state-space (history) embedding, and **push capacity until in-basis prediction
+   plateaus**. `fitCeilingPredictor` runs a ladder — **linear ridge → degree-2
+   polynomial ridge → gradient-boosted regression trees** (all dependency-free,
+   deterministic) — and takes the rung where out-of-sample R² plateaus as the ceiling.
+   Both failure modes are guarded:
+   - **Underfitting manufactures a fake residue** — a weak predictor leaves structure it
+     could have explained, faking "incomplete". The ladder climbs until it can't.
+     (The test pins this: a nonlinear-but-closed system fools a linear-only fit into
+     "incomplete" but the ladder reads "closed".)
+   - **Overfitting fakes closure** — a high-capacity model memorising the train set
+     drives the residual to ~0 and hides a real off-basis axis. So the ceiling is chosen
+     by **out-of-sample** R² via **blocked k-fold cross-validation** (contiguous folds —
+     random folds leak neighbouring ticks), and the residual analysed is the
+     out-of-fold residual.
 4. **Interrogate the residual** `R = actual − f(...)` on three axes:
    - **Magnitude** — `1 − R²`, variance unexplained at the ceiling.
    - **Structure** — deterministic (autocorrelated, self-predictable) vs. white noise?
@@ -115,8 +125,8 @@ coupling, the basis-completion curve, and the **verdict** (`closed` / `incomplet
 
 | File | Role |
 |---|---|
-| `server/lib/causal-closure.js` | The analyzer: ridge in-basis predictor, residual surrogate determinism test, awareness coupling, basis-completion curve, JSONL log I/O. Dependency-free, deterministic. |
-| `server/tests/causal-closure.test.js` | Synthetic ground-truth proof: a CLOSED system reads `closed`; an INCOMPLETE system (hidden AR axis) reads `incomplete` with awareness coupling; the saturation control closes it. (12/12.) |
+| `server/lib/causal-closure.js` | The analyzer: capacity-ladder ceiling predictor (linear → poly2 → gradient-boosted trees) via blocked cross-validation, residual surrogate determinism test, awareness coupling, basis-completion curve, JSONL log I/O. Dependency-free, deterministic. |
+| `server/tests/causal-closure.test.js` | Synthetic ground-truth proof: a CLOSED system reads `closed`; an INCOMPLETE system (hidden AR axis) survives even the gradient-boosted ceiling and reads `incomplete` with awareness coupling; a nonlinear-closed system fools a linear-only fit but the ladder reads `closed`; the saturation control closes the residual. (15/15.) |
 | `server/scripts/causal-closure-analyze.mjs` | Offline CLI runner over a captured JSONL log. |
 | `server/lib/awareness-loop.js` | Opt-in capture site (`CONCORD_CAUSAL_LOG`). |
 | `server/dtus.js` (`dtu_008…`, `dtu_041…`, `dtu_063–066`) | The constraint-cone / control-pattern framework the experiment instantiates. |

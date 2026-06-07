@@ -53,9 +53,11 @@ if (!out.ok) {
 }
 
 const pct = (x) => `${(x * 100).toFixed(1)}%`;
-console.log("── Step 2-3: in-basis prediction (ridge baseline) ──");
+console.log("── Step 2-3: ceiling in-basis predictor (capacity ladder, out-of-sample) ──");
 console.log(`  aligned rows:        ${out.aligned}`);
-console.log(`  prediction R²:       ${out.prediction.r2.toFixed(4)}  (${pct(out.prediction.fractionUnexplained)} unexplained)`);
+console.log(`  validation:          ${out.predictor.validation}`);
+for (const r of out.predictor.ladder) console.log(`    ${r.name.padEnd(14)} oos R²=${r.r2.toFixed(4)}${r.name === out.predictor.ceiling ? "  ← ceiling" : ""}`);
+console.log(`  ceiling R²:          ${out.prediction.r2.toFixed(4)}  (${pct(out.prediction.fractionUnexplained)} unexplained)`);
 console.log("── Step 3: residual structure (surrogate determinism test) ──");
 console.log(`  residual AR self-R²: ${out.residual.structure.arSelfR2.toFixed(4)}`);
 console.log(`  surrogate z:         ${out.residual.structure.z.toFixed(2)}  → ${out.residual.structure.deterministic ? "DETERMINISTIC (structured)" : "white noise"}`);
