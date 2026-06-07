@@ -240,9 +240,15 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
   const navigateToLens = useCallback(
     (lens: LensEntry) => {
       setOpen(false);
-      // Paths carrying a query (e.g. ConKay's ?mode=conkay) use a full navigation
-      // so the destination's mount effect reliably picks up the param even when
-      // we're already on that pathname.
+      // "Summon Kay" opens the cross-lens ConKay overlay ON the current lens
+      // (operates the host lens' real macros) rather than navigating away.
+      if (lens.id === 'conkay' && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('conkay:summon'));
+        return;
+      }
+      // Paths carrying a query (e.g. a deep link) use a full navigation so the
+      // destination's mount effect reliably picks up the param even when we're
+      // already on that pathname.
       if (lens.path.includes('?') && typeof window !== 'undefined') {
         window.location.href = lens.path;
       } else {

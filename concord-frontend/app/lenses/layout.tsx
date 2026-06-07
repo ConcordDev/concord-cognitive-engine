@@ -4,6 +4,7 @@ import { Suspense, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { CoreLensNav } from '@/components/common/CoreLensNav';
 import { CommandPalette } from '@/components/common/CommandPalette';
+import { ConKayOverlay } from '@/components/conkay/ConKayOverlay';
 import { LensErrorBoundary } from '@/components/common/LensErrorBoundary';
 import { RepairBoundary } from '@/components/RepairBoundary';
 import { SmartContextBar } from '@/components/common/SmartContextBar';
@@ -143,6 +144,9 @@ export default function LensLayout({ children }: { children: React.ReactNode }) 
   return (
     <>
       <CommandPalette />
+      {/* ConKay — summonable on ANY lens (⌘/Ctrl+J), operates the host lens'
+          real macros. The cross-lens "take over and operate" surface. */}
+      <ConKayOverlay />
       <CoreLensNavWrapper />
       <LensErrorBoundary name="Lens">
         <RepairBoundary lens={lensName}>
