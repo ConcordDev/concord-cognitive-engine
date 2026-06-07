@@ -66,7 +66,7 @@ export default function registerCalendarActions(registerLensAction) {
     const tasks = artifact.data?.tasks || [];
     if (tasks.length === 0) return { ok: true, result: { message: "Add tasks with duration and priority to optimize schedule." } };
     const sorted = tasks.map(t => ({ name: t.name || t.title, duration: parseInt(t.duration) || 30, priority: t.priority || "medium", deadline: t.deadline, energy: t.energy || "medium" }))
-      .sort((a, b) => { const pOrder = { critical: 0, high: 1, medium: 2, low: 3 }; return (pOrder[a.priority] || 2) - (pOrder[b.priority] || 2); });
+      .sort((a, b) => { const pOrder = { critical: 0, high: 1, medium: 2, low: 3 }; return (pOrder[a.priority] ?? 2) - (pOrder[b.priority] ?? 2); });
     // Schedule high-energy tasks in morning, low-energy in afternoon
     const morning = sorted.filter(t => t.energy === "high" || t.priority === "critical");
     const afternoon = sorted.filter(t => t.energy !== "high" && t.priority !== "critical");

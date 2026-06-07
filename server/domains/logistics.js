@@ -503,10 +503,15 @@ export default function registerLogisticsActions(registerLensAction) {
 
   // ─── Parity-sprint macros ──
   function getLogState() {
-    const STATE = globalThis._concordSTATE;
-    if (!STATE) return null;
-    if (!STATE.logLens) STATE.logLens = { shipments: new Map() };
-    return STATE.logLens;
+    // Read the SAME store the write paths use (ensureLogState → STATE.logisticsLens).
+    // Previously this returned a SEPARATE STATE.logLens object, so shipments
+    // created via ensureLogBucket(STATE.logisticsLens, "shipments", …) were
+    // invisible to shipments-list / shipment-track — created shipments never
+    // showed up in the list. Pinned by tests/depth/logistics-behavior.test.js.
+    const s = ensureLogState();
+    if (!s) return null;
+    if (!s.shipments) s.shipments = new Map();
+    return s;
   }
   function saveLogState() {
     if (typeof globalThis._concordSaveStateDebounced === "function") {
