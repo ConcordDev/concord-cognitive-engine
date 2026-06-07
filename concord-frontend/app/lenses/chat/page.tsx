@@ -511,6 +511,7 @@ export default function ChatLensPage() {
   // Ambient "acting" flare + a "skill is running" flag (drives the processing state).
   const [conkayActing, setConkayActing] = useState(false);
   const [conkaySkillRunning, setConkaySkillRunning] = useState(false);
+  const conkayBottomRef = useRef<HTMLDivElement>(null);
   const [showModeSelect, setShowModeSelect] = useState(false);
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [feedbackState, setFeedbackState] = useState<Record<string, 'up' | 'down'>>({});
@@ -1730,7 +1731,7 @@ export default function ChatLensPage() {
     match: { skill: ConKaySkill; args: Record<string, string> },
   ) => {
     setLocalMessages((prev) => [...prev, {
-      id: `user-${Date.now()}`, role: 'user', content: text, timestamp: new Date().toISOString(),
+      id: `user-${Date.now()}`, role: 'user' as const, content: text, timestamp: new Date().toISOString(),
     }]);
     setInput('');
     setConkaySkillRunning(true);
@@ -1749,7 +1750,7 @@ export default function ChatLensPage() {
       // Live viz rides the existing conkay-viz fence ConKayMessage already parses.
       const fence = result.viz ? `\n\n\`\`\`conkay-viz\n${JSON.stringify(result.viz)}\n\`\`\`` : '';
       setLocalMessages((prev) => [...prev, {
-        id: `asst-${Date.now()}`, role: 'assistant',
+        id: `asst-${Date.now()}`, role: 'assistant' as const,
         content: `${result.spoken}${fence}`,
         timestamp: new Date().toISOString(),
         model: 'kay',
@@ -1848,6 +1849,12 @@ export default function ChatLensPage() {
     conkayGreetedRef.current = true;
     if (!conkayMuted) conkayVoice.speak("Kay here. I'm listening — ask me anything, or say brief me.");
   }, [isConKay, conkayMuted, conkayVoice]);
+
+  // ConKay's plain (non-virtualized) list needs explicit follow-output.
+  useEffect(() => {
+    if (!isConKay) return;
+    conkayBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [isConKay, localMessages.length]);
 
   // ConKay state machine — driven by real signals (not a screensaver).
   const conkayState: ConKayState =
@@ -2922,8 +2929,30 @@ export default function ChatLensPage() {
         </aside>
 
         {/* Main Chat Area */}
-        <main className="flex-1 flex flex-col" aria-label="Chat messages">
-          <header className="px-4 lg:px-6 py-4 border-b border-lattice-border flex items-center justify-between bg-lattice-surface">
+        <main className={cn('flex-1 flex flex-col', isConKay && 'relative isolate')} aria-label="Chat messages">
+          {/* ConKay holographic world-tree — full-column, behind translucent chrome.
+              Mounted at the lens column level (not the small messages panel) so it
+              genuinely fills the screen. */}
+          {isConKay && (
+            <>
+              <ConKayBackdrop
+                state={conkayState}
+                listening={conkayVoice.listening}
+                muted={conkayMuted}
+                className="pointer-events-none absolute inset-0 -z-10"
+              />
+              <ConKayHud
+                state={conkayState}
+                muted={conkayMuted}
+                onToggleMute={() => setConkayMuted((m) => !m)}
+                listening={conkayVoice.listening}
+                speaking={conkayVoice.speaking}
+                voiceSupported={conkayVoice.supported}
+                className="pointer-events-auto absolute right-3 top-3 z-20"
+              />
+            </>
+          )}
+          <header className={cn('px-4 lg:px-6 py-4 border-b border-lattice-border flex items-center justify-between', isConKay ? 'relative z-10 bg-lattice-surface/40 backdrop-blur-md border-cyan-400/15' : 'bg-lattice-surface')}>
             <div className="flex items-center gap-3 lg:gap-4">
               {/* Mobile: toggle conversation sidebar */}
               <button
@@ -3328,11 +3357,13 @@ export default function ChatLensPage() {
           </header>
 
           {/* Chat Mode Selector Rail */}
-          <ModeSelector activeMode={chatMode} onModeChange={setChatMode} />
+          <div className={cn(isConKay && 'relative z-10')}>
+            <ModeSelector activeMode={chatMode} onModeChange={setChatMode} />
+          </div>
 
           {/* Chat Mode Panel — shown when in chat mode */}
           {chatMode === 'chat' && messages.length > 0 && (
-            <div className="px-4 py-2 border-b border-lattice-border/30">
+            <div className={cn('px-4 py-2 border-b border-lattice-border/30', isConKay && 'relative z-10')}>
               <ChatModePanel
                 currentLens="chat"
                 onSendMessage={(msg) => {
@@ -3344,31 +3375,11 @@ export default function ChatLensPage() {
 
           {/* Messages */}
           <div
-            className={cn('flex-1 overflow-hidden flex flex-col', isConKay && 'relative isolate')}
+            className={cn('flex-1 overflow-hidden flex flex-col', isConKay && 'relative z-10')}
             role="log"
             aria-label="Chat messages"
             aria-live="polite"
           >
-            {/* ConKay full-bleed holographic field (behind the conversation) + status HUD */}
-            {isConKay && (
-              <>
-                <ConKayBackdrop
-                  state={conkayState}
-                  listening={conkayVoice.listening}
-                  muted={conkayMuted}
-                  className="pointer-events-none absolute inset-0 -z-10"
-                />
-                <ConKayHud
-                  state={conkayState}
-                  muted={conkayMuted}
-                  onToggleMute={() => setConkayMuted((m) => !m)}
-                  listening={conkayVoice.listening}
-                  speaking={conkayVoice.speaking}
-                  voiceSupported={conkayVoice.supported}
-                  className="pointer-events-auto absolute right-3 top-3 z-20"
-                />
-              </>
-            )}
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center">
                 <div className="w-20 h-20 rounded-full bg-neon-cyan/10 flex items-center justify-center mb-6">
@@ -3470,13 +3481,29 @@ export default function ChatLensPage() {
                     Concord wrote you {unreadInitiativesCount} time{unreadInitiativesCount === 1 ? '' : 's'} while you were away.
                   </div>
                 )}
-                <Virtuoso
-                  data={threadItems}
-                  followOutput="smooth"
-                  initialTopMostItemIndex={threadItems.length - 1}
-                  className="flex-1"
-                  itemContent={renderThreadItem}
-                />
+                {isConKay ? (
+                  // ConKay renders a plain, non-virtualized list: conversations
+                  // are short and the immersive holographic layout doesn't give
+                  // Virtuoso a stable scroll height (which silently unmounts the
+                  // newest rows). A simple scroll container keeps every reply —
+                  // including skill viz/citations — reliably mounted.
+                  <div className="flex-1 overflow-y-auto relative z-10">
+                    {threadItems.map((item, i) => (
+                      <div key={item.__kind === 'message' ? item.id : `${item.__kind}-${i}`}>
+                        {renderThreadItem(i, item)}
+                      </div>
+                    ))}
+                    <div ref={conkayBottomRef} aria-hidden="true" />
+                  </div>
+                ) : (
+                  <Virtuoso
+                    data={threadItems}
+                    followOutput="smooth"
+                    initialTopMostItemIndex={threadItems.length - 1}
+                    className="flex-1"
+                    itemContent={renderThreadItem}
+                  />
+                )}
               </>
             )}
 
@@ -3537,7 +3564,7 @@ export default function ChatLensPage() {
           </div>
 
           {/* Input Area */}
-          <div className="p-4 border-t border-lattice-border bg-lattice-surface">
+          <div className={cn('p-4 border-t', isConKay ? 'relative z-10 border-cyan-400/15 bg-lattice-surface/40 backdrop-blur-md' : 'border-lattice-border bg-lattice-surface')}>
             <div className="max-w-4xl mx-auto">
               {/* Quoted message indicator */}
               {quotedMessage && (
