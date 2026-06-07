@@ -866,3 +866,109 @@ describe("crypto — import-csv price-derivation, allocation targets, tx filteri
     assert.equal(bad.result.wallet.kind, "watch");
   });
 });
+
+// ── NEW: deterministic validation/no-fetch branches of network-fronted macros
+//
+// These macros all reach the network on their HAPPY path, but every assertion
+// below targets a branch that returns BEFORE any fetch — either an input
+// validation rejection (swap-quote, swap-route) or an early empty-state return
+// (holdings-list / watchlist-list with no rows → fetchLivePrices([]) → {} with
+// no fetch; price-alerts-check / alert-deliver with no active alerts;
+// portfolio-snapshot / ai-portfolio-insight with no holdings). Each expected
+// value is computed from the source, not the network.
+describe("crypto — swap quote/route validation rejections (pre-fetch, deterministic)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("crypto-swap-reject-" + randomUUID()); });
+
+  it("swap-quote: missing ids / non-positive amount is rejected before any price fetch", async () => {
+    const bad = await lensRun("crypto", "swap-quote", { params: { fromId: "", toId: "ethereum", amountIn: 1 } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /fromId, toId, positive amountIn required/);
+
+    const zero = await lensRun("crypto", "swap-quote", { params: { fromId: "bitcoin", toId: "ethereum", amountIn: 0 } }, ctx);
+    assert.equal(zero.result.ok, false);
+    assert.match(zero.result.error, /fromId, toId, positive amountIn required/);
+  });
+
+  it("swap-quote: identical from/to tokens are rejected before any price fetch", async () => {
+    const bad = await lensRun("crypto", "swap-quote", { params: { fromId: "ethereum", toId: "ethereum", amountIn: 5 } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /from and to must differ/);
+  });
+
+  it("swap-route: missing required fields and identical tokens are rejected before any RPC call", async () => {
+    const missing = await lensRun("crypto", "swap-route", { params: { sellToken: "", buyToken: "USDC", sellAmount: "1000" } }, ctx);
+    assert.equal(missing.result.ok, false);
+    assert.match(missing.result.error, /sellToken, buyToken, sellAmount required/);
+
+    const same = await lensRun("crypto", "swap-route", { params: { sellToken: "WETH", buyToken: "WETH", sellAmount: "1000" } }, ctx);
+    assert.equal(same.result.ok, false);
+    assert.match(same.result.error, /sellToken and buyToken must differ/);
+  });
+
+  it("swap-route: a non-integer sellAmount is rejected (base-unit integer string required)", async () => {
+    const bad = await lensRun("crypto", "swap-route", { params: { sellToken: "WETH", buyToken: "USDC", sellAmount: "1.5" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /sellAmount must be base-unit integer string/);
+  });
+
+  it("swap-route: with a valid integer amount but no ZEROX_API_KEY it refuses to synthesize a route", async () => {
+    // The no-egress preload doesn't set ZEROX_API_KEY; this branch returns
+    // before any 0x call. (Defensive: only assert the no-key shape when unset.)
+    if (process.env.ZEROX_API_KEY) return;
+    const bad = await lensRun("crypto", "swap-route", { params: { sellToken: "WETH", buyToken: "USDC", sellAmount: "1000000000000000000" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /0x aggregator not configured/);
+  });
+});
+
+describe("crypto — empty-state no-fetch branches (holdings/watchlist/alerts/snapshot/insight)", () => {
+  it("holdings-list: a fresh account returns an empty list and unavailable source (no symbols → no fetch)", async () => {
+    const fresh = await depthCtx("crypto-holdings-empty-" + randomUUID());
+    const r = await lensRun("crypto", "holdings-list", {}, fresh);
+    assert.deepEqual(r.result.holdings, []);
+    assert.equal(r.result.priceSource, "unavailable");
+  });
+
+  it("watchlist-list: an empty watchlist returns an empty list and takes the early no-fetch return", async () => {
+    const fresh = await depthCtx("crypto-watchlist-empty-" + randomUUID());
+    const r = await lensRun("crypto", "watchlist-list", {}, fresh);
+    assert.deepEqual(r.result.watchlist, []);
+  });
+
+  it("price-alerts-check: with no active alerts returns triggered:[] checked:0 before any price fetch", async () => {
+    const fresh = await depthCtx("crypto-alerts-check-empty-" + randomUUID());
+    const r = await lensRun("crypto", "price-alerts-check", {}, fresh);
+    assert.deepEqual(r.result.triggered, []);
+    assert.equal(r.result.checked, 0);
+  });
+
+  it("alert-deliver: with no deliverable alerts returns delivered:[] checked:0 before any price fetch", async () => {
+    const fresh = await depthCtx("crypto-alert-deliver-empty-" + randomUUID());
+    const r = await lensRun("crypto", "alert-deliver", {}, fresh);
+    assert.deepEqual(r.result.delivered, []);
+    assert.equal(r.result.checked, 0);
+  });
+
+  it("portfolio-snapshot: a fresh portfolio snapshots an exact 0/0 value (no holdings → no fetch) and dedupes same-day", async () => {
+    const fresh = await depthCtx("crypto-snapshot-empty-" + randomUUID());
+    const snap = await lensRun("crypto", "portfolio-snapshot", {}, fresh);
+    assert.equal(snap.result.snapshot.totalValueUsd, 0);
+    assert.equal(snap.result.snapshot.totalCostUsd, 0);
+    assert.equal(snap.result.priceSource, "unavailable");
+
+    // A second same-day snapshot REPLACES the first (single point), so the
+    // history still reports the "capture more" single-point message.
+    await lensRun("crypto", "portfolio-snapshot", {}, fresh);
+    const hist = await lensRun("crypto", "portfolio-history", {}, fresh);
+    assert.equal(hist.result.points, 1);
+    assert.match(hist.result.message, /Capture more snapshots/);
+  });
+
+  it("ai-portfolio-insight: with no holdings returns the deterministic no-holdings insight (no fetch, no brain)", async () => {
+    const fresh = await depthCtx("crypto-insight-empty-" + randomUUID());
+    const r = await lensRun("crypto", "ai-portfolio-insight", {}, fresh);
+    assert.equal(r.result.insight, "(no holdings yet)");
+    assert.equal(r.result.source, "deterministic");
+  });
+});

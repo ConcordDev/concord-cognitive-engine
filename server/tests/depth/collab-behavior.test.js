@@ -230,3 +230,128 @@ describe("collab — document / op-log / permission / comment CRUD (shared ctx)"
     assert.match(bad.result.error, /comment text is required/);
   });
 });
+
+// ── APPENDED depth coverage: docList / presence / follow / notifications ──
+// New distinct macros exercised: docList, cursorUpdate, presenceState,
+// setFollow, notifications, markNotificationRead.
+//
+// SKIPPED (by design, beyond the file's existing CRDT skip note):
+//   • cursorUpdate/presenceState/setFollow call emitToDoc — the realtime fan-out
+//     degrades to a no-op without a socket server, so the STATE mutations they
+//     return remain fully deterministic and ARE asserted here.
+//   • addComment's emitToUser notification path is similarly no-op under
+//     no-egress; the persisted notification row is what we assert.
+describe("collab — docList + presence/cursor/follow (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("collab-presence"); });
+
+  it("docList: a freshly created doc shows up owner-tier with its counts", async () => {
+    const c = await lensRun("collab", "docCreate", { params: { title: "Listed", text: "hi" } }, ctx);
+    const id = c.result.id;
+    const list = await lensRun("collab", "docList", {}, ctx);
+    assert.equal(list.ok, true);
+    const row = list.result.documents.find((d) => d.id === id);
+    assert.ok(row, "created doc appears in docList");
+    assert.equal(row.isOwner, true);
+    assert.equal(row.tier, "edit"); // owner is edit tier
+    assert.equal(row.opCount, 0);
+    assert.equal(row.snapshotCount, 0);
+    assert.equal(list.result.total, list.result.documents.length);
+  });
+
+  it("cursorUpdate → presenceState: caller's cursor + deterministic color round-trip", async () => {
+    const c = await lensRun("collab", "docCreate", { params: { title: "Cursors", text: "abc" } }, ctx);
+    const id = c.result.id;
+    const upd = await lensRun("collab", "cursorUpdate", { params: { docId: id, cursor: 2 } }, ctx);
+    assert.equal(upd.ok, true);
+    const mine = upd.result.presence.find((p) => p.userId === "collab-presence");
+    assert.ok(mine, "own presence row is present");
+    assert.equal(mine.cursor, 2);
+    // colorFor("collab-presence") is a deterministic hash → one of the 8 palette entries.
+    const PALETTE = ["#3b82f6", "#22c55e", "#f59e0b", "#a855f7", "#06b6d4", "#ec4899", "#ef4444", "#14b8a6"];
+    assert.ok(PALETTE.includes(mine.color));
+    const ps = await lensRun("collab", "presenceState", { params: { docId: id } }, ctx);
+    assert.equal(ps.result.online, 1);
+    assert.equal(ps.result.following, null);
+    assert.ok(ps.result.presence.some((p) => p.userId === "collab-presence" && p.cursor === 2));
+  });
+
+  it("setFollow: following a non-present target is rejected", async () => {
+    const c = await lensRun("collab", "docCreate", { params: { title: "Follow", text: "x" } }, ctx);
+    const bad = await lensRun("collab", "setFollow", { params: { docId: c.result.id, targetId: "ghost-user-99" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /follow target is not present/);
+  });
+
+  it("setFollow: following yourself resolves to no follow target", async () => {
+    const c = await lensRun("collab", "docCreate", { params: { title: "Self", text: "x" } }, ctx);
+    const id = c.result.id;
+    // seed our own presence row so the doc has a presence map
+    await lensRun("collab", "cursorUpdate", { params: { docId: id, cursor: 0 } }, ctx);
+    const self = await lensRun("collab", "setFollow", { params: { docId: id, targetId: "collab-presence" } }, ctx);
+    assert.equal(self.ok, true);
+    // target === uid short-circuits following to null
+    assert.equal(self.result.following, null);
+    assert.equal(self.result.followTarget, null);
+  });
+
+  it("setFollow: clearing follow (no targetId) returns null following", async () => {
+    const c = await lensRun("collab", "docCreate", { params: { title: "Clear", text: "x" } }, ctx);
+    const id = c.result.id;
+    await lensRun("collab", "cursorUpdate", { params: { docId: id, cursor: 0 } }, ctx);
+    const clr = await lensRun("collab", "setFollow", { params: { docId: id } }, ctx);
+    assert.equal(clr.ok, true);
+    assert.equal(clr.result.following, null);
+  });
+
+  it("validation: cursorUpdate on a missing document is rejected", async () => {
+    const bad = await lensRun("collab", "cursorUpdate", { params: { docId: "no_such_doc", cursor: 1 } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /document not found/);
+  });
+});
+
+describe("collab — @-mention notifications (cross-user, shared ctx)", () => {
+  let author, target;
+  before(async () => {
+    author = await depthCtx("collab_notif_author");
+    // target ctx userId must EQUAL the @-handle in the comment text below, because
+    // addComment routes the mention notification to user === extracted handle.
+    target = await depthCtx("collab_notif_target");
+  });
+
+  it("addComment @-mention pushes a notification the mentioned user can read", async () => {
+    const c = await lensRun("collab", "docCreate", { params: { title: "Mentions", text: "x" } }, author);
+    const id = c.result.id;
+    const cm = await lensRun("collab", "addComment", { params: { docId: id, text: "hey @collab_notif_target look here" } }, author);
+    assert.equal(cm.ok, true);
+    assert.ok(cm.result.comment.mentions.includes("collab_notif_target"));
+    const nf = await lensRun("collab", "notifications", {}, target);
+    assert.equal(nf.ok, true);
+    assert.ok(nf.result.unread >= 1, "mentioned user has at least one unread notification");
+    const mine = nf.result.notifications.find((n) => n.commentId === cm.result.comment.id);
+    assert.ok(mine, "the mention notification is present");
+    assert.equal(mine.kind, "mention");
+    assert.equal(mine.read, false);
+  });
+
+  it("notifications unreadOnly filter + markNotificationRead(all) clears the count", async () => {
+    const c = await lensRun("collab", "docCreate", { params: { title: "More", text: "x" } }, author);
+    await lensRun("collab", "addComment", { params: { docId: c.result.id, text: "ping @collab_notif_target again" } }, author);
+    const before = await lensRun("collab", "notifications", { params: { unreadOnly: true } }, target);
+    assert.ok(before.result.notifications.every((n) => n.read === false));
+    assert.ok(before.result.unread >= 1);
+    const mark = await lensRun("collab", "markNotificationRead", { params: { all: true } }, target);
+    assert.equal(mark.ok, true);
+    assert.equal(mark.result.unread, 0);
+    const after = await lensRun("collab", "notifications", { params: { unreadOnly: true } }, target);
+    assert.equal(after.result.notifications.length, 0);
+    assert.equal(after.result.unread, 0);
+  });
+
+  it("validation: markNotificationRead on an unknown id is rejected", async () => {
+    const bad = await lensRun("collab", "markNotificationRead", { params: { notificationId: "ntf_nope" } }, target);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /notification not found/);
+  });
+});
