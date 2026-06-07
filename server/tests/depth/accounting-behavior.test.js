@@ -924,3 +924,350 @@ describe("accounting — coa edits + dashboard + currency (wave 9 top-up)", () =
     assert.match(String(bad.result.error), /3-letter ISO/i);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// wave 10 top-up — STILL-uncovered deterministic macros: bank-feeds import →
+// categorize → list (deposit/withdrawal JE math), customers/vendors edit+delete,
+// list read-paths (bills/expenses/estimates/budget/po/recurring-bills/recurring-
+// invoices/dimension), recurring-invoices-toggle, tax-code-delete, audit-log-
+// list filtering, payroll-ach-batch, and the IRS FIRE 1099 + SSA EFW2 W-2
+// fixed-width exports (fully deterministic — no transmission). Skipped
+// (network/LLM/Stripe): bank-feeds-sync, ai-*, ask, currency-refresh-rates,
+// receipt-ocr*, invoice-create-payment-link, payroll-tax-efile.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("accounting — bank feeds import → categorize → list (wave 10 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("accounting-bank10"); });
+
+  it("bank-feeds-import → categorize (deposit): Dr Cash / Cr revenue, txn flagged categorized", async () => {
+    // Single-txn import: +1000 deposit. Categorize to acct_4000 Sales Revenue →
+    // deposit ⇒ Dr Cash 1000 / Cr Revenue 1000.
+    const imp = await lensRun("accounting", "bank-feeds-import", { params: { description: "ACME deposit", amount: 1000, date: "2026-05-01" } }, ctx);
+    assert.equal(imp.ok, true);
+    assert.equal(imp.result.count, 1);
+    const txn = imp.result.imported[0];
+    assert.equal(txn.amount, 1000);
+    assert.equal(txn.accountId, null);                 // imported uncategorized
+    const cat = await lensRun("accounting", "bank-feeds-categorize", { params: { txnId: txn.id, accountId: "acct_4000" } }, ctx);
+    assert.equal(cat.ok, true);
+    assert.equal(cat.result.txn.accountId, "acct_4000");
+    assert.equal(cat.result.entry.totalDebit, 1000);
+    assert.equal(cat.result.entry.totalCredit, 1000);
+    const cashLine = cat.result.entry.lines.find((l) => l.accountId === "acct_1000");
+    assert.equal(cashLine.debit, 1000);                // deposit debits cash
+    assert.equal(cashLine.credit, 0);
+    const revLine = cat.result.entry.lines.find((l) => l.accountId === "acct_4000");
+    assert.equal(revLine.credit, 1000);                // credits the picked account
+  });
+
+  it("bank-feeds-import (bulk) → categorize (withdrawal): Dr expense / Cr Cash", async () => {
+    // Bulk import two rows; categorize the −250 withdrawal to acct_6100 Rent →
+    // withdrawal ⇒ Dr Rent 250 / Cr Cash 250.
+    const imp = await lensRun("accounting", "bank-feeds-import", { params: { txns: [
+      { description: "Rent payment", amount: -250, date: "2026-05-03" },
+      { description: "Zero row", amount: 0 },           // amount 0 → skipped
+    ] } }, ctx);
+    assert.equal(imp.result.count, 1);                 // zero-amount row dropped
+    const txn = imp.result.imported[0];
+    assert.equal(txn.amount, -250);
+    const cat = await lensRun("accounting", "bank-feeds-categorize", { params: { txnId: txn.id, accountId: "acct_6100" } }, ctx);
+    assert.equal(cat.ok, true);
+    const rentLine = cat.result.entry.lines.find((l) => l.accountId === "acct_6100");
+    assert.equal(rentLine.debit, 250);                 // withdrawal debits the expense
+    const cashLine = cat.result.entry.lines.find((l) => l.accountId === "acct_1000");
+    assert.equal(cashLine.credit, 250);                // credits cash
+  });
+
+  it("bank-feeds-list: status filter splits categorized vs uncategorized", async () => {
+    // After the two tests above both txns are categorized. Import one more, leave
+    // it uncategorized, then assert each filter returns the right set.
+    const imp = await lensRun("accounting", "bank-feeds-import", { params: { description: "Pending row", amount: 42, date: "2026-05-09" } }, ctx);
+    const pendingId = imp.result.imported[0].id;
+    const unc = await lensRun("accounting", "bank-feeds-list", { params: { status: "uncategorized" } }, ctx);
+    assert.equal(unc.ok, true);
+    assert.ok((unc.result.txns || []).some((t) => t.id === pendingId), "pending txn is uncategorized");
+    assert.ok(!(unc.result.txns || []).some((t) => t.accountId), "no categorized txn in uncategorized list");
+    const cat = await lensRun("accounting", "bank-feeds-list", { params: { status: "categorized" } }, ctx);
+    assert.equal((cat.result.txns || []).length, 2);   // the deposit + withdrawal above
+    assert.ok((cat.result.txns || []).every((t) => !!t.accountId), "all categorized");
+    assert.ok(!(cat.result.txns || []).some((t) => t.id === pendingId), "pending excluded");
+  });
+
+  it("bank-feeds-categorize: rejects unknown txn, invalid account, and double-categorize", async () => {
+    const noTxn = await lensRun("accounting", "bank-feeds-categorize", { params: { txnId: "btxn_nope", accountId: "acct_4000" } }, ctx);
+    assert.equal(noTxn.result.ok, false);
+    assert.match(String(noTxn.result.error), /txn not found/i);
+    const imp = await lensRun("accounting", "bank-feeds-import", { params: { description: "Reject row", amount: 99, date: "2026-05-10" } }, ctx);
+    const id = imp.result.imported[0].id;
+    const badAcct = await lensRun("accounting", "bank-feeds-categorize", { params: { txnId: id, accountId: "acct_nope" } }, ctx);
+    assert.equal(badAcct.result.ok, false);
+    assert.match(String(badAcct.result.error), /accountId invalid/i);
+    await lensRun("accounting", "bank-feeds-categorize", { params: { txnId: id, accountId: "acct_4000" } }, ctx);
+    const again = await lensRun("accounting", "bank-feeds-categorize", { params: { txnId: id, accountId: "acct_4000" } }, ctx);
+    assert.equal(again.result.ok, false);
+    assert.match(String(again.result.error), /already categorized/i);
+  });
+});
+
+describe("accounting — customers / vendors edit + delete (wave 10 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("accounting-party10"); });
+
+  it("customers-update → customers-list: rename reads back; unknown id rejected", async () => {
+    const c = await lensRun("accounting", "customers-create", { params: { name: "Old Name" } }, ctx);
+    const id = c.result.customer.id;
+    const upd = await lensRun("accounting", "customers-update", { params: { id, name: "New Name", email: "ap@acme.test" } }, ctx);
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.customer.name, "New Name");
+    assert.equal(upd.result.customer.email, "ap@acme.test");
+    const list = await lensRun("accounting", "customers-list", { params: {} }, ctx);
+    assert.ok((list.result.customers || []).some((x) => x.id === id && x.name === "New Name"), "renamed customer listed");
+    const bad = await lensRun("accounting", "customers-update", { params: { id: "cust_nope", name: "X" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /customer not found/i);
+  });
+
+  it("vendors-update → vendors-delete: edit then remove; vendor gone from list", async () => {
+    const v = await lensRun("accounting", "vendors-create", { params: { name: "Temp Vendor" } }, ctx);
+    const id = v.result.vendor.id;
+    const upd = await lensRun("accounting", "vendors-update", { params: { id, name: "Renamed Vendor", is1099: true, paymentTerms: "net60" } }, ctx);
+    assert.equal(upd.result.vendor.name, "Renamed Vendor");
+    assert.equal(upd.result.vendor.is1099, true);
+    assert.equal(upd.result.vendor.paymentTerms, "net60");
+    const del = await lensRun("accounting", "vendors-delete", { params: { id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, true);
+    const list = await lensRun("accounting", "vendors-list", { params: {} }, ctx);
+    assert.ok(!(list.result.vendors || []).some((x) => x.id === id), "deleted vendor not listed");
+    const bad = await lensRun("accounting", "vendors-delete", { params: { id } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /vendor not found/i);
+  });
+});
+
+describe("accounting — list read-paths (wave 10 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("accounting-lists10"); });
+
+  it("bills-list: status filter returns only open / only paid", async () => {
+    const v = await lensRun("accounting", "vendors-create", { params: { name: "List Vendor" } }, ctx);
+    const vendorId = v.result.vendor.id;
+    const open = await lensRun("accounting", "bills-create", { params: { vendorId, total: 100, expenseAccountId: "acct_6000", issuedAt: "2026-01-01" } }, ctx);
+    const paid = await lensRun("accounting", "bills-create", { params: { vendorId, total: 200, expenseAccountId: "acct_6000", issuedAt: "2026-01-02" } }, ctx);
+    await lensRun("accounting", "bills-pay", { params: { id: paid.result.bill.id } }, ctx);
+    const openList = await lensRun("accounting", "bills-list", { params: { status: "open" } }, ctx);
+    assert.ok((openList.result.bills || []).some((b) => b.id === open.result.bill.id), "open bill present");
+    assert.ok(!(openList.result.bills || []).some((b) => b.id === paid.result.bill.id), "paid bill excluded from open");
+    const paidList = await lensRun("accounting", "bills-list", { params: { status: "paid" } }, ctx);
+    assert.ok((paidList.result.bills || []).some((b) => b.id === paid.result.bill.id), "paid bill present");
+    assert.ok((paidList.result.bills || []).every((b) => b.status === "paid"), "only paid bills");
+  });
+
+  it("expenses-list: created expense reads back", async () => {
+    const exp = await lensRun("accounting", "expenses-create", { params: { accountId: "acct_6000", amount: 33, vendor: "Snack Co", date: "2026-02-02" } }, ctx);
+    const list = await lensRun("accounting", "expenses-list", { params: {} }, ctx);
+    assert.equal(list.ok, true);
+    assert.ok((list.result.expenses || []).some((e) => e.id === exp.result.expense.id && e.amount === 33), "expense listed");
+  });
+
+  it("estimates-list: created estimate reads back", async () => {
+    const e = await lensRun("accounting", "estimates-create", { params: { customerName: "Est Co", total: 500 } }, ctx);
+    const list = await lensRun("accounting", "estimates-list", { params: {} }, ctx);
+    assert.ok((list.result.estimates || []).some((x) => x.id === e.result.estimate.id && x.total === 500), "estimate listed");
+  });
+
+  it("budget-list: created budget reads back with count", async () => {
+    const b = await lensRun("accounting", "budget-create", { params: { name: "List Budget", fiscalYear: 2026 } }, ctx);
+    const list = await lensRun("accounting", "budget-list", { params: {} }, ctx);
+    assert.equal(list.ok, true);
+    assert.equal(list.result.count, (list.result.budgets || []).length);
+    assert.ok((list.result.budgets || []).some((x) => x.id === b.result.budget.id && x.name === "List Budget"), "budget listed");
+  });
+
+  it("po-list: created PO reads back with summed total", async () => {
+    const v = await lensRun("accounting", "vendors-create", { params: { name: "PO List Vendor" } }, ctx);
+    const po = await lensRun("accounting", "po-create", { params: { vendorId: v.result.vendor.id, lines: [{ description: "X", qty: 3, unitCost: 7 }] } }, ctx);
+    const list = await lensRun("accounting", "po-list", { params: {} }, ctx);
+    assert.equal(list.result.count, (list.result.purchaseOrders || []).length);
+    const row = (list.result.purchaseOrders || []).find((p) => p.id === po.result.purchaseOrder.id);
+    assert.ok(row, "PO listed");
+    assert.equal(row.total, 21);                       // 3 × 7
+  });
+
+  it("recurring-bills-list: created schedule reads back", async () => {
+    const v = await lensRun("accounting", "vendors-create", { params: { name: "Rec Vendor" } }, ctx);
+    const r = await lensRun("accounting", "recurring-bills-create", { params: { vendorId: v.result.vendor.id, total: 60, expenseAccountId: "acct_6000", cadence: "monthly" } }, ctx);
+    const list = await lensRun("accounting", "recurring-bills-list", { params: {} }, ctx);
+    assert.ok((list.result.recurringBills || []).some((x) => x.id === r.result.recurringBill.id && x.total === 60), "recurring bill listed");
+  });
+});
+
+describe("accounting — toggle / delete / dimension filter (wave 10 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("accounting-mut10"); });
+
+  it("recurring-invoices-toggle → list: flips active flag, persists", async () => {
+    const r = await lensRun("accounting", "recurring-invoices-create", { params: { customerName: "Sub Co", total: 25, cadence: "monthly" } }, ctx);
+    const id = r.result.recurring.id;
+    assert.equal(r.result.recurring.active, true);
+    const tog = await lensRun("accounting", "recurring-invoices-toggle", { params: { id } }, ctx);
+    assert.equal(tog.result.recurring.active, false);  // toggled off
+    const list = await lensRun("accounting", "recurring-invoices-list", { params: {} }, ctx);
+    assert.ok((list.result.recurring || []).some((x) => x.id === id && x.active === false), "toggle persisted");
+    const back = await lensRun("accounting", "recurring-invoices-toggle", { params: { id } }, ctx);
+    assert.equal(back.result.recurring.active, true);  // toggles back on
+  });
+
+  it("recurring-invoices-toggle: rejects unknown id", async () => {
+    const bad = await lensRun("accounting", "recurring-invoices-toggle", { params: { id: "rec_nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /recurring not found/i);
+  });
+
+  it("tax-code-create → tax-code-delete: removed code drops from list", async () => {
+    const c = await lensRun("accounting", "tax-code-create", { params: { name: "TX Sales", rate: 6.25 } }, ctx);
+    const id = c.result.taxCode.id;
+    const del = await lensRun("accounting", "tax-code-delete", { params: { id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, id);
+    const list = await lensRun("accounting", "tax-code-list", { params: {} }, ctx);
+    assert.ok(!(list.result.taxCodes || []).some((t) => t.id === id), "deleted tax code gone");
+    const bad = await lensRun("accounting", "tax-code-delete", { params: { id } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /tax code not found/i);
+  });
+
+  it("dimension-list: filters by kind and excludes archived (via dimension-delete)", async () => {
+    const cls = await lensRun("accounting", "dimension-create", { params: { kind: "class", name: "Wholesale" } }, ctx);
+    const loc = await lensRun("accounting", "dimension-create", { params: { kind: "location", name: "HQ" } }, ctx);
+    const archMe = await lensRun("accounting", "dimension-create", { params: { kind: "class", name: "Archived Class" } }, ctx);
+    await lensRun("accounting", "dimension-delete", { params: { id: archMe.result.dimension.id } }, ctx); // archives it
+    const classes = await lensRun("accounting", "dimension-list", { params: { kind: "class" } }, ctx);
+    assert.deepEqual(classes.result.kinds, ["class", "location", "project"]);
+    assert.ok((classes.result.dimensions || []).some((d) => d.id === cls.result.dimension.id), "active class present");
+    assert.ok(!(classes.result.dimensions || []).some((d) => d.id === archMe.result.dimension.id), "archived class excluded");
+    assert.ok(!(classes.result.dimensions || []).some((d) => d.kind === "location"), "kind filter excludes location");
+    const all = await lensRun("accounting", "dimension-list", { params: {} }, ctx);
+    assert.ok((all.result.dimensions || []).some((d) => d.id === loc.result.dimension.id), "location present in unfiltered list");
+  });
+});
+
+describe("accounting — audit log + payroll ACH + IRS filings (wave 10 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("accounting-audit10"); });
+
+  it("audit-log-list: je-post records a journal-entry audit row, filterable by action + entityId", async () => {
+    const je = await lensRun("accounting", "je-post", { params: { date: "2026-06-01", memo: "audited", lines: [
+      { accountId: "acct_1000", debit: 100, credit: 0 },
+      { accountId: "acct_4000", debit: 0, credit: 100 },
+    ] } }, ctx);
+    const entryId = je.result.entry.id;
+    const all = await lensRun("accounting", "audit-log-list", { params: {} }, ctx);
+    assert.equal(all.ok, true);
+    const row = (all.result.entries || []).find((e) => e.entityId === entryId);
+    assert.ok(row, "audit row for the posted JE present");
+    assert.equal(row.action, "je-post");
+    assert.equal(row.entityType, "journal-entry");
+    // Filter by action — every returned row matches.
+    const byAction = await lensRun("accounting", "audit-log-list", { params: { action: "je-post" } }, ctx);
+    assert.ok((byAction.result.entries || []).length >= 1);
+    assert.ok((byAction.result.entries || []).every((e) => e.action === "je-post"), "action filter honored");
+    // Filter by entityId — exactly the one entry.
+    const byEntity = await lensRun("accounting", "audit-log-list", { params: { entityId: entryId } }, ctx);
+    assert.equal((byEntity.result.entries || []).length, 1);
+    assert.equal(byEntity.result.entries[0].entityId, entryId);
+  });
+
+  it("payroll-ach-batch: totalNet sums stub nets; missing bank info blocks the batch", async () => {
+    const e = await lensRun("accounting", "employee-create", { params: { name: "ACH Emp", payType: "salary", rate: 48000 } }, ctx);
+    const run = await lensRun("accounting", "payrun-create", { params: {
+      periodStart: "2026-01-01", periodEnd: "2026-01-15", payDate: "2026-01-16",
+      lines: [{ employeeId: e.result.employee.id }],
+    } }, ctx);
+    const runId = run.result.run.id;
+    // salary 48000/24 = 2000 gross; withholding 493 → net 1507.
+    const batch = await lensRun("accounting", "payroll-ach-batch", { params: { runId } }, ctx);
+    assert.equal(batch.ok, true);
+    assert.equal(batch.result.batch.entryCount, 1);
+    assert.equal(batch.result.batch.totalNet, 1507);          // single stub net
+    assert.equal(batch.result.batch.entries[0].amount, 1507);
+    assert.equal(batch.result.batch.entries[0].accountOnFile, false); // no bankAccountMask
+    assert.equal(batch.result.batch.missingBankInfo, 1);
+    assert.equal(batch.result.batch.status, "blocked-missing-bank-info");
+  });
+
+  it("payroll-ach-batch: rejects an unknown run id", async () => {
+    const bad = await lensRun("accounting", "payroll-ach-batch", { params: { runId: "run_nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /pay run not found/i);
+  });
+
+  it("efile-1099-fire: only 1099 vendors paid ≥ $600 export; cents + record count exact", async () => {
+    const fc = await depthCtx("accounting-fire10");
+    // 1099 vendor paid 700 (reportable); a 1099 vendor paid 400 (under threshold).
+    const big = await lensRun("accounting", "vendors-create", { params: { name: "Big Contractor", is1099: true, taxId: "11-1111111" } }, fc);
+    const small = await lensRun("accounting", "vendors-create", { params: { name: "Small Contractor", is1099: true, taxId: "22-2222222" } }, fc);
+    const b1 = await lensRun("accounting", "bills-create", { params: { vendorId: big.result.vendor.id, total: 700, expenseAccountId: "acct_6000", issuedAt: "2026-01-01" } }, fc);
+    await lensRun("accounting", "bills-pay", { params: { id: b1.result.bill.id, paidAt: "2026-02-01" } }, fc);
+    const b2 = await lensRun("accounting", "bills-create", { params: { vendorId: small.result.vendor.id, total: 400, expenseAccountId: "acct_6000", issuedAt: "2026-01-01" } }, fc);
+    await lensRun("accounting", "bills-pay", { params: { id: b2.result.bill.id, paidAt: "2026-02-01" } }, fc);
+    const r = await lensRun("accounting", "efile-1099-fire", { params: { year: 2026, payer: { name: "My LLC", tin: "99-9999999" } } }, fc);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.form, "1099-NEC");
+    assert.equal(r.result.payeeCount, 1);                     // only the $700 vendor
+    assert.equal(r.result.totalReported, 700);
+    // T + A + (1 × B) + C + F = 5 records.
+    assert.equal(r.result.recordCount, 5);
+    const lines = r.result.fireFile.split("\n");
+    assert.equal(lines.length, 5);
+    assert.ok(lines[0].startsWith("T"), "transmitter record first");
+    // Payee "B" record carries the amount in cents zero-filled (70000) in its 12-wide tail.
+    const bRec = lines.find((l) => l.startsWith("B"));
+    assert.ok(bRec.endsWith("000000070000"), "amount 700.00 → 70000 cents, 12-wide");
+    assert.ok(lines[lines.length - 1].startsWith("F"), "end-of-transmission record last");
+  });
+
+  it("efile-1099-fire: rejects a non-9-digit payer TIN and zero reportable payees", async () => {
+    const fc = await depthCtx("accounting-fire10b");
+    const badTin = await lensRun("accounting", "efile-1099-fire", { params: { year: 2026, payer: { name: "X", tin: "123" } } }, fc);
+    assert.equal(badTin.result.ok, false);
+    assert.match(String(badTin.result.error), /9-digit EIN/i);
+    // Valid TIN but no reportable vendors → nothing to file.
+    const none = await lensRun("accounting", "efile-1099-fire", { params: { year: 2026, payer: { name: "X", tin: "99-9999999" } } }, fc);
+    assert.equal(none.result.ok, false);
+    assert.match(String(none.result.error), /nothing to file/i);
+  });
+
+  it("efile-w2-export: W-2 box totals aggregate the year's pay runs", async () => {
+    const wc = await depthCtx("accounting-w210");
+    const e = await lensRun("accounting", "employee-create", { params: { name: "W2 Emp", payType: "salary", rate: 48000 } }, wc);
+    const empId = e.result.employee.id;
+    // Two 2026 semi-monthly runs: each gross 2000, fed 240, state 100, fica 153.
+    await lensRun("accounting", "payrun-create", { params: { payDate: "2026-01-16", lines: [{ employeeId: empId }] } }, wc);
+    await lensRun("accounting", "payrun-create", { params: { payDate: "2026-02-16", lines: [{ employeeId: empId }] } }, wc);
+    const r = await lensRun("accounting", "efile-w2-export", { params: { year: 2026, employer: { name: "Co", ein: "88-8888888" } } }, wc);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.form, "W-2");
+    assert.equal(r.result.employeeCount, 1);
+    assert.equal(r.result.totalWages, 4000);                  // 2000 + 2000
+    assert.equal(r.result.totalFederalWithheld, 480);         // 240 + 240
+    const w2 = r.result.w2s.find((x) => x.employeeId === empId);
+    assert.equal(w2.box1_wages, 4000);
+    assert.equal(w2.box2_federalWithheld, 480);
+    assert.equal(w2.box17_stateWithheld, 200);                // 100 + 100
+    assert.equal(w2.box4and6_ficaTax, 306);                   // 153 + 153
+    // RA submitter + RE employer + (1 × RW) + RT total + RF final = 5 records.
+    assert.equal(r.result.recordCount, 5);
+  });
+
+  it("efile-w2-export: rejects a non-9-digit EIN and a year with no payroll", async () => {
+    const wc = await depthCtx("accounting-w210b");
+    const badEin = await lensRun("accounting", "efile-w2-export", { params: { year: 2026, employer: { name: "Co", ein: "12" } } }, wc);
+    assert.equal(badEin.result.ok, false);
+    assert.match(String(badEin.result.error), /9-digit EIN/i);
+    const none = await lensRun("accounting", "efile-w2-export", { params: { year: 2026, employer: { name: "Co", ein: "88-8888888" } } }, wc);
+    assert.equal(none.result.ok, false);
+    assert.match(String(none.result.error), /no payroll/i);
+  });
+});
