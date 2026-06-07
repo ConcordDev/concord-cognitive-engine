@@ -207,3 +207,225 @@ describe("atlas — saved-places / lists / trips CRUD round-trips + validation (
     assert.ok(summary.result.byCategory.cafe >= 1); // Blue Bottle is a cafe
   });
 });
+
+describe("atlas — places/lists/trips mutation round-trips (wave 14 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("atlas-t14-crud"); });
+
+  it("places-update: edits category + clamps a rating > 5 down to 5, reads back changed", async () => {
+    const saved = await lensRun("atlas", "places-save", {
+      params: { name: "Tartine", lat: 37.7614, lng: -122.4241, category: "cafe", rating: 3 },
+    }, ctx);
+    const id = saved.result.place.id;
+    const upd = await lensRun("atlas", "places-update", {
+      params: { id, name: "Tartine Bakery", category: "restaurant", rating: 12 },
+    }, ctx);
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.place.name, "Tartine Bakery");
+    assert.equal(upd.result.place.category, "restaurant");
+    assert.equal(upd.result.place.rating, 5); // 12 clamped to max 5
+    // confirm the change persisted into the list
+    const list = await lensRun("atlas", "places-list", {}, ctx);
+    assert.ok(list.result.places.some((p) => p.id === id && p.name === "Tartine Bakery"));
+  });
+
+  it("places-update: missing id is rejected with 'place not found'", async () => {
+    const bad = await lensRun("atlas", "places-update", { params: { id: "nope-123", name: "X" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /place not found/);
+  });
+
+  it("places-delete: removes the place AND drops it from any list it was in", async () => {
+    const place = await lensRun("atlas", "places-save", {
+      params: { name: "Ferry Building", lat: 37.7955, lng: -122.3937, category: "attraction" },
+    }, ctx);
+    const pid = place.result.place.id;
+    const list = await lensRun("atlas", "lists-create", { params: { name: "Landmarks" } }, ctx);
+    const lid = list.result.list.id;
+    const added = await lensRun("atlas", "lists-add-place", { params: { listId: lid, placeId: pid } }, ctx);
+    assert.ok(added.result.list.placeIds.includes(pid));
+
+    const del = await lensRun("atlas", "places-delete", { params: { id: pid } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, true);
+
+    // gone from the places list
+    const after = await lensRun("atlas", "places-list", {}, ctx);
+    assert.ok(!after.result.places.some((p) => p.id === pid));
+    // and cascaded out of the list it was in
+    const lists = await lensRun("atlas", "lists-list", {}, ctx);
+    const enriched = lists.result.lists.find((l) => l.id === lid);
+    assert.ok(!enriched.placeIds.includes(pid));
+    assert.equal(enriched.placeCount, 0);
+  });
+
+  it("places-delete: unknown id is rejected", async () => {
+    const bad = await lensRun("atlas", "places-delete", { params: { id: "ghost" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /place not found/);
+  });
+
+  it("lists-remove-place: pulls a single place out of a list, leaving others", async () => {
+    const a = await lensRun("atlas", "places-save", { params: { name: "PA", lat: 1, lng: 1 } }, ctx);
+    const b = await lensRun("atlas", "places-save", { params: { name: "PB", lat: 2, lng: 2 } }, ctx);
+    const list = await lensRun("atlas", "lists-create", { params: { name: "Pair" } }, ctx);
+    const lid = list.result.list.id;
+    await lensRun("atlas", "lists-add-place", { params: { listId: lid, placeId: a.result.place.id } }, ctx);
+    await lensRun("atlas", "lists-add-place", { params: { listId: lid, placeId: b.result.place.id } }, ctx);
+
+    const removed = await lensRun("atlas", "lists-remove-place", {
+      params: { listId: lid, placeId: a.result.place.id },
+    }, ctx);
+    assert.equal(removed.ok, true);
+    assert.ok(!removed.result.list.placeIds.includes(a.result.place.id));
+    assert.ok(removed.result.list.placeIds.includes(b.result.place.id));
+  });
+
+  it("lists-delete: removes a list; lists-list no longer returns it", async () => {
+    const list = await lensRun("atlas", "lists-create", { params: { name: "Temp" } }, ctx);
+    const lid = list.result.list.id;
+    const del = await lensRun("atlas", "lists-delete", { params: { id: lid } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, true);
+    const after = await lensRun("atlas", "lists-list", {}, ctx);
+    assert.ok(!after.result.lists.some((l) => l.id === lid));
+  });
+
+  it("lists-delete: unknown id is rejected", async () => {
+    const bad = await lensRun("atlas", "lists-delete", { params: { id: "no-list" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /list not found/);
+  });
+
+  it("trips-remove-stop → trips-list: the removed stop is gone, the survivor remains", async () => {
+    const trip = await lensRun("atlas", "trips-create", { params: { name: "Two Stop" } }, ctx);
+    const tripId = trip.result.trip.id;
+    const s1 = await lensRun("atlas", "trips-add-stop", { params: { tripId, name: "First", lat: 10, lng: 10 } }, ctx);
+    await lensRun("atlas", "trips-add-stop", { params: { tripId, name: "Second", lat: 20, lng: 20 } }, ctx);
+    const removeId = s1.result.trip.stops[0].id;
+
+    const removed = await lensRun("atlas", "trips-remove-stop", { params: { tripId, stopId: removeId } }, ctx);
+    assert.equal(removed.ok, true);
+    assert.equal(removed.result.trip.stops.length, 1);
+    assert.ok(!removed.result.trip.stops.some((st) => st.id === removeId));
+
+    const trips = await lensRun("atlas", "trips-list", {}, ctx);
+    const found = trips.result.trips.find((t) => t.id === tripId);
+    assert.equal(found.stops.length, 1);
+    assert.equal(found.stops[0].name, "Second");
+  });
+
+  it("trips-delete: removes a trip; trips-list no longer returns it", async () => {
+    const trip = await lensRun("atlas", "trips-create", { params: { name: "Scrap" } }, ctx);
+    const tripId = trip.result.trip.id;
+    const del = await lensRun("atlas", "trips-delete", { params: { id: tripId } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, true);
+    const after = await lensRun("atlas", "trips-list", {}, ctx);
+    assert.ok(!after.result.trips.some((t) => t.id === tripId));
+  });
+
+  it("trips-add-stop: placeId pointing at a saved place copies its name + coords into the stop", async () => {
+    const place = await lensRun("atlas", "places-save", {
+      params: { name: "Pier 39", lat: 37.8087, lng: -122.4098, category: "attraction" },
+    }, ctx);
+    const trip = await lensRun("atlas", "trips-create", { params: { name: "From Saved" } }, ctx);
+    const added = await lensRun("atlas", "trips-add-stop", {
+      params: { tripId: trip.result.trip.id, placeId: place.result.place.id, day: 2 },
+    }, ctx);
+    assert.equal(added.ok, true);
+    const stop = added.result.trip.stops[0];
+    assert.equal(stop.name, "Pier 39");
+    assert.equal(stop.lat, 37.8087);
+    assert.equal(stop.placeId, place.result.place.id);
+    assert.equal(stop.day, 2);
+  });
+});
+
+describe("atlas — recent-searches dedup + cap + offline-area status (wave 14 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("atlas-t14-misc"); });
+
+  it("recent-searches-record: dedups a repeat query to the front, newest-first in list", async () => {
+    await lensRun("atlas", "recent-searches-record", { params: { query: "coffee" } }, ctx);
+    await lensRun("atlas", "recent-searches-record", { params: { query: "ramen" } }, ctx);
+    // re-record an earlier term — it should move to the most-recent slot, not duplicate
+    const rec = await lensRun("atlas", "recent-searches-record", { params: { query: "Coffee" } }, ctx);
+    assert.equal(rec.ok, true);
+    assert.equal(rec.result.recorded, "Coffee");
+
+    const list = await lensRun("atlas", "recent-searches-list", {}, ctx);
+    const queries = list.result.recent.map((r) => r.query.toLowerCase());
+    // exactly one "coffee" entry (deduped) and it is the newest (first, reversed list)
+    assert.equal(queries.filter((q) => q === "coffee").length, 1);
+    assert.equal(queries[0], "coffee");
+    assert.ok(queries.includes("ramen"));
+  });
+
+  it("recent-searches-record: empty query rejected", async () => {
+    const bad = await lensRun("atlas", "recent-searches-record", { params: { query: "   " } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /query required/);
+  });
+
+  it("recent-searches-clear: empties the list", async () => {
+    await lensRun("atlas", "recent-searches-record", { params: { query: "sushi" } }, ctx);
+    const cleared = await lensRun("atlas", "recent-searches-clear", {}, ctx);
+    assert.equal(cleared.ok, true);
+    assert.equal(cleared.result.cleared, true);
+    const list = await lensRun("atlas", "recent-searches-list", {}, ctx);
+    assert.equal(list.result.recent.length, 0);
+  });
+
+  it("offline-areas-update-status: pending → ready stamps downloadedAt + records cachedTiles", async () => {
+    const area = await lensRun("atlas", "offline-areas-create", {
+      params: { name: "Marina", south: 37.80, west: -122.45, north: 37.81, east: -122.43, minZoom: 12, maxZoom: 13 },
+    }, ctx);
+    const id = area.result.area.id;
+    assert.equal(area.result.area.status, "pending");
+
+    const upd = await lensRun("atlas", "offline-areas-update-status", {
+      params: { id, status: "ready", cachedTiles: 42 },
+    }, ctx);
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.area.status, "ready");
+    assert.equal(upd.result.area.cachedTiles, 42);
+    assert.ok(typeof upd.result.area.downloadedAt === "string" && upd.result.area.downloadedAt.length > 0);
+
+    // it shows up in the list with the updated status
+    const list = await lensRun("atlas", "offline-areas-list", {}, ctx);
+    const found = list.result.areas.find((a) => a.id === id);
+    assert.equal(found.status, "ready");
+  });
+
+  it("offline-areas-update-status: invalid status value rejected", async () => {
+    const area = await lensRun("atlas", "offline-areas-create", {
+      params: { name: "Bad", south: 0, west: 0, north: 1, east: 1 },
+    }, ctx);
+    const bad = await lensRun("atlas", "offline-areas-update-status", {
+      params: { id: area.result.area.id, status: "frobnicate" },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /pending\|downloading\|ready\|error/);
+  });
+
+  it("offline-areas-delete: removes the area; list no longer returns it", async () => {
+    const area = await lensRun("atlas", "offline-areas-create", {
+      params: { name: "Doomed", south: 0, west: 0, north: 2, east: 2 },
+    }, ctx);
+    const id = area.result.area.id;
+    const del = await lensRun("atlas", "offline-areas-delete", { params: { id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, true);
+    const list = await lensRun("atlas", "offline-areas-list", {}, ctx);
+    assert.ok(!list.result.areas.some((a) => a.id === id));
+  });
+
+  it("offline-areas-create: rejects an inverted bbox (south >= north)", async () => {
+    const bad = await lensRun("atlas", "offline-areas-create", {
+      params: { name: "Inverted", south: 5, west: 0, north: 1, east: 2 },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /bbox invalid/);
+  });
+});
