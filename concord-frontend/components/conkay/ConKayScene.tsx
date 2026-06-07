@@ -80,13 +80,15 @@ function GalaxyCanopy({ stateRef, amplitudeRef, tex }: {
     const st = stateRef.current;
     const amp = amplitudeRef.current;
     const time = performance.now() / 1000;
-    const energy = st === 'processing' || st === 'acting' ? 1.5 : st === 'presenting' ? 1.25 : st === 'listening' ? 1.0 : 0.7;
-    if (group.current) group.current.rotation.z += dt * 0.015 * energy;
+    const energy = st === 'processing' || st === 'acting' ? 1.9 : st === 'presenting' ? 1.3 : st === 'listening' ? 1.05 : 0.7;
+    // The canopy spins up while ConKay works (the galaxy-disc lattice "churning"),
+    // and the discs pulse brighter the harder it's thinking.
+    if (group.current) group.current.rotation.z += dt * 0.02 * energy;
     discs.forEach((d, i) => {
       const m = mats.current[i];
       if (!m) return;
-      const pulse = 0.7 + Math.sin(time * (1.1 * energy) + d.phase) * 0.18 + amp * 0.5;
-      m.opacity = Math.min(1, 0.5 * energy * pulse);
+      const pulse = 0.7 + Math.sin(time * (1.3 * energy) + d.phase) * 0.22 + amp * 0.5;
+      m.opacity = Math.min(1, 0.45 * energy * pulse);
       m.rotation += d.spin * dt * energy;
     });
   });
@@ -147,12 +149,17 @@ function EnergyTrunk({ stateRef, amplitudeRef }: {
     const amp = amplitudeRef.current;
     target.current.set(CONKAY_STATE_COLOR[st]).lerp(new THREE.Color('#bfefff'), 0.45);
     color.current.lerp(target.current, 0.05);
+    const working = st === 'processing' || st === 'acting';
     if (mat.current) {
       mat.current.color.copy(color.current);
-      mat.current.opacity = (st === 'idle' ? 0.55 : 0.8) + amp * 0.2;
-      mat.current.size = 0.05 + (st === 'presenting' ? 0.02 : 0) + amp * 0.03;
+      // Brighter + bigger particles while working — the trunk visibly surges as
+      // ConKay "builds", then settles when presenting.
+      mat.current.opacity = (st === 'idle' ? 0.5 : working ? 0.95 : 0.8) + amp * 0.2;
+      mat.current.size = 0.05 + (working ? 0.035 : st === 'presenting' ? 0.02 : 0) + amp * 0.035;
     }
-    const flow = (st === 'processing' || st === 'acting') ? 2.2 : st === 'listening' ? 1.4 : 1.0;
+    // Energy flow up the world-tree: a strong surge while building/acting, a
+    // calm settle while presenting the result, gentle at rest.
+    const flow = working ? 3.2 : st === 'presenting' ? 1.6 : st === 'listening' ? 1.5 : 0.8;
     const arr = positions;
     const tmp = new THREE.Vector3();
     for (let i = 0; i < N; i++) {

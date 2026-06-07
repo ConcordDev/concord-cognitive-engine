@@ -20,6 +20,7 @@ import { X, Send, Mic, MicOff, Sparkles, Volume2, VolumeX } from 'lucide-react';
 import { ConKayMessage, type ConKayReplyFields } from './ConKayViz';
 import { useConKayVoice } from './useConKayVoice';
 import { matchConKaySkill, type ConKaySkill } from './conkay-skills';
+import { ConKayWorkStatus, type WorkStep } from './ConKayWorkStatus';
 import type { ConKayState } from './conkay-persona';
 import { getLensById } from '@/lib/lens-registry';
 import { lensRun } from '@/lib/api/client';
@@ -58,6 +59,10 @@ export function ConKayOverlay() {
   const [input, setInput] = useState('');
   const [running, setRunning] = useState(false);
   const [muted, setMuted] = useState(false);
+  // Work-animation state: a live status line + a step spine that resolves as
+  // ConKay works (the JARVIS "you can see it building" surface).
+  const [steps, setSteps] = useState<WorkStep[]>([]);
+  const [workStatus, setWorkStatus] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const spokeRef = useRef<string | null>(null);
@@ -94,9 +99,18 @@ export function ConKayOverlay() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages.length]);
+  }, [messages.length, steps, workStatus]);
 
   const append = useCallback((m: OverlayMsg) => setMessages((prev) => [...prev, m]), []);
+
+  // Work-step helpers — set the plan, then advance each step's state as ConKay
+  // works. `setStep` flips one step; `beginWork`/`clearWork` bracket a task.
+  const beginWork = useCallback((status: string, plan: WorkStep[]) => { setWorkStatus(status); setSteps(plan); }, []);
+  const setStep = useCallback((id: string, state: WorkStep['state'], status?: string) => {
+    setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, state } : s)));
+    if (status) setWorkStatus(status);
+  }, []);
+  const clearWork = useCallback(() => { setTimeout(() => { setSteps([]); setWorkStatus(''); }, 1400); }, []);
 
   // Persist a revisitable artifact of what ConKay did — the task + its work +
   // result — as a DTU in the user's locker (fire-and-forget; never blocks the UX).
@@ -154,6 +168,11 @@ export function ConKayOverlay() {
     append({ id: `u-${Date.now()}`, role: 'user', content: text });
     setInput('');
     setRunning(true);
+    beginWork(`Understood — ${match.skill.label}`, [
+      { id: 'parse', label: `Recognised: ${match.skill.label}`, state: 'done' },
+      { id: 'gather', label: 'Gathering from your data…', state: 'active' },
+      { id: 'render', label: 'Rendering the result', state: 'pending' },
+    ]);
     try {
       const result = await match.skill.run(match.args, {
         apiBase: process.env.NEXT_PUBLIC_API_URL || '',
@@ -164,16 +183,21 @@ export function ConKayOverlay() {
           } catch { return null; }
         },
       });
+      setStep('gather', 'done', 'Composing the answer');
+      setStep('render', 'active');
       const fence = result.viz ? `\n\n\`\`\`conkay-viz\n${JSON.stringify(result.viz)}\n\`\`\`` : '';
       append({ id: `a-${Date.now()}`, role: 'assistant', content: `${result.spoken}${fence}`, dtuRefs: result.dtuRefs, sources: result.sources, toolCalls: result.toolCalls, brain: 'kay' });
+      setStep('render', 'done', 'Done');
       persistArtifact(`Skill: ${match.skill.label}`, { task: text, skill: match.skill.id, spoken: result.spoken, viz: result.viz ?? null });
       if (result.navigate) { const dest = result.navigate; setTimeout(() => { window.location.href = dest; }, 900); }
     } catch {
+      setStep('render', 'error', 'Hit a snag');
       append({ id: `a-${Date.now()}`, role: 'assistant', content: 'I hit a snag running that — mind trying again?' });
     } finally {
       setRunning(false);
+      clearWork();
     }
-  }, [append, persistArtifact]);
+  }, [append, persistArtifact, beginWork, setStep, clearWork]);
 
   // ── execute a lens macro (shared by explicit "run X" + the NL resolver) ──
   const executeMacro = useCallback(async (domain: string, macro: string, inputObj: Record<string, unknown>, preface?: string) => {
@@ -217,6 +241,12 @@ export function ConKayOverlay() {
     append({ id: `u-${Date.now()}`, role: 'user', content: text });
     setInput('');
     setRunning(true);
+    beginWork(`Working on the ${lensName} lens…`, [
+      { id: 'read', label: `Reading ${lensName} actions`, state: 'active' },
+      { id: 'choose', label: 'Choosing the right action', state: 'pending' },
+      { id: 'run', label: 'Running it', state: 'pending' },
+      { id: 'render', label: 'Rendering the result', state: 'pending' },
+    ]);
     try {
       const base = process.env.NEXT_PUBLIC_API_URL || '';
       let actions: string[] = [];
@@ -225,6 +255,7 @@ export function ConKayOverlay() {
         const j = await r.json();
         actions = Array.isArray(j?.actions) ? j.actions.map((a: { name?: string } | string) => (typeof a === 'string' ? a : a?.name)).filter(Boolean) : [];
       } catch { /* no actions surface */ }
+      setStep('read', 'done'); setStep('choose', 'active', 'Asking the conscious brain to choose…');
       const prompt = [
         `You are ConKay operating the "${lensName}" lens inside Concord.`,
         `Available macros for this lens (domain "${domain}"): ${actions.length ? actions.join(', ') : '(unknown — infer a reasonable one)'}.`,
@@ -248,8 +279,11 @@ export function ConKayOverlay() {
         }
       } catch { /* brains offline */ }
       if (macro) {
+        setStep('choose', 'done', `Running ${macro}`); setStep('run', 'active');
         await executeMacro(domain, macro, inputObj, `On it — running ${macro} on the ${lensName} lens.`);
+        setStep('run', 'done'); setStep('render', 'done', 'Done');
       } else {
+        setStep('choose', 'error', 'Could not map that to an action');
         append({
           id: `a-${Date.now()}`, role: 'assistant',
           content: actions.length
@@ -260,8 +294,9 @@ export function ConKayOverlay() {
       }
     } finally {
       setRunning(false);
+      clearWork();
     }
-  }, [append, executeMacro]);
+  }, [append, executeMacro, beginWork, setStep, clearWork]);
 
   // ── command routing ─────────────────────────────────────────────────
   function submit(raw: string) {
@@ -338,7 +373,7 @@ export function ConKayOverlay() {
             </div>
           )}
           {messages.map((m) => (
-            <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+            <div key={m.id} className={`ck-reveal ${m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}`}>
               <div className={m.role === 'user'
                 ? 'max-w-[80%] rounded-2xl rounded-br-md bg-cyan-500/15 border border-cyan-400/25 px-3.5 py-2 text-sm text-cyan-50'
                 : 'max-w-[85%] rounded-2xl rounded-bl-md bg-black/40 border border-cyan-400/15 px-3.5 py-2 text-sm text-cyan-50'}>
@@ -348,6 +383,8 @@ export function ConKayOverlay() {
               </div>
             </div>
           ))}
+          {/* JARVIS "you can see it building" — live arc-reactor + step spine */}
+          <ConKayWorkStatus phase={conkayState} status={workStatus} steps={steps} active={running} />
           <div ref={bottomRef} aria-hidden />
         </div>
       </div>
