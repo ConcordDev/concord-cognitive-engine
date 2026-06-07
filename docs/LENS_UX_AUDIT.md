@@ -1,5 +1,19 @@
 # Lens UX/UI Audit — research-grounded, per-app-identity-preserving
 
+> **Re-verification (2026-06-07, data-driven against code).** A scan of every lens
+> page found **141 fetch data; of those, ZERO lack all of loading/error/empty
+> handling** — so the "reads as broken" framing is largely STALE: no lens is
+> genuinely missing states. The raw-error renders that exist are contextually
+> appropriate (per-row CSV validation, recorder/tutor toasts, `error={error}`
+> passed to components) — not endpoint leaks. The one genuine dev-leak (the social
+> timeline error exposing `/api/social/following-activity`) was humanized. NOTE:
+> the social lens does NOT currently show "Profile Not Found" (it shows "No
+> activity yet" + a humanized error) — that specific finding below is stale. The
+> remaining real item is **EmptyStateCTA adoption is still 0/259** — a genuine
+> *polish opportunity* (flat "No tracks." → an inviting CTA), NOT breakage; doing
+> it well is a per-lens pass (each needs context-appropriate copy/action), not a
+> codemod. Treat the per-app findings below as a polish backlog, not a bug list.
+
 **Scope.** All 259 lenses, audited against current UX + UI research. Grounded in
 **real authenticated screenshots** (signed in as a user — the app blocks bot
 scraping, so an API-mocked capture only ever shows the login page) plus a
