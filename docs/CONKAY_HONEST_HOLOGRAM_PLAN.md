@@ -7,7 +7,7 @@
 
 ## 🟢 HANDOFF — start here (next instance reads this first)
 
-**Branch:** `claude/conkay-honest-hologram-handoff-GvghP` (all work below is pushed here)  ·  **Honest floor:** **0.639** (`node scripts/grade-macro-depth.mjs --honest`).
+**Branch:** `claude/conkay-honest-hologram-handoff-GvghP` (all work below is pushed here)  ·  **Honest floor:** **0.645** (`node scripts/grade-macro-depth.mjs --honest`) — climbing ~+0.004/6-domain wave toward the ~0.73 ceiling.
 
 **What the latest session did (2026-06-07, continuation):**
 - **Track B — Phase 0 DONE + Phase 1 DONE.** Phase 0 honest event spine: `/api/lens/run`
@@ -17,13 +17,17 @@
   verification climax: the `reason.verify` macro now drives the TrustBadge (real verdict —
   grounded / citations_resolve / unsupported / fabricated_citation / unverified). Tests:
   `server/tests/conkay-macro-lifecycle.test.js` (9/9). Frontend type-check clean.
-- **Track A — Depth sweep: floor 0.628 → 0.639.** ~20 domains landed across 3 fleet waves +
+- **Track A — Depth sweep: floor 0.628 → 0.645.** ~32 domains landed across 5 fleet waves +
   2 direct (observe, federation, gallery, daily, mining, supplychain, reasoning, pharmacy,
-  music, organ, hr, energy, pets, hypothesis, + extends to agents/government/billing/
-  reflection/food/healthcare). **1 real bug caught + fixed** (`supplychain.scenarioSimulate`
-  `Math.max(1,…)` phantom-alternate-supplier). Guard: 3108 behavioral tests / 129 files.
-  **The subagent fleet works reliably** (the standardized prompt + the EXTEND-an-existing-file
-  variant are both proven this session).
+  music, organ, hr, energy, pets, hypothesis, forestry, cri, integrations, desert, world,
+  schema, defense, resonance + extends to agents/government/billing/reflection/food/healthcare/
+  astronomy/worldmodel/atlas/automotive). **3 real bugs caught + fixed**:
+  `supplychain.scenarioSimulate` (`Math.max(1,…)` phantom alternate supplier),
+  `schema.schemaValidate` (integer fields silently accepted non-numbers),
+  `defense.resourceAllocation` (`||` collapsed critical priority 0 → medium). Guard: 3340
+  behavioral tests / 137 files. **The subagent fleet works reliably** — the standardized
+  CREATE prompt AND the append-only EXTEND variant are both proven; clean (no-test) domains
+  are mostly exhausted, so most remaining gain is via EXTENDs.
 - **Causal-closure experiment built** (the user's dtus.js / "is the in-basis state causally
   closed?" direction): `server/lib/causal-closure.js` (capacity-ladder ceiling predictor —
   linear→poly2→gradient-boosted-trees — via blocked CV; residual surrogate-determinism test;
