@@ -182,6 +182,12 @@ export function ConKayOverlay() {
             return await r.json();
           } catch { return null; }
         },
+        // Lets a skill delegate to a real deterministic backend engine (e.g. the
+        // math CAS) via the unified macro contract instead of LLM-reasoning.
+        runMacro: async (domain: string, name: string, input: Record<string, unknown>) => {
+          try { const { data } = await lensRun(domain, name, input); return data; }
+          catch { return null; }
+        },
       });
       setStep('gather', 'done', 'Composing the answer');
       setStep('render', 'active');
