@@ -622,3 +622,247 @@ describe("crypto — recurring buys, staking list, onchain rejections, alerts ma
     assert.deepEqual(after.result.deliveries, []); // nothing unread left
   });
 });
+
+describe("crypto — portfolio rollups, ticker, DCA-run, order-fill (wave 13 top-up)", () => {
+  // These macros call fetchLivePrices but ALL of them have a deterministic
+  // no-network path: either an early return when there is nothing to price
+  // (empty holdings / no due DCA / no open orders) or fetchLivePrices([]) → {}
+  // which short-circuits before any fetch. Realized P&L + cost-basis math is
+  // price-independent, so the asserted values are exact under no-egress.
+
+  it("portfolio-summary: a fresh portfolio reports all-zero rollups and unavailable price source", async () => {
+    const fresh = await depthCtx("crypto-t13-summary-empty-" + randomUUID());
+    const r = await lensRun("crypto", "portfolio-summary", {}, fresh);
+    assert.equal(r.result.totalValueUsd, 0);
+    assert.equal(r.result.totalCostUsd, 0);
+    assert.equal(r.result.unrealizedPnlUsd, 0);
+    assert.equal(r.result.unrealizedPnlPct, 0);
+    assert.equal(r.result.lotCount, 0);
+    assert.equal(r.result.symbolCount, 0);
+    assert.deepEqual(r.result.byChain, []);
+    // No symbols → fetchLivePrices([]) returns {} without any network call.
+    assert.equal(r.result.priceSource, "unavailable");
+  });
+
+  it("portfolio-summary: realized YTD P&L from a same-year sell is exact and price-independent", async () => {
+    const ctx = await depthCtx("crypto-t13-summary-realized-" + randomUUID());
+    const sym = "tok" + randomUUID().slice(0, 6);
+    const yr = new Date().getFullYear();
+    // Buy 4 @ $25 = $100 cost, then sell 4 for $260 this year → realized 160.
+    await lensRun("crypto", "holdings-add", { params: { symbol: sym, qty: 4, costBasisUsd: 100, acquiredAt: `${yr}-01-02` } }, ctx);
+    const sell = await lensRun("crypto", "holdings-sell", { params: { symbol: sym, qty: 4, proceedsUsd: 260, at: `${yr}-03-03` } }, ctx);
+    assert.equal(sell.result.transaction.realizedPnlUsd, 160);
+    // After fully selling, no remaining lots → fetchLivePrices([]) = {} (no network).
+    const r = await lensRun("crypto", "portfolio-summary", {}, ctx);
+    assert.equal(r.result.realizedPnlYtdUsd, 160); // the sell counted into YTD realized
+    assert.equal(r.result.lotCount, 0);            // lot fully closed
+    assert.equal(r.result.totalValueUsd, 0);
+  });
+
+  it("portfolio-summary: lot count + symbol count reflect open lots (value/PnL fall back to 0 when prices unavailable)", async () => {
+    const ctx = await depthCtx("crypto-t13-summary-lots-" + randomUUID());
+    const a = "tok" + randomUUID().slice(0, 6);
+    const b = "tok" + randomUUID().slice(0, 6);
+    await lensRun("crypto", "holdings-add", { params: { symbol: a, qty: 2, costBasisUsd: 40, chain: "solana" } }, ctx);
+    await lensRun("crypto", "holdings-add", { params: { symbol: b, qty: 5, costBasisUsd: 100, chain: "base" } }, ctx);
+    const r = await lensRun("crypto", "portfolio-summary", {}, ctx);
+    assert.equal(r.result.lotCount, 2);
+    assert.equal(r.result.symbolCount, 2);
+    // Under no-egress prices are unavailable → value 0, but COST is still summed.
+    assert.equal(r.result.priceSource, "unavailable");
+    assert.equal(r.result.totalCostUsd, 140); // 40 + 100, price-independent
+    assert.equal(r.result.totalValueUsd, 0);
+    // byChain carries each lot's chain with a zero (priced) value but a real lot count.
+    const chains = r.result.byChain.map((c) => c.chain).sort();
+    assert.deepEqual(chains, ["base", "solana"]);
+  });
+
+  it("dashboard-summary: a fresh dashboard aggregates active recurring/staking/watch/nft counts at zero", async () => {
+    const fresh = await depthCtx("crypto-t13-dash-empty-" + randomUUID());
+    const r = await lensRun("crypto", "dashboard-summary", {}, fresh);
+    assert.equal(r.result.totalValueUsd, 0);
+    assert.equal(r.result.unrealizedPnlUsd, 0);
+    assert.equal(r.result.symbolCount, 0);
+    assert.equal(r.result.lotCount, 0);
+    assert.equal(r.result.activeRecurringBuys, 0);
+    assert.equal(r.result.activeStakingPositions, 0);
+    assert.equal(r.result.watchlistSize, 0);
+    assert.equal(r.result.nftCount, 0);
+    assert.equal(r.result.priceAlertCount, 0);
+  });
+
+  it("dashboard-summary: the active-feature counts reflect created DCA / staking / watchlist / NFT / alert", async () => {
+    const ctx = await depthCtx("crypto-t13-dash-counts-" + randomUUID());
+    const sym = "tok" + randomUUID().slice(0, 6);
+    await lensRun("crypto", "recurring-buys-create", { params: { symbol: sym, amountUsd: 50, cadence: "weekly" } }, ctx);
+    await lensRun("crypto", "staking-stake", { params: { symbol: sym, qty: 8, aprPct: 3 } }, ctx);
+    await lensRun("crypto", "watchlist-add", { params: { symbol: "WBTC" } }, ctx);
+    await lensRun("crypto", "nfts-add", { params: { name: "art-" + randomUUID().slice(0, 6) } }, ctx);
+    await lensRun("crypto", "price-alerts-create", { params: { tokenId: "tok-x", symbol: "ETH", direction: "above", threshold: 9000 } }, ctx);
+
+    const r = await lensRun("crypto", "dashboard-summary", {}, ctx);
+    assert.equal(r.result.activeRecurringBuys, 1);
+    assert.equal(r.result.activeStakingPositions, 1);
+    assert.equal(r.result.watchlistSize, 1);
+    assert.equal(r.result.nftCount, 1);
+    assert.equal(r.result.priceAlertCount, 1);
+  });
+
+  it("price-stream: with no holdings and no extra symbols returns an empty ticker and zero totals (no fetch)", async () => {
+    const fresh = await depthCtx("crypto-t13-stream-empty-" + randomUUID());
+    const r = await lensRun("crypto", "price-stream", {}, fresh);
+    assert.deepEqual(r.result.ticks, []);
+    assert.equal(r.result.totalValueUsd, 0);
+    assert.equal(r.result.unrealizedPnlUsd, 0);
+    assert.ok(typeof r.result.at === "string" && r.result.at.length > 0);
+  });
+
+  it("price-stream: with holdings but unavailable prices reports the unavailable source and zero totals", async () => {
+    const ctx = await depthCtx("crypto-t13-stream-holdings-" + randomUUID());
+    const sym = "tok" + randomUUID().slice(0, 6);
+    await lensRun("crypto", "holdings-add", { params: { symbol: sym, qty: 3, costBasisUsd: 90 } }, ctx);
+    // Holdings exist → fetchLivePrices is called with a real symbol, rejected
+    // under no-egress → {} → the no-price branch returns the unavailable shape.
+    const r = await lensRun("crypto", "price-stream", {}, ctx);
+    assert.deepEqual(r.result.ticks, []);
+    assert.equal(r.result.totalValueUsd, 0);
+    assert.equal(r.result.unrealizedPnlUsd, 0);
+    assert.equal(r.result.priceSource, "unavailable");
+  });
+
+  it("recurring-buys-run-due: a not-yet-due DCA does not run (zero lots created)", async () => {
+    const ctx = await depthCtx("crypto-t13-dca-future-" + randomUUID());
+    const sym = "dca" + randomUUID().slice(0, 4);
+    // startAt far in the future → nextRunAt is future → not due today → early return before any fetch.
+    await lensRun("crypto", "recurring-buys-create", { params: { symbol: sym, amountUsd: 100, cadence: "daily", startAt: "2999-01-01" } }, ctx);
+    const r = await lensRun("crypto", "recurring-buys-run-due", {}, ctx);
+    assert.equal(r.result.ran, 0);
+    assert.deepEqual(r.result.lotsCreated, []);
+  });
+
+  it("recurring-buys-run-due: with no recurring buys at all returns ran:0", async () => {
+    const fresh = await depthCtx("crypto-t13-dca-none-" + randomUUID());
+    const r = await lensRun("crypto", "recurring-buys-run-due", {}, fresh);
+    assert.equal(r.result.ran, 0);
+    assert.deepEqual(r.result.lotsCreated, []);
+  });
+
+  it("orders-check: with no open orders returns an empty fill list and n/a price source (no fetch)", async () => {
+    const fresh = await depthCtx("crypto-t13-orders-none-" + randomUUID());
+    const r = await lensRun("crypto", "orders-check", {}, fresh);
+    assert.deepEqual(r.result.filled, []);
+    assert.equal(r.result.stillOpen, 0);
+    assert.equal(r.result.priceSource, "n/a");
+  });
+
+  it("orders-check: an open order with unavailable prices stays open (no fill under no-egress)", async () => {
+    const ctx = await depthCtx("crypto-t13-orders-open-" + randomUUID());
+    const sym = "tok" + randomUUID().slice(0, 6);
+    const ord = await lensRun("crypto", "order-create", { params: { symbol: sym, side: "buy", qty: 1, limitPriceUsd: 50 } }, ctx);
+    // fetchLivePrices rejected → {} → the no-price branch leaves the order open.
+    const r = await lensRun("crypto", "orders-check", {}, ctx);
+    assert.deepEqual(r.result.filled, []);
+    assert.equal(r.result.stillOpen, 1);
+    assert.equal(r.result.priceSource, "unavailable");
+    // The order itself is still readable as open afterward.
+    const list = await lensRun("crypto", "order-list", { params: { status: "open" } }, ctx);
+    assert.ok(list.result.orders.some((o) => o.id === ord.result.order.id));
+  });
+});
+
+describe("crypto — import-csv price-derivation, allocation targets, tx filtering (wave 13 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("crypto-t13-misc-" + randomUUID()); });
+
+  it("import-csv: a buy row with only a unit price (no total) derives cost basis = price × qty", async () => {
+    const sym = "csv" + randomUUID().slice(0, 4);
+    // No Total column → cost basis derived from Price × Qty = 30 × 5 = 150.
+    const csv = [
+      "Date,Type,Symbol,Qty,Price",
+      `2024-02-02,buy,${sym},5,30`,
+    ].join("\n");
+    const r = await lensRun("crypto", "import-csv", { params: { csv } }, ctx);
+    assert.equal(r.result.importedCount, 1);
+    assert.equal(r.result.buyCount, 1);
+    assert.equal(r.result.errorCount, 0);
+    const buy = r.result.imported.find((i) => i.kind === "buy");
+    assert.equal(buy.totalUsd, 150); // 30 * 5 derived from price
+    assert.equal(r.result.detectedColumns.total, false); // no total column present
+    assert.equal(r.result.detectedColumns.price, true);
+  });
+
+  it("import-csv: a row with neither total nor price is an error; an unrecognised type is an error", async () => {
+    const sym = "csv" + randomUUID().slice(0, 4);
+    const csv = [
+      "Date,Type,Symbol,Qty",       // no price, no total
+      `2024-01-01,buy,${sym},2`,    // → 'no total and no price' error
+      `2024-01-02,teleport,${sym},1`, // → unrecognised type error
+    ].join("\n");
+    const r = await lensRun("crypto", "import-csv", { params: { csv } }, ctx);
+    assert.equal(r.result.importedCount, 0);
+    assert.equal(r.result.errorCount, 2);
+    assert.ok(r.result.errors.some((e) => e.reason.includes("no total and no price")));
+    assert.ok(r.result.errors.some((e) => e.reason.includes("unrecognised type")));
+  });
+
+  it("import-csv: a sell row with no matching lots is reported as an insufficient-lots error", async () => {
+    const sym = "csv" + randomUUID().slice(0, 4);
+    const csv = [
+      "Date,Type,Symbol,Qty,Total",
+      `2024-04-04,sell,${sym},10,500`, // nothing bought first → insufficient lots
+    ].join("\n");
+    const r = await lensRun("crypto", "import-csv", { params: { csv } }, ctx);
+    assert.equal(r.result.sellCount, 0);
+    assert.equal(r.result.errorCount, 1);
+    assert.ok(r.result.errors.some((e) => e.reason.includes("insufficient lots")));
+  });
+
+  it("allocation-breakdown: a single-symbol portfolio with unavailable prices is rejected (no live price)", async () => {
+    const fresh = await depthCtx("crypto-t13-alloc-noprice-" + randomUUID());
+    const sym = "tok" + randomUUID().slice(0, 6);
+    await lensRun("crypto", "holdings-add", { params: { symbol: sym, qty: 1, costBasisUsd: 10 } }, fresh);
+    // Holdings exist (skips the empty early-return) but fetchLivePrices → {} under
+    // no-egress → totalValue 0 → the "no live prices" rejection.
+    const r = await lensRun("crypto", "allocation-breakdown", {}, fresh);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /no live prices available/);
+  });
+
+  it("transactions-list: filtering by kind returns only that kind; the unfiltered list keeps the buy mirror", async () => {
+    const sym = "tok" + randomUUID().slice(0, 6);
+    // A staking-stake mirrors a 'stake' tx; holdings-add mirrors a 'buy' tx.
+    await lensRun("crypto", "holdings-add", { params: { symbol: sym, qty: 2, costBasisUsd: 50 } }, ctx);
+    await lensRun("crypto", "staking-stake", { params: { symbol: sym, qty: 1, aprPct: 2 } }, ctx);
+
+    const stakes = await lensRun("crypto", "transactions-list", { params: { symbol: sym, kind: "stake" } }, ctx);
+    assert.ok(stakes.result.transactions.length >= 1);
+    assert.ok(stakes.result.transactions.every((t) => t.kind === "stake" && t.symbol === sym));
+
+    const buys = await lensRun("crypto", "transactions-list", { params: { symbol: sym, kind: "buy" } }, ctx);
+    assert.ok(buys.result.transactions.some((t) => t.kind === "buy" && t.totalUsd === 50));
+  });
+
+  it("transactions-record: a valid receive tx is recorded with a derived unit price and reads back in the list", async () => {
+    const sym = "tok" + randomUUID().slice(0, 6);
+    const rec = await lensRun("crypto", "transactions-record", { params: { kind: "receive", symbol: sym, qty: 4, totalUsd: 80 } }, ctx);
+    assert.equal(rec.result.transaction.kind, "receive");
+    assert.equal(rec.result.transaction.priceUsd, 20); // 80 / 4 derived
+    assert.equal(rec.result.transaction.totalUsd, 80);
+    const list = await lensRun("crypto", "transactions-list", { params: { symbol: sym, kind: "receive" } }, ctx);
+    assert.ok(list.result.transactions.some((t) => t.id === rec.result.transaction.id));
+  });
+
+  it("wallet-rename: passing only a kind updates the kind and leaves the name; an unknown kind is ignored", async () => {
+    const w = await lensRun("crypto", "wallet-create", { params: { name: "kindtest-" + randomUUID().slice(0, 6), kind: "hot" } }, ctx);
+    const id = w.result.wallet.id;
+    const origName = w.result.wallet.name;
+
+    const rk = await lensRun("crypto", "wallet-rename", { params: { id, kind: "watch" } }, ctx);
+    assert.equal(rk.result.wallet.kind, "watch");
+    assert.equal(rk.result.wallet.name, origName); // name untouched
+
+    // An unknown kind is silently ignored (whitelist) → kind stays 'watch'.
+    const bad = await lensRun("crypto", "wallet-rename", { params: { id, kind: "quantum" } }, ctx);
+    assert.equal(bad.result.wallet.kind, "watch");
+  });
+});
