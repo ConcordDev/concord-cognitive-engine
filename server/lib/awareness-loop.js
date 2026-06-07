@@ -136,7 +136,7 @@ export function runAwarenessLoop(input = {}) {
     const surprise = predictionError(input.prediction, input.actual);
 
     // 7-prep. AWARENESS INDEX over the modules this wake lit
-    const awareness = computeAwarenessIndex(activationsFromTick({
+    const acts = activationsFromTick({
       affect: self.affect || { a: feltNow.arousal },
       drives: self.drives,
       goalActive: !!self.goal,
@@ -146,7 +146,34 @@ export function runAwarenessLoop(input = {}) {
       salience: clamp01(esc.score),
       selfModelUpdated: true,
       behaviorActivity: 0.4,
-    }));
+    });
+    const awareness = computeAwarenessIndex(acts);
+
+    // Causal-closure capture (opt-in, best-effort, never blocks the loop). When
+    // CONCORD_CAUSAL_LOG is set we append this wake's in-basis state vector (the
+    // 9 module activations = x_t) + the awareness index (the bridge probe) + the
+    // candidate next-step targets (surprise/affect) as one JSONL row. Offline,
+    // scripts/causal-closure-analyze.mjs tests whether x_t determines its own
+    // future or is short by a hidden axis (lib/causal-closure.js, grounded in
+    // dtu_008_irreversible_constraint_cones). Fire-and-forget so the loop stays
+    // synchronous; failures are swallowed (telemetry must never break a wake).
+    const _causalLog = process.env.CONCORD_CAUSAL_LOG;
+    if (_causalLog) {
+      try {
+        const _row = {
+          // in-basis state x_t — the functional/structural basis under test
+          affect: acts.affect, drives: acts.drives, goal: acts.goal, memory: acts.memory,
+          forwardSim: acts.forwardSim, drift: acts.drift, salience: acts.salience,
+          selfModel: acts.selfModel, behavior: acts.behavior,
+          // bridge probe + candidate targets (invariants_{t+1} / behavior_{t+1} proxies)
+          awarenessIndex: awareness.index, integration: awareness.integration, differentiation: awareness.differentiation,
+          surprise: surprise ? surprise.surprise : 0,
+          intensity: clamp01(feltNow.intensity), valence: feltNow.valence ?? 0, arousal: feltNow.arousal ?? 0,
+          agentId: input.agentId || self.agentId || null, worldId: self.worldId || null,
+        };
+        import("./causal-closure.js").then((m) => m.recordTick(_row, _causalLog)).catch(() => {});
+      } catch { /* never block the loop on telemetry */ }
+    }
 
     // 3-5. REASON (deterministic note; lazy HLR/drift could replace it)
     const note = deterministicReason(constraint, esc, surprise);
