@@ -2,9 +2,28 @@
 // Balances are NEVER stored — always derived from the ledger.
 // balance = sum(credits) - sum(debits) for completed transactions.
 
+// CREDIT_ROW_PREDICATE — which ledger rows actually credit their to_user_id.
+//
+// TRANSFER and MARKETPLACE_PURCHASE are written as TWO rows: a "debit" row that
+// carries BOTH from_user_id (the payer) AND to_user_id (the recipient), plus a
+// separate "credit" row (from_user_id IS NULL → to_user_id). The recipient's
+// real credit is the from-NULL credit row; the debit row's to_user_id is only an
+// audit/linkage pointer (used by wash-trade + merit-score). Summing `net` for
+// EVERY to_user_id row therefore counts the recipient TWICE — minting CC from
+// nothing on every transfer/sale and breaking the 1:1 USD peg.
+//
+// Fix (read-side, leaves the rows + their linkage intact): a row credits its
+// to_user_id UNLESS it is the redundant debit-half of that two-row pattern.
+// Every other both-sided single row (ROYALTY_PAYOUT, EMERGENT_TRANSFER,
+// REVERSAL) is a genuine transfer and is still counted. Pinned by
+// tests/economy/ledger-conservation.test.js.
+export const CREDIT_ROW_PREDICATE =
+  "NOT (from_user_id IS NOT NULL AND type IN ('TRANSFER','MARKETPLACE_PURCHASE'))";
+
 /**
  * Compute balance for a user by scanning the ledger.
- * Credits = rows where to_user_id = userId (net amount received).
+ * Credits = rows where to_user_id = userId (net amount received) that satisfy
+ *           CREDIT_ROW_PREDICATE (excludes redundant two-row debit halves).
  * Debits  = rows where from_user_id = userId (amount sent, including fees).
  *
  * @param {object} db — better-sqlite3 instance
@@ -17,7 +36,7 @@ export function getBalance(db, userId) {
   const credits = db.prepare(`
     SELECT COALESCE(SUM(CAST(ROUND(net * 100) AS INTEGER)), 0) as total_cents
     FROM economy_ledger
-    WHERE to_user_id = ? AND status = 'complete'
+    WHERE to_user_id = ? AND status = 'complete' AND ${CREDIT_ROW_PREDICATE}
   `).get(userId);
 
   const debits = db.prepare(`

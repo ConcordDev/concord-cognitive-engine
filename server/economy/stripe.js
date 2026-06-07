@@ -691,6 +691,11 @@ export async function processStripeWithdrawal(db, { withdrawalId, requestId, ip 
         ccAmount: String(wd.amount),
         tokens: String(wd.amount),
       },
+    }, {
+      // Idempotency key keyed to the withdrawal — a retry of processStripeWithdrawal
+      // (network blip, double admin-click, crash-replay) returns the SAME transfer
+      // instead of paying the creator twice. Stripe dedupes for 24h on this key.
+      idempotencyKey: `withdrawal_payout:${withdrawalId}`,
     });
 
     // Step 3: Mark ledger entries as complete and burn coins from treasury.

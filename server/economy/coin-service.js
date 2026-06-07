@@ -6,6 +6,7 @@
 import { randomUUID } from "crypto";
 import { recordTransaction, generateTxId } from "./ledger.js";
 import { economyAudit } from "./audit.js";
+import { CREDIT_ROW_PREDICATE } from "./balances.js";
 
 function uid(prefix = "tev") {
   return `${prefix}_` + randomUUID().replace(/-/g, "").slice(0, 16);
@@ -159,7 +160,7 @@ export function verifyTreasuryInvariant(db) {
   // Check 2: sum of all balances (derived from ledger)
   const totalCredits = db.prepare(`
     SELECT COALESCE(SUM(CAST(ROUND(net * 100) AS INTEGER)), 0) as total_cents
-    FROM economy_ledger WHERE to_user_id IS NOT NULL AND status = 'complete'
+    FROM economy_ledger WHERE to_user_id IS NOT NULL AND status = 'complete' AND ${CREDIT_ROW_PREDICATE}
   `).get()?.total_cents || 0;
 
   const totalDebits = db.prepare(`

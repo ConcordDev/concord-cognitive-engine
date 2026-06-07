@@ -3,7 +3,7 @@
 // All routes are mounted under /api/economy and /api/stripe.
 
 import express from "express";
-import { getBalance } from "./balances.js";
+import { getBalance, CREDIT_ROW_PREDICATE } from "./balances.js";
 import { getTransactions, getAllTransactions } from "./ledger.js";
 import { FEES, PLATFORM_ACCOUNT_ID } from "./fees.js";
 import { executeTransfer, executePurchase, executeMarketplacePurchase, executeReversal } from "./transfer.js";
@@ -545,7 +545,7 @@ export function registerEconomyRoutes(app, db, opts = {}) {
     try {
       const totalCredits = db.prepare(`
         SELECT COALESCE(SUM(net), 0) as total FROM economy_ledger
-        WHERE to_user_id IS NOT NULL AND status = 'complete'
+        WHERE to_user_id IS NOT NULL AND status = 'complete' AND ${CREDIT_ROW_PREDICATE}
       `).get()?.total || 0;
 
       const totalDebits = db.prepare(`

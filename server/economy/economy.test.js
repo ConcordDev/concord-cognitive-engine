@@ -345,12 +345,35 @@ describe("Reversals", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("Withdrawal Workflow", () => {
-  it("follows pending → approved → complete lifecycle", () => {
-    executePurchase(db, { userId: "wd-user", amount: 500 });
+  // Seed an EARNED, already-settled (>48h) credit row directly so it clears the
+  // 48h hold AND counts as withdrawable under the closed-loop CC model.
+  // type = ROYALTY_PAYOUT (from platform) or MARKETPLACE_PURCHASE seller credit
+  // (from_user_id NULL). Backdated created_at so it's past the hold window.
+  function seedEarned(userId, net, { hoursAgo = 72, type = "ROYALTY_PAYOUT" } = {}) {
+    const ts = new Date(Date.now() - hoursAgo * 3600 * 1000)
+      .toISOString().replace("T", " ").replace("Z", "");
+    const from = type === "MARKETPLACE_PURCHASE" ? null : PLATFORM_ACCOUNT_ID;
+    db.prepare(`
+      INSERT INTO economy_ledger (id, type, from_user_id, to_user_id, amount, fee, net, status, created_at)
+      VALUES (?, ?, ?, ?, ?, 0, ?, 'complete', ?)
+    `).run("txn_seed_" + Math.random().toString(36).slice(2, 14), type, from, userId, net, net, ts);
+  }
+
+  it("purchased-only CC is NOT withdrawable (closed-loop store credit)", () => {
+    // Buying CC via Stripe (TOKEN_PURCHASE) gives spend-only store credit.
+    executePurchase(db, { userId: "purchased-only-user", amount: 500 });
+    const req = requestWithdrawal(db, { userId: "purchased-only-user", amount: 100 });
+    assert.equal(req.ok, false);
+    assert.equal(req.error, "insufficient_earned_balance");
+  });
+
+  it("follows pending → approved → complete lifecycle on EARNED CC", () => {
+    seedEarned("wd-user", 500); // 500 CC earned via royalties, settled
+    const startBalance = getBalance(db, "wd-user").balance;
 
     // Request
     const req = requestWithdrawal(db, { userId: "wd-user", amount: 100 });
-    assert.ok(req.ok);
+    assert.ok(req.ok, `request failed: ${req.error}`);
     assert.equal(req.withdrawal.status, "pending");
 
     // Approve
@@ -363,26 +386,26 @@ describe("Withdrawal Workflow", () => {
 
     // Balance decreased
     const { balance } = getBalance(db, "wd-user");
-    assert.ok(balance < 500);
+    assert.ok(balance < startBalance);
   });
 
-  it("withdrawal hold: pending withdrawal reduces available balance for new withdrawals", () => {
-    executePurchase(db, { userId: "hold-user", amount: 100 });
+  it("withdrawal hold: pending withdrawal reduces available EARNED balance for new withdrawals", () => {
+    seedEarned("hold-user", 100, { type: "MARKETPLACE_PURCHASE" });
 
     // Request withdrawal for 80
     const req1 = requestWithdrawal(db, { userId: "hold-user", amount: 80 });
-    assert.ok(req1.ok);
+    assert.ok(req1.ok, `first request failed: ${req1.error}`);
 
-    // Requesting another 80 should fail (only ~100 available, 80 pending)
+    // Requesting another 80 should fail (only ~100 earned, 80 already claimed)
     const req2 = requestWithdrawal(db, { userId: "hold-user", amount: 80 });
     assert.equal(req2.ok, false);
   });
 
   it("cancelled withdrawal releases hold", () => {
-    executePurchase(db, { userId: "cancel-user", amount: 100 });
+    seedEarned("cancel-user", 100);
 
     const req = requestWithdrawal(db, { userId: "cancel-user", amount: 90 });
-    assert.ok(req.ok);
+    assert.ok(req.ok, `request failed: ${req.error}`);
 
     // Cancel it
     const cancel = cancelWithdrawal(db, { withdrawalId: req.withdrawal.id, userId: "cancel-user" });
@@ -390,7 +413,14 @@ describe("Withdrawal Workflow", () => {
 
     // Now can request again
     const req2 = requestWithdrawal(db, { userId: "cancel-user", amount: 90 });
-    assert.ok(req2.ok);
+    assert.ok(req2.ok, `second request failed: ${req2.error}`);
+  });
+
+  it("freshly-earned CC is held 48h before it can be withdrawn", () => {
+    seedEarned("fresh-earn-user", 200, { hoursAgo: 1 }); // earned 1h ago, not settled
+    const req = requestWithdrawal(db, { userId: "fresh-earn-user", amount: 50 });
+    assert.equal(req.ok, false);
+    assert.equal(req.error, "insufficient_earned_balance");
   });
 });
 
