@@ -48,7 +48,7 @@ function gatherSignal(db, userId) {
   try {
     const brief = db.prepare(`
       SELECT id, title FROM dtus
-      WHERE creator_id = ? AND kind = 'morning_brief'
+      WHERE creator_id = ? AND type = 'morning_brief'
       ORDER BY created_at DESC LIMIT 1
     `).get(userId);
     if (brief) {

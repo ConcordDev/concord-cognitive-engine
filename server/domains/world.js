@@ -1230,11 +1230,11 @@ export default function registerWorldActions(registerLensAction) {
       const npcId = `npc_${crypto.randomBytes(6).toString("hex")}`;
       const temperament = birthTemperament({ speciesId: species, seed: `${worldId}|${species}|${npcId}` });
       // permissive insert: only columns guaranteed to exist; temperament_json from mig 326.
+      const npcCols = new Set(db.prepare(`PRAGMA table_info(world_npcs)`).all().map((c) => c.name));
       const cols = ["id", "world_id", "archetype"];
       const vals = [npcId, worldId, species.startsWith("creature:") ? species : species];
-      try { db.prepare(`SELECT temperament_json FROM world_npcs LIMIT 0`).get(); cols.push("temperament_json"); vals.push(JSON.stringify(temperament)); } catch { /* col optional */ }
-      const hasName = (() => { try { db.prepare(`SELECT name FROM world_npcs LIMIT 0`).get(); return true; } catch { return false; } })();
-      if (hasName && name) { cols.push("name"); vals.push(name); }
+      if (npcCols.has("temperament_json")) { cols.push("temperament_json"); vals.push(JSON.stringify(temperament)); }
+      if (npcCols.has("name") && name) { cols.push("name"); vals.push(name); }
       db.prepare(`INSERT INTO world_npcs (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`).run(...vals);
       return { ok: true, result: { npcId, worldId, species, name, temperament } };
     } catch (err) {

@@ -936,6 +936,7 @@ export default function registerSecurityActions(registerLensAction) {
   // vulnerabilities (real STATE, like security-dashboard). Surfaces the lens's
   // "Access Audit" button. Returns a posture score + open-critical list + advice.
   registerLensAction("security", "accessAudit", (ctx, _artifact, _params = {}) => {
+  try {
     const s = getSecurityState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = secActor(ctx);
     const assets = secAssets(s, userId);
@@ -970,5 +971,6 @@ export default function registerSecurityActions(registerLensAction) {
         recommendations,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 };

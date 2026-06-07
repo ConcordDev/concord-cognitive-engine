@@ -65,7 +65,7 @@ function mintIdentityDtu(db, { agentId, name, values, worldId, userId }) {
       machine: { tags: ["agent_identity", "self"], agentId },
     };
     db.prepare(`
-      INSERT INTO dtus (id, creator_id, world_id, kind, title, data, created_at)
+      INSERT INTO dtus (id, creator_id, world_id, type, title, data, created_at)
       VALUES (?, ?, ?, 'agent_identity', ?, ?, unixepoch())
     `).run(dtuId, userId || agentId, worldId || null, `Self of ${name}`, JSON.stringify(data));
     return dtuId;

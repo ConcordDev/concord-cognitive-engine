@@ -43,6 +43,7 @@ export default function registerSkillFusionMacros(register) {
   }, { note: "preview the fusion of two skills (no writes)" });
 
   register("skill-fusion", "fuse", async (ctx, input = {}) => {
+  try {
     if (!skillFusionEnabled()) return { ok: false, reason: "fusion_disabled" };
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
@@ -72,5 +73,6 @@ export default function registerSkillFusionMacros(register) {
     });
     if (!created.ok) return { ok: false, reason: created.reason || "persist_failed" };
     return { ok: true, fused, skillId: created.skill.id, skill: created.skill };
-  }, { note: "fuse two of the player's skills into a new stronger power" });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "fuse two of the player's skills into a new stronger power" });
 }

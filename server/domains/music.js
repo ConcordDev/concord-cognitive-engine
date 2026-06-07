@@ -406,6 +406,7 @@ export default function registerMusicActions(registerLensAction) {
   });
 
   registerLensAction("music", "playlist-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     const tracks = new Map((s.tracks.get(userId) || []).map((t) => [t.id, t]));
@@ -423,7 +424,8 @@ export default function registerMusicActions(registerLensAction) {
     }
     const playlists = [...own, ...collab];
     return { ok: true, result: { playlists, count: playlists.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("music", "playlist-add-track", (ctx, _a, params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -449,6 +451,7 @@ export default function registerMusicActions(registerLensAction) {
   });
 
   registerLensAction("music", "playlist-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     let pl = (s.playlists.get(userId) || []).find((p) => p.id === params.id);
@@ -461,7 +464,8 @@ export default function registerMusicActions(registerLensAction) {
       ok: true,
       result: { playlist: pl, tracks, durationSec: tracks.reduce((a, t) => a + t.durationSec, 0) },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("music", "playlist-reorder", (ctx, _a, params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };

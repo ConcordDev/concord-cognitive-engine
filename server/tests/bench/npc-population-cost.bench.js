@@ -61,7 +61,6 @@ test("D2 bench — LLM cost tracks salience, not population", async (t) => {
     assert.equal(r.escalations, DILEMMAS * TICKS, "LLM wakes == dilemmas × ticks");
     const deterministicRatio = r.resolutions / (r.resolutions + r.escalations);
     assert.ok(deterministicRatio > 0.99, `>99% resolved for free (${(deterministicRatio * 100).toFixed(2)}%)`);
-    // eslint-disable-next-line no-console
     console.log(`  [bench] 1000 NPCs × ${TICKS} ticks: ${r.escalations} LLM wakes, ${r.resolutions} free, ` +
       `${r.ms.toFixed(1)}ms total, ${r.perNpcTickUs.toFixed(2)}µs/NPC-tick (instinct is ~free)`);
   });
@@ -71,7 +70,6 @@ test("D2 bench — LLM cost tracks salience, not population", async (t) => {
     const large = runPopulation(10000, DILEMMAS, TICKS);
     assert.equal(small.escalations, large.escalations,
       "10,000 NPCs cost the same LLM calls as 100 — the cost is the dilemmas, not the crowd");
-    // eslint-disable-next-line no-console
     console.log(`  [bench] 100 NPCs → ${small.escalations} wakes; 10,000 NPCs → ${large.escalations} wakes (identical). ` +
       `"A thousand NPCs for the cost of ten" — proven.`);
   });

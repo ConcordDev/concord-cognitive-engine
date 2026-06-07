@@ -22,9 +22,11 @@ export default function registerVideoGenMacros(register) {
   }, { note: "Start a video generation job. Provider: openai (Sora) / google (Veo) / runway. Returns jobId for polling." });
 
   register("video_gen", "poll", async (ctx, input = {}) => {
+  try {
     if (!input?.jobId) return { ok: false, reason: "missing_jobId" };
     return pollVideoStatus(input.jobId);
-  }, { note: "Poll a video generation job. Returns status (pending/completed/failed) + url when done." });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "Poll a video generation job. Returns status (pending/completed/failed) + url when done." });
 
   register("video_gen", "list_pending", async () => {
     return { ok: true, jobs: listPendingJobs() };

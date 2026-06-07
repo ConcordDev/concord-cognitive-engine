@@ -950,6 +950,7 @@ export async function seedContent({ db = null } = {}) {
       if (Array.isArray(hpJson) && hpJson.length > 0) {
         const { authorPuzzle: authorHack } = await import("./hacking.js");
         let inserted = 0;
+        // @sql-loop-ok: idempotent boot-time seed over a small authored puzzle set.
         for (const p of hpJson) {
           try {
             const existing = db.prepare(`SELECT id FROM hacking_puzzles WHERE name = ?`).get(p.name);

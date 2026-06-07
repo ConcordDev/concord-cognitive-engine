@@ -10,18 +10,22 @@ import {
 
 export default function registerSkillTreeMacros(register) {
   register("skill_tree", "for_me", async (ctx) => {
+  try {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
     if (!db) return { ok: false, reason: "no_db" };
     if (!userId) return { ok: false, reason: "no_user" };
     return getSkillTreeForActor(db, "player", userId);
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   register("skill_tree", "for_actor", async (ctx, input = {}) => {
+  try {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     return getSkillTreeForActor(db, String(input?.actorKind || "player"), String(input?.actorId || ""));
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   register("skill_tree", "check_gate", async (ctx, input = {}) => {
     const db = ctx?.db;

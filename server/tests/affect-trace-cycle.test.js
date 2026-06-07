@@ -9,7 +9,7 @@ function setupDb() {
   const db = new Database(":memory:");
   db.exec(`CREATE TABLE world_npcs (id TEXT PRIMARY KEY)`);
   migTrace(db); // adds world_npcs.temperament_json + creature_affect_trace
-  db.exec(`CREATE TABLE dtus (id TEXT PRIMARY KEY, creator_id TEXT, world_id TEXT, kind TEXT, title TEXT, data TEXT, created_at INTEGER)`);
+  db.exec(`CREATE TABLE dtus (id TEXT PRIMARY KEY, creator_id TEXT, world_id TEXT, type TEXT, title TEXT, data TEXT, created_at INTEGER)`);
   return db;
 }
 
@@ -34,7 +34,7 @@ test("A6 — affect-trace flush cycle", async (t) => {
     assert.equal(rows.length, 2);
     assert.equal(rows[0].dominant_drive, "FEAR", "the frightened deer is the strongest trace");
     // the minted DTU reads as a place memory
-    const dtu = db.prepare(`SELECT data FROM dtus WHERE kind='affect_memory' LIMIT 1`).get();
+    const dtu = db.prepare(`SELECT data FROM dtus WHERE type='affect_memory' LIMIT 1`).get();
     assert.match(JSON.parse(dtu.data).human, /remembers/);
   });
 

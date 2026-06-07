@@ -47,6 +47,8 @@ export function initAchievementCatalog(db) {
   }
 
   let count = 0;
+  // @sync-fs-ok: one-time boot catalog load (guarded by _initialized).
+  // @sql-loop-ok: idempotent boot-time persist over a small authored catalog.
   for (const file of files) {
     try {
       const raw = fs.readFileSync(path.join(CONTENT_DIR, file), "utf8");

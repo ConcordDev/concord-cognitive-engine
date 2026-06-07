@@ -36,7 +36,7 @@ function estimateModelMB(model, role) {
   const name = String(model || "").toLowerCase();
   const m = name.match(/(\d+(?:\.\d+)?)\s*b\b/);
   const override = role && Number(process.env[`CONCORD_${role.toUpperCase()}_PARAMS_B`]);
-  let params = Number.isFinite(override) && override > 0 ? override : (m ? parseFloat(m[1]) : 7);
+  const params = Number.isFinite(override) && override > 0 ? override : (m ? parseFloat(m[1]) : 7);
   const declared = !m && Number.isFinite(override) && override > 0;
   let bpp = 0.6;                                     // q4_K_M ≈ 0.6 GB / B
   if (/q8|fp16|:16|f16/.test(name)) bpp = 1.1;

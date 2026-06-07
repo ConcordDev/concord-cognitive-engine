@@ -309,6 +309,13 @@ describe("Test 1: Economy Invariant", () => {
   it("1d — Valid withdrawal, verify CC burned and balance correct", () => {
     // Seed user with known amount
     seedUser("user_dave", 50);
+    // Earned-only withdrawal policy: only marketplace-sale / royalty CC settled
+    // ≥48h is withdrawable. Seed a backdated earned seller-credit row so the
+    // withdrawal qualifies (purchased TOKEN_PURCHASE CC is closed-loop).
+    db.prepare(`
+      INSERT INTO economy_ledger (id, type, from_user_id, to_user_id, amount, fee, net, status, created_at)
+      VALUES ('txn_dave_earned', 'MARKETPLACE_PURCHASE', NULL, 'user_dave', 50, 0, 50, 'complete', datetime('now', '-72 hours'))
+    `).run();
     const balBefore = getBalance(db, "user_dave").balance;
 
     const wdResult = requestWithdrawal(db, { userId: "user_dave", amount: 4 });

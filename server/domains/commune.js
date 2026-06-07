@@ -34,8 +34,10 @@ export function registerCommune(register) {
   });
 
   register("commune", "validate", (_ctx, input = {}) => {
+  try {
     return validateCommuneTemplate(input);
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   register("commune", "remove", (_ctx, input = {}) => {
     if (!input.id) return { ok: false, error: "id_required" };
