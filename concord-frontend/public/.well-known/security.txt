@@ -1,0 +1,6 @@
+# Concord — Security contact (RFC 9116)
+Contact: mailto:security@concord-os.org
+Expires: 2027-06-07T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://concord-os.org/.well-known/security.txt
+Policy: https://concord-os.org/legal/security
