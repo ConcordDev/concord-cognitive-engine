@@ -40761,8 +40761,11 @@ registerUniversalLensActions();
 // These override the AI catch-all for physics/math/chem/quantum/engineering.
 {
   const { loadComputeModule } = await import('./lib/compute/index.js');
-  const { runFEA } = await import('./lib/simulation/fea-solver.js');
-  const { createJob, runJob } = await import('./lib/simulation/simulation-jobs.js');
+  // engineering.runFEA is owned by the domain-file handler (domains/engineering.js);
+  // the prior inline solver passthrough here was removed (it overrode the richer
+  // handler — jobId persistence, contour bands, sim-job history). That block was
+  // the only consumer of the FEA solver + simulation-jobs imports in this scope,
+  // so both are dropped.
   const chemMod  = await import('./lib/compute/chemistry-compute.js');
   const quantMod = await import('./lib/compute/quantum-compute.js');
 
@@ -40879,16 +40882,13 @@ registerUniversalLensActions();
     return { ok: true, sensitivity: results.sort((a, b) => Math.abs(b.correlation) - Math.abs(a.correlation)) };
   });
 
-  // Engineering: FEA (async for large models, sync for small)
-  registerLensAction('engineering', 'runFEA', async (_ctx, artifact, params) => {
-    const input = params?.model || artifact?.data?.model || { nodes: [], members: [], loads: [], supports: [] };
-    if ((input.members || []).length > 100) {
-      const { id } = createJob('fea-frame', input);
-      runJob(id, () => runFEA(input)).catch(() => {});
-      return { ok: true, async: true, jobId: id };
-    }
-    return { ok: true, async: false, result: runFEA(input) };
-  });
+  // Engineering: FEA — handled by the richer domain-file handler
+  // (server/domains/engineering.js: jobId persistence, contour bands, sim-job
+  // history). The previous inline registration here re-registered
+  // 'engineering.runFEA' AFTER domains/index.js had wired the domain handler,
+  // silently overriding it with a thin solver passthrough (no jobId/contour/
+  // history). Removed so the domain handler — which the FEA solver header
+  // confirms is fast even for 200-member frames — is the live macro.
   registerLensAction('engineering', 'structuralCheck', async (_ctx, artifact, params) => {
     const eng = await loadComputeModule('engineering');
     const p = { ...artifact?.data, ...params };
