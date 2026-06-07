@@ -1271,3 +1271,256 @@ describe("accounting — audit log + payroll ACH + IRS filings (wave 10 top-up)"
     assert.match(String(none.result.error), /no payroll/i);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// wave 15 top-up — FINAL cleanup of STILL-uncovered deterministic macros:
+// the delete/edit mutators (employee-update/delete, item/po/budget/bills/
+// customers/recurring-bills delete, category-rules-delete), bank-feeds bulk-
+// accept + uncategorize JE math, institution link/list/unlink, and the Stripe
+// webhook rejection paths. Skipped (network/LLM/Stripe send): ai-categorize-txn,
+// ai-suggest-vendor, ask, currency-refresh-rates, receipt-ocr*, bank-feeds-sync,
+// bank-feeds-bulk-suggest (LLM), payroll-tax-efile, invoice-create-payment-link.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("accounting — bank-feeds bulk-accept + uncategorize JE math (wave 15 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("accounting-bank15"); });
+
+  it("bank-feeds-bulk-accept: deposit + withdrawal pair post correct Dr/Cr JEs; errors reported", async () => {
+    // Import a +500 deposit and a −120 withdrawal, then bulk-accept both plus a
+    // bad pick (unknown txn) so we see accepted vs errors split.
+    const imp = await lensRun("accounting", "bank-feeds-import", { params: { txns: [
+      { description: "Client deposit", amount: 500, date: "2026-07-01" },
+      { description: "Office supplies", amount: -120, date: "2026-07-02" },
+    ] } }, ctx);
+    assert.equal(imp.result.count, 2);
+    const dep = imp.result.imported.find((t) => t.amount === 500);
+    const wd = imp.result.imported.find((t) => t.amount === -120);
+    const res = await lensRun("accounting", "bank-feeds-bulk-accept", { params: { picks: [
+      { txnId: dep.id, accountId: "acct_4000" },   // deposit → revenue
+      { txnId: wd.id, accountId: "acct_6000" },    // withdrawal → office expense
+      { txnId: "btxn_nope", accountId: "acct_4000" },
+    ] } }, ctx);
+    assert.equal(res.ok, true);
+    assert.equal(res.result.accepted, 2);
+    assert.equal(res.result.total, 3);
+    assert.equal(res.result.errors.length, 1);
+    assert.equal(res.result.errors[0].txnId, "btxn_nope");
+    assert.match(String(res.result.errors[0].error), /txn not found/i);
+    // Verify the posted ledger: deposit JE debits cash 500 / credits revenue 500;
+    // withdrawal JE debits expense 120 / credits cash 120.
+    const cashLedger = await lensRun("accounting", "ledger-list", { params: { accountId: "acct_1000" } }, ctx);
+    assert.ok(cashLedger.result.rows.some((r) => r.debit === 500 && r.credit === 0), "cash debited 500 (deposit)");
+    assert.ok(cashLedger.result.rows.some((r) => r.credit === 120 && r.debit === 0), "cash credited 120 (withdrawal)");
+    const expLedger = await lensRun("accounting", "ledger-list", { params: { accountId: "acct_6000" } }, ctx);
+    assert.ok(expLedger.result.rows.some((r) => r.debit === 120), "office expense debited 120");
+  });
+
+  it("bank-feeds-bulk-accept: rejects an empty picks array", async () => {
+    const bad = await lensRun("accounting", "bank-feeds-bulk-accept", { params: { picks: [] } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /picks array required/i);
+  });
+
+  it("bank-feeds-uncategorize: reverses the auto-posted JE and clears accountId", async () => {
+    const uc = await depthCtx("accounting-uncat15");
+    const imp = await lensRun("accounting", "bank-feeds-import", { params: { description: "Refundable deposit", amount: 300, date: "2026-08-01" } }, uc);
+    const txnId = imp.result.imported[0].id;
+    const cat = await lensRun("accounting", "bank-feeds-categorize", { params: { txnId, accountId: "acct_4000" } }, uc);
+    assert.equal(cat.result.txn.accountId, "acct_4000");
+    // After categorize there's one journal entry; uncategorize must remove it.
+    const before = await lensRun("accounting", "ledger-list", { params: { accountId: "acct_4000" } }, uc);
+    assert.equal(before.result.total, 1);
+    const un = await lensRun("accounting", "bank-feeds-uncategorize", { params: { txnId } }, uc);
+    assert.equal(un.ok, true);
+    assert.equal(un.result.txn.accountId, null);
+    const after = await lensRun("accounting", "ledger-list", { params: { accountId: "acct_4000" } }, uc);
+    assert.equal(after.result.total, 0);            // auto-posted JE reversed
+    // Double-uncategorize is rejected.
+    const again = await lensRun("accounting", "bank-feeds-uncategorize", { params: { txnId } }, uc);
+    assert.equal(again.result.ok, false);
+    assert.match(String(again.result.error), /already uncategorized/i);
+  });
+
+  it("bank-feeds-uncategorize: rejects an unknown txn", async () => {
+    const bad = await lensRun("accounting", "bank-feeds-uncategorize", { params: { txnId: "btxn_nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /txn not found/i);
+  });
+});
+
+describe("accounting — institution link / list / unlink (wave 15 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("accounting-inst15"); });
+
+  it("bank-feeds-link-institution → list → unlink: round-trip with mask + status", async () => {
+    const link = await lensRun("accounting", "bank-feeds-link-institution", { params: { name: "First National", accountMask: "1234", ledgerAccountId: "acct_1000" } }, ctx);
+    assert.equal(link.ok, true);
+    assert.equal(link.result.institution.name, "First National");
+    assert.equal(link.result.institution.accountMask, "1234");
+    assert.equal(link.result.institution.status, "linked");
+    assert.equal(link.result.institution.ledgerAccountId, "acct_1000");
+    const id = link.result.institution.id;
+    const list = await lensRun("accounting", "bank-feeds-institutions-list", { params: {} }, ctx);
+    assert.equal(list.ok, true);
+    assert.equal(list.result.aggregatorConfigured, false);   // no aggregator env in tests
+    assert.ok((list.result.institutions || []).some((x) => x.id === id && x.name === "First National"), "linked institution listed");
+    const un = await lensRun("accounting", "bank-feeds-unlink-institution", { params: { id } }, ctx);
+    assert.equal(un.ok, true);
+    assert.equal(un.result.unlinked, true);
+    const list2 = await lensRun("accounting", "bank-feeds-institutions-list", { params: {} }, ctx);
+    assert.ok(!(list2.result.institutions || []).some((x) => x.id === id), "unlinked institution gone");
+  });
+
+  it("bank-feeds-link-institution: rejects a missing name", async () => {
+    const bad = await lensRun("accounting", "bank-feeds-link-institution", { params: { accountMask: "9999" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /name required/i);
+  });
+
+  it("bank-feeds-unlink-institution: rejects an unknown id", async () => {
+    const bad = await lensRun("accounting", "bank-feeds-unlink-institution", { params: { id: "inst_nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /institution not found/i);
+  });
+});
+
+describe("accounting — employee edit/delete + entity deletes (wave 15 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("accounting-del15"); });
+
+  it("employee-update → employee-delete: edit pay then remove; gone from list", async () => {
+    const e = await lensRun("accounting", "employee-create", { params: { name: "Edit Me", payType: "salary", rate: 30000 } }, ctx);
+    const id = e.result.employee.id;
+    const upd = await lensRun("accounting", "employee-update", { params: { id, name: "Edited", payType: "hourly", rate: 55, title: "Lead", active: false } }, ctx);
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.employee.name, "Edited");
+    assert.equal(upd.result.employee.payType, "hourly");
+    assert.equal(upd.result.employee.rate, 55);
+    assert.equal(upd.result.employee.title, "Lead");
+    assert.equal(upd.result.employee.active, false);
+    const list = await lensRun("accounting", "employee-list", { params: {} }, ctx);
+    assert.ok((list.result.employees || []).some((x) => x.id === id && x.rate === 55), "edited employee reads back");
+    const del = await lensRun("accounting", "employee-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, id);
+    const list2 = await lensRun("accounting", "employee-list", { params: {} }, ctx);
+    assert.ok(!(list2.result.employees || []).some((x) => x.id === id), "deleted employee gone");
+  });
+
+  it("employee-update / employee-delete: reject unknown ids", async () => {
+    const u = await lensRun("accounting", "employee-update", { params: { id: "emp_nope", name: "X" } }, ctx);
+    assert.equal(u.result.ok, false);
+    assert.match(String(u.result.error), /employee not found/i);
+    const d = await lensRun("accounting", "employee-delete", { params: { id: "emp_nope" } }, ctx);
+    assert.equal(d.result.ok, false);
+    assert.match(String(d.result.error), /employee not found/i);
+  });
+
+  it("item-delete: created item drops from list; unknown id rejected", async () => {
+    const it = await lensRun("accounting", "item-create", { params: { name: "Bolt", type: "inventory", qtyOnHand: 1, cost: 2 } }, ctx);
+    const id = it.result.item.id;
+    const del = await lensRun("accounting", "item-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, id);
+    const list = await lensRun("accounting", "item-list", { params: {} }, ctx);
+    assert.ok(!(list.result.items || []).some((x) => x.id === id), "deleted item gone");
+    const bad = await lensRun("accounting", "item-delete", { params: { id } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /item not found/i);
+  });
+
+  it("po-delete: created PO drops from list; unknown id rejected", async () => {
+    const v = await lensRun("accounting", "vendors-create", { params: { name: "PO Del Vendor" } }, ctx);
+    const po = await lensRun("accounting", "po-create", { params: { vendorId: v.result.vendor.id, lines: [{ description: "Z", qty: 2, unitCost: 8 }] } }, ctx);
+    const id = po.result.purchaseOrder.id;
+    const del = await lensRun("accounting", "po-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, id);
+    const list = await lensRun("accounting", "po-list", { params: {} }, ctx);
+    assert.ok(!(list.result.purchaseOrders || []).some((p) => p.id === id), "deleted PO gone");
+    const bad = await lensRun("accounting", "po-delete", { params: { id } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /purchase order not found/i);
+  });
+
+  it("budget-delete: created budget drops from list; unknown id rejected", async () => {
+    const b = await lensRun("accounting", "budget-create", { params: { name: "Del Budget", fiscalYear: 2026 } }, ctx);
+    const id = b.result.budget.id;
+    const del = await lensRun("accounting", "budget-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, id);
+    const list = await lensRun("accounting", "budget-list", { params: {} }, ctx);
+    assert.ok(!(list.result.budgets || []).some((x) => x.id === id), "deleted budget gone");
+    const bad = await lensRun("accounting", "budget-delete", { params: { id } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /budget not found/i);
+  });
+});
+
+describe("accounting — bills/customers/recurring-bills/category-rules delete + webhook (wave 15 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("accounting-del15b"); });
+
+  it("bills-delete: removing a bill also reverses its auto-posted + payment JEs", async () => {
+    const v = await lensRun("accounting", "vendors-create", { params: { name: "Reversible Vendor" } }, ctx);
+    const b = await lensRun("accounting", "bills-create", { params: { vendorId: v.result.vendor.id, total: 90, expenseAccountId: "acct_6000", issuedAt: "2026-01-01" } }, ctx);
+    const billId = b.result.bill.id;
+    await lensRun("accounting", "bills-pay", { params: { id: billId } }, ctx);
+    // The expense account now carries the bill's JE line(s).
+    const before = await lensRun("accounting", "ledger-list", { params: { accountId: "acct_6000" } }, ctx);
+    const beforeCount = before.result.total;
+    assert.ok(beforeCount >= 1, "bill auto-posted to expense");
+    const del = await lensRun("accounting", "bills-delete", { params: { id: billId } }, ctx);
+    assert.equal(del.result.deleted, true);
+    const list = await lensRun("accounting", "bills-list", { params: { status: "all" } }, ctx);
+    assert.ok(!(list.result.bills || []).some((x) => x.id === billId), "deleted bill gone");
+    const after = await lensRun("accounting", "ledger-list", { params: { accountId: "acct_6000" } }, ctx);
+    assert.ok(after.result.total < beforeCount, "auto-posted JE reversed on delete");
+    const bad = await lensRun("accounting", "bills-delete", { params: { id: billId } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /bill not found/i);
+  });
+
+  it("customers-delete: created customer drops from list; unknown id rejected", async () => {
+    const c = await lensRun("accounting", "customers-create", { params: { name: "Delete Me Co" } }, ctx);
+    const id = c.result.customer.id;
+    const del = await lensRun("accounting", "customers-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, true);
+    const list = await lensRun("accounting", "customers-list", { params: {} }, ctx);
+    assert.ok(!(list.result.customers || []).some((x) => x.id === id), "deleted customer gone");
+    const bad = await lensRun("accounting", "customers-delete", { params: { id } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /customer not found/i);
+  });
+
+  it("recurring-bills-delete: created schedule drops from list; unknown id rejected", async () => {
+    const v = await lensRun("accounting", "vendors-create", { params: { name: "Rec Del Vendor" } }, ctx);
+    const r = await lensRun("accounting", "recurring-bills-create", { params: { vendorId: v.result.vendor.id, total: 30, expenseAccountId: "acct_6000", cadence: "monthly" } }, ctx);
+    const id = r.result.recurringBill.id;
+    const del = await lensRun("accounting", "recurring-bills-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, true);
+    const list = await lensRun("accounting", "recurring-bills-list", { params: {} }, ctx);
+    assert.ok(!(list.result.recurringBills || []).some((x) => x.id === id), "deleted recurring bill gone");
+    const bad = await lensRun("accounting", "recurring-bills-delete", { params: { id } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /recurring bill not found/i);
+  });
+
+  it("category-rules-delete: created rule drops from list; unknown id rejected", async () => {
+    const ok = await lensRun("accounting", "category-rules-create", { params: { pattern: "LYFT", accountId: "acct_6000" } }, ctx);
+    const id = ok.result.rule.id;
+    const del = await lensRun("accounting", "category-rules-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, true);
+    const list = await lensRun("accounting", "category-rules-list", { params: {} }, ctx);
+    assert.ok(!(list.result.rules || []).some((x) => x.id === id), "deleted rule gone");
+    const bad = await lensRun("accounting", "category-rules-delete", { params: { id } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /rule not found/i);
+  });
+
+  it("invoice-webhook-mark-paid: rejects missing ids and an unknown stripe invoice", async () => {
+    const missing = await lensRun("accounting", "invoice-webhook-mark-paid", { params: { stripeInvoiceId: "in_123" } }, ctx);
+    assert.equal(missing.result.ok, false);
+    assert.match(String(missing.result.error), /stripeInvoiceId \+ userId required/i);
+    const notFound = await lensRun("accounting", "invoice-webhook-mark-paid", { params: { stripeInvoiceId: "in_nope", userId: "u_nope" } }, ctx);
+    assert.equal(notFound.result.ok, false);
+    assert.match(String(notFound.result.error), /local invoice not found for stripe id/i);
+  });
+});
