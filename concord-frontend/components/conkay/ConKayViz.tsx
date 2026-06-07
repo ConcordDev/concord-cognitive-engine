@@ -12,7 +12,7 @@
 // mapping: structured-output-shape → meaningful visualization, reusing ChartKit.
 
 import { useMemo } from 'react';
-import { BarChart3, Database, Globe, Wrench, Network, Cpu } from 'lucide-react';
+import { BarChart3, Database, Globe, Wrench, Network, Cpu, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { ChartKit } from '@/components/viz/ChartKit';
 
 export interface ConKayReplyFields {
@@ -197,6 +197,39 @@ function ToolCalls({ toolCalls }: { toolCalls: unknown }) {
 }
 
 /**
+ * TrustBadge — the verifiability surface. A trustworthy assistant is honest
+ * about WHAT it knows vs. what it's guessing. A reply is "grounded" when it's
+ * backed by a real artifact — a cited DTU from your archive, a web source, a
+ * completed macro/action, or computed data. Those read confidently. A
+ * prose-only reply (the model reasoning from context) is labelled honestly:
+ * it isn't verified, so check it before relying on it. (ConKay organizes and
+ * accelerates — it does not certify; especially not real-world/physics claims.)
+ */
+function TrustBadge({ fields }: { fields: ConKayReplyFields }) {
+  const grounded =
+    asArray(fields.dtuRefs).length > 0 ||
+    asArray(fields.refs).length > 0 ||
+    asArray(fields.sources).length > 0 ||
+    asArray(fields.toolCalls).length > 0 ||
+    (Array.isArray(fields.computed) && fields.computed.length > 0);
+
+  if (grounded) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400/80" title="Backed by your archive, a web source, a completed action, or computed data.">
+        <ShieldCheck className="h-3 w-3" /> Grounded
+      </span>
+    );
+  }
+  // Prose-only → reasoning, not a cited fact. Be honest so a confidently-wrong
+  // answer never reads as verified.
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] text-amber-400/80" title="ConKay reasoned this from context — it isn't backed by a cited source or a completed action. Verify before relying on it (and never as proof of real-world/physics behaviour).">
+      <AlertTriangle className="h-3 w-3" /> Reasoned — verify
+    </span>
+  );
+}
+
+/**
  * ConKayMessage — renders an assistant reply in ConKay's dual-mode style:
  * prose (always) + any live visualization + archive/research citations +
  * ambient action chips. `renderProse` lets the host pass its existing markdown
@@ -230,11 +263,14 @@ export function ConKayMessage({
       {computedSpec && <Viz spec={computedSpec} />}
       <Citations fields={fields} />
       <ToolCalls toolCalls={fields.toolCalls} />
-      {brain && (
-        <div className="mt-2 inline-flex items-center gap-1 text-[10px] text-zinc-500">
-          <Cpu className="h-3 w-3" /> via {brain}
-        </div>
-      )}
+      <div className="mt-2 flex items-center gap-3">
+        <TrustBadge fields={fields} />
+        {brain && (
+          <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500">
+            <Cpu className="h-3 w-3" /> via {brain}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
