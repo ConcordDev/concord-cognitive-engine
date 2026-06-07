@@ -157,3 +157,119 @@ per-system flares; in-message image thumbnails for the vision turn.
 chat lens + its mode system + `/api/chat` stream + `runMacro` + `realtimeEmit` +
 `prompt-registry.js` + 5-brain (incl. vision) + DTU RAG/citation + `ChartKit` +
 Concordia Three.js/WebGPU + `LensShell` (a11y/reduced-motion) + Web Speech API.
+
+---
+
+## 7. The world-tree presence (visual identity, shipped 2026-06)
+
+The generic "Jarvis dot-cloud" was replaced with ConKay's signature surface: the
+**Concordia world-tree of light** — a luminous energy trunk that branches upward
+into a canopy of glowing galaxy-discs (the DTU lattice / sub-worlds), with
+drifting crystalline shards, on a dark cosmic field. GPU-driven via
+`@react-three/fiber` (`ConKayScene.tsx`), full-bleed, scaled to fill the
+conversation area, and reactive to both the state machine and live mic amplitude.
+This is the distinctive look no other JARVIS clone has — and it's not decoration:
+the trunk's flow speed, the canopy pulse, and the colour all key off ConKay's real
+state (idle/listening/processing/presenting/acting).
+
+## 8. Skills — the part that makes Kay *act* (shipped 2026-06)
+
+`components/conkay/conkay-skills.ts` is a local skill registry that makes Kay
+**do things against real Concord data**, instantly, **even when the LLM brains are
+offline**. A short imperative matches a skill and runs it; anything else falls
+through to the four-brain chat pipeline. Each skill returns spoken prose + an
+optional **live visualization** (rendered via the `conkay-viz` fence
+`ConKayMessage` already parses) + **DTU/source citations** + an optional
+navigation + an ambient "acting" flare.
+
+| Skill | Utterance | Real backing |
+|---|---|---|
+| Brief me | "brief me", "status", "catch me up" | `/api/dtus?mine=true` + `/api/presence/active` + `/api/events` → metrics panel + archive citations |
+| My activity | "show my activity" | `/api/dtus?mine=true` → last-14-days creation series chart |
+| Search archive | "search my archive for X" | `/api/dtus?mine=true&q=X` → DTU citation cards |
+| World pulse | "what's happening", "who's around" | presence + events → metrics |
+| Enter the world | "enter the world" | navigates into Concordia |
+| Open a lens | "open music", "go to accounting" | resolves any lens by name/keyword from the registry → navigates |
+| What can you do | "what can you do" | a skill graph |
+
+**Wiring (`app/lenses/chat/page.tsx`):** `handleSend` and the voice transcript
+handler both route a matching imperative to the skill runner before falling
+through to the brain; the state machine shows "processing" while a skill runs; the
+auto-speak path strips the `conkay-viz` fence so Kay never reads JSON aloud.
+**Render note:** in ConKay mode the thread renders as a plain (non-virtualized)
+list — the full-bleed holographic layout doesn't give react-virtuoso a stable
+scroll height, which silently unmounts freshly-appended rows; the plain list keeps
+every reply (prose + viz + citations) mounted. Verified end-to-end signed-in.
+
+**Hidden staple:** a "ConKay — Summon Kay" entry is prepended to the global
+Cmd/Ctrl+K palette (`components/common/CommandPalette.tsx`); selecting it
+deep-links to `/lenses/chat?mode=conkay` (full navigation so the mode reader
+always fires). ConKay is reachable from anywhere.
+
+---
+
+## 9. The differentiator — *summon Kay onto any lens and operate it* (Tony↔JARVIS)
+
+### 9.1 What every other JARVIS project can't do (web research, 2026-06)
+
+A survey of existing JARVIS-style assistants (open-source clones — Leon, Mycroft/
+OVOS, the GitHub "Jarvis" repos; and commercial/research systems — Siri+App
+Intents, Alexa, Copilot, Gemini/Project Astra, Rabbit R1's LAM, Adept ACT-1,
+OpenAI Operator, Anthropic computer-use) found every one falls into one of three
+buckets for **taking action**, none of which is in-app native operation:
+
+1. **Pre-wired capability calls** (Alexa skills, Siri App Intents, Copilot
+   connectors, MCP/OpenAPI tools). Limited to what a developer explicitly exposed,
+   **per app, opt-in**. App Intents is the philosophically closest — typed,
+   app-declared actions — but the app owner gates the surface.
+2. **OS/screen-level GUI emulation** (Operator, Anthropic computer-use, Rabbit
+   LAM, ACT-1, RPA). Screenshots/pixels + emulated mouse/keyboard *beside* the
+   app. **Brittle** (>50% of RPA projects can't scale past ~10 bots; selectors
+   break on any UI change), **slow** (per-step multimodal round-trips), and
+   **semantically blind** (sees widgets, not the app's concepts). Often runs in a
+   remote/sandboxed browser, not your live app.
+3. **Answer-only** (the bulk of hobbyist clones).
+
+**The unfilled niche:** *no system can be summoned onto an arbitrary app and
+fluently operate that app's own native UI/features as a semantically-integrated,
+first-class overlay — without per-app developer wiring and without brittle
+pixel-emulation.* The blocker everyone hits is the missing **agent↔app semantic
+contract**. The only credible industry directions (Apple App Intents, MCP,
+Google's A2UI) all still require each app to opt in and publish a contract.
+
+### 9.2 Why Concord can do it — the contract already exists
+
+Concord already ships the missing piece: a **unified, semantic action surface
+across all 259 lenses** — the macro registry (`runMacro(domain, name, input)`,
+~9,609 `(domain, macro)` pairs) plus the lens manifest / feature specs. That *is*
+the agent↔app contract App Intents/MCP/A2UI are reaching for — but **unified, not
+per-app opt-in, and already wired front-to-back**. So ConKay can operate any lens
+by **calling its real macros** (the same functions the UI calls), semantically,
+with no screen-scraping and no per-app integration work.
+
+### 9.3 Design — the cross-lens takeover overlay (next build)
+
+- **Global presence in the Concord Link shell.** ConKay becomes summonable from
+  *any* lens (hotkey / Link bar), not only inside the chat lens. A lightweight
+  overlay mounts over the current lens; the world-tree field + voice come with it.
+- **Lens-aware intent → macro.** On summon, ConKay reads the active lens id +
+  its manifest (the macros/features that lens exposes) and scopes Kay to *that*
+  app's verbs. "Kay, add a frost-EQ preset and boost the pre-amp" on the music
+  lens resolves to the lens's real `music.*` macros via `runMacro`.
+- **Execute with ambient feedback + undo.** Each action runs the real macro,
+  surfaces an ambient-action chip (what Kay touched), and — because every action
+  is a discrete macro call — is naturally inspectable and reversible.
+- **Cross-lens spans.** Because it's one substrate, a single request can cross
+  lenses ("pull my tax DTUs, chart this quarter, draft the filing" =
+  archive + finance + legal) — impossible for per-app assistants.
+- **Safety posture.** Reuses the three-gate permission system + write-auth; only
+  exposes macros the signed-in user may already call from that lens. High-privilege
+  / destructive macros stay gated (the EDITH lesson).
+
+This is the headline: **Tony↔JARVIS, but real** — an assistant that operates the
+app from *inside*, semantically, via the host's own action contract. That is the
+niche the industry is circling and nobody has filled.
+
+*Research sources are catalogued in the session that produced this section
+(open-source clones, App Intents, MCP, A2UI, RPA brittleness, Rabbit LAM,
+Operator vs computer-use).*
