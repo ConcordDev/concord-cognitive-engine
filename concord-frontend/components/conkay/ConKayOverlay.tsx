@@ -98,6 +98,25 @@ export function ConKayOverlay() {
 
   const append = useCallback((m: OverlayMsg) => setMessages((prev) => [...prev, m]), []);
 
+  // Persist a revisitable artifact of what ConKay did — the task + its work +
+  // result — as a DTU in the user's locker (fire-and-forget; never blocks the UX).
+  // "show its work and the task it was provided" → a real, reopenable record.
+  const persistArtifact = useCallback((title: string, work: Record<string, unknown>) => {
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL || '';
+      fetch(`${base}/api/dtus`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `ConKay · ${title}`.slice(0, 120),
+          content: `**ConKay task artifact**\n\n\`\`\`json\n${JSON.stringify(work, null, 2)}\n\`\`\``,
+          tags: ['conkay', 'artifact', work.lens ? `lens:${work.lens}` : ''].filter(Boolean),
+          kind: 'conkay_artifact',
+        }),
+      }).catch(() => {});
+    } catch { /* never throws */ }
+  }, []);
+
   // ── voice ───────────────────────────────────────────────────────────
   const voice = useConKayVoice({
     enabled: open,
@@ -147,24 +166,23 @@ export function ConKayOverlay() {
       });
       const fence = result.viz ? `\n\n\`\`\`conkay-viz\n${JSON.stringify(result.viz)}\n\`\`\`` : '';
       append({ id: `a-${Date.now()}`, role: 'assistant', content: `${result.spoken}${fence}`, dtuRefs: result.dtuRefs, sources: result.sources, toolCalls: result.toolCalls, brain: 'kay' });
+      persistArtifact(`Skill: ${match.skill.label}`, { task: text, skill: match.skill.id, spoken: result.spoken, viz: result.viz ?? null });
       if (result.navigate) { const dest = result.navigate; setTimeout(() => { window.location.href = dest; }, 900); }
     } catch {
       append({ id: `a-${Date.now()}`, role: 'assistant', content: 'I hit a snag running that — mind trying again?' });
     } finally {
       setRunning(false);
     }
-  }, [append]);
+  }, [append, persistArtifact]);
 
-  // ── operate the active lens by calling its real macro ───────────────
-  const runLensMacro = useCallback(async (domain: string, macro: string, inputObj: Record<string, unknown>) => {
-    append({ id: `u-${Date.now()}`, role: 'user', content: `run ${domain}.${macro}` });
-    setInput('');
-    setRunning(true);
+  // ── execute a lens macro (shared by explicit "run X" + the NL resolver) ──
+  const executeMacro = useCallback(async (domain: string, macro: string, inputObj: Record<string, unknown>, preface?: string) => {
+    if (preface) append({ id: `a-${Date.now()}-p`, role: 'assistant', content: preface, brain: 'kay' });
     try {
       const { data } = await lensRun(domain, macro, inputObj);
       const ok = !!data?.ok;
       const resultStr = data?.result != null ? JSON.stringify(data.result, null, 2) : (ok ? '(done)' : (data?.error || 'no result'));
-      const spoken = ok ? `Ran ${macro} on the ${domain} lens.` : `${macro} on ${domain} returned: ${data?.error || 'an error'}.`;
+      const spoken = ok ? `Done — ran ${macro} on the ${domain} lens.` : `${macro} on ${domain} returned: ${data?.error || 'an error'}.`;
       const body = resultStr.length > 1200 ? resultStr.slice(0, 1200) + '\n…' : resultStr;
       append({
         id: `a-${Date.now()}`, role: 'assistant',
@@ -172,12 +190,78 @@ export function ConKayOverlay() {
         toolCalls: [{ tool: `${domain}.${macro}`, params: inputObj, result: data?.result ?? null, ok }],
         brain: 'kay',
       });
+      // Persist a revisitable artifact of the task + its work to the DTU locker.
+      persistArtifact(`Operated ${domain}.${macro}`, {
+        task: preface || `run ${domain}.${macro}`,
+        lens: domain, macro, input: inputObj, ok, result: data?.result ?? null,
+      });
+      return ok;
     } catch {
       append({ id: `a-${Date.now()}`, role: 'assistant', content: `I couldn't run ${domain}.${macro} just now.` });
+      return false;
+    }
+  }, [append, persistArtifact]);
+
+  const runLensMacro = useCallback(async (domain: string, macro: string, inputObj: Record<string, unknown>) => {
+    append({ id: `u-${Date.now()}`, role: 'user', content: `run ${domain}.${macro}` });
+    setInput('');
+    setRunning(true);
+    try { await executeMacro(domain, macro, inputObj); } finally { setRunning(false); }
+  }, [append, executeMacro]);
+
+  // ── NL → lens macro: the "operate by speaking" path (needs the brains) ──
+  // Conscious brain maps the request onto ONE of the lens' REAL macros (from
+  // /api/lens-actions/:domain) and emits {macro,input}; ConKay executes it via
+  // the real macro contract, narrates while it works, and files an artifact.
+  const resolveAndOperate = useCallback(async (text: string, domain: string, lensName: string) => {
+    append({ id: `u-${Date.now()}`, role: 'user', content: text });
+    setInput('');
+    setRunning(true);
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL || '';
+      let actions: string[] = [];
+      try {
+        const r = await fetch(`${base}/api/lens-actions/${encodeURIComponent(domain)}`, { credentials: 'include' });
+        const j = await r.json();
+        actions = Array.isArray(j?.actions) ? j.actions.map((a: { name?: string } | string) => (typeof a === 'string' ? a : a?.name)).filter(Boolean) : [];
+      } catch { /* no actions surface */ }
+      const prompt = [
+        `You are ConKay operating the "${lensName}" lens inside Concord.`,
+        `Available macros for this lens (domain "${domain}"): ${actions.length ? actions.join(', ') : '(unknown — infer a reasonable one)'}.`,
+        `The user said: "${text}".`,
+        `Choose the single best macro and the JSON input it needs.`,
+        `Respond with ONLY a JSON object: {"macro":"<name>","input":{...}} — or {"macro":null} if none fits.`,
+      ].join('\n');
+      let macro: string | null = null;
+      let inputObj: Record<string, unknown> = {};
+      try {
+        const r = await fetch(`${base}/api/brain/conscious`, {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: prompt }),
+        });
+        const j = await r.json();
+        const m = String(j?.reply || '').match(/\{[\s\S]*\}/);
+        if (m) {
+          const parsed = JSON.parse(m[0]);
+          if (parsed && typeof parsed.macro === 'string') { macro = parsed.macro; inputObj = (parsed.input && typeof parsed.input === 'object') ? parsed.input : {}; }
+        }
+      } catch { /* brains offline */ }
+      if (macro) {
+        await executeMacro(domain, macro, inputObj, `On it — running ${macro} on the ${lensName} lens.`);
+      } else {
+        append({
+          id: `a-${Date.now()}`, role: 'assistant',
+          content: actions.length
+            ? `I couldn't map that to a ${lensName} action right now (the brains may be offline). This lens exposes: ${actions.slice(0, 12).join(', ')}${actions.length > 12 ? '…' : ''}. You can also say "run <action>".`
+            : `I need the brains online to operate the ${lensName} lens by voice. For now, say "run <action>", or ask me to "brief me" / "search my archive for …".`,
+          brain: 'kay',
+        });
+      }
     } finally {
       setRunning(false);
     }
-  }, [append]);
+  }, [append, executeMacro]);
 
   // ── command routing ─────────────────────────────────────────────────
   function submit(raw: string) {
@@ -196,14 +280,14 @@ export function ConKayOverlay() {
       runLensMacro(domain, macro, inp);
       return;
     }
-    // 3) honest fallback (free-text → lens macro needs the brains; that's the
-    //    documented follow-on). Guide the user to what works now.
+    // 3) free-text on a lens → the conscious brain maps it onto a real macro and
+    //    ConKay operates the lens (graceful fallback inside resolveAndOperate).
+    if (lens && !onChatLens) { resolveAndOperate(t, lens.id, lens.name); return; }
+    // 4) not on an operable lens — guide to the global skills.
     append({ id: `u-${Date.now()}`, role: 'user', content: t });
     setInput('');
-    const hint = lens && !onChatLens
-      ? `I'm on the ${lens.name} lens. Right now I can run its actions directly — try "run <action>" (e.g. run ${lens.id}.list) — or ask me to "brief me", "search my archive for …", or "open <lens>". Full natural-language control of this lens is coming as the brains come online.`
-      : `Try "brief me", "search my archive for …", "show my activity", "open <lens>", or "what can you do".`;
-    append({ id: `a-${Date.now()}`, role: 'assistant', content: hint, brain: 'kay' });
+    append({ id: `a-${Date.now()}`, role: 'assistant', brain: 'kay',
+      content: `Try "brief me", "search my archive for …", "show my activity", "open <lens>", or "what can you do".` });
   }
 
   const onSubmitForm = (e: React.FormEvent) => { e.preventDefault(); submit(input); };
@@ -225,8 +309,11 @@ export function ConKayOverlay() {
             Operating: {lens.name}
           </span>
         )}
-        <span className="ml-2 text-[11px] text-cyan-300/60">
-          {conkayState === 'listening' ? 'listening…' : conkayState === 'processing' ? 'working…' : conkayState === 'presenting' ? 'speaking…' : 'ready'}
+        <span className="ml-2 truncate text-[11px] text-cyan-300/60">
+          {voice.interim ? <span className="text-cyan-200/80">“{voice.interim}”</span>
+            : conkayState === 'listening' ? 'listening…'
+              : conkayState === 'processing' ? 'working…'
+                : conkayState === 'presenting' ? 'speaking…' : 'ready'}
         </span>
         <div className="ml-auto flex items-center gap-1.5">
           <button onClick={() => setMuted((x) => !x)} title={muted ? 'Unmute' : 'Mute'} aria-label={muted ? 'Unmute' : 'Mute'}

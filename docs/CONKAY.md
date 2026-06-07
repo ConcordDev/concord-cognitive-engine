@@ -273,3 +273,78 @@ niche the industry is circling and nobody has filled.
 *Research sources are catalogued in the session that produced this section
 (open-source clones, App Intents, MCP, A2UI, RPA brittleness, Rabbit LAM,
 Operator vs computer-use).*
+
+### 9.4 Operate-by-speaking, work artifacts, and multi-brain narration
+
+Shipped scaffolding (the overlay, `components/conkay/ConKayOverlay.tsx`):
+- **NL → real macro.** Free text on a lens is sent — with that lens' real action
+  list (`GET /api/lens-actions/:domain`) — to the conscious brain
+  (`POST /api/brain/conscious`), which returns `{macro,input}`; ConKay executes it
+  via `lensRun` (`/api/lens/run`). Graceful fallback when the brains are offline
+  (lists the lens' real actions + the explicit `run <action>` path). Gated on
+  brains-online to fully work — by design.
+- **Work artifacts in the DTU locker.** Every ConKay task (skill or lens op) files
+  a revisitable `kind:'conkay_artifact'` DTU (`POST /api/dtus`) capturing the task,
+  the work (macro + input), and the result — so what Kay did is a real, reopenable
+  record in your locker, not an ephemeral chat line. Fire-and-forget; never blocks.
+- **Seamless voice.** `useConKayVoice` runs continuous + interim recognition (stays
+  open across pauses; live "hearing you…" partials) with TTS pausing STT to avoid
+  self-hearing; auto-resumes listening after speaking — hands-free turn-taking.
+
+### 9.5 The work-animation language (JARVIS "you can see it building") — design
+
+Grounded in the FUI studios that authored the actual Marvel HUDs (Jayse Hansen;
+Territory Studio / Cantina Creative). **Principle: every animated element implies a
+real task phase — motion is functional, fast, eased, never decorative-only; only
+2–4 motifs run at once.** A single shared `phase` drives BOTH the Three.js scene
+and the voice state machine, so visuals and voice express one mind.
+
+**State → motion grammar** (the phase column is the single source of truth):
+| Phase | Verb / gesture | Motifs | Energy direction |
+|---|---|---|---|
+| idle | slow core breathing | ring pulse, faint parallax | still |
+| listening | reach-out + intake | inbound sweep, mic-amplitude-driven core | inward |
+| analyzing | focus-pull | counter-rotating rings accel, decrypt/scramble telemetry, rare glitch | churning |
+| building | **assemble** | schematic line-draw (SVG `stroke-dashoffset`), particle morph (`mix(scattered,target,uProgress)`), step cards drawing in one-by-one | outward, staggered |
+| presenting | **assemble-then-settle** | wireframe→solid, scaffolding particles dissolve, skeleton→content reveal | decelerate to still |
+| done | ring completion + check flourish | conic-gradient ring to 100%, ✓ stroke-draw with overshoot | one bright pulse |
+| error | destabilize | glitch intensifies, ring stutters red | sharp collapse |
+
+**The four hero transitions to nail:** reach-out (idle→listening), focus-pull
+(listening→analyzing), **assemble-then-settle** (building→presenting — the key
+"work is finishing" cue), ring-completion+check (→done).
+
+**Web techniques (all buildable on the stack we already use):** SVG
+`stroke-dasharray`/`dashoffset` line-draw; R3F `THREE.Points` morph via a
+`uProgress` uniform; shader sweep (`smoothstep(uSweep±w, pos)`); CSS
+`conic-gradient` progress rings + counter-rotating `@keyframes`; drei
+`<EffectComposer><Bloom/>` for the cyan glow; Framer/GSAP staggered timelines for
+the step-card cascade; text-scramble "decode" for headers + token shimmer for body.
+
+**Modern-AI grounding (so it reads current, not cosplay):** agent **step/tool-call
+cards** that appear → run (shimmer) → resolve (✓), a one-line live status
+("Reading 4 sources…"), determinate ring only when a real % exists (else
+indeterminate). These are the same patterns Claude/ChatGPT/Perplexity agent UIs use.
+
+### 9.6 Multi-brain orchestration (the example flow)
+
+> "Hey ConKay, what's the weather — bring up a diagram/animation of the forecast,
+> and will it affect any prior planned events?"
+
+Target behavior, mapped to Concord's real five-brain substrate:
+- **Conscious brain = the voice + supervisor.** Talks to you continuously and
+  *narrates while building* ("pulling the forecast… rendering it now… checking your
+  calendar…"), and **monitors the utility brain's actions** (the conscious brain
+  stays in contact while work happens).
+- **Utility brain = the worker.** Runs the macros / fetches data / assembles the
+  visualization (65% of lens-action traffic already routes here).
+- **The animation runs concurrently** with narration (building phase) and the
+  result **settles** into a live viz (presenting phase) + cross-references prior
+  `world_events` / planned events for conflicts.
+- **The whole task is filed as a DTU artifact** (§9.4) — revisitable, showing the
+  task + the work + the rendered diagram.
+
+This is the end-state ConKay; the overlay + skills + NL-resolver + artifact
+persistence are the wiring already in place, and the work-animation language above
+is the next build. Full concurrent narration + supervised utility-brain execution
+lights up when the brains are online.
