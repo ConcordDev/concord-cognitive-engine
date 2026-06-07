@@ -98,6 +98,16 @@ export async function runFactionStrategyCycle({ db, io, state: _state, tickCount
       if (applied) {
         advanced++;
         const entry = { factionId: f.faction_id, move: applied.move, target: applied.target };
+        // Surface the (previously dark) CK3-style stance machine: every strategic
+        // move — not just the wars/clashes below — emits a lightweight event so
+        // the EmergentEventFeed can show "the world's factions are scheming"
+        // (consolidate / expand / propose-alliance / seek-truce / …). Best-effort.
+        io?.emit?.("faction:strategy-move", {
+          factionId: f.faction_id,
+          move: applied.move,
+          target: applied.target ?? null,
+          ts: Date.now(),
+        });
         // Legibility W2b — route a war move through any online player whose thread
         // it pulls on ("the faction you backed is on the move"). Global (factions
         // aren't per-world) → scans all online players. Best-effort, never blocks.
