@@ -25,6 +25,13 @@ export interface ConKayReplyFields {
   webAugmented?: boolean;
   /** Which brain/source produced the reply, if the backend reported it. */
   brain?: string;
+  /**
+   * The REAL verdict from the reason.verify macro (Track B / Phase 1) when the
+   * reply's citations were checked: 'pending' while in flight, then one of
+   * grounded | citations_resolve | unsupported | fabricated_citation | unverified.
+   * When present it drives the TrustBadge instead of the local heuristic.
+   */
+  verifyVerdict?: string;
 }
 
 // Map a raw backend source/model id to a friendly brain label. Returns null for
@@ -205,7 +212,56 @@ function ToolCalls({ toolCalls }: { toolCalls: unknown }) {
  * it isn't verified, so check it before relying on it. (ConKay organizes and
  * accelerates — it does not certify; especially not real-world/physics claims.)
  */
+// Render one of the REAL reason.verify verdicts. Each maps 1:1 to the macro's
+// output — the badge IS the verification result, never a guess.
+function VerdictBadge({ verdict }: { verdict: string }) {
+  switch (verdict) {
+    case "pending":
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] text-cyan-300/70 ck-shimmer" title="Checking the cited sources against your archive…">
+          <ShieldCheck className="h-3 w-3" /> Verifying…
+        </span>
+      );
+    case "grounded":
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400/90" title="The multi-brain council confirmed the cited sources support this claim.">
+          <ShieldCheck className="h-3 w-3" /> Grounded
+        </span>
+      );
+    case "citations_resolve":
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400/75" title="Every cited source resolves to a real DTU in your archive (deterministic check). The council judge was offline, so this isn't fully certified — but the citations are real.">
+          <ShieldCheck className="h-3 w-3" /> Citations resolve
+        </span>
+      );
+    case "unsupported":
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] text-amber-400/90" title="The cited sources resolve, but the council judged they do NOT back this claim. Verify before relying on it.">
+          <AlertTriangle className="h-3 w-3" /> Unsupported
+        </span>
+      );
+    case "fabricated_citation":
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] text-rose-400/90" title="A cited source does NOT exist in your archive — a fabricated citation. Do not rely on this claim.">
+          <AlertTriangle className="h-3 w-3" /> Unverified — citation not found
+        </span>
+      );
+    default: // "unverified" or anything unexpected
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] text-amber-400/80" title="Nothing cited to check against — ConKay reasoned this from context. Verify before relying on it.">
+          <AlertTriangle className="h-3 w-3" /> Reasoned — verify
+        </span>
+      );
+  }
+}
+
 function TrustBadge({ fields }: { fields: ConKayReplyFields }) {
+  // Phase 1: when the reply's citations were run through the reason.verify macro,
+  // the badge shows that REAL verdict (the verification IS the product).
+  if (fields.verifyVerdict) return <VerdictBadge verdict={fields.verifyVerdict} />;
+
+  // Otherwise fall back to the local heuristic: grounded when backed by a real
+  // artifact (cited DTU, web source, completed action, or computed data).
   const grounded =
     asArray(fields.dtuRefs).length > 0 ||
     asArray(fields.refs).length > 0 ||

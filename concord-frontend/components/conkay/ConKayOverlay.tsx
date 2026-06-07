@@ -164,6 +164,29 @@ export function ConKayOverlay() {
   }, []);
   const clearWork = useCallback(() => { setTimeout(() => { setSteps([]); setWorkStatus(''); }, 1400); }, []);
 
+  // ── verification climax (Track B / Phase 1) ──────────────────────────
+  // Run a reply's citations through the REAL reason.verify macro and stamp the
+  // verdict onto the message — so the TrustBadge shows the actual verification
+  // result (citations resolve / grounded / unsupported / fabricated_citation),
+  // never a heuristic guess. "Verification IS the product." Rides the honest
+  // event spine (a runId) like any other macro call; degrades silently to the
+  // heuristic badge if the macro is unavailable.
+  const verifyMessage = useCallback(async (msgId: string, claim: string, citationIds: string[]) => {
+    if (!citationIds.length) return;
+    setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: 'pending' } : m)));
+    try {
+      const rid = newRunId();
+      liveRunRef.current = rid;
+      const { data } = await lensRun('reason', 'verify', { claim, citations: citationIds }, rid);
+      const res = data?.result as { verdict?: string } | null;
+      const verdict = res && typeof res === 'object' && res.verdict ? String(res.verdict) : 'unverified';
+      setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: verdict } : m)));
+    } catch {
+      // verification unavailable → drop the pending state, fall back to the heuristic badge
+      setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: undefined } : m)));
+    }
+  }, []);
+
   // Persist a revisitable artifact of what ConKay did — the task + its work +
   // result — as a DTU in the user's locker (fire-and-forget; never blocks the UX).
   // "show its work and the task it was provided" → a real, reopenable record.
@@ -250,8 +273,12 @@ export function ConKayOverlay() {
       setStep('gather', 'done', 'Composing the answer');
       setStep('render', 'active');
       const fence = result.viz ? `\n\n\`\`\`conkay-viz\n${JSON.stringify(result.viz)}\n\`\`\`` : '';
-      append({ id: `a-${Date.now()}`, role: 'assistant', content: `${result.spoken}${fence}`, dtuRefs: result.dtuRefs, sources: result.sources, toolCalls: result.toolCalls, brain: 'kay' });
+      const aid = `a-${Date.now()}`;
+      append({ id: aid, role: 'assistant', content: `${result.spoken}${fence}`, dtuRefs: result.dtuRefs, sources: result.sources, toolCalls: result.toolCalls, brain: 'kay' });
       setStep('render', 'done', 'Done');
+      // Phase 1: verify the cited DTUs through the real reason.verify macro.
+      const citeIds = (result.dtuRefs || []).map((d) => d.id).filter(Boolean);
+      if (citeIds.length) verifyMessage(aid, result.spoken, citeIds);
       persistArtifact(`Skill: ${match.skill.label}`, { task: text, skill: match.skill.id, spoken: result.spoken, viz: result.viz ?? null });
       if (result.navigate) { const dest = result.navigate; setTimeout(() => { window.location.href = dest; }, 900); }
     } catch {
@@ -261,7 +288,7 @@ export function ConKayOverlay() {
       setRunning(false);
       clearWork();
     }
-  }, [append, persistArtifact, beginWork, setStep, clearWork]);
+  }, [append, persistArtifact, beginWork, setStep, clearWork, verifyMessage]);
 
   // ── execute a lens macro (shared by explicit "run X" + the NL resolver) ──
   const executeMacro = useCallback(async (domain: string, macro: string, inputObj: Record<string, unknown>, preface?: string) => {
