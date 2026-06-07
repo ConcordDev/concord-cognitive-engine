@@ -257,7 +257,15 @@ jobs:
         # the 600s behavior timeout (only ~380/2381 macros run). Disabling the
         # background heartbeat removes the network hang; macro tests don't depend on
         # it (heartbeat handlers are unit-tested directly / via static source checks).
-        run: CONCORD_NO_LISTEN=true NODE_ENV=test CONCORD_DISABLE_HEARTBEAT=true npm test
+        # CONCORD_DISABLE_BRAINS=true: same class of issue — every booted server runs
+        # initFiveBrains() at T+3s, which spawns nvidia-smi (GPU profile probe) and
+        # fetch-probes 5 unreachable Ollama hosts per boot. Across the many
+        # server-booting depth/integration tests that's per-boot churn under the
+        # parallel suite's contention, occasionally starving one server-booting test
+        # past its per-test timeout (observed as `fail 0, cancelled 1`). Brains are a
+        # no-op in tests (LLM-dependent tests are gated behind CONCORD_BEHAVIOR_TEST_LLM),
+        # so disabling them is safe and matches the documented no-Ollama CI practice.
+        run: CONCORD_NO_LISTEN=true NODE_ENV=test CONCORD_DISABLE_HEARTBEAT=true CONCORD_DISABLE_BRAINS=true npm test
 
       - name: Upload audit outputs
         if: always()
