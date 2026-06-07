@@ -22,6 +22,17 @@ export async function load() {
   if (!_t) {
     process.env.NODE_ENV = process.env.NODE_ENV || "test";
     process.env.CONCORD_NO_LISTEN = process.env.CONCORD_NO_LISTEN || "true";
+    // Isolate persisted STATE from the dev/production `data/concord_state.json`.
+    // server.js boots by hydrating STATE_PATH; without this, a stale state file
+    // pre-seeds the per-user lens stores (e.g. STATE.accountingLens) and the
+    // fixed-label depthCtx users collide with that data, so behavioral round-trips
+    // read DOUBLED/accumulated values. Point STATE_PATH at a throwaway file unless
+    // the caller already pinned one. (DB_PATH is already isolated by the runner.)
+    if (!process.env.STATE_PATH) {
+      const os = await import("node:os");
+      const path = await import("node:path");
+      process.env.STATE_PATH = path.join(os.tmpdir(), `concord-depth-state-${process.pid}-${Date.now()}.json`);
+    }
     _t = (await import("../../server.js")).__TEST__;
   }
   return _t;
