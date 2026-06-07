@@ -290,3 +290,217 @@ describe("chat — validation rejections", () => {
     assert.match(bad.result.error, /ttsRate must be 0\.5-2\.0/);
   });
 });
+
+describe("chat — delete round-trips (wave 17 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx(`chat-t17-del-${randomUUID()}`); });
+
+  it("prompt-delete removes the row; a subsequent prompt-update on it is not-found", async () => {
+    const created = await lensRun("chat", "prompt-create", { params: { name: `p-${randomUUID()}`, content: "body {x}" } }, ctx);
+    assert.equal(created.ok, true);
+    const id = created.result.prompt.id;
+
+    const del = await lensRun("chat", "prompt-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, id);
+
+    const list = await lensRun("chat", "prompts-list", {}, ctx);
+    assert.equal(list.result.prompts.some((p) => p.id === id), false);
+
+    const upd = await lensRun("chat", "prompt-update", { params: { id, content: "z" } }, ctx);
+    assert.equal(upd.result.ok, false);
+    assert.match(upd.result.error, /not found/);
+  });
+
+  it("assistant-delete removes the row; assistants-list no longer carries it", async () => {
+    const created = await lensRun("chat", "assistant-create", { params: { name: "Tmp", instructions: "do x" } }, ctx);
+    assert.equal(created.ok, true);
+    const id = created.result.assistant.id;
+
+    const del = await lensRun("chat", "assistant-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, id);
+
+    const list = await lensRun("chat", "assistants-list", {}, ctx);
+    assert.equal(list.result.assistants.some((a) => a.id === id), false);
+  });
+
+  it("assistant-delete of an unknown id is rejected as not found", async () => {
+    const bad = await lensRun("chat", "assistant-delete", { params: { id: `gpt_missing_${randomUUID()}` } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /not found/);
+  });
+
+  it("branch-delete removes the fork; branches-list drops it", async () => {
+    const sourceThreadId = `src-${randomUUID()}`;
+    const forked = await lensRun("chat", "branch-fork", { params: { sourceThreadId, atMessageIdx: 0, messages: ["m0", "m1"] } }, ctx);
+    assert.equal(forked.ok, true);
+    const id = forked.result.branch.id;
+
+    const del = await lensRun("chat", "branch-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, id);
+
+    const list = await lensRun("chat", "branches-list", { params: { sourceThreadId } }, ctx);
+    assert.equal(list.result.branches.some((b) => b.id === id), false);
+  });
+});
+
+describe("chat — canvas list/get/delete (wave 17 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx(`chat-t17-cvs-${randomUUID()}`); });
+
+  it("canvas-list projects revisionCount + charCount after an edit", async () => {
+    const created = await lensRun("chat", "canvas-create", { params: { title: "Doc A", content: "abc" } }, ctx);
+    const id = created.result.doc.id;
+    // One update snapshots prior content → revisionCount 1, charCount of "abcd" = 4.
+    await lensRun("chat", "canvas-update", { params: { id, content: "abcd" } }, ctx);
+
+    const list = await lensRun("chat", "canvas-list", {}, ctx);
+    const row = list.result.docs.find((d) => d.id === id);
+    assert.ok(row, "doc present in list");
+    assert.equal(row.revisionCount, 1);
+    assert.equal(row.charCount, 4);
+  });
+
+  it("canvas-list filters by threadId", async () => {
+    const threadId = `thr-${randomUUID()}`;
+    const a = await lensRun("chat", "canvas-create", { params: { title: "Bound", content: "x", threadId } }, ctx);
+    await lensRun("chat", "canvas-create", { params: { title: "Free", content: "y" } }, ctx);
+
+    const list = await lensRun("chat", "canvas-list", { params: { threadId } }, ctx);
+    assert.equal(list.result.docs.length, 1);
+    assert.equal(list.result.docs[0].id, a.result.doc.id);
+  });
+
+  it("canvas-get returns the full doc; canvas-delete makes it not-found", async () => {
+    const created = await lensRun("chat", "canvas-create", { params: { title: "Spec X", kind: "code", language: "python", content: "print(1)" } }, ctx);
+    const id = created.result.doc.id;
+
+    const got = await lensRun("chat", "canvas-get", { params: { id } }, ctx);
+    assert.equal(got.result.doc.title, "Spec X");
+    assert.equal(got.result.doc.kind, "code");
+    assert.equal(got.result.doc.language, "python");
+    assert.equal(got.result.doc.content, "print(1)");
+
+    const del = await lensRun("chat", "canvas-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, id);
+
+    const after = await lensRun("chat", "canvas-get", { params: { id } }, ctx);
+    assert.equal(after.result.ok, false);
+    assert.match(after.result.error, /not found/);
+  });
+});
+
+describe("chat — memory update + delete (wave 17 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx(`chat-t17-mem-${randomUUID()}`); });
+
+  it("memory-update toggles active=false and edits the fact; memory-list reflects activeCount", async () => {
+    const add = await lensRun("chat", "memory-add", { params: { fact: `likes ${randomUUID()} dark mode` } }, ctx);
+    const id = add.result.memory.id;
+    assert.equal(add.result.memory.active, true);
+
+    const upd = await lensRun("chat", "memory-update", { params: { id, fact: "prefers light mode", active: false, category: "preference" } }, ctx);
+    assert.equal(upd.result.memory.fact, "prefers light mode");
+    assert.equal(upd.result.memory.active, false);
+    assert.equal(upd.result.memory.category, "preference");
+
+    const list = await lensRun("chat", "memory-list", {}, ctx);
+    const row = list.result.memories.find((m) => m.id === id);
+    assert.equal(row.active, false);
+    // The one memory we added is now inactive → it is excluded from activeCount.
+    assert.equal(list.result.memories.filter((m) => m.active).length, list.result.activeCount);
+    assert.equal(list.result.activeCount, 0);
+  });
+
+  it("memory-delete removes one row; memory-delete('*') clears the rest", async () => {
+    const fresh = await depthCtx(`chat-t17-memclr-${randomUUID()}`);
+    const a = await lensRun("chat", "memory-add", { params: { fact: `fact-a-${randomUUID()}` } }, fresh);
+    const b = await lensRun("chat", "memory-add", { params: { fact: `fact-b-${randomUUID()}` } }, fresh);
+
+    const del = await lensRun("chat", "memory-delete", { params: { id: a.result.memory.id } }, fresh);
+    assert.equal(del.result.deleted, a.result.memory.id);
+
+    let list = await lensRun("chat", "memory-list", {}, fresh);
+    assert.equal(list.result.memories.some((m) => m.id === a.result.memory.id), false);
+    assert.equal(list.result.memories.some((m) => m.id === b.result.memory.id), true);
+
+    const cleared = await lensRun("chat", "memory-delete", { params: { id: "*" } }, fresh);
+    assert.equal(cleared.result.cleared, 1); // only b remained
+
+    list = await lensRun("chat", "memory-list", {}, fresh);
+    assert.equal(list.result.memories.length, 0);
+  });
+});
+
+describe("chat — voice / share / image surfaces (wave 17 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx(`chat-t17-vsi-${randomUUID()}`); });
+
+  it("voice-get returns the default profile, then reads back a persisted update", async () => {
+    const fresh = await depthCtx(`chat-t17-voice-${randomUUID()}`);
+    const def = await lensRun("chat", "voice-get", {}, fresh);
+    assert.equal(def.result.prefs.enabled, false);
+    assert.equal(def.result.prefs.ttsRate, 1.0);
+    assert.equal(def.result.prefs.sttLang, "en-US");
+    assert.equal(def.result.prefs.updatedAt, null);
+
+    await lensRun("chat", "voice-update", { params: { enabled: true, ttsRate: 1.25, sttLang: "fr-FR" } }, fresh);
+    const got = await lensRun("chat", "voice-get", {}, fresh);
+    assert.equal(got.result.prefs.enabled, true);
+    assert.equal(got.result.prefs.ttsRate, 1.25);
+    assert.equal(got.result.prefs.sttLang, "fr-FR");
+  });
+
+  it("voice-update with an out-of-range ttsPitch is rejected", async () => {
+    const bad = await lensRun("chat", "voice-update", { params: { ttsPitch: 9 } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /ttsPitch must be 0-2\.0/);
+  });
+
+  it("share-list returns the projected link (url + counts) for a created share", async () => {
+    const threadId = `shr-${randomUUID()}`;
+    const created = await lensRun("chat", "share-create", { params: { threadId, title: "My share", messages: [{ role: "user", content: "hey" }] } }, ctx);
+    const token = created.result.token;
+
+    const list = await lensRun("chat", "share-list", {}, ctx);
+    const row = list.result.links.find((l) => l.token === token);
+    assert.ok(row, "link present");
+    assert.equal(row.url, `/share/chat/${token}`);
+    assert.equal(row.title, "My share");
+    assert.equal(row.messageCount, 1);
+    assert.equal(row.revoked, false);
+    assert.equal(row.viewCount, 0);
+  });
+
+  it("image-history reverses newest-first and image-delete removes a stored generation", async () => {
+    // image-generate is the only network-touching macro; under the no-egress
+    // preload its HEAD fails closed (reachable:false) but the URL/seed are
+    // deterministic, prompt-seeded values — used here purely as a fixture so
+    // image-history/image-delete have real rows to round-trip. We assert ONLY
+    // the deterministic stored fields, never reachability.
+    const fresh = await depthCtx(`chat-t17-img-${randomUUID()}`);
+    const g1 = await lensRun("chat", "image-generate", { params: { prompt: "a red cube", seed: 11 } }, fresh);
+    const g2 = await lensRun("chat", "image-generate", { params: { prompt: "a blue cube", seed: 22 } }, fresh);
+    assert.equal(g1.result.image.seed, 11);
+    assert.equal(g2.result.image.seed, 22);
+
+    const hist = await lensRun("chat", "image-history", {}, fresh);
+    assert.equal(hist.result.total, 2);
+    // Newest first → g2 (seed 22) leads.
+    assert.equal(hist.result.images[0].id, g2.result.image.id);
+    assert.equal(hist.result.images[0].seed, 22);
+    assert.equal(hist.result.images[1].id, g1.result.image.id);
+
+    const del = await lensRun("chat", "image-delete", { params: { id: g1.result.image.id } }, fresh);
+    assert.equal(del.result.deleted, g1.result.image.id);
+
+    const after = await lensRun("chat", "image-history", {}, fresh);
+    assert.equal(after.result.total, 1);
+    assert.equal(after.result.images.some((i) => i.id === g1.result.image.id), false);
+  });
+
+  it("image-delete of an unknown id is rejected as not found", async () => {
+    const bad = await lensRun("chat", "image-delete", { params: { id: `img_missing_${randomUUID()}` } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /not found/);
+  });
+});
