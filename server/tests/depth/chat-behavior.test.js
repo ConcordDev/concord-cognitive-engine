@@ -15,7 +15,7 @@
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { lensRun, depthCtx } from "./_harness.js";
+import { lensRun, depthCtx, macroRuntime } from "./_harness.js";
 
 describe("chat — deterministic analysis macros (exact values)", () => {
   it("threadSummarize: counts messages, detects a decision + a question, exact messageCount", async () => {
@@ -502,5 +502,175 @@ describe("chat — voice / share / image surfaces (wave 17 top-up)", () => {
     const bad = await lensRun("chat", "image-delete", { params: { id: `img_missing_${randomUUID()}` } }, ctx);
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /not found/);
+  });
+});
+
+// ── register()-family chat macros (NOT lens actions; reached via runMacro) ──
+// These are the deterministic, non-LLM macros in server.js: tool discovery,
+// the forge-to-DTU pipeline, router/forge/accumulator metrics, the replay
+// timeline + summary, the felt-mood correlate, and feedback validation. The
+// pure-LLM-completion macros (`chat.respond`, deep `chat.mood` colouring) are
+// intentionally NOT asserted here — they call the cognitive brains and would
+// egress; only their deterministic guard branches are exercised.
+describe("chat — tool discovery (register family)", () => {
+  let runMacro, ctx;
+  before(async () => { ({ runMacro, ctx } = await macroRuntime("chat-tools")); });
+
+  it("chat.tools lists the fixed tool catalog with the run_compute keys", async () => {
+    const r = await runMacro("chat", "tools", {}, ctx);
+    assert.equal(r.ok, true);
+    const names = r.tools.map((t) => t.name);
+    // The five built-in tools are always present regardless of opt-in state.
+    assert.ok(names.includes("web_search"));
+    assert.ok(names.includes("create_dtu"));
+    assert.ok(names.includes("run_compute"));
+    assert.ok(names.includes("browse_url"));
+    assert.ok(names.includes("run_lens_action"));
+    // run_compute is the only tool that does NOT require opt-in.
+    const runCompute = r.tools.find((t) => t.name === "run_compute");
+    assert.equal(runCompute.requiresOptIn, false);
+    // Compute keys are advertised for discovery.
+    assert.ok(r.computeKeys.includes("chemistry.balanceReaction"));
+    assert.ok(r.computeKeys.includes("math.differentiate"));
+  });
+
+  it("chat.tools is unavailable until both the global flag and session opt-in are set", async () => {
+    const r = await runMacro("chat", "tools", {}, ctx);
+    assert.equal(r.ok, true);
+    // available === globalEnabled && sessionOptIn — a fresh internal ctx has
+    // neither, so the catalog is listed but not yet active.
+    assert.equal(r.available, r.globalEnabled && r.sessionOptIn);
+    assert.equal(r.available, false);
+  });
+});
+
+describe("chat — forge-to-DTU pipeline (register family)", () => {
+  let runMacro, STATE, ctx;
+  before(async () => { ({ runMacro, STATE, ctx } = await macroRuntime("chat-forge")); });
+
+  it("forge.message promotes a long-enough message to a regular DTU, then forge.delete removes it", async () => {
+    const content = `Decision: adopt Redis for the cache layer ${randomUUID()}`;
+    const made = await runMacro("chat", "forge.message", { content, sessionId: "s1" }, ctx);
+    assert.equal(made.ok, true);
+    const dtuId = made.dtuId;
+    assert.ok(dtuId);
+    assert.ok(made.title.length > 0);
+    // The DTU landed in the canonical store at regular tier.
+    const stored = STATE.dtus.get(dtuId);
+    assert.ok(stored, "forged DTU present in STATE.dtus");
+    assert.equal(stored.tier, "regular");
+    assert.ok(stored.tags.includes("forged"));
+
+    // forge.delete requires the DTU to be marked forged — saveForgedDTU stamps that.
+    await runMacro("chat", "forge.save", { dtu: stored }, ctx);
+    const del = await runMacro("chat", "forge.delete", { dtuId }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(STATE.dtus.get(dtuId), undefined);
+  });
+
+  it("forge.message rejects a too-short message (content < 10 chars)", async () => {
+    const bad = await runMacro("chat", "forge.message", { content: "hi" }, ctx);
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "content_too_short");
+  });
+
+  it("forge.message rejects an empty message before reaching the forge", async () => {
+    const bad = await runMacro("chat", "forge.message", {}, ctx);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /content required/);
+  });
+
+  it("forge.save without a dtu id is rejected", async () => {
+    const bad = await runMacro("chat", "forge.save", {}, ctx);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /dtu required/);
+  });
+
+  it("forge.delete of an unknown dtuId is not_found", async () => {
+    const bad = await runMacro("chat", "forge.delete", { dtuId: `forged_missing_${randomUUID()}` }, ctx);
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "not_found");
+  });
+
+  it("forge.iterate without both dtu and content is rejected", async () => {
+    const bad = await runMacro("chat", "forge.iterate", { instruction: "tighten" }, ctx);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /dtu and content required/);
+  });
+
+  it("forge.iterate (alreadySaved) forks a child DTU that records the parent in lineage", async () => {
+    const parent = {
+      id: `forged_${randomUUID().slice(0, 8)}`,
+      artifact: { content: "v1", size: 2 },
+      lineage: { parents: [] },
+      meta: { iterationCount: 0 },
+      human: { summary: "v1" },
+    };
+    const r = await runMacro("chat", "forge.iterate", { dtu: parent, content: "v2 expanded", instruction: "expand", alreadySaved: true }, ctx);
+    assert.equal(r.ok, true);
+    assert.notEqual(r.dtu.id, parent.id); // a NEW child id
+    assert.equal(r.dtu.artifact.content, "v2 expanded");
+    assert.ok(r.dtu.lineage.parents.includes(parent.id));
+    assert.equal(r.dtu.meta.iterationCount, 1);
+  });
+});
+
+describe("chat — metrics + replay surfaces (register family)", () => {
+  let runMacro, ctx;
+  before(async () => { ({ runMacro, ctx } = await macroRuntime("chat-meta")); });
+
+  it("route.metrics returns the three metric buckets", async () => {
+    const r = await runMacro("chat", "route.metrics", {}, ctx);
+    assert.equal(r.ok, true);
+    assert.ok(r.router && typeof r.router === "object");
+    assert.ok(r.forge && typeof r.forge === "object");
+    assert.ok(r.accumulator && typeof r.accumulator === "object");
+  });
+
+  it("chat.timeline returns an empty event list for a session with no messages", async () => {
+    const r = await runMacro("chat", "timeline", { sessionId: `empty-${randomUUID()}` }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.count, 0);
+    assert.deepEqual(r.events, []);
+  });
+
+  it("chat.timeline reports no_actor when no userId can be resolved", async () => {
+    // An anonymous ctx with no actor.userId and no input.userId hits the guard.
+    const anon = { actor: {} };
+    const r = await runMacro("chat", "timeline", {}, anon);
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "no_actor");
+  });
+
+  it("chat.summary without a sessionId is rejected with missing_sessionId", async () => {
+    const r = await runMacro("chat", "summary", {}, ctx);
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "missing_sessionId");
+  });
+
+  it("chat.summary returns a null summary for an unknown session (no crash)", async () => {
+    const r = await runMacro("chat", "summary", { sessionId: `none-${randomUUID()}` }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.summary, null);
+  });
+});
+
+describe("chat — mood correlate + feedback validation (register family)", () => {
+  let runMacro, ctx;
+  before(async () => { ({ runMacro, ctx } = await macroRuntime("chat-mood")); });
+
+  it("chat.mood reports a neutral, unlit felt-state for a fresh assistant entity", async () => {
+    const r = await runMacro("chat", "mood", {}, ctx);
+    assert.equal(r.ok, true);
+    // A user with no affect history → engine maps to neutral valence, not lit.
+    assert.equal(r.valence, 0);
+    assert.equal(r.lit, false);
+    assert.equal(r.quale, null);
+  });
+
+  it("chat.feedback without a rating is rejected", async () => {
+    const r = await runMacro("chat", "feedback", { sessionId: "default" }, ctx);
+    assert.equal(r.ok, false);
+    assert.match(r.error, /rating required/);
   });
 });
