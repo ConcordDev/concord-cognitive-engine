@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-06-08T01:53:05.341Z",
-  "head": "d3cc8ed13fb931dc806735da3432c61978c5669f",
+  "generatedAt": "2026-06-08T02:00:45.368Z",
+  "head": "646322d6ad2b0dd444f19f97eff74d808ec05725",
   "mode": "honest",
   "totals": {
-    "stub": 457,
-    "functional": 1600,
-    "utility": 3447,
-    "production-grade": 3236
+    "stub": 446,
+    "functional": 1566,
+    "utility": 3477,
+    "production-grade": 3251
   },
   "total": 8740,
-  "weightedScore": 0.68,
+  "weightedScore": 0.682,
   "tierWeights": {
     "stub": 0,
     "functional": 0.4,
@@ -467,9 +467,9 @@
     },
     "collab": {
       "stub": 5,
-      "functional": 4,
-      "utility": 14,
-      "production-grade": 12,
+      "functional": 1,
+      "utility": 15,
+      "production-grade": 14,
       "total": 35
     },
     "combat_polish": {
@@ -1776,9 +1776,9 @@
     },
     "metacognition": {
       "stub": 0,
-      "functional": 10,
+      "functional": 7,
       "utility": 9,
-      "production-grade": 8,
+      "production-grade": 11,
       "total": 27
     },
     "metalearning": {
@@ -2069,10 +2069,10 @@
       "total": 30
     },
     "photography": {
-      "stub": 5,
-      "functional": 10,
-      "utility": 27,
-      "production-grade": 17,
+      "stub": 0,
+      "functional": 1,
+      "utility": 40,
+      "production-grade": 18,
       "total": 59
     },
     "physical": {
@@ -2133,15 +2133,15 @@
     },
     "podcast": {
       "stub": 0,
-      "functional": 12,
-      "utility": 14,
-      "production-grade": 22,
+      "functional": 1,
+      "utility": 20,
+      "production-grade": 27,
       "total": 48
     },
     "poetry": {
-      "stub": 4,
-      "functional": 5,
-      "utility": 21,
+      "stub": 0,
+      "functional": 4,
+      "utility": 26,
       "production-grade": 6,
       "total": 36
     },
@@ -2482,10 +2482,10 @@
       "total": 6
     },
     "security": {
-      "stub": 2,
-      "functional": 8,
-      "utility": 18,
-      "production-grade": 10,
+      "stub": 0,
+      "functional": 1,
+      "utility": 23,
+      "production-grade": 14,
       "total": 38
     },
     "self": {
@@ -29663,7 +29663,7 @@
       "domain": "collab",
       "macro": "docCrdtRestore",
       "file": "server/domains/collab.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 47,
       "combinedLoc": 61,
       "stateTouch": true,
@@ -29673,7 +29673,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -29681,7 +29681,7 @@
       "domain": "collab",
       "macro": "docCrdtSnapshot",
       "file": "server/domains/collab.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 40,
       "combinedLoc": 70,
       "stateTouch": true,
@@ -29691,7 +29691,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -29699,7 +29699,7 @@
       "domain": "collab",
       "macro": "docCrdtSnapshotList",
       "file": "server/domains/collab.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 16,
       "combinedLoc": 29,
       "stateTouch": true,
@@ -29709,7 +29709,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -103257,7 +103257,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -103347,7 +103347,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -103355,7 +103355,7 @@
       "domain": "metacognition",
       "macro": "biasDetection",
       "file": "server/domains/metacognition.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 154,
       "combinedLoc": 154,
       "stateTouch": false,
@@ -103365,7 +103365,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -103419,7 +103419,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -103427,7 +103427,7 @@
       "domain": "metacognition",
       "macro": "confidenceCalibration",
       "file": "server/domains/metacognition.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 119,
       "combinedLoc": 119,
       "stateTouch": false,
@@ -103437,7 +103437,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -103491,7 +103491,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -103509,7 +103509,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -103527,7 +103527,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -103545,7 +103545,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -103553,7 +103553,7 @@
       "domain": "metacognition",
       "macro": "learningCurve",
       "file": "server/domains/metacognition.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 150,
       "combinedLoc": 150,
       "stateTouch": false,
@@ -103563,7 +103563,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -103599,7 +103599,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -103617,7 +103617,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -103635,7 +103635,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -103707,7 +103707,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -103725,7 +103725,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116289,7 +116289,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116307,7 +116307,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116325,7 +116325,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116343,7 +116343,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116361,7 +116361,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116379,7 +116379,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116387,7 +116387,7 @@
       "domain": "photography",
       "macro": "compositionAnalysis",
       "file": "server/domains/photography.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 1,
       "combinedLoc": 1,
       "stateTouch": false,
@@ -116397,7 +116397,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -116415,7 +116415,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116423,7 +116423,7 @@
       "domain": "photography",
       "macro": "cull-summary",
       "file": "server/domains/photography.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 17,
       "combinedLoc": 27,
       "stateTouch": true,
@@ -116433,7 +116433,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -116451,7 +116451,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116469,7 +116469,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116487,7 +116487,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116505,7 +116505,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116523,7 +116523,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116531,7 +116531,7 @@
       "domain": "photography",
       "macro": "exposureCalc",
       "file": "server/domains/photography.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 1,
       "combinedLoc": 1,
       "stateTouch": false,
@@ -116541,7 +116541,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -116559,7 +116559,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116577,7 +116577,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116603,7 +116603,7 @@
       "domain": "photography",
       "macro": "gearRecommend",
       "file": "server/domains/photography.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 1,
       "combinedLoc": 1,
       "stateTouch": false,
@@ -116613,7 +116613,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -116631,7 +116631,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116649,7 +116649,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116667,7 +116667,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116675,7 +116675,7 @@
       "domain": "photography",
       "macro": "keyword-list",
       "file": "server/domains/photography.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 11,
       "combinedLoc": 21,
       "stateTouch": true,
@@ -116685,7 +116685,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -116703,7 +116703,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116721,7 +116721,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116739,7 +116739,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116757,7 +116757,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116783,7 +116783,7 @@
       "domain": "photography",
       "macro": "pexels-search",
       "file": "server/domains/photography.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 44,
       "combinedLoc": 44,
       "stateTouch": false,
@@ -116793,7 +116793,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -116811,7 +116811,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116829,7 +116829,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116837,7 +116837,7 @@
       "domain": "photography",
       "macro": "photo-detail",
       "file": "server/domains/photography.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 7,
       "combinedLoc": 27,
       "stateTouch": true,
@@ -116847,7 +116847,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -116865,7 +116865,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116883,7 +116883,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116901,7 +116901,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116919,7 +116919,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116927,7 +116927,7 @@
       "domain": "photography",
       "macro": "photo-search",
       "file": "server/domains/photography.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 13,
       "combinedLoc": 23,
       "stateTouch": true,
@@ -116937,7 +116937,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -116945,7 +116945,7 @@
       "domain": "photography",
       "macro": "photo-update",
       "file": "server/domains/photography.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 13,
       "combinedLoc": 38,
       "stateTouch": true,
@@ -116955,7 +116955,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -116973,7 +116973,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -116991,7 +116991,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -117009,7 +117009,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -117017,7 +117017,7 @@
       "domain": "photography",
       "macro": "preset-delete",
       "file": "server/domains/photography.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 9,
       "combinedLoc": 24,
       "stateTouch": true,
@@ -117027,7 +117027,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -117045,7 +117045,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -117053,7 +117053,7 @@
       "domain": "photography",
       "macro": "printSize",
       "file": "server/domains/photography.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 1,
       "combinedLoc": 1,
       "stateTouch": false,
@@ -117063,7 +117063,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -117081,7 +117081,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -117099,7 +117099,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -117135,7 +117135,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -117153,7 +117153,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -117171,7 +117171,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -117189,7 +117189,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -117225,7 +117225,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -117243,7 +117243,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -117261,7 +117261,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -117269,7 +117269,7 @@
       "domain": "photography",
       "macro": "tone-curve-delete",
       "file": "server/domains/photography.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 9,
       "combinedLoc": 22,
       "stateTouch": true,
@@ -117279,7 +117279,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -117287,7 +117287,7 @@
       "domain": "photography",
       "macro": "tone-curve-list",
       "file": "server/domains/photography.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 5,
       "combinedLoc": 26,
       "stateTouch": true,
@@ -117297,7 +117297,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -117315,7 +117315,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -117323,7 +117323,7 @@
       "domain": "photography",
       "macro": "vision",
       "file": "server/domains/photography.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 6,
       "combinedLoc": 6,
       "stateTouch": false,
@@ -117333,7 +117333,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -119061,7 +119061,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -119123,7 +119123,7 @@
       "domain": "podcast",
       "macro": "download-rule-list",
       "file": "server/domains/podcast.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 11,
       "combinedLoc": 24,
       "stateTouch": true,
@@ -119133,7 +119133,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -119241,7 +119241,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -119249,7 +119249,7 @@
       "domain": "podcast",
       "macro": "episode-stream",
       "file": "server/domains/podcast.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 25,
       "combinedLoc": 55,
       "stateTouch": true,
@@ -119259,7 +119259,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -119303,7 +119303,7 @@
       "domain": "podcast",
       "macro": "itunes-podcast",
       "file": "server/domains/podcast.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 32,
       "combinedLoc": 32,
       "stateTouch": false,
@@ -119313,7 +119313,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -119321,7 +119321,7 @@
       "domain": "podcast",
       "macro": "itunes-search",
       "file": "server/domains/podcast.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 34,
       "combinedLoc": 34,
       "stateTouch": false,
@@ -119331,7 +119331,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -119339,7 +119339,7 @@
       "domain": "podcast",
       "macro": "listening-stats",
       "file": "server/domains/podcast.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 17,
       "combinedLoc": 30,
       "stateTouch": true,
@@ -119349,7 +119349,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -119403,7 +119403,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -119411,7 +119411,7 @@
       "domain": "podcast",
       "macro": "playback-prefs-get",
       "file": "server/domains/podcast.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 19,
       "combinedLoc": 32,
       "stateTouch": true,
@@ -119421,7 +119421,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -119439,7 +119439,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -119547,7 +119547,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -119565,7 +119565,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -119655,7 +119655,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -119663,7 +119663,7 @@
       "domain": "podcast",
       "macro": "recommendations",
       "file": "server/domains/podcast.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 49,
       "combinedLoc": 92,
       "stateTouch": true,
@@ -119673,7 +119673,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -119681,7 +119681,7 @@
       "domain": "podcast",
       "macro": "rss-refresh",
       "file": "server/domains/podcast.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 8,
       "combinedLoc": 38,
       "stateTouch": true,
@@ -119691,7 +119691,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -119717,7 +119717,7 @@
       "domain": "podcast",
       "macro": "show-delete",
       "file": "server/domains/podcast.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 11,
       "combinedLoc": 29,
       "stateTouch": true,
@@ -119727,7 +119727,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -119835,7 +119835,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -119843,7 +119843,7 @@
       "domain": "podcast",
       "macro": "sync-state",
       "file": "server/domains/podcast.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 33,
       "combinedLoc": 63,
       "stateTouch": true,
@@ -119853,7 +119853,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -119861,7 +119861,7 @@
       "domain": "podcast",
       "macro": "transcript-get",
       "file": "server/domains/podcast.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 9,
       "combinedLoc": 39,
       "stateTouch": true,
@@ -119871,7 +119871,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -119925,7 +119925,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -119943,7 +119943,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -119961,7 +119961,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -119979,7 +119979,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -119997,7 +119997,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120033,7 +120033,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120051,7 +120051,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120059,7 +120059,7 @@
       "domain": "poetry",
       "macro": "formGuide",
       "file": "server/domains/poetry.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 1,
       "combinedLoc": 1,
       "stateTouch": false,
@@ -120069,7 +120069,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -120095,7 +120095,7 @@
       "domain": "poetry",
       "macro": "meterAnalysis",
       "file": "server/domains/poetry.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 1,
       "combinedLoc": 1,
       "stateTouch": false,
@@ -120105,7 +120105,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -120123,7 +120123,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120141,7 +120141,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120159,7 +120159,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120177,7 +120177,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120195,7 +120195,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120231,7 +120231,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120239,7 +120239,7 @@
       "domain": "poetry",
       "macro": "poetry-dashboard",
       "file": "server/domains/poetry.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 16,
       "combinedLoc": 23,
       "stateTouch": true,
@@ -120249,7 +120249,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -120303,7 +120303,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120321,7 +120321,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120339,7 +120339,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120357,7 +120357,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120375,7 +120375,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120393,7 +120393,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120401,7 +120401,7 @@
       "domain": "poetry",
       "macro": "rhymeScheme",
       "file": "server/domains/poetry.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 1,
       "combinedLoc": 1,
       "stateTouch": false,
@@ -120411,7 +120411,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -120429,7 +120429,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120455,7 +120455,7 @@
       "domain": "poetry",
       "macro": "wordFrequency",
       "file": "server/domains/poetry.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 1,
       "combinedLoc": 1,
       "stateTouch": false,
@@ -120465,7 +120465,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -120483,7 +120483,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120501,7 +120501,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120519,7 +120519,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120537,7 +120537,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -120555,7 +120555,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135477,7 +135477,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135485,7 +135485,7 @@
       "domain": "security",
       "macro": "asset-delete",
       "file": "server/domains/security.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 11,
       "combinedLoc": 41,
       "stateTouch": true,
@@ -135495,7 +135495,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -135513,7 +135513,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135531,7 +135531,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135549,7 +135549,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135567,7 +135567,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135585,7 +135585,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135603,7 +135603,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135621,7 +135621,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135639,7 +135639,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135657,7 +135657,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135675,7 +135675,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135693,7 +135693,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135701,7 +135701,7 @@
       "domain": "security",
       "macro": "evidenceChain",
       "file": "server/domains/security.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 17,
       "combinedLoc": 17,
       "stateTouch": false,
@@ -135711,7 +135711,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -135747,7 +135747,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135765,7 +135765,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135783,7 +135783,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135801,7 +135801,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135809,7 +135809,7 @@
       "domain": "security",
       "macro": "incidentEscalate",
       "file": "server/domains/security.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 52,
       "combinedLoc": 52,
       "stateTouch": false,
@@ -135819,7 +135819,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -135827,7 +135827,7 @@
       "domain": "security",
       "macro": "incidentTrend",
       "file": "server/domains/security.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 15,
       "combinedLoc": 15,
       "stateTouch": false,
@@ -135837,7 +135837,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -135845,7 +135845,7 @@
       "domain": "security",
       "macro": "patrolCoverage",
       "file": "server/domains/security.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 8,
       "combinedLoc": 8,
       "stateTouch": false,
@@ -135855,7 +135855,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -135873,7 +135873,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135891,7 +135891,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135909,7 +135909,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135927,7 +135927,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135945,7 +135945,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135963,7 +135963,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135981,7 +135981,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -135999,7 +135999,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -136007,7 +136007,7 @@
       "domain": "security",
       "macro": "threatAssessment",
       "file": "server/domains/security.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 52,
       "combinedLoc": 52,
       "stateTouch": false,
@@ -136017,7 +136017,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -136025,7 +136025,7 @@
       "domain": "security",
       "macro": "threatMatrix",
       "file": "server/domains/security.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 18,
       "combinedLoc": 18,
       "stateTouch": false,
@@ -136035,7 +136035,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -136061,7 +136061,7 @@
       "domain": "security",
       "macro": "vuln-delete",
       "file": "server/domains/security.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 9,
       "combinedLoc": 39,
       "stateTouch": true,
@@ -136071,7 +136071,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -136089,7 +136089,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -136107,7 +136107,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -136115,7 +136115,7 @@
       "domain": "security",
       "macro": "vulnerabilityScan",
       "file": "server/domains/security.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 79,
       "combinedLoc": 79,
       "stateTouch": false,
@@ -136125,7 +136125,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
