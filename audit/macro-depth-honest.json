@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-06-08T01:44:22.434Z",
-  "head": "27ffee686218f4ab367f18c2e2eeb5220eb66cc2",
+  "generatedAt": "2026-06-08T01:53:05.341Z",
+  "head": "d3cc8ed13fb931dc806735da3432c61978c5669f",
   "mode": "honest",
   "totals": {
-    "stub": 470,
-    "functional": 1624,
-    "utility": 3423,
-    "production-grade": 3223
+    "stub": 457,
+    "functional": 1600,
+    "utility": 3447,
+    "production-grade": 3236
   },
   "total": 8740,
-  "weightedScore": 0.678,
+  "weightedScore": 0.68,
   "tierWeights": {
     "stub": 0,
     "functional": 0.4,
@@ -382,10 +382,10 @@
       "total": 30
     },
     "chat": {
-      "stub": 1,
-      "functional": 9,
-      "utility": 7,
-      "production-grade": 42,
+      "stub": 0,
+      "functional": 4,
+      "utility": 8,
+      "production-grade": 47,
       "total": 59
     },
     "chat_agent": {
@@ -396,10 +396,10 @@
       "total": 1
     },
     "chem": {
-      "stub": 3,
-      "functional": 8,
-      "utility": 13,
-      "production-grade": 4,
+      "stub": 2,
+      "functional": 1,
+      "utility": 18,
+      "production-grade": 7,
       "total": 28
     },
     "chicken3": {
@@ -1145,9 +1145,9 @@
       "total": 17
     },
     "forum": {
-      "stub": 5,
-      "functional": 6,
-      "utility": 27,
+      "stub": 1,
+      "functional": 4,
+      "utility": 33,
       "production-grade": 6,
       "total": 44
     },
@@ -1880,10 +1880,10 @@
       "total": 42
     },
     "nonprofit": {
-      "stub": 3,
-      "functional": 6,
-      "utility": 8,
-      "production-grade": 32,
+      "stub": 0,
+      "functional": 0,
+      "utility": 12,
+      "production-grade": 37,
       "total": 49
     },
     "notion": {
@@ -2188,9 +2188,9 @@
       "total": 1
     },
     "projects": {
-      "stub": 4,
-      "functional": 10,
-      "utility": 69,
+      "stub": 0,
+      "functional": 6,
+      "utility": 77,
       "production-grade": 16,
       "total": 99
     },
@@ -25119,7 +25119,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -25127,7 +25127,7 @@
       "domain": "chat",
       "macro": "forge.delete",
       "file": "server/server.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 8,
       "combinedLoc": 49,
       "stateTouch": true,
@@ -25137,7 +25137,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": true,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -25145,7 +25145,7 @@
       "domain": "chat",
       "macro": "forge.iterate",
       "file": "server/server.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 10,
       "combinedLoc": 51,
       "stateTouch": true,
@@ -25155,7 +25155,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": true,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -25181,7 +25181,7 @@
       "domain": "chat",
       "macro": "forge.message",
       "file": "server/server.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 14,
       "combinedLoc": 55,
       "stateTouch": true,
@@ -25191,7 +25191,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": true,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -25199,7 +25199,7 @@
       "domain": "chat",
       "macro": "forge.save",
       "file": "server/server.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 8,
       "combinedLoc": 49,
       "stateTouch": true,
@@ -25209,7 +25209,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": true,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -25371,7 +25371,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -25559,7 +25559,7 @@
       "domain": "chat",
       "macro": "route.metrics",
       "file": "server/server.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 8,
       "combinedLoc": 8,
       "stateTouch": false,
@@ -25569,7 +25569,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -25785,7 +25785,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -25793,7 +25793,7 @@
       "domain": "chat",
       "macro": "tools",
       "file": "server/server.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 83,
       "combinedLoc": 95,
       "stateTouch": true,
@@ -25803,7 +25803,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -25973,7 +25973,7 @@
       "domain": "chem",
       "macro": "check-interactions",
       "file": "server/domains/chem.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 47,
       "combinedLoc": 47,
       "stateTouch": false,
@@ -25983,7 +25983,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -25991,7 +25991,7 @@
       "domain": "chem",
       "macro": "conformer-3d",
       "file": "server/domains/chem.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 30,
       "combinedLoc": 30,
       "stateTouch": false,
@@ -26001,7 +26001,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -26045,7 +26045,7 @@
       "domain": "chem",
       "macro": "explore-element",
       "file": "server/domains/chem.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 39,
       "combinedLoc": 39,
       "stateTouch": false,
@@ -26055,7 +26055,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -26063,7 +26063,7 @@
       "domain": "chem",
       "macro": "generate-safety",
       "file": "server/domains/chem.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 52,
       "combinedLoc": 52,
       "stateTouch": false,
@@ -26073,7 +26073,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -26199,7 +26199,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -26243,7 +26243,7 @@
       "domain": "chem",
       "macro": "periodic-table",
       "file": "server/domains/chem.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 3,
       "combinedLoc": 3,
       "stateTouch": false,
@@ -26253,7 +26253,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -26261,7 +26261,7 @@
       "domain": "chem",
       "macro": "reaction-mechanism",
       "file": "server/domains/chem.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 20,
       "combinedLoc": 20,
       "stateTouch": false,
@@ -26271,7 +26271,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -26279,7 +26279,7 @@
       "domain": "chem",
       "macro": "resolve-structure",
       "file": "server/domains/chem.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 35,
       "combinedLoc": 35,
       "stateTouch": false,
@@ -26289,7 +26289,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -26369,7 +26369,7 @@
       "domain": "chem",
       "macro": "structure-layout",
       "file": "server/domains/chem.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 26,
       "combinedLoc": 167,
       "stateTouch": false,
@@ -26379,7 +26379,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -66249,7 +66249,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66267,7 +66267,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66285,7 +66285,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66321,7 +66321,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66329,7 +66329,7 @@
       "domain": "forum",
       "macro": "communityHealth",
       "file": "server/domains/forum.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 10,
       "combinedLoc": 10,
       "stateTouch": false,
@@ -66339,7 +66339,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -66375,7 +66375,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66393,7 +66393,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66411,7 +66411,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66429,7 +66429,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66447,7 +66447,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66491,7 +66491,7 @@
       "domain": "forum",
       "macro": "moderationQueue",
       "file": "server/domains/forum.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 7,
       "combinedLoc": 7,
       "stateTouch": false,
@@ -66501,7 +66501,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -66519,7 +66519,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66537,7 +66537,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66563,7 +66563,7 @@
       "domain": "forum",
       "macro": "post-delete",
       "file": "server/domains/forum.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 9,
       "combinedLoc": 28,
       "stateTouch": true,
@@ -66573,7 +66573,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -66591,7 +66591,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66609,7 +66609,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66645,7 +66645,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66663,7 +66663,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66681,7 +66681,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66699,7 +66699,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66717,7 +66717,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66735,7 +66735,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66753,7 +66753,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66771,7 +66771,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66779,7 +66779,7 @@
       "domain": "forum",
       "macro": "tag-list",
       "file": "server/domains/forum.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 11,
       "combinedLoc": 25,
       "stateTouch": true,
@@ -66789,7 +66789,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -66807,7 +66807,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66815,7 +66815,7 @@
       "domain": "forum",
       "macro": "threadAnalysis",
       "file": "server/domains/forum.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 9,
       "combinedLoc": 9,
       "stateTouch": false,
@@ -66825,7 +66825,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -66843,7 +66843,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66861,7 +66861,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66879,7 +66879,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66897,7 +66897,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66915,7 +66915,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66933,7 +66933,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66941,7 +66941,7 @@
       "domain": "forum",
       "macro": "topicClustering",
       "file": "server/domains/forum.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 8,
       "combinedLoc": 8,
       "stateTouch": false,
@@ -66951,7 +66951,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -66969,7 +66969,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -66987,7 +66987,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -67005,7 +67005,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -67023,7 +67023,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": true,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108567,7 +108567,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108585,7 +108585,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108603,7 +108603,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108611,7 +108611,7 @@
       "domain": "nonprofit",
       "macro": "campaign-update",
       "file": "server/domains/nonprofit.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 9,
       "combinedLoc": 43,
       "stateTouch": true,
@@ -108621,7 +108621,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -108629,7 +108629,7 @@
       "domain": "nonprofit",
       "macro": "campaignProgress",
       "file": "server/domains/nonprofit.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 14,
       "combinedLoc": 14,
       "stateTouch": false,
@@ -108639,7 +108639,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -108657,7 +108657,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108665,7 +108665,7 @@
       "domain": "nonprofit",
       "macro": "comm-log",
       "file": "server/domains/nonprofit.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 8,
       "combinedLoc": 46,
       "stateTouch": true,
@@ -108675,7 +108675,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -108693,7 +108693,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108711,7 +108711,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108729,7 +108729,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108747,7 +108747,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108765,7 +108765,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108783,7 +108783,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108801,7 +108801,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108819,7 +108819,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108837,7 +108837,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108855,7 +108855,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108873,7 +108873,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108891,7 +108891,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108899,7 +108899,7 @@
       "domain": "nonprofit",
       "macro": "donor-update",
       "file": "server/domains/nonprofit.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 12,
       "combinedLoc": 70,
       "stateTouch": true,
@@ -108909,7 +108909,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -108917,7 +108917,7 @@
       "domain": "nonprofit",
       "macro": "donorRetention",
       "file": "server/domains/nonprofit.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 10,
       "combinedLoc": 10,
       "stateTouch": false,
@@ -108927,7 +108927,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -108945,7 +108945,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108963,7 +108963,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -108981,7 +108981,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109007,7 +109007,7 @@
       "domain": "nonprofit",
       "macro": "grantReporting",
       "file": "server/domains/nonprofit.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 17,
       "combinedLoc": 17,
       "stateTouch": false,
@@ -109017,7 +109017,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -109043,7 +109043,7 @@
       "domain": "nonprofit",
       "macro": "lookup-org-by-ein",
       "file": "server/domains/nonprofit.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 47,
       "combinedLoc": 47,
       "stateTouch": false,
@@ -109053,7 +109053,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -109071,7 +109071,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109089,7 +109089,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109107,7 +109107,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109125,7 +109125,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109143,7 +109143,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109161,7 +109161,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109179,7 +109179,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109197,7 +109197,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109215,7 +109215,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109233,7 +109233,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109251,7 +109251,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109259,7 +109259,7 @@
       "domain": "nonprofit",
       "macro": "search-orgs",
       "file": "server/domains/nonprofit.js",
-      "tier": "functional",
+      "tier": "production-grade",
       "handlerLoc": 35,
       "combinedLoc": 35,
       "stateTouch": false,
@@ -109269,7 +109269,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -109305,7 +109305,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109323,7 +109323,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109341,7 +109341,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109377,7 +109377,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109395,7 +109395,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109413,7 +109413,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -109421,7 +109421,7 @@
       "domain": "nonprofit",
       "macro": "volunteerMatch",
       "file": "server/domains/nonprofit.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 13,
       "combinedLoc": 13,
       "stateTouch": false,
@@ -109431,7 +109431,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -122175,7 +122175,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -122219,7 +122219,7 @@
       "domain": "projects",
       "macro": "attachment-list",
       "file": "server/domains/projects.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 5,
       "combinedLoc": 17,
       "stateTouch": true,
@@ -122229,7 +122229,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -122265,7 +122265,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -122291,7 +122291,7 @@
       "domain": "projects",
       "macro": "burndownCalc",
       "file": "server/domains/projects.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 1,
       "combinedLoc": 1,
       "stateTouch": false,
@@ -122301,7 +122301,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -122319,7 +122319,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -122381,7 +122381,7 @@
       "domain": "projects",
       "macro": "ganttGenerate",
       "file": "server/domains/projects.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 1,
       "combinedLoc": 1,
       "stateTouch": false,
@@ -122391,7 +122391,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -122409,7 +122409,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -122445,7 +122445,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -122463,7 +122463,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -122571,7 +122571,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -122589,7 +122589,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -122607,7 +122607,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -122895,7 +122895,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -122913,7 +122913,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -122967,7 +122967,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123003,7 +123003,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123029,7 +123029,7 @@
       "domain": "projects",
       "macro": "relation-list",
       "file": "server/domains/projects.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 6,
       "combinedLoc": 18,
       "stateTouch": true,
@@ -123039,7 +123039,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -123093,7 +123093,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123111,7 +123111,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123129,7 +123129,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123165,7 +123165,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123173,7 +123173,7 @@
       "domain": "projects",
       "macro": "riskMatrix",
       "file": "server/domains/projects.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 1,
       "combinedLoc": 1,
       "stateTouch": false,
@@ -123183,7 +123183,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -123273,7 +123273,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123309,7 +123309,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123327,7 +123327,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123363,7 +123363,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123381,7 +123381,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123399,7 +123399,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123407,7 +123407,7 @@
       "domain": "projects",
       "macro": "stakeholderMap",
       "file": "server/domains/projects.js",
-      "tier": "stub",
+      "tier": "utility",
       "handlerLoc": 1,
       "combinedLoc": 1,
       "stateTouch": false,
@@ -123417,7 +123417,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -123489,7 +123489,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123497,7 +123497,7 @@
       "domain": "projects",
       "macro": "task-comments",
       "file": "server/domains/projects.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 7,
       "combinedLoc": 19,
       "stateTouch": true,
@@ -123507,7 +123507,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
@@ -123525,7 +123525,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123543,7 +123543,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123561,7 +123561,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123579,7 +123579,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123597,7 +123597,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123759,7 +123759,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123777,7 +123777,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123795,7 +123795,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123813,7 +123813,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123903,7 +123903,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": true,
       "delegates": false
     },
@@ -123911,7 +123911,7 @@
       "domain": "projects",
       "macro": "wip-set",
       "file": "server/domains/projects.js",
-      "tier": "functional",
+      "tier": "utility",
       "handlerLoc": 14,
       "combinedLoc": 34,
       "stateTouch": true,
@@ -123921,7 +123921,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": false,
+      "hasTest": true,
       "frontendUse": false,
       "delegates": false
     },
