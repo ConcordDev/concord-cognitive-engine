@@ -58,6 +58,21 @@ and narrow.
 
 ---
 
+## ⛔ Hard ordering constraint (non-negotiable)
+
+**Phase 0 (the capability sandbox + abuse-prevention in `docs/CONKAY_SAFETY_MODEL.md`) GATES Phases
+2–4.** No phase that lets ConKay author code that *runs untrusted*, lets *another user* install a lens,
+or lets anything reach the *marketplace / global tier / social feed* may ship until the confined-ctx
+sandbox, isolation, and publish-screening exist. Local/private use by the owner (Phase 1 semantic
+intelligence on your own machine/data) is exempt — it's safe by design (blast radius = you). **The
+floor ships before the keys. This ordering is not "optimizable away" for speed.**
+
+### Usage red line (constitutional — see safety model)
+Concord/ConKay shall not be built, licensed, or operated for **autonomous weapons, lethal targeting,
+or mass surveillance** — the scaled-harm red lines. This is a deliberate market refusal (incl. defense
+applications that cross it): the "Machine, not Samaritan" ethos is unsellable if the product also serves
+the Samaritan use case. Treat as a governance invariant alongside the economy invariants.
+
 ## Phased roadmap
 
 ### Phase 1 — Semantic table-stakes (highest leverage; close the only real gap)
