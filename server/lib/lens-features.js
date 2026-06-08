@@ -1521,6 +1521,23 @@ const _FEATURES = {
     botAccess: false,
     usbIntegration: false,
   },
+
+  translation: {
+    lensId: "translation",
+    lensNumber: 127,
+    category: "AI_EXT",
+    features: [
+      f("machine_translate", "Machine Translation", "Translate text into any of 25+ languages via the local LLM — no external API, no data egress", "intelligence", ["local_llm"]),
+      f("language_detect", "Language Detection", "Identify the source language of any text with a confidence score", "intelligence", ["local_llm"]),
+      f("batch_translate", "Batch Translation", "Translate an array of strings in one order-preserving pass", "intelligence", ["local_llm"]),
+      f("formality_control", "Formality Control", "Choose a neutral, formal, or informal register; preserves formatting and untranslatable tokens", "intelligence", ["local_llm"]),
+    ],
+    featureCount: 4,
+    economicIntegrations: [],
+    emergentAccess: true,
+    botAccess: true,
+    usbIntegration: false,
+  },
 };
 
 export const LENS_FEATURES = Object.freeze({ ..._FEATURES, ...EXTENDED_FEATURES });

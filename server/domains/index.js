@@ -36,6 +36,7 @@ import insurance from './insurance.js';
 import crypto from './crypto.js';
 import code from './code.js';
 import math from './math.js';
+import translation from './translation.js';
 import bio from './bio.js';
 import quantum from './quantum.js';
 import art from './art.js';
@@ -273,6 +274,7 @@ export default [
   crypto,
   code,
   math,
+  translation,
   bio,
   quantum,
   art,

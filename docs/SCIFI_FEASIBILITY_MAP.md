@@ -46,7 +46,7 @@ Legend: ✅ feasible now (substrate built) · 🟡 foundation present, depth var
 | 3 | **Foundation psychohistory** | Math-predict large populations | Concordia + forward-sim | ✅ in-sim / ⛔ real-world | `lib/embodied/forward-sim.js` + `emergent/forward-sim-cycle.js`. **Scope is 100% sandbox** (quest/NPC/faction state-drift only). Do **not** claim real-world forecasting. |
 | 4 | **Snow Crash Librarian** | Daemon navigating a vast cross-reference web | ConKay + citation graph | ✅ | `lib/reason-verify.js` (deterministic citation floor + council judge) + DTU citation graph. ~21 files; production-grade. |
 | 5 | **Person of Interest "The Machine"** | Aligned, private, nudge-not-control AI | refusal-field + value-drift flagging + salience-gated outreach | ✅ (ethos, built) | `lib/refusal-field.js`, `personal-beat-scheduler` + `initiative-cycle` heartbeats (verified wired), local Ollama. The autonomous-but-constrained "Machine" framing holds. |
-| 6 | **Iron Man holographic workshop** | Gesture-design hardware in 3D | compute-grounded CAS/FEA + 3D HUD | 🔶 (CAS/FEA **real**) | **Corrected: NOT a gap.** `domains/engineering.js` (944 LOC, 11 macros incl. `runFea`) + `lib/simulation/fea-solver.js` = genuine direct-stiffness FEA (3D frames, 6 DOF/node, real material library, member stress/utilization). `domains/math.js` (1,552 LOC) = real CAS. **Frontier = tetra/nonlinear FEA + AR display only.** |
+| 6 | **Iron Man holographic workshop** | Gesture-design hardware in 3D | compute-grounded CAS/FEA + 3D HUD | 🔶 (CAS/FEA **real**) | **Corrected: NOT a gap.** `domains/engineering.js` (944 LOC, **18 macros** incl. `runFEA`) + `lib/simulation/fea-solver.js` (~380 LOC) = genuine direct-stiffness FEA (3D frames, 6 DOF/node, 11-entry material library, member stress/utilization). `domains/math.js` (1,552 LOC) = real CAS. **Frontier = tetra/nonlinear FEA + AR display only.** |
 | 7 | **Dune Mentat + Other Memory** | Human-computer analysis + ancestral memory | compute-grounded CAS + DTU lineage/NPC inheritance | ✅ | CAS verify (above) + `lib/npc-legacy.js` inheritance/legacy system. |
 | 8 | **2001 — HAL 9000 (anti-pattern)** | The AI you must NOT build | causal-closure + Grounded + local + kill-switch | ✅ ethos / ✅ **built** | **Corrected: built, not "designed."** `lib/causal-closure.js` (~280 LOC) + `tests/causal-closure.test.js` (16/16), bridged to `agent-awareness-index.js`. Anti-HAL props present (local, Grounded, kill-switch). |
 | 9 | **The Matrix Construct ("I know kung fu")** | Instant skill loading | recipe/skill/glyph instantiation | ✅ | `lib/skill-evolution.js`, `lib/glyph-spells.js` (base-6 algebra), `craftTool`, `skill-forge.js`. ~71 files; production-grade with behavioral tests. |
@@ -57,20 +57,56 @@ Legend: ✅ feasible now (substrate built) · 🟡 foundation present, depth var
 
 **Result: ~10/13 feasible now; engineering (row 6) is a strength not a gap; translation (row 12)
 and AR display are the software-side frontier; real-world prediction (row 3) is out of scope by design.**
+*(Update 2026-06-08: row 12 translation is **no longer a gap** — a real machine-translation lens now
+ships via the local LLM: `server/domains/translation.js` + `lib/prompt-registry.js#machineTranslate`,
+`/lenses/translation`, 16 contract tests. Sovereignty intact — no external API. AR display moved too:
+see §1a Holodeck + the AR note in §3.)*
+
+### 1a. Tier 2/3 + bonus analogs (audit + canon-verified)
+
+Same legend, plus **🛠️ = foundation present, surfacing/polish in progress** (the user's "buildable"
+tier). Canon was web-verified (see § Sources) so the mappings are accurate, not misremembered.
+
+| Sci-Fi system | Canon (verified) | Concord mapping | Verdict | Code anchor |
+|---|---|---|---|---|
+| **TRON — enter the Grid** | Humans digitized *into* a computer world where Programs live as inhabitants. | Concordia 3D world you navigate as an avatar | 🛠️ | `concord-frontend/lib/world-lens/` + `components/world-lens/ConcordiaScene.tsx` |
+| **Westworld — Hosts** | Androids run authored narrative *loops*; the show's core question is whether they're truly conscious. | NPC sim (loops/schedules/memory) **with the ethics caution kept** | 🛠️ + ⛔ (consciousness) | `server/lib/npc-*.js`, `server/lib/oracle-brain.js`, `server/emergent/quest-engine.js` |
+| **Mass Effect — EDI + Codex** | EDI = the ship's AI; the Codex = the unlockable in-game knowledge archive. | ConKay (ship AI) + DTU archive (Codex) | ✅ / 🛠️ | `components/conkay/*` + the DTU substrate (674 tables) |
+| **Stargate — Repository of Knowledge** | Ancient device that *downloads* a vast knowledge bank into a human mind — which can't hold it. | The DTU vault is the archive ✅; the **brain-download is the ⛔** (no neural write-back — by design) | ✅ archive / ⛔ download | DTU substrate; ⛔ = same refusal as mind-upload below |
+| **Ex Machina — "is it conscious, or just convincing me?"** | A Turing-test-style eval the film deliberately leaves unresolved. | The honest answer stays **unmeasurable, never claimed**; the code ships *functional* correlates only | ⛔ by design | `server/lib/causal-closure.js` + `agent-awareness-index.js` |
+| **Star Wars — droids** | General-purpose autonomous robots. | Suits/robots hardware roadmap (frontier, sequenced after users) | ⛔ hardware | — (the frontier track) |
+| **Star Trek — Holodeck** | A room simulating any environment with interactive characters. | Concordia as a **proto-holodeck** — screen now, VR later via the existing WebXR path | 🛠️ | world-lens + the `renderer.xr` WebXR session in `app/lenses/ar/page.tsx` |
+| **Mind-upload (Black Mirror "cookie" / San Junipero)** | A digital copy of a person's *consciousness* with full subjective experience. | **The on-brand NO.** Functional persona-persistence is real — "a holocron of a person" (knowledge, voice, recorded character) — but phenomenal experience is untransferable + unverifiable. **Make the holocron; never promise the soul.** | ⛔ by design (headline refusal) | `server/lib/agent-self.js`, `agent-autobiography.js`, `foundation-identity.js` |
+
+Two canon refinements worth keeping honest: (a) Snow Crash's Librarian (§1 row 4) *explicitly disclaims
+being intelligent* — it retrieves + connects, candid about its limits; that candor is exactly the
+Grounded-badge discipline, so the mapping is tighter than flattering. (b) The Star Wars Holocron
+"gatekeeper gauges the user's worthiness" detail (§1 row 2) is chiefly *Legends* canon — cite it as the
+Legends conception, not current canon.
 
 ---
 
 ## 2. Market Demand (2026) → Concord
 
-| What people are asking for | Concord | Status (verified) |
+> **Web-researched evidence + competitive landscape + sizing live in
+> [`docs/MARKET_DEMAND_MAP.md`](MARKET_DEMAND_MAP.md)** (5-angle deep-research fan-out, 2026-06-08,
+> every claim source-cited). This table is the summary; that doc is the receipts. The "Code" column
+> is the in-repo capability (verified §1/§3 anchors); the "Market signal" column is the *external*
+> demand verdict from that research, with the load-bearing source noted.
+
+| What people are asking for | Concord (code) | Market signal (web-verified — see companion) |
 |---|---|---|
-| **Verifiable AI** — cites sources, refuses when unsure ("the winning pattern") | `reason.verify` / Grounded badge / compute-grounded routing | ✅ production-grade (deterministic citation floor + council judge) |
-| **Proactive / background** — "the line between a chatbot and an assistant" | `initiative-cycle` / `personal-beat-scheduler` | ✅ wired to heartbeats |
-| **Private / local / no-harvest** | local Ollama + consent gates + `personal_dtus_never_leak` | ✅ |
-| **Controllable, trustworthy memory** | DTU substrate + scope/consent privacy gates | ✅ |
-| **Agentic — does real tasks** | ~9,600 macros (478 domains) | ✅ |
-| **Owned / no-subscription** | free + local + take-rate model | ✅ |
+| **Verifiable AI** — cites sources, refuses when unsure | `reason.verify` (deterministic citation floor + council judge) / Grounded badge / compute-grounded routing | **🟢 strongest *revealed* pull.** Perplexity ~$18–20B val on cited answers; Google/MS shipping citations as default; trust *fell* as use rose (only 46% trust AI). **Lead with this.** |
+| **Proactive / agentic** — does real multi-step tasks | `initiative-cycle` / `personal-beat-scheduler` + ~9,600 macros (478 domains) | **🟡 loudest demand, weakest delivery.** Gartner: agentic in 33% of apps by 2028 — *but* best agents finish ~30–35% of multi-step tasks and >40% of agentic projects are forecast cancelled by 2027. **A *verified* agent is the answer to that backlash.** |
+| **Private / local / no-harvest** | local Ollama 5-brain + consent gates + `personal_dtus_never_leak` | **🔵 real but niche.** On-prem >50% of 2025 enterprise LLM spend; Ollama ~174k stars — but ChatGPT's ~800–900M users dwarf local by 2–3 orders. **Enterprise/R&D wedge, not a mainstream claim.** |
+| **Controllable, trustworthy memory** | DTU substrate (674 tables, ~1.5M-DTU cap) + scope/consent gates | **🟢 real + monetizing.** Notion ~$500M ARR, >50% AI-attributed; ChatGPT shipped controllable memory. |
+| **Owned / no-subscription** | free + local + take-rate + creator economy | **⚪→🔵 grievance > behavior.** 41–47% subscription fatigue + 81% enterprise lock-in concern, but subs still growing fast; strongest in enterprise/regulated. |
 | **External integration** (connect your stack) | **bidirectional MCP** + Google/Apple OAuth **sign-in** | 🟡 **partial — see §3.** MCP is real; OAuth is identity-only; Gmail/Calendar/Slack/etc. connectors are **scaffold, not real two-way sync.** |
+
+**The white space (from the companion's landscape):** every incumbent owns exactly *one* vector
+(Perplexity=grounded, ChatGPT=general, Copilot=enterprise, Ollama=privacy, Notion=PKM). No one ships
+the *intersection*. Concord's defensible claim is the combination × depth — never any single checkbox
+(this restates Honesty Caveat #2 below with market evidence behind it).
 
 ---
 
@@ -78,20 +114,30 @@ and AR display are the software-side frontier; real-world prediction (row 3) is 
 
 Real gaps = hardware / physics / real-world **+ connector depth**:
 
-- **External connectors (Gmail/Calendar/Sheets/Slack/GitHub/Notion)** — **scaffold only.**
-  `domains/integrations.js` `connectApp` stores a fake `tok_${random}`; zero real API calls.
-  OAuth (`oauth-providers.js`) is sign-in/identity only — access/refresh tokens are discarded, no
-  write-back. iCal (`domains/calendar.js`) is **read-only pull**; `direction: push|two-way` is
-  accepted but unimplemented (in-memory). **The real integration surface is MCP** (`mcp-server.js`
-  exposes ~200 macros to MCP clients; `mcp-client.js` calls external MCP servers, SSRF-guarded).
-  → **On the build roadmap as a wedge item** (real OAuth-token persistence + Google Calendar two-way).
-- **Machine translation** — no subsystem (i18n UI only). LLM-capable but not wired.
+- **External connectors (Gmail/Calendar/Sheets/Slack/GitHub/Notion)** — **foundation now built;
+  live sync needs secrets.** The token core is real: `migration 331 connector_oauth_tokens` +
+  `lib/connector-tokens.js` persist access/refresh tokens **encrypted at rest (AES-256-GCM)** with
+  refresh-rotation and **`invalid_grant`→re-consent** handling; `lib/connector-client.js` is an
+  SSRF-guarded outbound client (Bearer + 401 forced-refresh retry) with a Google Calendar write
+  helper; `domains/calendar.js#accounts-push-event` is a direction-gated two-way write;
+  `integrations.connectApp` no longer fabricates a token. Hardened to the OAuth security BCP
+  ([RFC 6819 §5.1.4.1.3](https://datatracker.ietf.org/doc/html/rfc6819),
+  [RFC 9700](https://datatracker.ietf.org/doc/rfc9700/),
+  [OWASP SSRF](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html)).
+  **Still required for *live* Gmail/Calendar:** real `GOOGLE_CLIENT_ID/SECRET` + the
+  connector-authorize callback (the documented wiring point). MCP remains the other real surface.
+- **Machine translation** — ✅ **shipped** (was a gap): `domains/translation.js` (translate/detect/
+  batch/languages) through the local LLM, lens at `/lenses/translation`, 16 tests. No external API.
 - **Physical robots & exo-suits** — hardware; not built. (Where ConKay-as-R&D-partner aims.)
 - **Engineering-grade tetra/nonlinear FEA & full CAD** — the *beam-frame* FEA + CAS are **real**
   (corrected above); the frontier is tetrahedral meshes, nonlinear/large-deformation, contact
   elements, and parametric CAD. ⚠️ *Pitch the real beam-frame FEA + CAS; do not overclaim full CAD.*
-- **AR / holographic display** — `domains/ar.js` + `ARPreview.tsx` are a mock facade (~3–4 files);
-  needs real WebXR + AR hardware.
+- **AR / holographic display** — `ARPreview.tsx` is now a **real WebXR `immersive-ar` surface**
+  (feature-detect → session → hit-test placement → honest non-XR fallback), built to the WebXR BCP
+  (GPU/hit-test disposal on session end, foveation, transient-activation —
+  [MDN WebXR](https://developer.mozilla.org/en-US/docs/Web/API/WebXR_Device_API),
+  [W3C Hit Test](https://www.w3.org/TR/webxr-hit-test-1/)). **Live AR still needs AR hardware**
+  (Quest/ARCore; not iOS Safari / visionOS as of 2026); the detection + fallback are verified headless.
 - **Real-world prediction** (psychohistory applied to reality) — sandbox only; do **not** claim it.
 - **Verified phenomenal consciousness** — unmeasurable in principle, for anyone; the code correctly
   ships *functional* constructs labeled as correlates (`agent-awareness-index.js`, `causal-closure.js`),
@@ -165,11 +211,31 @@ sci-fi software capabilities already sit in the repo. That changes the roadmap s
 
 ---
 
+## Sources (sci-fi canon for §1a — web-verified)
+
+The §1a mappings were checked against canon so they're accurate, not misremembered (all confirmed):
+- TRON — https://en.wikipedia.org/wiki/Tron
+- Westworld (Hosts + the consciousness question) — https://www.imdb.com/title/tt0475784/
+- Mass Effect — EDI https://masseffect.fandom.com/wiki/EDI · Codex https://masseffect.fandom.com/wiki/Codex
+- Stargate SG-1 — Repository of Knowledge https://stargate.fandom.com/wiki/Repository_of_knowledge
+- Ex Machina — https://en.wikipedia.org/wiki/Ex_Machina_(film)
+- Star Trek — Holodeck https://en.wikipedia.org/wiki/Holodeck
+- Black Mirror — the "cookie" / mind-copy https://reactormag.com/black-mirror-shared-universe-cookies-human-rights-copies/
+- Person of Interest — the Machine vs. Samaritan design contrast https://personofinterest.fandom.com/wiki/Samaritan
+- Snow Crash — the Librarian (and its disclaimer that it isn't intelligent) https://en.wikiquote.org/wiki/Snow_Crash
+- Star Wars — Holocron gatekeeper (*Legends* conception) https://starwars.fandom.com/wiki/Gatekeeper/Legends
+
 ## Cross-references
+- **Market-demand half** (web-researched evidence, competitive landscape, sizing, wedge segments):
+  [`docs/MARKET_DEMAND_MAP.md`](MARKET_DEMAND_MAP.md).
 - Master continuation plan + tracks: `docs/CONKAY_HONEST_HOLOGRAM_PLAN.md`.
 - Depth fleet (Track A) status + resume loop: `docs/DEPTH_FLEET_PLAN.md`.
 - Causal-closure substrate: `docs/CAUSAL_CLOSURE_EXPERIMENT.md` + `server/lib/causal-closure.js`.
 
 *This document rates capability against source code as of 2026-06-08. Ratings reflect substrate
 presence, not product polish. Counts were replaced with anchor-files + depth verdicts after a
-three-agent verification pass. Where a claim could not be confirmed from code, it is marked "verify."*
+three-agent verification pass (re-spot-checked 2026-06-08: all seven load-bearing anchors still hold).
+§1a adds canon-verified Tier-2/3 + bonus analogs (TRON, Westworld, Mass Effect, Stargate, Ex Machina,
+droids, Holodeck, mind-upload) with code anchors + sources. The Market-Demand half (§2) is backed by a
+web-research pass with cited sources — see the companion `MARKET_DEMAND_MAP.md`. Where a claim could not
+be confirmed from code, it is marked "verify."*

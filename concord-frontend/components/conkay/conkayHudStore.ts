@@ -56,6 +56,10 @@ interface ConkayHudState {
   activeLabel: string | null;
   /** Return facts of the most recent real `macro:completed`, or null. */
   last: ConkayTelemetry | null;
+  /** Recent completed runs (newest first, capped at TELEMETRY_CAP) — the source
+   *  for the scene's telemetry panels. Each entry is a real `macro:completed`
+   *  fact, never a guess. */
+  telemetry: ConkayTelemetry[];
   /** perf.now() of the most recent start — lets the scene ramp ring spin-up honestly. */
   startedAt: number | null;
   /** Internal: the set of run ids currently in flight (dedupes repeat events). */
@@ -73,10 +77,14 @@ interface ConkayHudState {
 const labelOf = (d: { domain?: string; action?: string }) =>
   `${d.domain ?? '?'}.${d.action ?? '?'}`;
 
+/** How many recent runs the scene's telemetry panels show. */
+export const TELEMETRY_CAP = 6;
+
 export const useConkayHudStore = create<ConkayHudState>((set) => ({
   inFlight: 0,
   activeLabel: null,
   last: null,
+  telemetry: [],
   startedAt: null,
   _runIds: new Set<string>(),
 
@@ -102,16 +110,19 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
       const id = d.runId ?? `anon:${labelOf(d)}`;
       const next = new Set(s._runIds);
       next.delete(id);
+      const fact: ConkayTelemetry = {
+        domain: d.domain ?? '?',
+        action: d.action ?? '?',
+        ok: d.ok !== false,
+        ms: typeof d.ms === 'number' ? d.ms : null,
+      };
       return {
         ...s,
         _runIds: next,
         inFlight: next.size,
-        last: {
-          domain: d.domain ?? '?',
-          action: d.action ?? '?',
-          ok: d.ok !== false,
-          ms: typeof d.ms === 'number' ? d.ms : null,
-        },
+        last: fact,
+        // Newest first, capped — the panels render the real return facts only.
+        telemetry: [fact, ...s.telemetry].slice(0, TELEMETRY_CAP),
       };
     }),
 
@@ -120,6 +131,7 @@ export const useConkayHudStore = create<ConkayHudState>((set) => ({
       inFlight: 0,
       activeLabel: null,
       last: null,
+      telemetry: [],
       startedAt: null,
       _runIds: new Set<string>(),
     })),

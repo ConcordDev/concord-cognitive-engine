@@ -1143,6 +1143,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     ],
   },
   {
+    id: 'translation',
+    name: 'Translation',
+    icon: Globe,
+    description: 'Machine translation on your own hardware — local LLM, no data egress',
+    category: 'ai',
+    showInSidebar: true,
+    showInCommandPalette: true,
+    path: '/lenses/translation',
+    order: 142,
+    keywords: ['translate', 'translation', 'language', 'languages', 'localize', 'i18n', 'detect language'],
+  },
+  {
     id: 'ml',
     name: 'ML',
     icon: Brain,

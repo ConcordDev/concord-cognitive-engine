@@ -464,6 +464,20 @@ export default function registerIntegrationsActions(registerLensAction) {
     if (!connector) return { ok: false, error: "Unknown connector" };
     const userId = intActor(ctx);
     const m = userMap(s, "connections", userId);
+    // Honesty (Track C): do NOT fabricate a credential-looking token. Whether a
+    // REAL OAuth credential exists is derived from the connector_oauth_tokens
+    // store (migration 331) — populated only by a completed OAuth flow. This
+    // record is the user's local "I selected this connector" choice; the real
+    // egress path (connector-client.js) refuses when credentialStored is false.
+    let credentialStored = false;
+    try {
+      if (ctx?.db && connector.authType === "oauth2") {
+        const row = ctx.db
+          .prepare("SELECT 1 FROM connector_oauth_tokens WHERE user_id = ? AND connector_id = ? LIMIT 1")
+          .get(userId, connector.id);
+        credentialStored = !!row;
+      }
+    } catch { /* table may not exist on minimal builds — credentialStored stays false */ }
     const connection = {
       id: nextIntId("conn"),
       connectorId: connector.id,
@@ -471,8 +485,10 @@ export default function registerIntegrationsActions(registerLensAction) {
       label: params.label || connector.name,
       authType: connector.authType,
       scopes: connector.scopes,
-      // Mock-OAuth: a non-secret token reference. No real credentials stored.
-      tokenRef: `tok_${Math.random().toString(36).slice(2, 14)}`,
+      // No fabricated token. Real credentials live in connector_oauth_tokens.
+      tokenRef: null,
+      credentialStored,
+      needsOauth: connector.authType === "oauth2" && !credentialStored,
       status: "connected",
       account: params.account || `${connector.id}-account`,
       createdAt: nowIso(),
