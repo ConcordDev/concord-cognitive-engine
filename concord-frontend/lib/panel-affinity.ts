@@ -9,29 +9,46 @@
 // Keys are destination lens ids (lib/lens-registry); values are panel ids
 // (lib/panel-registry). Both sides are validated by the registry-integrity test.
 
+// Curated cross-domain panels per destination. Every id here is a panel from a
+// DIFFERENT lens than the destination (true recombination) and resolves in
+// lib/panel-registry. Destinations not listed simply have no cross-mounts yet
+// (their own rich page is the depth) — that's fine.
 export const PANEL_AFFINITY: Record<string, string[]> = {
-  // Finance gains holdings, accounting depth, and utility-cost context it never
-  // had to build — all already exist as panels elsewhere.
-  finance: [
-    'crypto.portfolio',
-    'accounting.budgets',
-    'accounting.ratios',
-    'energy.billing',
-  ],
-  // Healthcare gains the self-care half of health: wellness, mental health,
-  // training load, and medication adherence/pricing.
+  // ── Core 6 ──
+  chat: ['research.academic-search'],
+  board: ['projects.portfolio'],
+  graph: ['research.academic-search'],
+  code: ['code-quality.pr-decoration', 'observe.action'],
+  studio: ['music.library', 'music.radio'],
+  // world — its own in-world HUD PanelHost; no cross-mounts here.
+
+  // ── Work ──
+  finance: ['crypto.portfolio', 'accounting.budgets', 'accounting.ratios', 'energy.billing'],
+  accounting: ['finance.accounts', 'crypto.portfolio'],
   healthcare: [
-    'wellness.daily-recommendation',
-    'wellness.cbt',
-    'fitness.training',
-    'pharmacy.adherence',
-    'pharmacy.price-lookup',
+    'wellness.daily-recommendation', 'wellness.cbt', 'fitness.training',
+    'pharmacy.adherence', 'pharmacy.price-lookup',
   ],
-  // Code gains review-quality and observability surfaces.
-  code: [
-    'code-quality.pr-decoration',
-    'observe.action',
-  ],
+  legal: ['research.academic-search', 'council.theater'],
+  projects: ['finance.accounts', 'marketplace.orders'],
+  analytics: ['observe.action', 'finance.accounts'],
+  marketplace: ['creator.revenue', 'crypto.portfolio'],
+
+  // ── Create ──
+  music: ['food.discover'],
+  whiteboard: ['research.academic-search'],
+  creator: ['marketplace.listings', 'marketplace.orders'],
+  crypto: ['accounting.ratios', 'finance.accounts'],
+
+  // ── Knowledge ──
+  research: ['astronomy.targets'],
+  lab: ['astronomy.targets'],
+  agents: ['observe.action'],
+
+  // ── Comms ──
+  message: ['council.theater'],
+  social: ['creator.audience', 'creator.revenue'],
+  council: ['legal.matters', 'message.directory'],
 };
 
 // Density cap — a destination beyond this many cross-mounted panels has stopped

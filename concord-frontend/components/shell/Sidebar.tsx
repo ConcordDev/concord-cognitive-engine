@@ -25,8 +25,9 @@ import {
 import {
   Home, ChevronLeft, ChevronRight, ChevronDown, X, Compass,
   Puzzle, FlaskConical, Search, Users, Cpu, Building2, Download,
-  Globe, Brain, Layers,
+  Globe, Brain, Layers, Star,
 } from 'lucide-react';
+import { getDestinationsByGroup, isDestination, type DestinationDef } from '@/lib/destinations';
 import { cn } from '@/lib/utils';
 
 export function Sidebar() {
@@ -37,6 +38,7 @@ export function Sidebar() {
     userRole,
   } = useUIStore();
   const [expandedCore, setExpandedCore] = useState<string | null>(null);
+  const [showDestinations, setShowDestinations] = useState(true);
   const [showExtensions, setShowExtensions] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => new Set());
@@ -190,10 +192,29 @@ export function Sidebar() {
             ))}
           </div>
 
+          {/* Destinations — the ~19 promoted "full version" lenses beyond the
+              Core 6, grouped (Work / Create / Knowledge / Comms). Collapsible so
+              the sidebar stays scannable. Everything here is also in the Hub +
+              ⌘K; these are the concentrated front doors. */}
+          {showLabel && (
+            <>
+              <button
+                onClick={() => setShowDestinations((v) => !v)}
+                className="w-full flex items-center gap-2 px-3 py-1 text-xs uppercase tracking-widest text-gray-400 hover:text-gray-300 font-medium mb-1 transition-colors"
+                aria-expanded={showDestinations}
+              >
+                <Star className="w-3.5 h-3.5" />
+                <span>Destinations</span>
+                <ChevronDown className={cn('w-3 h-3 ml-auto transition-transform', !showDestinations && '-rotate-90')} />
+              </button>
+              {showDestinations && <DestinationsSection pathname={pathname} />}
+            </>
+          )}
+
           {/* Sub-Lens Tree — 234 sub-lenses under 15 roots */}
           {showLabel && (
             <>
-              <p className="px-3 py-1 text-xs uppercase tracking-widest text-gray-400 font-medium mb-1">
+              <p className="px-3 py-1 text-xs uppercase tracking-widest text-gray-400 font-medium mb-1 mt-3">
                 Sub-Lenses
               </p>
               <SubLensTreeSection pathname={pathname} />
@@ -384,9 +405,54 @@ const CoreLensNavItem = memo(function CoreLensNavItem({
   );
 });
 
+/** Grouped list of the ~19 promoted destinations (Work/Create/Knowledge/Comms). */
+const DestinationsSection = memo(function DestinationsSection({ pathname }: { pathname: string }) {
+  const groups = useMemo(() => getDestinationsByGroup(), []);
+  return (
+    <div className="space-y-2 mb-4">
+      {groups.map((group) => (
+        <div key={group.group}>
+          <p className={cn('px-3 py-0.5 text-[10px] uppercase tracking-wider font-semibold', group.color)}>
+            {group.label}
+          </p>
+          <div className="space-y-0.5">
+            {group.items.map((dest) => (
+              <DestinationLink key={dest.id} dest={dest} pathname={pathname} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+});
+
+/** Single destination link. */
+const DestinationLink = memo(function DestinationLink({ dest, pathname }: { dest: DestinationDef; pathname: string }) {
+  const Icon = dest.icon;
+  const href = `/lenses/${dest.id}`;
+  const isActive = pathname === href || pathname.startsWith(`${href}/`);
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs transition-all',
+        isActive
+          ? 'text-neon-cyan bg-neon-cyan/10'
+          : 'text-gray-300 hover:text-white hover:bg-lattice-elevated',
+      )}
+      aria-current={isActive ? 'page' : undefined}
+    >
+      <Icon className="w-4 h-4 flex-shrink-0" />
+      <span className="truncate">{dest.name}</span>
+    </Link>
+  );
+});
+
 /**
  * Category-grouped extensions with search filter and collapsible sections.
  * Respects sovereign role gating — sovereign-only lenses hidden from regular users.
+ * Destinations (promoted to their own section above) are excluded so they don't
+ * appear twice.
  */
 const CategoryGroupedExtensions = memo(function CategoryGroupedExtensions({
   pathname,
@@ -403,9 +469,13 @@ const CategoryGroupedExtensions = memo(function CategoryGroupedExtensions({
   expandedCategories: Set<string>;
   onToggleCategory: (category: string) => void;
 }) {
-  // Get all extension categories filtered by user role
+  // Get all extension categories filtered by user role, MINUS the promoted
+  // destinations (they have their own section — avoid double-listing).
   const categoryGroups = useMemo(
-    () => getExtensionsByCategory(userRole),
+    () =>
+      getExtensionsByCategory(userRole)
+        .map((g) => ({ ...g, lenses: g.lenses.filter((l) => !isDestination(l.id)) }))
+        .filter((g) => g.lenses.length > 0),
     [userRole]
   );
 

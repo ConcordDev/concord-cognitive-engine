@@ -134,6 +134,80 @@ export const PANEL_REGISTRY: Record<string, PanelEntry> = {
     description: 'Discover nearby food and restaurants',
     load: lazyNamed(() => import('@/components/food/YelpDiscoverPanel'), 'YelpDiscoverPanel'),
   },
+
+  // — destination-tier cross-mounts (verified self-contained: no-prop / onChange-only) —
+  'finance.accounts': {
+    id: 'finance.accounts', label: 'Accounts', scope: 'global',
+    keywords: ['finance', 'accounts', 'balances', 'bank', 'networth'],
+    description: 'Linked accounts and balances',
+    load: lazyNamed(() => import('@/components/finance/AccountsPanel'), 'AccountsPanel'),
+  },
+  'music.library': {
+    id: 'music.library', label: 'Music Library', scope: 'global',
+    keywords: ['music', 'library', 'tracks', 'songs'],
+    description: 'Your track library',
+    load: lazyNamed(() => import('@/components/music/MusicLibraryPanel'), 'MusicLibraryPanel'),
+  },
+  'music.radio': {
+    id: 'music.radio', label: 'Radio', scope: 'global',
+    keywords: ['music', 'radio', 'stream', 'station'],
+    description: 'Radio and streaming',
+    load: lazyNamed(() => import('@/components/music/MusicRadioPanel'), 'MusicRadioPanel'),
+  },
+  'research.academic-search': {
+    id: 'research.academic-search', label: 'Academic Search', scope: 'global',
+    keywords: ['research', 'papers', 'academic', 'search', 'scholar'],
+    description: 'Search academic papers',
+    load: lazyNamed(() => import('@/components/research/AcademicSearchPanel'), 'AcademicSearchPanel'),
+  },
+  'projects.portfolio': {
+    id: 'projects.portfolio', label: 'Project Portfolio', scope: 'global',
+    keywords: ['projects', 'portfolio', 'tasks', 'gantt'],
+    description: 'Project portfolio overview',
+    load: lazyNamed(() => import('@/components/projects/PjPortfolioPanel'), 'PjPortfolioPanel'),
+  },
+  'legal.matters': {
+    id: 'legal.matters', label: 'Legal Matters', scope: 'global',
+    keywords: ['legal', 'matters', 'cases', 'law'],
+    description: 'Open legal matters',
+    load: lazyNamed(() => import('@/components/legal/MattersPanel'), 'MattersPanel'),
+  },
+  'marketplace.listings': {
+    id: 'marketplace.listings', label: 'Listings', scope: 'global',
+    keywords: ['marketplace', 'listings', 'shop', 'sell'],
+    description: 'Marketplace listings',
+    load: lazyNamed(() => import('@/components/marketplace/ListingsPanel'), 'ListingsPanel'),
+  },
+  'marketplace.orders': {
+    id: 'marketplace.orders', label: 'Orders', scope: 'global',
+    keywords: ['marketplace', 'orders', 'sales', 'fulfilment'],
+    description: 'Orders and fulfilment',
+    load: lazyNamed(() => import('@/components/marketplace/OrdersPanel'), 'OrdersPanel'),
+  },
+  'creator.revenue': {
+    id: 'creator.revenue', label: 'Creator Revenue', scope: 'global',
+    keywords: ['creator', 'revenue', 'earnings', 'royalties'],
+    description: 'Creator revenue and payouts',
+    load: lazyNamed(() => import('@/components/creator/CrtRevenuePanel'), 'CrtRevenuePanel'),
+  },
+  'creator.audience': {
+    id: 'creator.audience', label: 'Audience', scope: 'global',
+    keywords: ['creator', 'audience', 'followers', 'demographics'],
+    description: 'Audience analytics',
+    load: lazyNamed(() => import('@/components/creator/CrtAudiencePanel'), 'CrtAudiencePanel'),
+  },
+  'council.theater': {
+    id: 'council.theater', label: 'Council Theater', scope: 'global',
+    keywords: ['council', 'governance', 'debate', 'sessions'],
+    description: 'Live council sessions',
+    load: lazyNamed(() => import('@/components/council/CouncilTheaterPanel'), 'CouncilTheaterPanel'),
+  },
+  'message.directory': {
+    id: 'message.directory', label: 'Directory', scope: 'global',
+    keywords: ['message', 'directory', 'contacts', 'people'],
+    description: 'People directory',
+    load: lazyNamed(() => import('@/components/message/DirectoryPanel'), 'DirectoryPanel'),
+  },
 };
 
 export function getPanelById(id: string): PanelEntry | undefined {
