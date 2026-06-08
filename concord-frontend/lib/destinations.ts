@@ -26,6 +26,10 @@ export interface DestinationDef {
   name: string;
   icon: LucideIcon;
   group: DestinationGroup;
+  /** Lens ids grouped UNDER this destination — surfaced as expandable nav
+   *  children in the sidebar so the grouping is actually navigable. Every id is
+   *  a real lens; the sidebar skips any that don't resolve / are core-absorbed. */
+  absorbs?: string[];
 }
 
 export const DESTINATION_GROUPS: { id: DestinationGroup; label: string; color: string }[] = [
@@ -38,34 +42,62 @@ export const DESTINATION_GROUPS: { id: DestinationGroup; label: string; color: s
 // The 19 promoted destinations (Core 6 live in lens-registry CORE_LENSES).
 export const DESTINATIONS: DestinationDef[] = [
   // Work
-  { id: 'finance', name: 'Finance', icon: Wallet, group: 'work' },
+  { id: 'finance', name: 'Finance', icon: Wallet, group: 'work',
+    absorbs: ['markets', 'market', 'wallet', 'staking', 'insurance', 'billing', 'ledger'] },
   { id: 'accounting', name: 'Accounting', icon: Calculator, group: 'work' },
-  { id: 'healthcare', name: 'Healthcare', icon: HeartPulse, group: 'work' },
-  { id: 'legal', name: 'Legal', icon: Scale, group: 'work' },
-  { id: 'projects', name: 'Projects', icon: FolderKanban, group: 'work' },
-  { id: 'analytics', name: 'Analytics', icon: BarChart3, group: 'work' },
-  { id: 'marketplace', name: 'Marketplace', icon: ShoppingBag, group: 'work' },
-  { id: 'trades', name: 'Trades', icon: Hammer, group: 'work' },
+  { id: 'healthcare', name: 'Healthcare', icon: HeartPulse, group: 'work',
+    absorbs: ['pharmacy', 'mental-health', 'fitness', 'wellness', 'veterinary', 'organ', 'meditation'] },
+  { id: 'legal', name: 'Legal', icon: Scale, group: 'work',
+    absorbs: ['law', 'disputes', 'ethics', 'audit', 'privacy'] },
+  { id: 'projects', name: 'Projects', icon: FolderKanban, group: 'work',
+    absorbs: ['consulting', 'careers', 'hr', 'services', 'supplychain', 'manufacturing', 'ops'] },
+  { id: 'analytics', name: 'Analytics', icon: BarChart3, group: 'work',
+    absorbs: ['forecast', 'inference', 'ml', 'hypothesis', 'attention'] },
+  { id: 'marketplace', name: 'Marketplace', icon: ShoppingBag, group: 'work',
+    absorbs: ['auction', 'retail', 'black-market', 'sponsorship', 'marketing', 'realestate', 'housing'] },
+  { id: 'trades', name: 'Trades', icon: Hammer, group: 'work',
+    absorbs: ['carpentry', 'plumbing', 'electrical', 'hvac', 'welding', 'masonry', 'construction'] },
   // Create
   { id: 'music', name: 'Music', icon: Music, group: 'create' },
   { id: 'whiteboard', name: 'Whiteboard', icon: PenSquare, group: 'create' },
-  { id: 'creator', name: 'Creator', icon: Megaphone, group: 'create' },
+  { id: 'creator', name: 'Creator', icon: Megaphone, group: 'create',
+    absorbs: ['fashion', 'photography', 'gallery', 'photos'] },
   { id: 'crypto', name: 'Crypto', icon: Coins, group: 'create' },
   // Knowledge
-  { id: 'research', name: 'Research', icon: BookOpen, group: 'knowledge' },
-  { id: 'lab', name: 'Lab', icon: FlaskConical, group: 'knowledge' },
-  { id: 'calendar', name: 'Calendar', icon: CalendarDays, group: 'knowledge' },
-  { id: 'agents', name: 'Agents', icon: Bot, group: 'knowledge' },
+  { id: 'research', name: 'Research', icon: BookOpen, group: 'knowledge',
+    absorbs: ['paper', 'science', 'philosophy', 'linguistics', 'history', 'mentorship', 'debate', 'answers', 'reasoning', 'grounding'] },
+  { id: 'lab', name: 'Lab', icon: FlaskConical, group: 'knowledge',
+    absorbs: ['physics', 'chem', 'quantum', 'materials', 'math', 'engineering', 'robotics', 'astronomy', 'space', 'geology', 'ocean', 'environment', 'energy', 'aviation', 'mining', 'forestry', 'agriculture', 'landscaping'] },
+  { id: 'calendar', name: 'Calendar', icon: CalendarDays, group: 'knowledge',
+    absorbs: ['events', 'event-timeline', 'sessions'] },
+  { id: 'agents', name: 'Agents', icon: Bot, group: 'knowledge',
+    absorbs: ['personas'] },
   // Comms
-  { id: 'message', name: 'Messages', icon: Mail, group: 'comms' },
-  { id: 'social', name: 'Social', icon: Users, group: 'comms' },
-  { id: 'council', name: 'Council', icon: Landmark, group: 'comms' },
+  { id: 'message', name: 'Messages', icon: Mail, group: 'comms',
+    absorbs: ['mail'] },
+  { id: 'social', name: 'Social', icon: Users, group: 'comms',
+    absorbs: ['feed'] },
+  { id: 'council', name: 'Council', icon: Landmark, group: 'comms',
+    absorbs: ['vote', 'governance', 'government', 'alliance', 'federation', 'civic-bonds'] },
 ];
 
 export const DESTINATION_ID_SET: ReadonlySet<string> = new Set(DESTINATIONS.map((d) => d.id));
 
 export function isDestination(id: string): boolean {
   return DESTINATION_ID_SET.has(id);
+}
+
+export function getDestinationById(id: string): DestinationDef | undefined {
+  return DESTINATIONS.find((d) => d.id === id);
+}
+
+/** The destination whose workspace the given lens belongs to — either the
+ *  destination itself, or a destination that grouped (absorbs) this lens. Used
+ *  to render the destination's workspace nav while you're on any of its lenses. */
+export function getDestinationForLens(lensId: string): DestinationDef | undefined {
+  const direct = getDestinationById(lensId);
+  if (direct) return direct;
+  return DESTINATIONS.find((d) => d.absorbs?.includes(lensId));
 }
 
 export function getDestinationsByGroup(): { group: DestinationGroup; label: string; color: string; items: DestinationDef[] }[] {

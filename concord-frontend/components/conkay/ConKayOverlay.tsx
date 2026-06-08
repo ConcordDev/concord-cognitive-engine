@@ -471,7 +471,7 @@ export function ConKayOverlay() {
         onClick={() => setOpen(true)}
         aria-label="Summon ConKay (⌘/Ctrl+J)"
         title="Summon Kay — ask in one sentence (⌘/Ctrl+J)"
-        className="group fixed bottom-5 right-5 z-[55] flex h-12 w-12 items-center justify-center rounded-full border border-cyan-400/40 bg-black/70 text-cyan-200 shadow-lg shadow-cyan-500/20 backdrop-blur transition hover:scale-105 hover:bg-cyan-500/20 hover:text-cyan-100"
+        className="group fixed bottom-6 right-6 z-[55] flex h-12 w-12 items-center justify-center rounded-full border border-cyan-400/40 bg-black/70 text-cyan-200 shadow-lg shadow-cyan-500/20 backdrop-blur transition hover:scale-105 hover:bg-cyan-500/20 hover:text-cyan-100"
       >
         <Sparkles className="h-5 w-5" />
         <span className="pointer-events-none absolute right-14 whitespace-nowrap rounded-md bg-black/80 px-2 py-1 text-xs text-cyan-100 opacity-0 transition group-hover:opacity-100">

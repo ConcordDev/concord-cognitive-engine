@@ -39,7 +39,7 @@ const STEPS: OnboardingStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to Concord',
-    description: 'Five workspaces. Everything connected. Your data stays local. No telemetry, no ads, no profiling.',
+    description: 'Your workspaces, everything connected. Your data stays local. No telemetry, no ads, no profiling.',
     icon: Brain,
     color: 'neon-cyan',
   },

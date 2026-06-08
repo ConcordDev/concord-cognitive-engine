@@ -36,7 +36,7 @@ export default function LensAgentFab({ lensId, lensPrompt, label, position = 'bo
 
   const posClass = position === 'bottom-left'
     ? 'fixed bottom-6 left-6'
-    : 'fixed bottom-6 right-6';
+    : 'fixed bottom-[5.5rem] right-6';
 
   return (
     <>

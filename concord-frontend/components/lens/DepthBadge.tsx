@@ -66,6 +66,9 @@ export function DepthBadge({
 }: DepthBadgeProps) {
   const info = useDepthBadge(lensId);
   if (!info) return null;
+  // Prod polish: never render a "Demo" chip — it reads as unfinished. The honest
+  // positive tiers (live / free / sim) still show; demo-grade lenses show nothing.
+  if (info.tone === 'demo') return null;
   const Icon = TONE_ICON[info.tone];
   return (
     <span

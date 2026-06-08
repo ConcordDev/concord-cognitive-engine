@@ -93,7 +93,7 @@ function QuickCapture({ domain }: QuickCaptureProps) {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-neon-cyan text-white shadow-lg shadow-neon-cyan/30 flex items-center justify-center hover:bg-neon-cyan/90 transition-colors"
+            className="fixed bottom-[9.5rem] right-6 z-40 w-14 h-14 rounded-full bg-neon-cyan text-white shadow-lg shadow-neon-cyan/30 flex items-center justify-center hover:bg-neon-cyan/90 transition-colors"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsOpen(true)}
