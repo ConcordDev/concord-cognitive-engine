@@ -24,6 +24,7 @@ import {
   assertAgentContextSafe,
   makeActorActionCap,
 } from "./agent-guardrails.js";
+import { screenAction } from "./provenance-guard.js";
 
 const FORBIDDEN = new Set(AGENT_FORBIDDEN_DOMAINS);
 
@@ -67,13 +68,18 @@ export function compileManifest(grants = []) {
  * @param {object}   [o.actionCap] — a makeActorActionCap() bucket (shared optional).
  * @returns a frozen ctx: { userId, actor, llm?, runMacro, sdk, confined:true }.
  */
-export function makeConfinedCtx({ userId, runMacro, llm, db, manifest, actionCap } = {}) {
+export function makeConfinedCtx({ userId, runMacro, llm, db, manifest, actionCap, userIntent = null } = {}) {
   if (!userId) throw new Error("makeConfinedCtx: userId required");
   if (typeof runMacro !== "function") throw new Error("makeConfinedCtx: runMacro required");
 
   const grants = manifest?.macros || manifest?.grants || [];
   const allow = compileManifest(grants);
   const cap = actionCap || makeActorActionCap({ perActorPerMin: 120 });
+  // The Phase-4 action-screening guardrail: when the original user intent is
+  // known, a sensitive action that DRIFTED from it (e.g. an injection turned a
+  // "summarize" task into a "transfer") is refused — capability + intent are the
+  // two halves of the CaMeL guardrail.
+  const grantedDomains = grants.map((g) => String(g).split(".")[0]);
 
   // A confined actor IS an agent actor (hits the server fence) and is NEVER
   // internal/privileged — pinned by assertAgentContextSafe.
@@ -94,6 +100,13 @@ export function makeConfinedCtx({ userId, runMacro, llm, db, manifest, actionCap
     }
     if (!allow(d, n)) {
       return { ok: false, error: "capability_denied", reason: `'${key}' is not granted by the capability manifest` };
+    }
+    // Intent-drift screen (only when a user intent was supplied).
+    if (userIntent) {
+      const screen = screenAction({ userIntent, domain: d, name: n, params: input, allowedDomains: grantedDomains });
+      if (!screen.allow) {
+        return { ok: false, error: "intent_drift", reason: screen.reason, requiresApproval: true };
+      }
     }
     if (!cap.tryConsume(userId)) {
       return { ok: false, error: "rate_limited", retryAfterMs: 1000 };
