@@ -266,3 +266,134 @@ describe("history — CRUD round-trips + validation (shared ctx)", () => {
     assert.match(bad.result.error, /lat must be a number/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Wave top-up — uncovered DETERMINISTIC macros (delete round-trips, era-delete,
+// multi-timeline compare) + the network/LLM macros' pre-egress validation
+// rejections. No fetch is ever reached (assertions exercise the guard branch
+// that returns before any network call), so these run clean under no-egress.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("history — delete + compare round-trips (wave top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("history-topup"); });
+
+  it("timeline-delete removes the timeline; it is gone from the list", async () => {
+    const tl = await lensRun("history", "timeline-create", { params: { title: "Doomed" } }, ctx);
+    const id = tl.result.timeline.id;
+    const del = await lensRun("history", "timeline-delete", { params: { id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, id);
+    const list = await lensRun("history", "timeline-list", {}, ctx);
+    assert.ok(!list.result.timelines.some((t) => t.id === id));
+  });
+
+  it("timeline-delete: a missing id is rejected", async () => {
+    const bad = await lensRun("history", "timeline-delete", { params: { id: "tl_nope_999" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /timeline not found/);
+  });
+
+  it("era-add → era-delete: era is removed from the timeline detail", async () => {
+    const tl = await lensRun("history", "timeline-create", { params: { title: "EraGone" } }, ctx);
+    const id = tl.result.timeline.id;
+    const era = await lensRun("history", "era-add", { params: { timelineId: id, name: "Bronze Age", startYear: -3300, endYear: -1200 } }, ctx);
+    const eraId = era.result.era.id;
+    const del = await lensRun("history", "era-delete", { params: { timelineId: id, eraId } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, eraId);
+    const detail = await lensRun("history", "timeline-detail", { params: { id } }, ctx);
+    assert.ok(!detail.result.timeline.eras.some((e) => e.id === eraId));
+  });
+
+  it("era-delete: a missing eraId is rejected", async () => {
+    const tl = await lensRun("history", "timeline-create", { params: { title: "EraMiss" } }, ctx);
+    const bad = await lensRun("history", "era-delete", { params: { timelineId: tl.result.timeline.id, eraId: "era_nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /era not found/);
+  });
+
+  it("era-add: missing name is rejected", async () => {
+    const tl = await lensRun("history", "timeline-create", { params: { title: "EraNoName" } }, ctx);
+    const bad = await lensRun("history", "era-add", { params: { timelineId: tl.result.timeline.id, name: "   " } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /era name required/);
+  });
+
+  it("timeline-compare: two timelines surface as ordered tracks with a combined span", async () => {
+    const a = await lensRun("history", "timeline-create", { params: { title: "Track A" } }, ctx);
+    const aId = a.result.timeline.id;
+    await lensRun("history", "event-add", { params: { timelineId: aId, title: "A-early", year: -500 } }, ctx);
+    await lensRun("history", "event-add", { params: { timelineId: aId, title: "A-late", year: 100 } }, ctx);
+
+    const b = await lensRun("history", "timeline-create", { params: { title: "Track B" } }, ctx);
+    const bId = b.result.timeline.id;
+    await lensRun("history", "event-add", { params: { timelineId: bId, title: "B-only", year: 1500 } }, ctx);
+
+    const cmp = await lensRun("history", "timeline-compare", { params: { timelineIds: [aId, bId] } }, ctx);
+    assert.equal(cmp.ok, true);
+    assert.equal(cmp.result.trackCount, 2);
+    const trackA = cmp.result.tracks.find((t) => t.timelineId === aId);
+    // Events sorted ascending within each track.
+    assert.deepEqual(trackA.events.map((e) => e.year), [-500, 100]);
+    assert.equal(trackA.span.minYear, -500);
+    assert.equal(trackA.span.maxYear, 100);
+    assert.equal(trackA.eventCount, 2);
+    // Combined span spans both timelines.
+    assert.deepEqual(cmp.result.combinedSpan, { minYear: -500, maxYear: 1500 });
+  });
+
+  it("timeline-compare: fewer than 2 ids is rejected", async () => {
+    const a = await lensRun("history", "timeline-create", { params: { title: "Lonely" } }, ctx);
+    const bad = await lensRun("history", "timeline-compare", { params: { timelineIds: [a.result.timeline.id] } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /at least 2 timelineIds/);
+  });
+
+  it("timeline-compare: an unknown timelineId is rejected by name", async () => {
+    const a = await lensRun("history", "timeline-create", { params: { title: "Real" } }, ctx);
+    const bad = await lensRun("history", "timeline-compare", { params: { timelineIds: [a.result.timeline.id, "tl_ghost_1"] } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /timeline not found: tl_ghost_1/);
+  });
+});
+
+describe("history — network macros: pre-egress validation (no fetch reached)", () => {
+  // Each macro validates its params BEFORE any fetch(); these tests exercise
+  // only that guard branch, so they never attempt network egress.
+  it("wiki-lookup: empty title is rejected before any network call", async () => {
+    const bad = await lensRun("history", "wiki-lookup", { params: { title: "  " } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /title required/);
+  });
+
+  it("wiki-search: empty query is rejected before any network call", async () => {
+    const bad = await lensRun("history", "wiki-search", { params: { query: "" } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /query required/);
+  });
+
+  it("wiki-search: a single-character query is rejected (min length 2)", async () => {
+    const bad = await lensRun("history", "wiki-search", { params: { query: "a" } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /query must be ≥ 2 characters/);
+  });
+
+  it("on-this-day: a month outside 1-12 is rejected before any network call", async () => {
+    const bad = await lensRun("history", "on-this-day", { params: { month: 13, day: 5 } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /month must be 1-12/);
+  });
+
+  it("on-this-day: a day outside 1-31 is rejected before any network call", async () => {
+    const bad = await lensRun("history", "on-this-day", { params: { month: 6, day: 40 } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /day must be 1-31/);
+  });
+
+  it("timeline-from-wikipedia: empty article title is rejected before any network call", async () => {
+    const bad = await lensRun("history", "timeline-from-wikipedia", { params: { title: "" } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /wikipedia article title required/);
+  });
+});
