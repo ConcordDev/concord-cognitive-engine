@@ -11,6 +11,8 @@ import vm from "node:vm";
 // Phase 1 — real type-aware semantics for the code lens (TS LanguageService over
 // the in-memory workspace). Lazy: typescript only loads on the first lsp-* call.
 import tsLang from "../lib/ts-language-service.js";
+// Phase 3 — the verifiable build loop (make→write→run→lint→verify→done).
+import { runBuildLoop } from "../lib/build-loop.js";
 
 const SNIPPET_KIND = "code_snippet";
 const SNAPSHOT_KIND = "code_snapshot_bundle";
@@ -2004,6 +2006,51 @@ Rules:
     return runDebugSession(code, language, new Set(breakpoints), watch);
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // ── Phase 3: the verifiable build loop ────────────────────────
+  // "make X" → generate → write → run → lint (real tsc) → verify → repair → done.
+  // Honest by construction: returns status:"done" ONLY when the artifact ran,
+  // lint/type-check is clean, and verification passed; otherwise unverified/unrun.
+  registerLensAction("code", "build", async (ctx, _a, params = {}) => {
+    try {
+      const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
+      if (typeof runMacro !== "function") return { ok: false, error: "runMacro unavailable" };
+      const request = String(params.request || params.prompt || "").trim();
+      if (!request) return { ok: false, error: "request required" };
+      const userId = aidC(ctx);
+      const projectId = String(params.projectId || `conkay-build-${userId}`);
+      const language = String(params.language || "javascript").toLowerCase();
+      const ext = language === "typescript" || language === "ts" ? "ts" : "js";
+      const path = String(params.path || `build.${ext}`);
+      const maxIterations = Math.max(1, Math.min(Number(params.maxIterations) || 3, 6));
+
+      // The generator: the conscious brain, instructed to emit ONLY runnable code
+      // and to FIX the specific run/lint feedback on each retry.
+      const generate = async (req, feedback) => {
+        if (!ctx?.llm?.chat) return { code: "" };
+        const sys = `You are a precise ${language} code generator. Output ONLY the code for the request — no fences, no prose, no explanation. The code MUST run without throwing and pass type/lint checks. When given feedback about errors, return the FULL corrected program.`;
+        const user = feedback
+          ? `Request: ${req}\n\nYour previous attempt failed:\n${feedback}\n\nReturn the corrected ${language} code only.`
+          : `Request: ${req}\n\nReturn the ${language} code only.`;
+        let raw = "";
+        try {
+          const r = await ctx.llm.chat({ messages: [{ role: "system", content: sys }, { role: "user", content: user }], temperature: 0.1, maxTokens: 900, slot: "conscious" });
+          raw = String(r?.text || r?.content || r?.message?.content || "").trim();
+        } catch { raw = ""; }
+        return { code: raw.replace(/^```[a-zA-Z]*\n?/, "").replace(/\n?```$/, "").trim() };
+      };
+
+      const result = await runBuildLoop({
+        request, generate, runMacro, ctx, projectId, path, language,
+        claim: params.claim ? String(params.claim) : null,
+        citations: Array.isArray(params.citations) ? params.citations : [],
+        maxIterations,
+      });
+      return { ok: result.ok, result };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
 
   // ── Codebase-wide AI chat with @-file context ─────────────────
   // Cursor's killer feature: an AI chat where the user references
