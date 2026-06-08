@@ -886,6 +886,17 @@ export function createOracleEngine(opts = {}) {
     for (const d of domainSpecific) push(d);
     for (const d of priorAnswers) push(d);
 
+    // Item 3 — optional HDC compositional-recall pass (gated, off by default). Adds
+    // concept-overlap hits the embedding rank missed; complements, never replaces.
+    if (process.env.CONCORD_HDC_RECALL === '1') {
+      try {
+        const { hdcRecall } = await import('./hdc-refusal-bridge.js');
+        for (const d of hdcRecall(q, candidates, { topK: 8, exclude: mergedIds })) push(d);
+      } catch (e) {
+        log('debug', 'retrieve_hdc_failed', { error: e?.message });
+      }
+    }
+
     const totalSources =
       (Array.isArray(semantic) ? semantic.length : 0) +
       domainSpecific.length +
