@@ -115,5 +115,14 @@ stands on.
 
 ---
 
-*Companion docs: `docs/SCIFI_FEASIBILITY_MAP.md` (capability vs code), `docs/MARKET_DEMAND_MAP.md`
-(market evidence). This roadmap is grounded in a code-level audit of the `code` lens, not estimates.*
+> **Phase 0 — Capability Sandbox & Abuse Prevention (the gate before Phases 2-3):** before ConKay (or
+> any user) can author code/lenses that run or ship, the trust boundary must exist. Full model in
+> **`docs/CONKAY_SAFETY_MODEL.md`** — three boundaries (integrity / sovereignty / distribution),
+> the legal hard-block list at the publish boundary, and the agentic-AI hardening (assume prompt
+> injection succeeds; confine at the runtime). One-line policy: *"do anything on your own hardware
+> against your own data; the moment you point it at someone else or ship it, that's the only thing we
+> gate."*
+
+*Companion docs: `docs/CONKAY_SAFETY_MODEL.md` (capability sandbox + abuse prevention — Phase 0),
+`docs/SCIFI_FEASIBILITY_MAP.md` (capability vs code), `docs/MARKET_DEMAND_MAP.md` (market evidence).
+This roadmap is grounded in a code-level audit of the `code` lens, not estimates.*
