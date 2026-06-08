@@ -10,11 +10,14 @@ export default function registerGameActions(registerLensAction) {
   });
   registerLensAction("game", "economySimulate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const startGold = parseFloat(data.startingGold) || 100;
-    const earnRate = parseFloat(data.goldPerMinute) || 5;
-    const spendRate = parseFloat(data.avgSpendPerMinute) || 3;
-    const inflationRate = parseFloat(data.inflationPercent) || 2;
-    const minutes = parseInt(data.simulateMinutes) || 60;
+    // NB: nullish-aware fallbacks — a deliberate 0 (zero spend, zero inflation)
+    // is a legitimate economy-design input and must not coerce to the default.
+    const num = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
+    const startGold = num(data.startingGold, 100);
+    const earnRate = num(data.goldPerMinute, 5);
+    const spendRate = num(data.avgSpendPerMinute, 3);
+    const inflationRate = num(data.inflationPercent, 2);
+    const minutes = (() => { const n = parseInt(data.simulateMinutes, 10); return Number.isFinite(n) ? n : 60; })();
     const timeline = [];
     let gold = startGold;
     for (let t = 0; t <= minutes; t += 5) {
