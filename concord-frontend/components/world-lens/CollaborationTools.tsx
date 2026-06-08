@@ -83,52 +83,29 @@ const ANNOTATION_META: Record<AnnotationType, { label: string; color: string; bg
 
 const KANBAN_COLUMNS: TaskStatus[] = ['open', 'claimed', 'in-progress', 'review', 'complete'];
 
-/* ── Seed Data ─────────────────────────────────────────────────── */
+/* ── Honest defaults ────────────────────────────────────────────── */
+// There is NO world-lens backend for live co-build participants, the project
+// kanban, design-review annotations, or the shared workbench. Start EMPTY —
+// never seed fabricated collaborators or tasks. Honest empty-states render
+// below when nothing is provided.
+// TODO: wire participants/projectBoard/activeReview/workbench to backend when
+// a real-time co-build collaboration API exists.
 
-const SEED_PARTICIPANTS: BuildParticipant[] = [
-  { id: 'p1', name: 'ArchitectAlice', cursorColor: '#F59E0B', isBuilding: true },
-  { id: 'p2', name: 'BuilderBob', cursorColor: '#3B82F6', isBuilding: true },
-  { id: 'p4', name: 'DesignDave', cursorColor: '#EC4899', isBuilding: false },
-  { id: 'p7', name: 'GridGrace', cursorColor: '#22C55E', isBuilding: true },
-];
-
-const SEED_TASKS: ProjectTask[] = [
-  { id: 't1', title: 'Foundation slab for Tower B', description: 'Pour reinforced concrete slab 20x20m. Must support 12 floors.', status: 'complete', claimedBy: 'BuilderBob', payment: '150 tokens' },
-  { id: 't2', title: 'Steel frame floors 1-4', description: 'Erect steel frame for first 4 floors using approved beam designs.', status: 'in-progress', claimedBy: 'ArchitectAlice', payment: '300 tokens' },
-  { id: 't3', title: 'Electrical conduit layout', description: 'Route primary and secondary conduits per district energy code.', status: 'claimed', claimedBy: 'GridGrace', payment: '200 tokens' },
-  { id: 't4', title: 'Facade design review', description: 'Design exterior cladding for floors 1-4. Must meet wind load requirements.', status: 'review', claimedBy: 'DesignDave', payment: '250 tokens' },
-  { id: 't5', title: 'Interior partition plan', description: 'Design floor layouts for commercial tenants. Open plan preferred.', status: 'open', payment: '180 tokens' },
-  { id: 't6', title: 'HVAC duct routing', description: 'Plan heating and cooling ductwork. Integrate with structural grid.', status: 'open', payment: '220 tokens' },
-];
-
-const SEED_ANNOTATIONS: ReviewAnnotation[] = [
-  { id: 'a1', type: 'issue', author: 'ArchitectAlice', content: 'Connection plate at joint B7 looks undersized for the load path. Check calculations.', memberRef: 'Beam B7-C7', timestamp: '10 min ago' },
-  { id: 'a2', type: 'suggestion', author: 'GridGrace', content: 'Consider using a moment frame here instead of braced frame for better open floor plan.', memberRef: 'Frame Grid Line 3', timestamp: '25 min ago' },
-  { id: 'a3', type: 'praise', author: 'BuilderBob', content: 'Excellent detail on the curtain wall attachment. Clean and buildable.', memberRef: 'CW Detail 4A', timestamp: '1 hr ago' },
-];
-
-const SEED_WORKBENCH: SharedWorkbench = {
-  partnerName: 'BuilderBob',
-  partnerId: 'p2',
-  outputPreview: 'Reinforced Steel Arch — Composite Beam',
-  royaltySplit: [60, 40],
-};
-
-const SEED_MENTORSHIP: MentorshipState = {
+const EMPTY_MENTORSHIP: MentorshipState = {
   active: false,
   role: 'mentor',
-  partnerName: 'NewbieNora',
-  partnerId: 'p9',
+  partnerName: '',
+  partnerId: '',
 };
 
 /* ── Component ─────────────────────────────────────────────────── */
 
 export default function CollaborationTools({
-  participants = SEED_PARTICIPANTS,
-  projectBoard = SEED_TASKS,
-  activeReview = SEED_ANNOTATIONS,
-  mentorship = SEED_MENTORSHIP,
-  workbench = SEED_WORKBENCH,
+  participants = [],
+  projectBoard = [],
+  activeReview = [],
+  mentorship = EMPTY_MENTORSHIP,
+  workbench,
   onClaimTask,
   onSubmitReview,
   onAnnotate,
@@ -160,6 +137,9 @@ export default function CollaborationTools({
       {/* Participant cursors */}
       <div className="space-y-2">
         <h4 className="text-xs text-white/50 uppercase tracking-wider">Builders in Area</h4>
+        {participants.length === 0 && (
+          <p className="text-xs text-white/30 py-2">No other builders in this area.</p>
+        )}
         {participants.map(p => (
           <div key={p.id} className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-white/5 transition-colors">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.cursorColor }} />
@@ -210,6 +190,10 @@ export default function CollaborationTools({
         <span>Project Board</span>
         <span className="ml-auto text-white/30">{projectBoard.length} tasks</span>
       </div>
+
+      {projectBoard.length === 0 && (
+        <p className="text-xs text-white/30 py-4 text-center">No project tasks yet.</p>
+      )}
 
       <div className="flex gap-2 overflow-x-auto pb-2">
         {KANBAN_COLUMNS.map(col => {
@@ -273,6 +257,9 @@ export default function CollaborationTools({
 
       {/* Annotations list */}
       <div className="space-y-2 max-h-60 overflow-y-auto">
+        {activeReview.length === 0 && (
+          <p className="text-xs text-white/30 py-2">No annotations yet.</p>
+        )}
         {activeReview.map(ann => {
           const meta = ANNOTATION_META[ann.type];
           return (
@@ -341,6 +328,11 @@ export default function CollaborationTools({
         <span>Shared Workbench</span>
       </div>
 
+      {!workbench && (
+        <p className="text-xs text-white/30 py-4 text-center">No active co-crafting session.</p>
+      )}
+
+      {workbench && (
       <div className={`${panel} p-4 space-y-3`}>
         <div className="flex items-center gap-3">
           <div className="flex -space-x-2">
@@ -390,6 +382,7 @@ export default function CollaborationTools({
           <Hammer size={14} /> Craft Together
         </button>
       </div>
+      )}
     </div>
   );
 

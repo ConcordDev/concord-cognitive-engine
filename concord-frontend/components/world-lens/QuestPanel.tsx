@@ -90,99 +90,6 @@ const REWARD_ICONS: Record<QuestReward['type'], React.ComponentType<{ className?
   title:      Trophy,
 };
 
-const DEMO_QUESTS: Quest[] = [
-  {
-    id: 'q1', title: 'Foundations of Trust', description: 'Build your first validated structure in The Forge district to prove your engineering mettle.',
-    category: 'main', questGiver: 'Master Builder Kael', district: 'The Forge', status: 'active',
-    objectives: [
-      { id: 'o1', type: 'go-to-location', description: 'Travel to The Forge district', current: 1, target: 1, completed: true },
-      { id: 'o2', type: 'build-something', description: 'Place a structural foundation', current: 1, target: 1, completed: true },
-      { id: 'o3', type: 'inspect-structure', description: 'Pass structural validation', current: 0, target: 1, completed: false },
-    ],
-    rewards: [
-      { type: 'currency', label: '50 Concordium', amount: 50 },
-      { type: 'reputation', label: '+10 Structural Rep', amount: 10 },
-      { type: 'component', label: 'Steel Beam x4' },
-    ],
-    chainIndex: 1, chainTotal: 5,
-  },
-  {
-    id: 'q2', title: 'Supply Run', description: 'Deliver iron ingots to the Academy workshop for their experimental research program.',
-    category: 'side', questGiver: 'Scholar Maren', district: 'The Academy', status: 'active',
-    objectives: [
-      { id: 'o4', type: 'deliver-item', description: 'Deliver 10 Iron Ingots to the Academy', current: 6, target: 10, completed: false },
-      { id: 'o5', type: 'talk-to-npc', description: 'Speak with Scholar Maren', current: 0, target: 1, completed: false },
-    ],
-    rewards: [
-      { type: 'currency', label: '30 Concordium', amount: 30 },
-      { type: 'component', label: 'Lens Assembly x1' },
-    ],
-  },
-  {
-    id: 'q3', title: 'Daily: Storm Prep', description: 'Inspect 3 structures for storm readiness before the weather event.',
-    category: 'daily', status: 'active',
-    objectives: [
-      { id: 'o6', type: 'inspect-structure', description: 'Inspect structures for storm readiness', current: 1, target: 3, completed: false },
-    ],
-    rewards: [
-      { type: 'currency', label: '15 Concordium', amount: 15 },
-      { type: 'reputation', label: '+5 Infrastructure Rep', amount: 5 },
-    ],
-  },
-  {
-    id: 'q4', title: 'The Architect\'s Path (2/5)', description: 'Design a multi-story building using at least 3 different material types.',
-    category: 'chain', questGiver: 'Architect Voss', district: 'The Commons', status: 'available',
-    objectives: [
-      { id: 'o7', type: 'build-something', description: 'Build a 3+ story structure', current: 0, target: 1, completed: false },
-      { id: 'o8', type: 'craft-item', description: 'Use 3+ material types', current: 0, target: 3, completed: false },
-    ],
-    rewards: [
-      { type: 'currency', label: '75 Concordium', amount: 75 },
-      { type: 'reputation', label: '+20 Architecture Rep', amount: 20 },
-      { type: 'title', label: 'Journeyman Architect' },
-    ],
-    chainIndex: 2, chainTotal: 5,
-  },
-  {
-    id: 'q5', title: 'Community Bridge Project', description: 'Contribute to the community bridge connecting The Forge and The Docks.',
-    category: 'community', district: 'The Docks', status: 'available',
-    objectives: [
-      { id: 'o9', type: 'build-something', description: 'Place bridge sections (community goal)', current: 147, target: 500, completed: false },
-      { id: 'o10', type: 'deliver-item', description: 'Donate 5 Steel Beams', current: 0, target: 5, completed: false },
-    ],
-    rewards: [
-      { type: 'currency', label: '100 Concordium', amount: 100 },
-      { type: 'access', label: 'Bridge District Access' },
-      { type: 'reputation', label: '+15 Governance Rep', amount: 15 },
-    ],
-  },
-  {
-    id: 'q6', title: 'First Steps', description: 'Complete the onboarding tutorial and place your first DTU.',
-    category: 'main', questGiver: 'Guide Alara', status: 'completed',
-    objectives: [
-      { id: 'o11', type: 'talk-to-npc', description: 'Speak with Guide Alara', current: 1, target: 1, completed: true },
-      { id: 'o12', type: 'build-something', description: 'Place your first DTU', current: 1, target: 1, completed: true },
-    ],
-    rewards: [
-      { type: 'currency', label: '20 Concordium', amount: 20 },
-      { type: 'component', label: 'Starter Toolkit' },
-    ],
-    chainIndex: 0, chainTotal: 5,
-  },
-  {
-    id: 'q7', title: 'Survive the Storm', description: 'Keep at least one structure standing through the upcoming disaster event.',
-    category: 'side', district: 'The Forge', status: 'available',
-    objectives: [
-      { id: 'o13', type: 'survive-disaster', description: 'Survive the disaster event', current: 0, target: 1, completed: false },
-    ],
-    rewards: [
-      { type: 'currency', label: '60 Concordium', amount: 60 },
-      { type: 'reputation', label: '+10 Structural Rep', amount: 10 },
-      { type: 'component', label: 'Reinforced Plate x2' },
-    ],
-  },
-];
-
 /* ── Backend → panel adapter (defensive: unknown columns degrade gracefully) ── */
 
 function adaptQuest(q: Record<string, unknown>): Quest {
@@ -235,10 +142,9 @@ export default function QuestPanel({
   onTrack,
   onClose,
 }: QuestPanelProps) {
-  // Real quests come from /api/worlds/:worldId/quests; DEMO_QUESTS is now only a
-  // fallback for when the caller passes nothing AND the fetch yields nothing
-  // (offline / brand-new world) — not the default a player actually sees.
-  const [quests, setQuests] = useState<Quest[]>(questsProp ?? DEMO_QUESTS);
+  // Real quests come from /api/worlds/:worldId/quests. Start EMPTY — never seed
+  // fabricated quests. The list is whatever the backend returns (or nothing).
+  const [quests, setQuests] = useState<Quest[]>(questsProp ?? []);
   useEffect(() => {
     if (questsProp) return; // caller supplied data — respect it
     let cancelled = false;
@@ -250,8 +156,8 @@ export default function QuestPanel({
             .then((r) => (r.ok ? r.json() : null)).catch(() => null);
         const [avail, active] = await Promise.all([grab('available'), grab('active')]);
         const rows = [...(avail?.quests ?? []), ...(active?.quests ?? [])];
-        if (!cancelled && rows.length) setQuests(rows.map(adaptQuest));
-      } catch { /* keep demo fallback */ }
+        if (!cancelled) setQuests(rows.map(adaptQuest));
+      } catch { if (!cancelled) setQuests([]); }
     })();
     return () => { cancelled = true; };
   }, [worldId, questsProp]);

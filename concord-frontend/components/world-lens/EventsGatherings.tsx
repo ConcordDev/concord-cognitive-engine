@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Calendar, Clock, MapPin, Users, Plus, ChevronLeft, ChevronRight,
   X, Check,
@@ -44,6 +44,7 @@ interface CalendarDay {
 }
 
 interface EventsGatheringsProps {
+  worldId?: string;
   events?: GameEvent[];
   calendar?: CalendarDay[];
   gatherings?: Gathering[];
@@ -69,23 +70,47 @@ const EVENT_META: Record<EventType, { label: string; emoji: string; color: strin
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/* ── Seed Data ─────────────────────────────────────────────────── */
+/* ── Backend → panel adapter ────────────────────────────────────── */
 
-const SEED_EVENTS: GameEvent[] = [
-  { id: 'e1', name: 'The Commons Fountain Grand Opening', type: 'grand-opening', date: 'Apr 5', time: '3:00 PM', location: 'The Commons, District 1', description: 'Celebrate the completion of the new fountain centerpiece designed by ArchitectAlice. Live music and fireworks.', organizer: 'Mayor Chen', rsvpCount: 34, isLive: true },
-  { id: 'e2', name: 'Weekly Bridge Design Competition', type: 'design-competition', date: 'Apr 6', time: '2:00 PM', location: 'Arena District', description: 'Design the strongest bridge using only 500 material units. Judged on load capacity and aesthetics.', organizer: 'CompetitiveCouncil', rsvpCount: 18, crossWorld: true, worldName: 'Iron League Arena' },
-  { id: 'e3', name: 'Earthquake Preparedness Drill', type: 'disaster-drill', date: 'Apr 7', time: '10:00 AM', location: 'All Districts', description: 'City-wide earthquake simulation. Test your structures and emergency response plans.', organizer: 'Safety Board', rsvpCount: 56 },
-  { id: 'e4', name: 'Advanced Materials Science Lecture', type: 'lecture', date: 'Apr 8', time: '6:00 PM', location: 'University Hall', description: 'EngineerEve presents on composite beam theory and novel alloy applications.', organizer: 'EngineerEve', rsvpCount: 22 },
-  { id: 'e5', name: 'Spring Market Day', type: 'market-day', date: 'Apr 9', time: '9:00 AM', location: 'Market Square', description: 'Buy and sell materials, DTUs, and crafted goods. Special seasonal discounts.', organizer: 'Trade Guild', rsvpCount: 45 },
-  { id: 'e6', name: 'Concordia Spring Festival', type: 'festival', date: 'Apr 12', time: '12:00 PM', location: 'Central Park', description: 'Annual spring celebration with building contests, live demos, and community awards.', organizer: 'Events Committee', rsvpCount: 89 },
-  { id: 'e7', name: 'Ironclad Designs Showcase', type: 'firm-showcase', date: 'Apr 10', time: '4:00 PM', location: 'Ironclad HQ', description: 'Tour the latest projects from Ironclad Designs. Live Q&A with firm members.', organizer: 'ArchitectAlice', rsvpCount: 15 },
-  { id: 'e8', name: 'Deep Cave Expedition', type: 'exploration-expedition', date: 'Apr 11', time: '1:00 PM', location: 'Northern Frontier', description: 'Join FrontierFinn on an expedition to the newly discovered crystal caverns.', organizer: 'FrontierFinn', rsvpCount: 12 },
-];
+// Backend EVENT_TYPES (world-events.js) don't 1:1 match this panel's union,
+// so map the overlaps and default unknown kinds to a safe known key. Never
+// fabricate a type the backend didn't send — only coerce to a renderable enum.
+const BACKEND_TYPE_MAP: Record<string, EventType> = {
+  festival: 'festival',
+  market: 'market-day',
+  workshop: 'lecture',
+  debate: 'lecture',
+  exhibition: 'firm-showcase',
+  ceremony: 'grand-opening',
+  tournament: 'design-competition',
+  hackathon: 'design-competition',
+  raid: 'exploration-expedition',
+  concert: 'festival',
+  meetup: 'festival',
+  rally: 'festival',
+  referendum: 'lecture',
+};
 
-const SEED_GATHERINGS: Gathering[] = [
-  { id: 'g1', location: 'The Commons fountain', playerCount: 12, description: '12 players gathered at The Commons fountain' },
-  { id: 'g2', location: 'Market Square stage', playerCount: 6, description: '6 players watching a live build demo' },
-];
+function adaptEvent(e: Record<string, unknown>): GameEvent {
+  const rawType = String(e.type ?? '');
+  const type: EventType = (rawType in EVENT_META)
+    ? (rawType as EventType)
+    : (BACKEND_TYPE_MAP[rawType] ?? 'festival');
+  const startMs = Number(e.startTime ?? e.start_time ?? 0);
+  const start = startMs ? new Date(startMs * (startMs < 1e12 ? 1000 : 1)) : null;
+  return {
+    id: String(e.id ?? ''),
+    name: String(e.name ?? e.title ?? 'Event'),
+    type,
+    date: start ? start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '',
+    time: start ? start.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '',
+    location: String(e.location ?? e.districtId ?? e.district_id ?? ''),
+    description: String(e.description ?? ''),
+    organizer: String(e.hostName ?? e.host_name ?? e.hostId ?? e.host_id ?? ''),
+    rsvpCount: Number(e.rsvpCount ?? e.rsvp_count ?? 0),
+    isLive: String(e.status ?? '') === 'active' || String(e.status ?? '') === 'live',
+  };
+}
 
 function buildCalendar(events: GameEvent[]): CalendarDay[] {
   const days: CalendarDay[] = [];
@@ -102,18 +127,40 @@ function buildCalendar(events: GameEvent[]): CalendarDay[] {
 /* ── Component ─────────────────────────────────────────────────── */
 
 export default function EventsGatherings({
-  events = SEED_EVENTS,
+  worldId,
+  events: eventsProp,
   calendar: calendarProp,
-  gatherings = SEED_GATHERINGS,
+  gatherings: gatheringsProp,
   onRSVP,
   onCreate,
   onJoinGathering,
 }: EventsGatheringsProps) {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'calendar' | 'live' | 'create' | 'past'>('upcoming');
   const [selectedEvent, setSelectedEvent] = useState<GameEvent | null>(null);
-  const [rsvpedIds, setRsvpedIds] = useState<Set<string>>(
-    new Set(events.filter(e => e.rsvped).map(e => e.id))
-  );
+
+  // Real events come from GET /api/world/events. Start EMPTY — never seed
+  // fabricated events. Spontaneous gatherings have no backend surface yet, so
+  // they stay empty (honest empty-state) unless the caller passes them in.
+  const [events, setEvents] = useState<GameEvent[]>(eventsProp ?? []);
+  // TODO: wire spontaneous gatherings to backend (no co-presence cluster API exists yet)
+  const gatherings = gatheringsProp ?? [];
+
+  useEffect(() => {
+    if (eventsProp) return; // caller supplied data — respect it
+    let cancelled = false;
+    (async () => {
+      try {
+        const wid = worldId || 'concordia-hub';
+        const r = await fetch(`/api/world/events?cityId=${encodeURIComponent(wid)}`, { credentials: 'include' })
+          .then((res) => (res.ok ? res.json() : null)).catch(() => null);
+        const rows = Array.isArray(r?.events) ? r.events : [];
+        if (!cancelled) setEvents(rows.map(adaptEvent));
+      } catch { if (!cancelled) setEvents([]); }
+    })();
+    return () => { cancelled = true; };
+  }, [worldId, eventsProp]);
+
+  const [rsvpedIds, setRsvpedIds] = useState<Set<string>>(new Set());
 
   // Create form state
   const [createForm, setCreateForm] = useState<Partial<GameEvent>>({

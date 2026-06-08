@@ -49,6 +49,8 @@ interface ChannelData {
 }
 
 interface ChatSystemProps {
+  worldId?: string;
+  districtId?: string;
   channels?: ChannelData[];
   currentChannel?: ChannelType;
   messages?: ChatMessage[];
@@ -89,54 +91,72 @@ const CATEGORY_COLORS: Record<DistrictCategory, string> = {
   event:        'bg-purple-500/20 text-purple-400',
 };
 
-/* ── Seed Data ─────────────────────────────────────────────────── */
+/* ── Backend → panel adapter ────────────────────────────────────── */
 
-const SEED_MESSAGES: ChatMessage[] = [
-  { id: 'm1', sender: 'ArchitectAlice', senderId: 'p1', content: 'Anyone want to co-build the new bridge section?', timestamp: '2:31 PM', read: true },
-  { id: 'm2', sender: 'BuilderBob', senderId: 'p2', content: 'I have extra steel beams if anyone needs them.', timestamp: '2:33 PM', read: true },
-  { id: 'm3', sender: 'CivicCarla', senderId: 'p3', content: 'The district council meeting starts in 10 minutes!', timestamp: '2:35 PM', read: false },
-  { id: 'm4', sender: 'DesignDave', senderId: 'p4', content: 'Check out my new facade design on Block 7.', timestamp: '2:37 PM', read: false },
-];
+// District ambient chat is the one channel with a real backend
+// (GET /api/ambient-chat/list → { id, user_id, body, posted_at }).
+function adaptAmbient(m: Record<string, unknown>): ChatMessage {
+  const postedSec = Number(m.posted_at ?? m.postedAt ?? 0);
+  const ts = postedSec
+    ? new Date(postedSec * 1000).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    : '';
+  return {
+    id: String(m.id ?? ''),
+    sender: String(m.user_id ?? m.userId ?? 'Player'),
+    senderId: String(m.user_id ?? m.userId ?? ''),
+    content: String(m.body ?? ''),
+    timestamp: ts,
+  };
+}
 
-const SEED_CONVERSATIONS: Conversation[] = [
-  { id: 'c1', participantName: 'ArchitectAlice', participantId: 'p1', lastMessage: 'Sure, meet me at the south plaza.', lastTimestamp: '2:40 PM', unreadCount: 2, online: true },
-  { id: 'c2', participantName: 'BuilderBob', participantId: 'p2', lastMessage: 'Trade confirmed, check your inventory.', lastTimestamp: '1:15 PM', unreadCount: 0, online: true },
-  { id: 'c3', participantName: 'FrontierFinn', participantId: 'p6', lastMessage: 'Found an amazing cave system!', lastTimestamp: 'Yesterday', unreadCount: 1, online: false },
-];
-
-const SEED_FIRM_MEMBERS: FirmMember[] = [
-  { id: 'p1', name: 'ArchitectAlice', online: true },
-  { id: 'p2', name: 'BuilderBob', online: true },
-  { id: 'p5', name: 'EngineerEve', online: false },
-  { id: 'p7', name: 'GridGrace', online: true },
-];
-
-const SEED_DISTRICT_MESSAGES: ChatMessage[] = [
-  { id: 'd1', sender: 'Mayor Chen', senderId: 'gov1', content: 'Water main upgrade begins tomorrow on 5th Ave. Plan alternate routes.', timestamp: '1:00 PM', category: 'announcement' },
-  { id: 'd2', sender: 'CivicCarla', senderId: 'p3', content: 'Looking for a materials scientist to consult on the new park pavilion.', timestamp: '12:45 PM', category: 'request' },
-  { id: 'd3', sender: 'EventsCommittee', senderId: 'ev1', content: 'Grand opening of The Commons fountain this Saturday at 3 PM!', timestamp: '11:30 AM', category: 'event' },
-];
-
-const SEED_CHANNELS: ChannelData[] = [
-  { type: 'proximity', unreadCount: 2 },
-  { type: 'direct', unreadCount: 3 },
+const DEFAULT_CHANNELS: ChannelData[] = [
+  { type: 'proximity', unreadCount: 0 },
+  { type: 'direct', unreadCount: 0 },
   { type: 'firm', unreadCount: 0 },
-  { type: 'district', unreadCount: 1 },
+  { type: 'district', unreadCount: 0 },
   { type: 'voice', unreadCount: 0 },
 ];
 
 /* ── Component ─────────────────────────────────────────────────── */
 
 export default function ChatSystem({
-  channels = SEED_CHANNELS,
+  worldId,
+  districtId,
+  channels = DEFAULT_CHANNELS,
   currentChannel: initialChannel = 'proximity',
-  messages = SEED_MESSAGES,
-  conversations = SEED_CONVERSATIONS,
-  firmMembers = SEED_FIRM_MEMBERS,
+  // Proximity / direct / firm have no world-lens backend surface yet — start
+  // EMPTY (honest empty-state), never seed fabricated chatter.
+  // TODO: wire proximity/direct/firm channels to backend when an API exists.
+  messages: messagesProp,
+  conversations: conversationsProp,
+  firmMembers: firmMembersProp,
   onSend,
   onEmote,
   onVoiceToggle,
 }: ChatSystemProps) {
+  const messages = messagesProp ?? [];
+  const conversations = conversationsProp ?? [];
+  const firmMembers = firmMembersProp ?? [];
+
+  // District channel: real ambient-chat backend.
+  const [districtMessages, setDistrictMessages] = useState<ChatMessage[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const wid = worldId || 'concordia-hub';
+        const did = districtId || 'plaza';
+        const r = await fetch(
+          `/api/ambient-chat/list?worldId=${encodeURIComponent(wid)}&districtId=${encodeURIComponent(did)}`,
+          { credentials: 'include' },
+        ).then((res) => (res.ok ? res.json() : null)).catch(() => null);
+        const rows = Array.isArray(r?.messages) ? r.messages : [];
+        if (!cancelled) setDistrictMessages(rows.map(adaptAmbient));
+      } catch { if (!cancelled) setDistrictMessages([]); }
+    })();
+    return () => { cancelled = true; };
+  }, [worldId, districtId]);
+
   const [activeChannel, setActiveChannel] = useState<ChannelType>(initialChannel);
   const [input, setInput] = useState('');
   const [showEmotes, setShowEmotes] = useState(false);
@@ -177,6 +197,9 @@ export default function ChatSystem({
         <Radio size={12} />
         <span>~15 tile radius</span>
       </div>
+      {messages.length === 0 && (
+        <p className="text-center text-white/30 text-xs py-6">No one is talking nearby</p>
+      )}
       {messages.map(msg => (
         <div key={msg.id} className="flex gap-2 items-start">
           <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white/60 shrink-0">
@@ -197,6 +220,9 @@ export default function ChatSystem({
     <div className="flex flex-col h-full">
       {!selectedConvo ? (
         <div className="divide-y divide-white/5 max-h-80 overflow-y-auto">
+          {conversations.length === 0 && (
+            <p className="text-center text-white/30 text-xs py-6">No direct conversations</p>
+          )}
           {conversations.map(convo => (
             <button
               key={convo.id}
@@ -261,6 +287,9 @@ export default function ChatSystem({
           {firmMembers.filter(m => m.online).length}/{firmMembers.length} online
         </span>
       </div>
+      {firmMembers.length === 0 && messages.length === 0 && (
+        <p className="text-center text-white/30 text-xs py-6">No firm activity</p>
+      )}
       <div className="flex gap-1 mb-2">
         {firmMembers.map(m => (
           <div key={m.id} className="relative" title={m.name}>
@@ -293,7 +322,10 @@ export default function ChatSystem({
         <Megaphone size={12} />
         <span>District Broadcast</span>
       </div>
-      {SEED_DISTRICT_MESSAGES.map(msg => (
+      {districtMessages.length === 0 && (
+        <p className="text-center text-white/30 text-xs py-6">No district messages yet</p>
+      )}
+      {districtMessages.map(msg => (
         <div key={msg.id} className="bg-white/5 rounded-lg px-3 py-2.5">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-medium text-white/80">{msg.sender}</span>
