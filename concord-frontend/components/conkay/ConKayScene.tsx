@@ -14,6 +14,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { ConKayState } from './conkay-persona';
 import { CONKAY_STATE_COLOR } from './ConKayHud';
+import { useConkayHudStore } from './conkayHudStore';
 
 // Cosmic palette for the galaxy-discs (the lattice canopy).
 const GALAXY_PALETTE = ['#22d3ee', '#a855f7', '#34d399', '#fb7185', '#7dd3fc', '#c084fc', '#5eead4', '#f0abfc'];
@@ -210,6 +211,67 @@ function Shards() {
   );
 }
 
+// Orbital scanner rings — the JARVIS "it's working" tell, but HONEST: they spin
+// IFF the backend reports a real macro in flight (Phase-2 binding). They read
+// `inFlight` from the HUD store every frame via getState() (no 60fps selector),
+// ease their angular velocity toward a target (working → spin, idle → 0), and
+// brighten with the count of concurrent real runs. When ConKay is doing no real
+// work the rings are still — there is no ambient motion to mistake for activity.
+function OrbitalRings() {
+  const group = useRef<THREE.Group>(null);
+  const rings = useRef<THREE.Mesh[]>([]);
+  const vel = useRef(0);          // current angular velocity (eased)
+  const glow = useRef(0);         // current glow level (eased)
+  const tilts = useMemo(
+    () => [
+      new THREE.Euler(Math.PI / 2.1, 0.0, 0.0),
+      new THREE.Euler(Math.PI / 2.6, 0.6, 0.3),
+      new THREE.Euler(Math.PI / 1.9, -0.5, -0.4),
+    ],
+    [],
+  );
+  const radii = [2.0, 2.55, 3.05];
+
+  useFrame((_, dt) => {
+    const inFlight = useConkayHudStore.getState().inFlight;
+    const working = inFlight > 0;
+    // Spin target scales gently with concurrent real runs; idle → exactly 0.
+    const targetVel = working ? 0.6 + Math.min(inFlight, 4) * 0.18 : 0;
+    const targetGlow = working ? Math.min(1, 0.35 + inFlight * 0.18) : 0.0;
+    vel.current += (targetVel - vel.current) * Math.min(1, dt * 3);
+    glow.current += (targetGlow - glow.current) * Math.min(1, dt * 3);
+    if (group.current) group.current.rotation.z += vel.current * dt;
+    rings.current.forEach((m, i) => {
+      if (!m) return;
+      // Counter-rotate alternate rings for the gyroscope read; all gated by vel.
+      m.rotation.z += (i % 2 === 0 ? 1 : -1.4) * vel.current * dt;
+      const mat = m.material as THREE.MeshBasicMaterial;
+      mat.opacity = glow.current * (0.55 + 0.12 * i);
+    });
+  });
+
+  return (
+    <group ref={group} position={[0, 0.6, 0]}>
+      {radii.map((r, i) => (
+        <mesh
+          key={i}
+          rotation={tilts[i]}
+          ref={(el) => { if (el) rings.current[i] = el; }}
+        >
+          <torusGeometry args={[r, 0.012 + i * 0.004, 8, 128]} />
+          <meshBasicMaterial
+            color={i === 1 ? '#fbbf24' : '#22d3ee'}
+            transparent
+            opacity={0}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 function Scene({ stateRef, amplitudeRef }: {
   stateRef: React.MutableRefObject<ConKayState>;
   amplitudeRef: React.MutableRefObject<number>;
@@ -222,6 +284,7 @@ function Scene({ stateRef, amplitudeRef }: {
       <Shards />
       <EnergyTrunk stateRef={stateRef} amplitudeRef={amplitudeRef} />
       <GalaxyCanopy stateRef={stateRef} amplitudeRef={amplitudeRef} tex={tex} />
+      <OrbitalRings />
     </group>
   );
 }
