@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 There is an **in-progress initiative** with a live handoff. Before starting work, open
 **`docs/CONKAY_HONEST_HOLOGRAM_PLAN.md`** (the "🟢 HANDOFF — start here" block at the top).
 
-- **Honest depth floor:** **0.648** (`node scripts/grade-macro-depth.mjs --honest`), climbing toward the ~0.73 ceiling.
+- **Honest depth floor:** **0.65** (`node scripts/grade-macro-depth.mjs --honest`), climbing toward the ~0.73 ceiling.
 - **Strategic companion:** `docs/SCIFI_FEASIBILITY_MAP.md` — code-grounded audit (2026-06-08). For the software/AI half the roadmap is **reveal + polish + wedge + distribution, not invention**. It corrected two load-bearing facts: engineering **CAS + beam-frame FEA are a real STRENGTH** (the R&D wedge), and external **connectors are scaffold** (only MCP + OAuth-signin are real → now **Track C** in the plan).
 - **Three tracks (owner-locked):** **(A) Depth sweep** — fleet loop toward the ceiling (`node scripts/depth-backlog.mjs` → subagents → guard → commit → push). **(B) ConKay honest hologram** — Phase 0 + 1 shipped; next is **Phase 2** (FUI scene bound to the real `macro:*` lifecycle). **(C) Marquee connector honesty** — make Gmail/Calendar real before claiming it.
 - **Non-negotiable for Track B:** *honest by construction* — every animated element is a pure function of a real backend event; **no `setInterval`/fake-progress.** Audit: `grep -rE "setInterval|setTimeout" concord-frontend/components/conkay/`.

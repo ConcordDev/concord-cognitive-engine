@@ -7,7 +7,7 @@
 
 ## 🟢 HANDOFF — start here (next instance reads this first)
 
-**Branch:** `claude/conkay-honest-hologram-handoff-GvghP` (all work below is pushed here)  ·  **Honest floor:** **0.648** (`node scripts/grade-macro-depth.mjs --honest`) — climbing ~+0.003/6-domain wave toward the ~0.73 ceiling (6 waves done; ~12–15 remain).
+**Branch:** `claude/handoff-block-docs-7XVgT` (latest work)  ·  **Honest floor:** **0.65** (`node scripts/grade-macro-depth.mjs --honest`) — climbing ~+0.003/wave toward the ~0.73 ceiling (7 waves done; ~12–15 remain).
 
 > **Strategic companion doc (read alongside this):** `docs/SCIFI_FEASIBILITY_MAP.md` — a
 > code-grounded audit (2026-06-08) of what's already built vs. frontier. Bottom line: for the
@@ -16,7 +16,22 @@
 > this plan leans on: engineering **CAS + beam-frame FEA are a real STRENGTH** (the R&D wedge), and
 > external **connectors are scaffold** (only MCP + OAuth-signin are real) → now tracked as **Track C**.
 
-**What the latest session did (2026-06-07, continuation):**
+**What the latest session did (2026-06-08, continuation):**
+- **Strategy:** landed `docs/SCIFI_FEASIBILITY_MAP.md` (code-grounded, three-agent audit —
+  inflated counts replaced with anchor-files + depth verdicts; engineering CAS/FEA confirmed a
+  STRENGTH; connectors confirmed scaffold). Added the **reveal-not-invent reframe** + **Track C**
+  (marquee connector honesty) above. CLAUDE.md handoff refreshed.
+- **Track A — fleet wave 7: floor 0.648 → 0.65.** bridge (CREATE, 38 cases/19 macros) +
+  atlas/sports/studio/worldmodel (EXTEND, ~87 cases). No source bugs this wave; guard clean
+  (3,540 behavioral tests / 139 files).
+- **Track B — Phase 2 foundation shipped (honest FUI binding).** New `conkayHudStore.ts` (zustand)
+  whose ONLY writer is the macro:* socket adapter (the overlay's Phase-0 lifecycle handlers);
+  `ConKayScene` gained `OrbitalRings` that spin IFF a real macro is in flight (ease to a dead stop
+  when idle — motion ⟺ real work) + an honest telemetry chip showing the real returned
+  domain.action · ok · ms. Zero `setInterval`/fake-progress added (audit grep clean). **Bloom +
+  full in-scene telemetry panels deferred** (needs `@react-three/postprocessing`, not installed).
+
+**What the prior session did (2026-06-07, continuation):**
 - **Track B — Phase 0 DONE + Phase 1 DONE.** Phase 0 honest event spine: `/api/lens/run`
   emits real `macro:started/completed` (with `{ok,ms}`) to the caller's `user:<id>` room,
   gated on an opt-in `x-conkay-run-id`; `realtimeEmit` gained `{userId}` targeting; shapes
