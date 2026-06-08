@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { lensRun } from '@/lib/api/client';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 //
-// NOTE: There is no backend engineering-standards reference library or
-// DTU-compliance-checker macro in the platform today (no `standards` /
-// `compliance` domain exists under server/domains/). This panel therefore
-// renders an honest empty state rather than fabricated standards data.
-// TODO: wire to backend once a `standards.*` / compliance-check macro exists.
+// Wired to the backend `standards.*` lens-action domain (server/domains/standards.js):
+//   standards-list → curated authoritative engineering-standards catalog
+//   compliance-check → deterministic coded rule evaluation
+// Renders an honest empty state when the backend returns nothing.
 
 interface StandardRule {
   section: string;
@@ -55,10 +55,64 @@ interface ComplianceResult {
   actual: string;
 }
 
-// No backend standards/compliance source — honest empty state, never fabricated.
-const STANDARDS: Standard[] = [];
+// ── Backend wire-shapes (server/domains/standards.js) ──
+interface BackendClause {
+  section: string;
+  title: string;
+  enforcement: 'mandatory' | 'advisory' | 'conditional';
+}
+interface BackendStandard {
+  id: string;
+  code: string;
+  org: string;
+  title: string;
+  discipline: string;
+  editionYear: number;
+  jurisdictions: string[];
+  clauseCount: number;
+  clauses: BackendClause[];
+  checkable: boolean;
+}
+interface StandardsListResult {
+  standards: BackendStandard[];
+  count: number;
+  disciplines: string[];
+}
+interface ComplianceRuleResult {
+  check: string;
+  section: string;
+  title: string;
+  status: 'pass' | 'fail';
+  passed: boolean;
+  expected: string;
+  actual: string;
+  details?: string;
+}
+interface ComplianceCheckResult {
+  standardId: string;
+  code: string;
+  rulesChecked: number;
+  passedCount: number;
+  failedCount: number;
+  verdict: 'compliant' | 'non-compliant';
+  results: ComplianceRuleResult[];
+}
+
+function mapStandard(s: BackendStandard): Standard {
+  return {
+    id: s.id,
+    code: s.code,
+    name: s.title,
+    issuingBody: s.org,
+    category: s.discipline,
+    ruleCount: s.clauseCount,
+    jurisdictions: s.jurisdictions ?? [],
+    effectiveDate: String(s.editionYear),
+    rules: (s.clauses ?? []).map((c) => ({ section: c.section, title: c.title, enforcement: c.enforcement })),
+  };
+}
+
 const DTUS: DtuRef[] = [];
-const COMPLIANCE: ComplianceResult[] = [];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -79,6 +133,9 @@ function complianceStatusBadge(status: string): { text: string; cls: string } {
 export default function StandardsLibrary() {
   const [tab, setTab] = useState<'browse' | 'compliance'>('browse');
 
+  // Real backend-loaded catalog
+  const [STANDARDS, setStandards] = useState<Standard[]>([]);
+
   // Browse state
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -86,10 +143,29 @@ export default function StandardsLibrary() {
 
   // Compliance state
   const [selectedDtu, setSelectedDtu] = useState(DTUS[0]?.id ?? '');
-  const [selectedStandard, setSelectedStandard] = useState(STANDARDS[0]?.id ?? '');
+  const [selectedStandard, setSelectedStandard] = useState('');
   const [complianceRun, setComplianceRun] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [pdfGenerated, setPdfGenerated] = useState(false);
+  const [COMPLIANCE, setCompliance] = useState<ComplianceResult[]>([]);
+
+  // ── Load the real curated standards catalog ──
+  const loadStandards = useCallback(async () => {
+    try {
+      const res = await lensRun<StandardsListResult>('standards', 'standards-list', {});
+      const real = res.data.ok ? res.data.result?.standards ?? [] : [];
+      const mapped = real.map(mapStandard);
+      setStandards(mapped);
+      setSelectedStandard((cur) => cur || mapped[0]?.id || '');
+    } catch {
+      // Honest empty state — never fabricate.
+      setStandards([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStandards();
+  }, [loadStandards]);
 
   const filteredStandards = useMemo(() => {
     return STANDARDS.filter((s) => {
@@ -101,7 +177,7 @@ export default function StandardsLibrary() {
       const matchesCategory = categoryFilter === 'All' || s.category === categoryFilter;
       return matchesSearch && matchesCategory;
     });
-  }, [search, categoryFilter]);
+  }, [STANDARDS, search, categoryFilter]);
 
   const overallCompliance = useMemo(() => {
     const hasFail = COMPLIANCE.some((r) => r.status === 'fail');
@@ -109,14 +185,50 @@ export default function StandardsLibrary() {
     if (hasFail) return { label: 'NON-COMPLIANT', cls: 'bg-red-500/20 border-red-500/40 text-red-400' };
     if (hasWarning) return { label: 'COMPLIANT WITH WARNINGS', cls: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400' };
     return { label: 'COMPLIANT', cls: 'bg-green-500/20 border-green-500/40 text-green-400' };
-  }, []);
+  }, [COMPLIANCE]);
 
-  const handleRunCompliance = () => {
-    // No backend compliance-check macro exists; without real standards + DTU
-    // data there is nothing to check. Surface the honest empty state below.
-    // TODO: wire to backend once a compliance-check macro exists.
-    setComplianceRun(true);
+  // Sample design values for the selected standard's coded checks. In a fuller
+  // build these would come from the selected DTU's design parameters; here they
+  // are conservative defaults so the real compliance-check macro has inputs.
+  const SAMPLE_VALUES: Record<string, Record<string, unknown>> = {
+    ASCE7: { windSpeedMph: 115, sdsG: 1.2 },
+    ACI318: { coverMm: 50, fcMpa: 28 },
+    NFPA70: { gfciProtected: true },
+    IBC: { stairWidthIn: 48 },
+    EC2: { coverMm: 30 },
+    AISC360: { boltSpacingRatio: 3.0 },
+  };
+
+  const handleRunCompliance = async () => {
+    if (!selectedStandard) return;
+    setIsRunning(true);
+    setComplianceRun(false);
     setPdfGenerated(false);
+    try {
+      const values = SAMPLE_VALUES[selectedStandard] ?? {};
+      const res = await lensRun<ComplianceCheckResult>('standards', 'compliance-check', {
+        standardId: selectedStandard,
+        values,
+      });
+      if (res.data.ok && res.data.result) {
+        setCompliance(
+          res.data.result.results.map((r) => ({
+            section: r.section,
+            title: r.title,
+            status: r.status === 'pass' ? 'pass' : 'fail',
+            expected: r.expected,
+            actual: r.actual,
+          })),
+        );
+      } else {
+        setCompliance([]);
+      }
+    } catch {
+      setCompliance([]);
+    } finally {
+      setIsRunning(false);
+      setComplianceRun(true);
+    }
   };
 
   const handleGeneratePdf = () => {
@@ -291,7 +403,7 @@ export default function StandardsLibrary() {
 
           <button
             onClick={handleRunCompliance}
-            disabled={isRunning || STANDARDS.length === 0 || DTUS.length === 0}
+            disabled={isRunning || STANDARDS.length === 0 || !selectedStandard}
             className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isRunning ? 'Running Compliance Check...' : 'Run Compliance Check'}

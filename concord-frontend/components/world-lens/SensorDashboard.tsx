@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { lensRun } from '@/lib/api/client';
 
-// NOTE: There is no IoT/sensor domain on the backend (no `sensor`, `device`,
-// or `iot` macro exists). The closest real substrate is the embodied
-// `environment` signal layer, but it does not model registered devices,
-// anomaly alerts, or API keys. Rather than fabricate readings, this panel
-// starts empty and shows honest empty states.
-// TODO: wire to backend once a sensor/device-registry domain exists.
+// Wired to the real `sensor` lens-action domain (server/domains/sensor.js):
+// device-list + anomaly-list + device-add. The panel is empty by construction
+// until the user registers a device and readings arrive — no fabricated rows.
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,6 +55,41 @@ interface NewDeviceForm {
 // ---------------------------------------------------------------------------
 
 const DEVICE_TYPES = ['Environmental', 'Structural', 'Energy', 'Hydraulic', 'Acoustic', 'Gas'];
+
+// Backend `sensor` domain kinds (lower-case) → display icon.
+const KIND_ICON: Record<string, string> = {
+  environmental: '🌡️',
+  structural: '🏗️',
+  energy: '⚡',
+  hydraulic: '💧',
+  acoustic: '🔊',
+  gas: '☁️',
+  other: '📡',
+};
+
+// Shapes returned by the backend sensor domain.
+interface BackendDevice {
+  id: string;
+  name: string;
+  kind: string;
+  location: string;
+  unit?: string;
+  linkedDtu?: string | null;
+  status: DeviceStatus;
+  anomalyCount: number;
+  lastReadingAt: string | null;
+  lastValue: number | null;
+  readingCount: number;
+}
+interface BackendAnomaly {
+  readingId: string;
+  deviceId: string;
+  deviceName?: string;
+  value: number;
+  at: string;
+  severity: 'critical' | 'warning';
+  reason: string;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -131,8 +164,8 @@ function Badge({ children, color }: { children: React.ReactNode; color: string }
 // ---------------------------------------------------------------------------
 
 export default function SensorDashboard() {
-  // EMPTY by design — no sensor backend exists. See file header TODO.
-  const [devices] = useState<SensorDevice[]>([]);
+  // Wired to the real `sensor` backend domain — empty until devices are added.
+  const [devices, setDevices] = useState<SensorDevice[]>([]);
   const [anomalies, setAnomalies] = useState<AnomalyAlert[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -143,6 +176,61 @@ export default function SensorDashboard() {
     linkedDtu: '',
   });
   const [filterStatus, setFilterStatus] = useState<DeviceStatus | 'all'>('all');
+
+  const refresh = useCallback(async () => {
+    const [dl, al] = await Promise.all([
+      lensRun('sensor', 'device-list', {}),
+      lensRun('sensor', 'anomaly-list', {}),
+    ]);
+    const backendDevices = (dl.data?.result?.devices as BackendDevice[]) || [];
+    const backendAnomalies = (al.data?.result?.anomalies as BackendAnomaly[]) || [];
+
+    setDevices(
+      backendDevices.map((d): SensorDevice => ({
+        id: d.id,
+        name: d.name,
+        type: d.kind ? d.kind.charAt(0).toUpperCase() + d.kind.slice(1) : 'Other',
+        typeIcon: KIND_ICON[d.kind] || KIND_ICON.other,
+        status: d.status,
+        location: d.location || '',
+        linkedDtu: d.linkedDtu || '',
+        lastReadingTime: d.lastReadingAt || '',
+        anomalyCount: d.anomalyCount || 0,
+        readings: d.lastValue != null
+          ? [{ label: 'Latest', value: d.lastValue, unit: d.unit || '', min: 0, max: Math.max(d.lastValue, 1) }]
+          : [],
+        history: [],
+      })),
+    );
+    setAnomalies(
+      backendAnomalies.map((a): AnomalyAlert => ({
+        id: a.readingId,
+        deviceId: a.deviceId,
+        deviceName: a.deviceName || a.deviceId,
+        severity: a.severity,
+        message: a.reason,
+        timestamp: a.at,
+        acknowledged: false,
+      })),
+    );
+  }, []);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const registerDevice = useCallback(async () => {
+    if (!newDevice.name.trim() || !newDevice.location.trim()) return;
+    const r = await lensRun('sensor', 'device-add', {
+      name: newDevice.name.trim(),
+      kind: newDevice.type.toLowerCase(),
+      location: newDevice.location.trim(),
+      linkedDtu: newDevice.linkedDtu.trim() || undefined,
+    });
+    if (r.data?.ok) {
+      setNewDevice({ name: '', type: DEVICE_TYPES[0], location: '', linkedDtu: '' });
+      setShowAddForm(false);
+      await refresh();
+    }
+  }, [newDevice, refresh]);
 
   const filteredDevices = useMemo(
     () => (filterStatus === 'all' ? devices : devices.filter(d => d.status === filterStatus)),
@@ -380,8 +468,9 @@ export default function SensorDashboard() {
               />
             </div>
             <button
-              onClick={() => { window.dispatchEvent(new CustomEvent('sensor:register-device')); }}
-              className="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-sm font-semibold transition-colors"
+              onClick={() => { void registerDevice(); }}
+              disabled={!newDevice.name.trim() || !newDevice.location.trim()}
+              className="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold transition-colors"
             >
               Register Device
             </button>

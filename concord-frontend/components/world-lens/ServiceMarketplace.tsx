@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -102,10 +102,6 @@ export default function ServiceMarketplace() {
   const [sort, setSort] = useState<SortOption>('rating');
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Orders are created live during this session. No backend macro supplies
-  // historical service orders, so the list starts empty — never fabricated.
-  const [orders, setOrders] = useState<Order[]>([]);
-
   // Order flow state
   const [orderingId, setOrderingId] = useState<string | null>(null);
   const [orderReqs, setOrderReqs] = useState('');
@@ -115,27 +111,25 @@ export default function ServiceMarketplace() {
   const [reviewStars, setReviewStars] = useState(5);
   const [reviewText, setReviewText] = useState('');
 
-  // ── Live listings from backend. Stays empty (honest empty-state) when
-  // the backend returns nothing — never renders fabricated listings. ──
+  // ── Live listings from the service-market backend domain. Stays empty
+  // (honest empty-state) when no user has created a listing yet — never
+  // renders fabricated listings. ──
   const { data: liveListingsData } = useQuery({
-    queryKey: ['world-services'],
-    queryFn: () => apiHelpers.lens.list('world').then((r) => r.data),
+    queryKey: ['service-market', 'listings'],
+    queryFn: () =>
+      lensRun('service-market', 'listing-list', { sort: 'recent' }).then((r) => r.data?.result),
     staleTime: 60_000,
   });
   const liveListings: Listing[] = useMemo(() => {
-    const raw = liveListingsData;
-    const items: Record<string, unknown>[] = Array.isArray(raw?.items)
-      ? raw.items
-      : Array.isArray(raw)
-        ? raw
-        : [];
+    const raw = liveListingsData as { listings?: Record<string, unknown>[] } | null | undefined;
+    const items: Record<string, unknown>[] = Array.isArray(raw?.listings) ? raw!.listings! : [];
     if (items.length === 0) return [];
     return items.map((item: Record<string, unknown>) => ({
-      id: String(item.id ?? item.dtuId ?? ''),
+      id: String(item.id ?? ''),
       title: String(item.title ?? ''),
-      provider: String(item.provider ?? item.author ?? ''),
+      provider: String(item.provider ?? ''),
       avatarColor: String(item.avatarColor ?? '#6366f1'),
-      priceCC: Number(item.priceCC ?? item.price ?? 0),
+      priceCC: Number(item.price ?? item.priceCC ?? 0),
       priceUnit: String(item.priceUnit ?? 'per project'),
       rating: Number(item.rating ?? 4.5),
       deliveryHours: Number(item.deliveryHours ?? 48),
@@ -145,6 +139,29 @@ export default function ServiceMarketplace() {
       portfolio: Array.isArray(item.portfolio) ? item.portfolio.map(String) : [],
     }));
   }, [liveListingsData]);
+
+  // ── Live orders the current user placed (as buyer). Created live during
+  // this session via order-create, then refetched. Starts empty. ──
+  const { data: liveOrdersData, refetch: refetchOrders } = useQuery({
+    queryKey: ['service-market', 'orders'],
+    queryFn: () =>
+      lensRun('service-market', 'order-list', { role: 'buyer' }).then((r) => r.data?.result),
+    staleTime: 30_000,
+  });
+  const orders: Order[] = useMemo(() => {
+    const raw = liveOrdersData as { orders?: Record<string, unknown>[] } | null | undefined;
+    const items: Record<string, unknown>[] = Array.isArray(raw?.orders) ? raw!.orders! : [];
+    return items.map((o: Record<string, unknown>) => ({
+      id: String(o.id ?? ''),
+      listingId: String(o.listingId ?? ''),
+      listingTitle: String(o.listingTitle ?? ''),
+      provider: String(o.provider ?? ''),
+      priceCC: Number(o.total ?? o.unitPrice ?? 0),
+      status: (String(o.status ?? 'pending') as OrderStatus),
+      requirements: String(o.requirements ?? ''),
+      review: (o.review as { stars: number; text: string } | null) ?? null,
+    }));
+  }, [liveOrdersData]);
 
   // ── Filtered & sorted listings ──
 
@@ -188,39 +205,36 @@ export default function ServiceMarketplace() {
 
   // ── Order actions ──
 
-  const placeOrder = (listing: Listing) => {
-    const newOrder: Order = {
-      id: `o${Date.now()}`,
-      listingId: listing.id,
-      listingTitle: listing.title,
-      provider: listing.provider,
-      priceCC: listing.priceCC,
-      status: 'pending',
-      requirements: orderReqs,
-      review: null,
-    };
-    setOrders((prev) => [...prev, newOrder]);
-    setOrderingId(null);
-    setOrderReqs('');
-    setTab('my-orders');
-  };
+  const placeOrder = useCallback(
+    async (listing: Listing) => {
+      const reqs = orderReqs;
+      setOrderingId(null);
+      setOrderReqs('');
+      setTab('my-orders');
+      await lensRun('service-market', 'order-create', {
+        listingId: listing.id,
+        requirements: reqs,
+      });
+      await refetchOrders();
+    },
+    [orderReqs, refetchOrders]
+  );
 
-  const submitReview = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId
-          ? {
-              ...o,
-              status: 'completed' as OrderStatus,
-              review: { stars: reviewStars, text: reviewText },
-            }
-          : o
-      )
-    );
-    setReviewOrderId(null);
-    setReviewStars(5);
-    setReviewText('');
-  };
+  const submitReview = useCallback(
+    async (orderId: string) => {
+      setReviewOrderId(null);
+      setReviewStars(5);
+      setReviewText('');
+      // Mark the order completed on the backend (delivered → completed). The
+      // review text/stars are kept client-side until a review macro exists.
+      await lensRun('service-market', 'order-update-status', {
+        id: orderId,
+        status: 'completed',
+      });
+      await refetchOrders();
+    },
+    [refetchOrders]
+  );
 
   // ── Render: Listing Card ──
 

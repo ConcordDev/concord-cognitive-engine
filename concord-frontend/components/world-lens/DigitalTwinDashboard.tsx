@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { lensRun } from '@/lib/api/client';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -44,10 +45,54 @@ interface DigitalTwin {
   assessments: Assessment[];
 }
 
-// NOTE: There is no digital-twin domain on the backend (no `digital-twin`,
-// `twin`, or structural-health-monitoring macro exists). Rather than fabricate
-// twins, sensors, anomalies, and assessment history, this panel starts empty.
-// TODO: wire to backend once a digital-twin / structural-health domain exists.
+// Wired to the real `digital-twin` lens-action domain (server/domains/digital-twin.js)
+// via lensRun('digital-twin', 'twin-list', …). The panel starts empty and only
+// fills in once the user has created twins — no fabricated rows.
+
+// Backend twin shape returned by twin-list (server/domains/digital-twin.js#shape).
+interface BackendTwin {
+  id: string;
+  name: string;
+  sourceId: string;
+  state: Record<string, unknown>;
+  version: number;
+  status: 'active' | 'degraded' | 'offline';
+  createdAt: string;
+  updatedAt: string;
+  lastSyncAt: string | null;
+  lastDriftScore: number | null;
+}
+
+// Map a backend twin onto the panel's display shape. healthScore is derived from
+// the last measured drift (0 drift → 100; full drift → 0); sensors are derived
+// from the recorded state snapshot's numeric fields.
+function toPanelTwin(t: BackendTwin): DigitalTwin {
+  const drift = typeof t.lastDriftScore === 'number' ? t.lastDriftScore : 0;
+  const healthScore = Math.round(Math.max(0, Math.min(100, (1 - drift) * 100)));
+  const sensors: Sensor[] = Object.entries(t.state || {})
+    .filter(([, v]) => typeof v === 'number')
+    .map(([k, v], i) => ({
+      id: `${t.id}_s${i}`,
+      name: k,
+      type: 'state',
+      member: k,
+      value: v as number,
+      unit: '',
+      predicted: v as number,
+      status: 'normal',
+    }));
+  return {
+    id: t.id,
+    name: t.name,
+    sourceDTU: t.sourceId,
+    healthScore,
+    sensors,
+    status: t.status,
+    lastAssessment: t.lastSyncAt || t.updatedAt || t.createdAt,
+    anomalies: [],
+    assessments: [],
+  };
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -92,8 +137,21 @@ function formatTime(iso: string): string {
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function DigitalTwinDashboard() {
-  // EMPTY by design — no digital-twin backend exists. See file header TODO.
-  const [twins] = useState<DigitalTwin[]>([]);
+  const [twins, setTwins] = useState<DigitalTwin[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await lensRun<{ twins?: BackendTwin[] }>('digital-twin', 'twin-list', {});
+      if (cancelled) return;
+      const rows = res.data?.result?.twins;
+      if (Array.isArray(rows)) {
+        setTwins(rows.map(toPanelTwin));
+      }
+      // On error or no twins, keep the empty state.
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [selectedTwinId, setSelectedTwinId] = useState<string | null>(null);
   const [view, setView] = useState<'grid' | 'detail' | 'create'>('grid');
   const [createForm, setCreateForm] = useState({
