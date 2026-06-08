@@ -1,6 +1,11 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
+import {
+  createMediaRecorderSTT,
+  mediaRecorderSupported,
+  type MediaRecorderSTTHandle,
+} from '@/lib/voice/mediarecorder-stt';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -44,6 +49,10 @@ export default function VoiceAssistant() {
   const [showSettings, setShowSettings] = useState(false);
   const [showTranscript, setShowTranscript] = useState(true);
   const [idleTime, setIdleTime] = useState(0);
+  const [thinking, setThinking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [voiceUnavailable, setVoiceUnavailable] = useState(false);
+  const sttRef = useRef<MediaRecorderSTTHandle | null>(null);
   const [settings, setSettings] = useState<VoiceSettings>({
     ttsVoice: 'nova',
     speechSpeed: 1.0,
@@ -58,25 +67,77 @@ export default function VoiceAssistant() {
     return 1;
   }, [showTranscript, idleTime]);
 
-  const toggleRecording = () => {
-    // TODO: wire to backend — there is no live STT→assistant macro for the
-    // world-lens voice assistant yet. The cross-browser STT path
-    // (lib/voice/mediarecorder-stt.ts → /api/voice/transcribe-raw) plus a chat
-    // brain round-trip would feed real transcript/response messages here.
-    // Until then we only toggle the recording UI; we never fabricate replies.
-    setIsRecording((r) => !r);
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+
+  // Ask the conscious brain for a REAL reply. Returns the reply text, or null
+  // when the brain is unreachable/offline — we NEVER fabricate an answer.
+  const askBrain = useCallback(async (text: string): Promise<string | null> => {
+    try {
+      const r = await fetch(`${API_BASE}/api/brain/conscious`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      const j = await r.json().catch(() => null);
+      const reply = j?.reply ? String(j.reply).trim() : '';
+      return reply || null;
+    } catch {
+      return null;
+    }
+  }, [API_BASE]);
+
+  // One turn: echo what the user said, then surface the REAL brain reply (or an
+  // honest offline status — never a made-up response).
+  const sendUtterance = useCallback(async (text: string) => {
+    const clean = text.trim();
+    if (!clean) return;
+    setError(null);
     setIdleTime(0);
+    setMessages((prev) => [...prev, { id: `u-${Date.now()}`, role: 'user', text: clean, timestamp: new Date().toISOString() }]);
+    setThinking(true);
+    const reply = await askBrain(clean);
+    setThinking(false);
+    if (reply) {
+      setMessages((prev) => [...prev, { id: `a-${Date.now()}`, role: 'assistant', text: reply, timestamp: new Date().toISOString() }]);
+    } else {
+      setError("Assistant is offline — couldn't reach the brain. No response was generated.");
+    }
+  }, [askBrain]);
+
+  const startRecording = useCallback(async () => {
+    if (!mediaRecorderSupported()) { setVoiceUnavailable(true); return; }
+    setError(null);
+    const handle = createMediaRecorderSTT({
+      apiBase: API_BASE,
+      onTranscript: (t) => { void sendUtterance(t); },
+      onUnavailable: () => {
+        setVoiceUnavailable(true);
+        setIsRecording(false);
+        try { sttRef.current?.stop(); } catch { /* ignore */ }
+        sttRef.current = null;
+      },
+    });
+    sttRef.current = handle;
+    const ok = await handle.start();
+    if (!ok) { setVoiceUnavailable(true); sttRef.current = null; return; }
+    setIsRecording(true);
+    setIdleTime(0);
+  }, [API_BASE, sendUtterance]);
+
+  const stopRecording = useCallback(() => {
+    try { sttRef.current?.stop(); } catch { /* ignore */ }
+    sttRef.current = null;
+    setIsRecording(false);
+  }, []);
+
+  const toggleRecording = () => {
+    if (isRecording) stopRecording();
+    else void startRecording();
   };
 
   const handleActionChip = (action: string) => {
-    const userMsg: ChatMessage = {
-      id: `m-${Date.now()}`,
-      role: 'user',
-      text: action,
-      timestamp: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
-    setIdleTime(0);
+    void sendUtterance(action);
   };
 
   const formatTime = (iso: string) => {
@@ -149,7 +210,7 @@ export default function VoiceAssistant() {
           <div>
             <h2 className="text-sm font-semibold">Voice Assistant</h2>
             <p className="text-[11px] text-white/40">
-              {isRecording ? 'Listening...' : 'Ready'}
+              {thinking ? 'Thinking…' : isRecording ? 'Listening…' : voiceUnavailable ? 'Voice unavailable' : 'Ready'}
             </p>
           </div>
         </div>
@@ -187,7 +248,11 @@ export default function VoiceAssistant() {
           {messages.length === 0 && !isRecording && (
             <div className="h-full flex flex-col items-center justify-center text-center gap-1">
               <p className="text-sm text-white/50">No conversation yet</p>
-              <p className="text-xs text-white/30">Tap the mic to start talking.</p>
+              <p className="text-xs text-white/30">
+                {voiceUnavailable
+                  ? 'Voice transcription isn’t available here (server STT not configured). Use the suggested actions instead.'
+                  : 'Tap the mic to start talking.'}
+              </p>
             </div>
           )}
           {messages.map((msg) => (
@@ -222,6 +287,24 @@ export default function VoiceAssistant() {
               </div>
             </div>
           ))}
+
+          {/* Brain thinking indicator */}
+          {thinking && (
+            <div className="flex justify-start">
+              <div className="bg-white/[0.05] border border-white/10 rounded-2xl px-4 py-2.5 text-xs text-white/50">
+                Thinking…
+              </div>
+            </div>
+          )}
+
+          {/* Honest error — we never fabricate a reply when the brain is offline */}
+          {error && (
+            <div className="flex justify-center py-2">
+              <div className="max-w-[90%] text-center text-[11px] text-amber-300/80 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                {error}
+              </div>
+            </div>
+          )}
 
           {/* Recording indicator in transcript */}
           {isRecording && (
