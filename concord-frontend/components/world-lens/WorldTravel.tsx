@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Train, Search, Star, Users, Globe, ArrowRight,
   Bookmark, BookmarkCheck, Home, Sparkles, Filter, ChevronDown,
   X, Eye, Lock, Building2, Palette, Swords, TreePine,
 } from 'lucide-react';
 import { ds } from '@/lib/design-system';
+import { lensRun } from '@/lib/api/client';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -74,33 +75,92 @@ const SORT_LABELS: Record<SortOption, string> = {
   recommended: 'Recommended',
 };
 
-/* ── Seed Data ─────────────────────────────────────────────────── */
+/* ── Backend mapping ───────────────────────────────────────────── */
 
-const SEED_WORLDS: WorldEntry[] = [
-  { id: 'w1', name: 'Neo Concordia Prime', owner: 'CivicCarla', playerCount: 127, mode: 'realistic', status: 'public', description: 'A thriving metropolis with full infrastructure simulation. Realistic zoning, utilities, and governance.', rules: 'Follow building codes. No griefing.', visitorCount: 3480, friendsHere: ['ArchitectAlice', 'BuilderBob'] },
-  { id: 'w2', name: 'Crystal Spires', owner: 'DesignDave', playerCount: 43, mode: 'fantasy', status: 'public', description: 'Fantasy world with floating islands and crystal-based energy systems. Magic-infused materials available.', visitorCount: 1250 },
-  { id: 'w3', name: 'The Sandbox', owner: 'FrontierFinn', playerCount: 89, mode: 'creative', status: 'public', description: 'Unlimited resources, no physics constraints. Perfect for prototyping wild designs.', visitorCount: 5200 },
-  { id: 'w4', name: 'Iron League Arena', owner: 'CompetitiveCouncil', playerCount: 64, mode: 'competitive', status: 'public', description: 'Speed-building tournaments every hour. Ranked leaderboard and seasonal prizes.', rules: 'Tournament rules apply. No external tools.', visitorCount: 890 },
-  { id: 'w5', name: 'Ironclad HQ', owner: 'ArchitectAlice', playerCount: 8, mode: 'realistic', status: 'firm-only', description: 'Private headquarters for Ironclad Designs firm. R&D and internal projects.', visitorCount: 120 },
-  { id: 'w6', name: 'Dave\'s Workshop', owner: 'DesignDave', playerCount: 3, mode: 'creative', status: 'invite', description: 'Experimental design workshop. Invite only for collaborators.', visitorCount: 45 },
-];
+/** Shape returned by the `sub_worlds.discover` macro (publicView). */
+interface BackendWorld {
+  world_id: string;
+  name: string;
+  description?: string;
+  kind?: string;
+  privacy?: string;
+  visits?: number;
+  unique_visitors?: number;
+  favorites?: number;
+  spawned_by_user_id?: string;
+  is_owner?: boolean;
+  can_edit?: boolean;
+}
 
-const SEED_INVITES: WorldInvite[] = [
-  { id: 'inv1', fromUser: 'DesignDave', worldName: 'Dave\'s Workshop', worldId: 'w6', timestamp: '5 min ago' },
-];
+// Map the backend world `kind` taxonomy onto the four display modes.
+function kindToMode(kind?: string): WorldMode {
+  if (!kind) return 'creative';
+  if (/physics|simulat|real|city|infra/i.test(kind)) return 'realistic';
+  if (/fantasy|magic|myth/i.test(kind)) return 'fantasy';
+  if (/arena|battle|compet|tournament/i.test(kind)) return 'competitive';
+  return 'creative';
+}
+
+function privacyToStatus(privacy?: string): WorldStatus {
+  if (privacy === 'public') return 'public';
+  if (privacy === 'unlisted') return 'firm-only';
+  return 'invite';
+}
+
+function backendToWorld(w: BackendWorld): WorldEntry {
+  return {
+    id: w.world_id,
+    name: w.name,
+    owner: w.spawned_by_user_id || 'unknown',
+    playerCount: w.unique_visitors || 0,
+    mode: kindToMode(w.kind),
+    status: privacyToStatus(w.privacy),
+    description: w.description || '',
+    visitorCount: w.visits || 0,
+  };
+}
 
 /* ── Component ─────────────────────────────────────────────────── */
 
 export default function WorldTravel({
-  worlds = SEED_WORLDS,
-  bookmarks: initialBookmarks = SEED_WORLDS.slice(0, 2),
-  recentWorlds = SEED_WORLDS.slice(0, 5),
-  invites = SEED_INVITES,
+  worlds: worldsProp,
+  bookmarks: initialBookmarks,
+  recentWorlds: recentProp,
+  invites: invitesProp,
   onTravel,
   onBookmark,
   onAcceptInvite,
   onDeclineInvite,
 }: WorldTravelProps) {
+  // When the parent doesn't supply worlds, fetch real ones from the
+  // creator-platform sub-worlds layer. Empty (not fabricated) until loaded.
+  const [fetchedWorlds, setFetchedWorlds] = useState<WorldEntry[]>([]);
+  const [worldsLoading, setWorldsLoading] = useState(!worldsProp);
+
+  const loadWorlds = useCallback(async () => {
+    if (worldsProp) return; // parent owns the data
+    setWorldsLoading(true);
+    try {
+      const r = await lensRun<{ worlds?: BackendWorld[] }>('sub_worlds', 'discover', { sort: 'popular', limit: 60 });
+      const list = r.data?.result?.worlds;
+      setFetchedWorlds(Array.isArray(list) ? list.map(backendToWorld) : []);
+    } catch {
+      setFetchedWorlds([]); // honest empty on error
+    } finally {
+      setWorldsLoading(false);
+    }
+  }, [worldsProp]);
+
+  useEffect(() => {
+    loadWorlds();
+  }, [loadWorlds]);
+
+  const worlds = worldsProp ?? fetchedWorlds;
+  // Invites have no discovery macro; show only what the parent passes.
+  const invites = invitesProp ?? [];
+  // Recent worlds: use parent prop, else fall back to the loaded set.
+  const recentWorlds = recentProp ?? worlds;
+
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortOption>('popular');
   const [sortDropdown, setSortDropdown] = useState(false);
@@ -108,7 +168,7 @@ export default function WorldTravel({
   const [activeTab, setActiveTab] = useState<'departures' | 'bookmarks' | 'recent'>('departures');
   const [traveling, setTraveling] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(
-    new Set(initialBookmarks.map(b => b.id))
+    new Set((initialBookmarks ?? []).map(b => b.id))
   );
 
   const filtered = worlds.filter(w =>
@@ -356,9 +416,11 @@ export default function WorldTravel({
       {/* World list */}
       <div className={`${panel} divide-y divide-white/5 max-h-96 overflow-y-auto`}>
         {activeTab === 'departures' && (
-          filtered.length === 0
-            ? <p className="text-center text-white/30 text-xs py-6">No worlds found</p>
-            : filtered.map(renderWorldRow)
+          worldsLoading
+            ? <p className="text-center text-white/30 text-xs py-6">Loading worlds…</p>
+            : filtered.length === 0
+              ? <p className="text-center text-white/30 text-xs py-6">No worlds found</p>
+              : filtered.map(renderWorldRow)
         )}
         {activeTab === 'bookmarks' && (
           worlds.filter(w => bookmarkedIds.has(w.id)).length === 0
@@ -370,12 +432,6 @@ export default function WorldTravel({
             ? <p className="text-center text-white/30 text-xs py-6">No recent worlds</p>
             : recentWorlds.slice(0, 5).map(renderWorldRow)
         )}
-      </div>
-
-      {/* Walkway Portal indicator */}
-      <div className={`${panel} px-3 py-2 flex items-center gap-2 text-xs text-white/50`}>
-        <Sparkles size={12} className="text-purple-400" />
-        <span>Walkway Portal: <span className="text-purple-400 font-medium">Crystal Spires Grand Opening</span> in 2 days</span>
       </div>
 
       {/* Selected world overlay */}

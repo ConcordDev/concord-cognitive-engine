@@ -48,27 +48,19 @@ interface ChatMessage {
   isOwn: boolean;
 }
 
-// ── Seed Data ──────────────────────────────────────────────────────
+// ── Static UI config (legit — navigation + notification-pref defaults) ──────
 
-const SEED_OVERNIGHT: OvernightChange[] = [
-  { id: 'oc-1', icon: '🏗️', description: 'Bridge DTU in Riverside District completed validation — all checks passed', timestamp: '03:42 AM', severity: 'info' },
-  { id: 'oc-2', icon: '📜', description: 'Your Foundation-Alpha DTU was cited 3 times by new builders overnight', timestamp: '01:15 AM', severity: 'info' },
-  { id: 'oc-3', icon: '⚠️', description: 'Windstorm event in Northern Highlands — 2 structures flagged for re-validation', timestamp: '05:08 AM', severity: 'warning' },
-  { id: 'oc-4', icon: '💰', description: 'Royalty payout of 240 credits processed from citation earnings', timestamp: '02:00 AM', severity: 'info' },
-  { id: 'oc-5', icon: '🔴', description: 'Seismic activity detected near Quarry District — evacuation drill triggered', timestamp: '04:33 AM', severity: 'critical' },
-  { id: 'oc-6', icon: '👥', description: 'Firm member Kai_Struct joined and started a new residential project', timestamp: '06:12 AM', severity: 'info' },
-];
-
-const SEED_QUICK_ACTIONS: QuickAction[] = [
-  { id: 'qa-1', label: 'Check Builds', icon: '🏗️', badge: 2 },
-  { id: 'qa-2', label: 'View Citations', icon: '📜', badge: 7 },
+const QUICK_ACTIONS: QuickAction[] = [
+  { id: 'qa-1', label: 'Check Builds', icon: '🏗️' },
+  { id: 'qa-2', label: 'View Citations', icon: '📜' },
   { id: 'qa-3', label: 'Manage Inventory', icon: '🎒' },
-  { id: 'qa-4', label: 'Firm Board', icon: '📋', badge: 1 },
+  { id: 'qa-4', label: 'Firm Board', icon: '📋' },
   { id: 'qa-5', label: 'Marketplace', icon: '🛒' },
   { id: 'qa-6', label: 'Royalties', icon: '💰' },
 ];
 
-const SEED_PUSH_PREFS: PushPref[] = [
+// Default notification-preference toggles (user settings, not live data).
+const DEFAULT_PUSH_PREFS: PushPref[] = [
   { id: 'pp-1', label: 'Build Complete', description: 'When a build or validation finishes', enabled: true },
   { id: 'pp-2', label: 'Citation Received', description: 'When someone cites your DTU', enabled: true },
   { id: 'pp-3', label: 'Disaster Alert', description: 'Seismic, storm, or hazard events', enabled: true },
@@ -76,24 +68,13 @@ const SEED_PUSH_PREFS: PushPref[] = [
   { id: 'pp-5', label: 'Market Update', description: 'Price changes on watched materials', enabled: false },
 ];
 
-const SEED_NOTIFICATIONS: MobileNotification[] = [
-  { id: 'mn-1', title: 'Build Complete', body: 'Riverside Bridge passed all 14 validation checks.', timestamp: '3 min ago', read: false, category: 'build' },
-  { id: 'mn-2', title: 'New Citation', body: 'Lena_Arc cited your Foundation-Alpha in a residential tower.', timestamp: '12 min ago', read: false, category: 'citation' },
-  { id: 'mn-3', title: 'Disaster Alert', body: 'Windstorm warning issued for Northern Highlands sector.', timestamp: '28 min ago', read: true, category: 'disaster' },
-  { id: 'mn-4', title: 'Royalty Payout', body: '240 credits deposited from 12 citations this week.', timestamp: '1 hr ago', read: true, category: 'market' },
-  { id: 'mn-5', title: 'Friend Online', body: 'Kai_Struct is now online and building in Quarry District.', timestamp: '2 hr ago', read: true, category: 'social' },
-  { id: 'mn-6', title: 'Market Update', body: 'Reinforced concrete price dropped 8% in global market.', timestamp: '3 hr ago', read: true, category: 'market' },
-  { id: 'mn-7', title: 'New Citation', body: 'Marco_CE referenced your Beam-Gamma in a pedestrian bridge.', timestamp: '5 hr ago', read: true, category: 'citation' },
-  { id: 'mn-8', title: 'Seismic Alert', body: 'Minor tremor recorded near Quarry District — no damage reported.', timestamp: '6 hr ago', read: true, category: 'disaster' },
-];
-
-const SEED_CHAT: ChatMessage[] = [
-  { id: 'cm-1', sender: 'Kai_Struct', text: 'Hey, I started on the residential wing — mind reviewing my column layout?', timestamp: '10:42 AM', isOwn: false },
-  { id: 'cm-2', sender: 'You', text: 'Sure, pulling up the inspector now. Which floor?', timestamp: '10:43 AM', isOwn: true },
-  { id: 'cm-3', sender: 'Kai_Struct', text: 'Ground floor, section B. I used your Foundation-Alpha as the base.', timestamp: '10:44 AM', isOwn: false },
-  { id: 'cm-4', sender: 'You', text: 'Nice! I see the citation came through. Looks solid, but check the load path on the east corner.', timestamp: '10:46 AM', isOwn: true },
-  { id: 'cm-5', sender: 'Lena_Arc', text: 'Just joined the channel — the bridge validation passed! 🎉', timestamp: '10:50 AM', isOwn: false },
-];
+// NOTE: overnight changes, notifications, and firm chat were previously
+// hardcoded fabricated data. There is no dedicated world-lens companion feed
+// macro for these surfaces, so they now start empty and render honest empty
+// states rather than fake activity.
+// TODO: wire to backend (overnight changes + notifications + firm chat) when a
+// companion-feed macro exists (candidates: events log + feed domain + a firm
+// chat channel macro).
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -115,9 +96,12 @@ const categoryColor: Record<string, string> = {
 
 export default function MobileCompanion() {
   const [activeTab, setActiveTab] = useState<MobileTab>('dashboard');
-  const [pushPrefs, setPushPrefs] = useState<PushPref[]>(SEED_PUSH_PREFS);
-  const [notifications, setNotifications] = useState<MobileNotification[]>(SEED_NOTIFICATIONS);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(SEED_CHAT);
+  const [pushPrefs, setPushPrefs] = useState<PushPref[]>(DEFAULT_PUSH_PREFS);
+  // No backend feed macro for these companion surfaces yet — start empty,
+  // render honest empty states. See TODO above the config block.
+  const [overnightChanges] = useState<OvernightChange[]>([]);
+  const [notifications, setNotifications] = useState<MobileNotification[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [cameraZoom, setCameraZoom] = useState(1);
   const [cameraAngle, setCameraAngle] = useState(0);
@@ -169,15 +153,14 @@ export default function MobileCompanion() {
       <div className={`${panel} p-4`}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-white font-semibold text-lg">World Status</h2>
-          <span className="text-xs text-white/40">Last sync: 2 min ago</span>
         </div>
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-sm font-bold">
-            OK
+          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/40 text-sm font-bold">
+            —
           </div>
           <div>
-            <p className="text-white text-sm font-medium">Concordia Prime — Online</p>
-            <p className="text-white/50 text-xs">142 active builders · 3 events running</p>
+            <p className="text-white text-sm font-medium">Companion</p>
+            <p className="text-white/50 text-xs">No live world data connected</p>
           </div>
         </div>
       </div>
@@ -187,22 +170,26 @@ export default function MobileCompanion() {
         <h3 className="text-white/70 text-xs uppercase tracking-wider mb-3">
           Overnight Changes
         </h3>
-        <div className="flex flex-col gap-2">
-          {SEED_OVERNIGHT.map((change) => (
-            <div
-              key={change.id}
-              className="flex items-start gap-3 p-2 rounded-md bg-white/5 active:bg-white/10 transition-colors"
-            >
-              <span className="text-lg flex-shrink-0 mt-0.5">{change.icon}</span>
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm ${severityColor[change.severity]}`}>
-                  {change.description}
-                </p>
-                <p className="text-white/30 text-xs mt-1">{change.timestamp}</p>
+        {overnightChanges.length === 0 ? (
+          <p className="text-white/40 text-xs py-2">No changes to report.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {overnightChanges.map((change) => (
+              <div
+                key={change.id}
+                className="flex items-start gap-3 p-2 rounded-md bg-white/5 active:bg-white/10 transition-colors"
+              >
+                <span className="text-lg flex-shrink-0 mt-0.5">{change.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm ${severityColor[change.severity]}`}>
+                    {change.description}
+                  </p>
+                  <p className="text-white/30 text-xs mt-1">{change.timestamp}</p>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Quick Actions */}
@@ -211,7 +198,7 @@ export default function MobileCompanion() {
           Quick Actions
         </h3>
         <div className="grid grid-cols-3 gap-3">
-          {SEED_QUICK_ACTIONS.map((action) => (
+          {QUICK_ACTIONS.map((action) => (
             <button
               key={action.id}
               onClick={() => { window.dispatchEvent(new CustomEvent('mobile-companion:quick-action', { detail: { actionId: action.id } })); }}
@@ -299,6 +286,9 @@ export default function MobileCompanion() {
         )}
       </div>
       <div className="flex flex-col gap-2">
+        {notifications.length === 0 && (
+          <p className="text-white/40 text-xs py-6 text-center">No notifications.</p>
+        )}
         {notifications.map((notif) => (
           <button
             key={notif.id}
@@ -438,11 +428,13 @@ export default function MobileCompanion() {
     <div className="flex flex-col h-full p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-white font-semibold text-lg">Firm Chat</h2>
-        <span className="text-xs text-white/40">3 online</span>
       </div>
 
       {/* Messages */}
       <div className="flex-1 flex flex-col gap-2 overflow-y-auto mb-4 min-h-0">
+        {chatMessages.length === 0 && (
+          <p className="text-white/40 text-xs py-6 text-center self-center">No messages yet.</p>
+        )}
         {chatMessages.map((msg) => (
           <div
             key={msg.id}

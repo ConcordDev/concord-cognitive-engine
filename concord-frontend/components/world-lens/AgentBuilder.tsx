@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { lensRun } from '@/lib/api/client';
 
-// ── Seed Data ──────────────────────────────────────────────────────────────────
+// ── Types ───────────────────────────────────────────────────────────────────────
 
 interface AgentLogEntry {
   action: string;
@@ -24,56 +25,47 @@ interface SeedAgent {
   logs: AgentLogEntry[];
 }
 
-const SEED_AGENTS: SeedAgent[] = [
-  {
-    id: 'agent-1',
-    name: 'Bridge Monitor',
-    type: 'monitor',
-    status: 'active',
-    lastRun: '5m ago',
-    runsToday: 47,
+/** Shape returned by the `agents.listSchedules` macro. */
+interface BackendSchedule {
+  id: string;
+  agentId: string;
+  agentName?: string;
+  kind?: string;
+  spec?: string;
+  goal?: string;
+  enabled?: boolean;
+  createdAt?: string;
+  lastFiredAt?: string | null;
+  fireCount?: number;
+}
+
+function timeAgo(iso?: string | null): string {
+  if (!iso) return 'never';
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return 'never';
+  const diff = Date.now() - t;
+  if (diff < 60_000) return 'just now';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  return `${Math.floor(diff / 86_400_000)}d ago`;
+}
+
+/** Map a backend schedule into the card view-model the UI renders. */
+function scheduleToAgent(s: BackendSchedule): SeedAgent {
+  return {
+    id: s.id,
+    name: s.agentName || s.agentId || 'Agent',
+    type: s.kind || 'custom',
+    status: s.enabled === false ? 'paused' : 'active',
+    lastRun: timeAgo(s.lastFiredAt),
+    runsToday: s.fireCount || 0,
     dailyQuota: 100,
-    description: 'Watches for anomaly events on bridge sensor network',
-    watching: 'sensor:anomaly-detected',
-    logs: [
-      { action: 'Checked sensor cluster B7', timestamp: '5m ago', result: 'success' },
-      { action: 'Flagged vibration spike on span 3', timestamp: '22m ago', result: 'success' },
-      { action: 'Skipped — no new events in window', timestamp: '1h ago', result: 'skipped' },
-    ],
-  },
-  {
-    id: 'agent-2',
-    name: 'Daily Portfolio',
-    type: 'report',
-    status: 'active',
-    lastRun: '7h ago',
-    runsToday: 1,
-    dailyQuota: 5,
-    description: 'Generates a daily portfolio summary report',
-    schedule: 'daily 7 am',
-    logs: [
-      { action: 'Generated portfolio summary PDF', timestamp: '7h ago', result: 'success' },
-      { action: 'Emailed summary to 4 recipients', timestamp: '7h ago', result: 'success' },
-      { action: 'Failed to fetch market close data', timestamp: '31h ago', result: 'failure' },
-    ],
-  },
-  {
-    id: 'agent-3',
-    name: 'Component Scout',
-    type: 'market_watch',
-    status: 'paused',
-    lastRun: '2d ago',
-    runsToday: 0,
-    dailyQuota: 50,
-    description: 'Watching for beams with >100 citations',
-    watching: 'beams with >100 citations',
-    logs: [
-      { action: 'Scan paused by user', timestamp: '2d ago', result: 'skipped' },
-      { action: 'Found 3 matching beams in marketplace', timestamp: '3d ago', result: 'success' },
-      { action: 'Query timeout on external catalog', timestamp: '4d ago', result: 'failure' },
-    ],
-  },
-];
+    description: s.goal || 'Scheduled objective',
+    watching: s.kind === 'event' ? s.spec : undefined,
+    schedule: s.kind && s.kind !== 'event' ? `${s.kind}: ${s.spec || ''}`.trim() : undefined,
+    logs: [],
+  };
+}
 
 const AGENT_TYPES = [
   { key: 'monitor', label: 'Monitor', color: 'bg-blue-500', desc: 'Continuously watch for events on the sensor network or event bus and log or escalate when conditions are met.' },
@@ -123,9 +115,27 @@ function resultBadge(result: string): { text: string; cls: string } {
 export default function AgentBuilder() {
   const [tab, setTab] = useState<'my' | 'create'>('my');
 
-  // My Agents state
-  const [agents, setAgents] = useState<SeedAgent[]>(SEED_AGENTS);
+  // My Agents state — real data from `agents.listSchedules`, empty until loaded.
+  const [agents, setAgents] = useState<SeedAgent[]>([]);
+  const [agentsLoading, setAgentsLoading] = useState(true);
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
+
+  const loadAgents = useCallback(async () => {
+    setAgentsLoading(true);
+    try {
+      const r = await lensRun<{ schedules?: BackendSchedule[] }>('agents', 'listSchedules', {});
+      const schedules = r.data?.result?.schedules;
+      setAgents(Array.isArray(schedules) ? schedules.map(scheduleToAgent) : []);
+    } catch {
+      setAgents([]); // honest empty on error — never fabricate
+    } finally {
+      setAgentsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAgents();
+  }, [loadAgents]);
 
   // Create Agent state
   const [selectedType, setSelectedType] = useState<string>('monitor');
@@ -159,12 +169,18 @@ export default function AgentBuilder() {
 
   const selectedTypeInfo = useMemo(() => AGENT_TYPES.find((t) => t.key === selectedType), [selectedType]);
 
-  const togglePause = (id: string) => {
+  const togglePause = async (id: string) => {
+    // Optimistic flip, then persist via the real macro.
     setAgents((prev) =>
       prev.map((a) =>
         a.id === id ? { ...a, status: a.status === 'active' ? 'paused' : 'active' } as SeedAgent : a,
       ),
     );
+    try {
+      await lensRun('agents', 'toggleSchedule', { id });
+    } catch {
+      loadAgents(); // re-sync from backend if persist failed
+    }
   };
 
   const toggleMonitorEvent = (evt: string) => {
@@ -202,20 +218,34 @@ export default function AgentBuilder() {
     }, 1500);
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!agentName.trim()) return;
-    const newAgent: SeedAgent = {
-      id: `agent-${Date.now()}`,
-      name: agentName,
-      type: selectedType,
-      status: activateOnCreate ? 'active' : 'paused',
-      lastRun: 'never',
-      runsToday: 0,
-      dailyQuota: 100,
-      description: selectedTypeInfo?.desc || '',
-      logs: [],
-    };
-    setAgents((prev) => [...prev, newAgent]);
+    // Derive a spec from the type-specific config so the backend schedule is real.
+    let kind = 'interval';
+    let spec = '3600000';
+    if (selectedType === 'monitor') {
+      kind = 'event';
+      spec = monitorEvents[0] || 'sensor:anomaly-detected';
+    } else if (selectedType === 'report') {
+      kind = 'interval';
+      spec = reportSchedule === 'daily' ? '86400000' : reportSchedule === 'weekly' ? '604800000' : '2592000000';
+    } else if (selectedType === 'custom' && customRules[0]) {
+      kind = 'event';
+      spec = customRules[0].trigger;
+    }
+    try {
+      await lensRun('agents', 'createSchedule', {
+        agentId: agentName.trim().toLowerCase().replace(/\s+/g, '-'),
+        agentName: agentName.trim(),
+        kind,
+        spec,
+        goal: selectedTypeInfo?.desc || agentName.trim(),
+        enabled: activateOnCreate,
+      });
+      await loadAgents();
+    } catch {
+      // leave list as-is; surfaced via toast by the api client
+    }
     setAgentName('');
     setTab('my');
   };
@@ -243,7 +273,22 @@ export default function AgentBuilder() {
       </div>
 
       {/* ── My Agents Tab ─────────────────────────────────────────────────── */}
-      {tab === 'my' && (
+      {tab === 'my' && agentsLoading && (
+        <p className="text-sm text-gray-400">Loading agents…</p>
+      )}
+      {tab === 'my' && !agentsLoading && agents.length === 0 && (
+        <div className="border border-white/10 rounded-xl bg-white/5 p-8 text-center">
+          <p className="text-sm text-gray-300 mb-1">No agents yet</p>
+          <p className="text-xs text-gray-400 mb-4">Create a scheduled agent to monitor events, send alerts, or generate reports.</p>
+          <button
+            onClick={() => setTab('create')}
+            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
+          >
+            Create your first agent
+          </button>
+        </div>
+      )}
+      {tab === 'my' && !agentsLoading && agents.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {agents.map((agent) => {
             const isExpanded = expandedAgent === agent.id;

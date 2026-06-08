@@ -20,36 +20,7 @@ interface VoiceSettings {
   pushToTalk: boolean;
 }
 
-// ── Seed data ──────────────────────────────────────────────────────────────────
-
-const SEED_MESSAGES: ChatMessage[] = [
-  {
-    id: 'm1',
-    role: 'user',
-    text: "What's the status of District 7?",
-    timestamp: '2026-04-05T14:20:00Z',
-  },
-  {
-    id: 'm2',
-    role: 'assistant',
-    text: 'District 7 has 23 buildings, 4 under construction. The weather is clear. 12 players online.',
-    timestamp: '2026-04-05T14:20:02Z',
-    suggestedActions: ['Show District 7 map', 'List buildings', 'Check weather forecast'],
-  },
-  {
-    id: 'm3',
-    role: 'user',
-    text: 'Run a stress test on my bridge',
-    timestamp: '2026-04-05T14:21:30Z',
-  },
-  {
-    id: 'm4',
-    role: 'assistant',
-    text: 'Running seismic stress test on Main Street Bridge... All tests passed. Safety factor 2.3.',
-    timestamp: '2026-04-05T14:21:35Z',
-    suggestedActions: ['View full report', 'Run wind test', 'Export results'],
-  },
-];
+// ── Settings options (static config — legit help/choices, not fabricated data) ──
 
 const VOICE_OPTIONS = [
   { id: 'nova', label: 'Nova (Natural)' },
@@ -68,7 +39,7 @@ const LANGUAGE_OPTIONS = [
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function VoiceAssistant() {
-  const [messages, setMessages] = useState<ChatMessage[]>(SEED_MESSAGES);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showTranscript, setShowTranscript] = useState(true);
@@ -88,29 +59,12 @@ export default function VoiceAssistant() {
   }, [showTranscript, idleTime]);
 
   const toggleRecording = () => {
-    if (isRecording) {
-      setIsRecording(false);
-      // Simulate receiving a response
-      const userMsg: ChatMessage = {
-        id: `m-${Date.now()}`,
-        role: 'user',
-        text: 'Show me the latest validation results',
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, userMsg]);
-      setTimeout(() => {
-        const assistantMsg: ChatMessage = {
-          id: `m-${Date.now() + 1}`,
-          role: 'assistant',
-          text: 'Here are the latest validation results: 14 of 15 structures passed. The Main Street Bridge has 1 warning for pier tilt deviation.',
-          timestamp: new Date().toISOString(),
-          suggestedActions: ['View bridge details', 'Re-run validation', 'Dismiss warning'],
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-      }, 1500);
-    } else {
-      setIsRecording(true);
-    }
+    // TODO: wire to backend — there is no live STT→assistant macro for the
+    // world-lens voice assistant yet. The cross-browser STT path
+    // (lib/voice/mediarecorder-stt.ts → /api/voice/transcribe-raw) plus a chat
+    // brain round-trip would feed real transcript/response messages here.
+    // Until then we only toggle the recording UI; we never fabricate replies.
+    setIsRecording((r) => !r);
     setIdleTime(0);
   };
 
@@ -230,6 +184,12 @@ export default function VoiceAssistant() {
           className="flex-1 overflow-y-auto p-4 space-y-3 transition-opacity duration-1000"
           style={{ opacity: transcriptOpacity }}
         >
+          {messages.length === 0 && !isRecording && (
+            <div className="h-full flex flex-col items-center justify-center text-center gap-1">
+              <p className="text-sm text-white/50">No conversation yet</p>
+              <p className="text-xs text-white/30">Tap the mic to start talking.</p>
+            </div>
+          )}
           {messages.map((msg) => (
             <div
               key={msg.id}
