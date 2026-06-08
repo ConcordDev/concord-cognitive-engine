@@ -9,6 +9,13 @@
 
 **Branch:** `claude/conkay-honest-hologram-handoff-GvghP` (all work below is pushed here)  ·  **Honest floor:** **0.648** (`node scripts/grade-macro-depth.mjs --honest`) — climbing ~+0.003/6-domain wave toward the ~0.73 ceiling (6 waves done; ~12–15 remain).
 
+> **Strategic companion doc (read alongside this):** `docs/SCIFI_FEASIBILITY_MAP.md` — a
+> code-grounded audit (2026-06-08) of what's already built vs. frontier. Bottom line: for the
+> software/AI half the roadmap is **reveal + polish + wedge + distribution, not invention**
+> (~10/13 iconic sci-fi software systems already in-substrate). The audit **corrected** two things
+> this plan leans on: engineering **CAS + beam-frame FEA are a real STRENGTH** (the R&D wedge), and
+> external **connectors are scaffold** (only MCP + OAuth-signin are real) → now tracked as **Track C**.
+
 **What the latest session did (2026-06-07, continuation):**
 - **Track B — Phase 0 DONE + Phase 1 DONE.** Phase 0 honest event spine: `/api/lens/run`
   emits real `macro:started/completed` (with `{ok,ms}`) to the caller's `user:<id>` room,
@@ -81,6 +88,21 @@ The product is **the verified, private compute-agent for R&D** — not a consume
   — all behaviorally tested now. ("R&D" broadly = 259 lenses again = the wedge trap.)
 - **The "weaknesses" are credibility:** refusing to fake the unknown is the most trust-building
   behavior for a scientist. ConKay's honest hologram makes the real, verified work *legible*.
+
+### Strategic reframe: reveal, don't invent (2026-06-08, code-grounded)
+The `docs/SCIFI_FEASIBILITY_MAP.md` audit changes the *shape* of the roadmap, not its honesty rule:
+- **~10/13 iconic sci-fi software systems are already in the substrate** — verified, mostly
+  production-grade. The job for the software/AI half is **surface + polish + wedge + distribution**,
+  not new capability. ConKay is the wedge front door for exactly this.
+- **The R&D wedge is now defensible by code, not aspiration:** `domains/math.js` (real CAS) +
+  `lib/simulation/fea-solver.js` (real direct-stiffness beam-frame FEA) + `materials.js` + `chem.js`.
+  Lead the pitch with "private compute-agent that does the math, runs the FEA, shows its work."
+- **The honest gaps are bucketed:** hardware (suits/robots/AR), full CAD + tetra/nonlinear FEA,
+  real-world prediction (out of scope by design) — and **external connectors are scaffold** (the one
+  software-side gap), which is why **Track C** exists below.
+- **Priority order (from the feasibility map §7):** (1) surface+polish ConKay [Track B] → (2) pick
+  ONE wedge audience + ship the 3-min first-win → (3) build-in-public "here are the receipts" →
+  (4) make the marquee connector real before claiming it [Track C] → (5) hardware frontier, later.
 
 ---
 
@@ -236,6 +258,37 @@ R3F docs (pitfalls/scaling/events); ektogamat `HolographicMaterial`;
 `@react-three/postprocessing` Bloom/Selection/SelectiveBloom; drei (`Html`/`Billboard`/`Line`/
 `Text`/`Instances`); troika-three-text; GSAP R3F exploded-view (DevDojo); `@react-three/a11y`;
 AG-UI events spec + CopilotKit 17-event-types; "benevolent deception"/fake-progress critiques.
+
+---
+
+# Track C — marquee connector honesty (verify-before-pitch → build)
+
+**Why it exists:** the feasibility audit found "external integration ✅" was the one *overstated*
+software claim. Reality today:
+- **MCP — real + bidirectional.** `server/lib/mcp-server.js` exposes ~200 macros to MCP clients;
+  `server/lib/mcp-client.js` calls external MCP servers (SSRF-guarded). Keep pitching this.
+- **OAuth — sign-in/identity only.** `server/lib/oauth-providers.js` + `server/routes/oauth.js`
+  verify Google/Apple JWTs against provider JWKS, then **discard the access/refresh tokens** — no
+  write-back, no ongoing API access.
+- **iCal — read-only pull.** `server/domains/calendar.js` accepts `direction: pull|push|two-way`
+  but only `pull` is implemented; "two-way/push" is label theater, in-memory, no DB persistence.
+- **Gmail/Sheets/Slack/GitHub/Notion — catalog scaffolding.** `server/domains/integrations.js`
+  `connectApp` stores a fake `tok_${random}`; zero real API calls.
+
+**The honest pitch right now:** "real bidirectional MCP + OAuth sign-in; deep connectors are
+on the roadmap." Do **not** claim two-way Gmail/Calendar until the build below lands.
+
+**Build (sequenced after ConKay surface/polish + a wedge audience):**
+1. **Persist OAuth tokens** — encrypt + store Google refresh tokens (migration + a `oauth_tokens`
+   table keyed by `(user_id, provider)`), with refresh rotation. Gate behind explicit consent.
+2. **Google Calendar two-way** — real `googleapis` calendar read + write-back; make
+   `calendar.js` `direction: two-way` actually push. Pin with a contract test (round-trip an event).
+3. **Relabel honestly in the meantime** — surface iCal as "read-only" in the UI until #2 ships;
+   surface scaffold connectors as "coming soon" badges (the personas-lens Z4 pattern), never as
+   "connected."
+
+**Stopping rule:** ONE marquee connector real end-to-end (Calendar) beats five scaffolds.
+Resist re-expanding the catalog before the first connector genuinely round-trips.
 
 ---
 
