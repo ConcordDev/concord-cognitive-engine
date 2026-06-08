@@ -1,10 +1,35 @@
 # Concord — The 25 Destinations (editable draft)
 
-> **Status: DRAFT for owner sign-off.** Nothing in the nav is changed yet. Edit this file —
-> add/remove destinations, move lenses between them, adjust the cross-mount panels — then I'll
-> implement it (sidebar tier + affinity map) exactly as this doc reads.
+> **Status: IMPLEMENTED (2026-06-08).** The Core-6 + grouped "Destinations" sidebar tier
+> (`lib/destinations.ts`), the per-destination workspace tab bar (`components/common/DestinationNav.tsx`),
+> and the cross-mount affinity map (`lib/panel-affinity.ts` + `lib/panel-registry.ts`) are shipped.
+> Edit this file to re-curate (move lenses between destinations, adjust cross-mount panels) and the
+> changes flow through. All 259 lenses remain reachable.
 
-## The model (what we're building)
+## Why this IS the polish strategy (not a tradeoff against it)
+
+A 259-surface "do-everything" app *reads* as unpolished for a structural reason — the
+Starfield-density trap: a thousand shallow tiles feel like a thousand unfinished things, and no
+team (let alone one person) can buff 259 surfaces to incumbent depth. Concord's answer is the
+super-lens consolidation, and it's a **deliberate polish/UX architecture**, not a breadth play:
+
+- **Consolidate the front door to ~25 destinations**, and make each one *deep* via the two knobs
+  below — absorbed sub-lenses as workspace tabs **+** cross-mounted panels. Finance reaches
+  Robinhood-class depth precisely because it absorbs `markets`/`wallet`/`staking`/`ledger` and
+  cross-mounts the crypto/accounting/energy panels — it's engineered to be a real app, not a tile.
+- **Keep all 259 reachable** (Hub / ⌘K / sub-lens tree) for focused + power use, so consolidation
+  costs nothing in capability.
+- Net: **depth-by-composition on the front door, breadth-on-demand behind it.** You don't polish
+  259 surfaces; you compose ~25 deep ones and hold the rest one keystroke away.
+
+So "would Concord lose a polish fight?" is the wrong frame (corrected from an earlier lazy
+absolute): on a *single* incumbent's home screen they have more polish *depth* (big team × years ×
+one surface), but that's a fight nobody is choosing Concord to win. On the fight that matters —
+**coherent, real-feeling depth across an enormous surface area, held on one design system from one
+builder** — Concord is genuinely strong, and the consolidation model is *why*. The polish gaps the
+2026-06-08 pass actually found were cleanup-grade (demo-stage chrome, FAB clutter), not structural.
+
+## The model (what's shipped)
 
 - **Sidebar = Core 6 (prominent) + a collapsible "Destinations" group (~19).** 25 "full version"
   workspaces total. (Your chosen density: Core 6 up top, the other 19 one click away.)
