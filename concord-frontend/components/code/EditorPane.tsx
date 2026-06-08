@@ -8,6 +8,14 @@ import { EditorTabs } from './CodeWorkbenchShell';
 
 const MonacoWrapper = dynamic(() => import('./MonacoWrapper'), { ssr: false });
 
+// Phase 1 — semantic IntelliSense macro runner (returns the macro `result`).
+async function runCodeMacro(action: string, input: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+  try {
+    const r = await lensRun({ domain: 'code', action, input });
+    return (r?.data?.result as Record<string, unknown>) ?? null;
+  } catch { return null; }
+}
+
 interface OpenFile { path: string; content: string; original: string; language: string; modified: boolean }
 
 export function EditorPane({
@@ -62,6 +70,21 @@ export function EditorPane({
   }, [openPath, projectId]);
 
   const active = files.find(f => f.path === openPath);
+
+  // Phase 1 — debounced mirror of the live (unsaved) buffer into the backend
+  // workspace so hover/completions/diagnostics reflect what's on screen, not the
+  // last saved revision (LSP didChange semantics).
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activePath = active?.path;
+  const activeContent = active?.content;
+  useEffect(() => {
+    if (!activePath || !projectId) return;
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      void runCodeMacro('files-write', { projectId, path: activePath, content: activeContent });
+    }, 350);
+    return () => { if (syncTimerRef.current) clearTimeout(syncTimerRef.current); };
+  }, [activePath, activeContent, projectId]);
 
   function updateContent(path: string, content: string) {
     setFiles(prev => prev.map(f => f.path === path ? { ...f, content, modified: content !== f.original } : f));
@@ -169,6 +192,7 @@ export function EditorPane({
                 value={active.content}
                 onChange={(value) => updateContent(active.path, value || '')}
                 language={active.language}
+                semantic={projectId ? { projectId, path: active.path, run: runCodeMacro } : undefined}
                 onEditorReady={(ed) => { editorRef.current = ed as typeof editorRef.current; }}
                 onSelectionChange={(sel: { text: string } | string | null) => {
                   const text = typeof sel === 'string' ? sel : (sel?.text || '');

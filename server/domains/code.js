@@ -8,6 +8,9 @@
 //      — new in the parity sprint. Touch STATE.dtus + ctx.llm where appropriate.
 
 import vm from "node:vm";
+// Phase 1 — real type-aware semantics for the code lens (TS LanguageService over
+// the in-memory workspace). Lazy: typescript only loads on the first lsp-* call.
+import tsLang from "../lib/ts-language-service.js";
 
 const SNIPPET_KIND = "code_snippet";
 const SNAPSHOT_KIND = "code_snapshot_bundle";
@@ -825,6 +828,17 @@ Rules:
     const m = { ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript', py: 'python', rs: 'rust', go: 'go', java: 'java', cpp: 'cpp', c: 'c', md: 'markdown', json: 'json', yml: 'yaml', yaml: 'yaml', html: 'html', css: 'css', sh: 'shell', sql: 'sql' };
     return m[ext] || 'plaintext';
   }
+  // Resolve a 0-based char offset from a macro's position input: an explicit
+  // `offset`, or Monaco's 1-based `position:{line,column}`. Returns null when no
+  // position was supplied (callers then fall back to the lexical/symbol path).
+  function positionToOffset(files, path, params) {
+    if (Number.isFinite(params?.offset)) return Math.max(0, Math.round(params.offset));
+    const pos = params?.position;
+    if (pos && Number.isFinite(pos.line) && Number.isFinite(pos.column) && files.has(path)) {
+      return tsLang.offsetOf(files.get(path).content, pos.line, pos.column);
+    }
+    return null;
+  }
 
   // ── Projects (virtual workspaces) ──────────────────────────────
 
@@ -1560,9 +1574,18 @@ Rules:
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
+    const path = String(params.path || "");
     const symbol = String(params.symbol || "").trim();
-    if (!projectId || !symbol) return { ok: false, error: "projectId + symbol required" };
+    if (!projectId) return { ok: false, error: "projectId required" };
     const files = ensureFiles(s, userId, projectId);
+    // Scope-correct references (distinguishes shadowed/same-named bindings) when a
+    // cursor position is given. Lexical word-boundary grep is the fallback.
+    const offset = positionToOffset(files, path, params);
+    if (offset != null && tsLang.tsAvailable(path)) {
+      const r = tsLang.references(files, path, offset);
+      if (r) return { ok: true, result: { symbol: symbol || null, references: r.references, count: r.count, source: "typescript" } };
+    }
+    if (!symbol) return { ok: false, error: "symbol or position required" };
     const refs = [];
     const re = new RegExp(`\\b${symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
     for (const [path, blob] of files) {
@@ -1587,6 +1610,11 @@ Rules:
     const files = ensureFiles(s, userId, projectId);
     if (!files.has(path)) return { ok: false, error: "file not found" };
     const lang = langFromPath(path);
+    // Real navigation tree (nesting-aware) for TS/JS; lexical scan for the rest.
+    if (tsLang.tsAvailable(path)) {
+      const r = tsLang.outline(files, path);
+      if (r) return { ok: true, result: { path, language: lang, symbols: r.symbols, count: r.symbols.length, source: "typescript" } };
+    }
     const symbols = extractSymbols(files.get(path).content, lang);
     return { ok: true, result: { path, language: lang, symbols, count: symbols.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1604,7 +1632,12 @@ Rules:
     const problems = [];
     for (const path of targets) {
       if (!files.has(path)) continue;
+      // Style heuristics (debugger/console/var/eqeqeq/brackets) ALWAYS run; for
+      // TS/JS we layer real tsc semantic + syntactic diagnostics (type errors,
+      // undefined symbols, etc.) on top.
       for (const p of analyzeFile(path, files.get(path).content)) problems.push(p);
+      const tsd = tsLang.tsAvailable(path) ? tsLang.diagnostics(files, path) : null;
+      if (tsd) for (const p of tsd.problems) problems.push(p);
     }
     const bySeverity = { error: 0, warning: 0, info: 0 };
     for (const p of problems) bySeverity[p.severity] = (bySeverity[p.severity] || 0) + 1;
@@ -1720,10 +1753,17 @@ Rules:
     const path = String(params.path || "");
     const symbol = String(params.symbol || "").trim();
     if (!projectId || !path) return { ok: false, error: "projectId + path required" };
-    if (!symbol) return { ok: false, error: "symbol required" };
     const files = ensureFiles(s, userId, projectId);
     if (!files.has(path)) return { ok: false, error: "file not found" };
     const lang = langFromPath(path);
+    // Real type-aware hover (inferred types) when a cursor position is given.
+    const offset = positionToOffset(files, path, params);
+    if (offset != null && tsLang.tsAvailable(path)) {
+      const r = tsLang.hover(files, path, offset);
+      if (r && r.found) return { ok: true, result: { symbol: symbol || null, found: true, kind: r.kind, type: r.type, hover: r.hover, doc: r.doc, language: lang, source: "typescript" } };
+      if (r && !r.found) return { ok: true, result: { symbol: symbol || null, found: false, hover: "No symbol under the cursor." } };
+    }
+    if (!symbol) return { ok: false, error: "symbol or position required" };
     // Scan every project file for a declaration of the symbol.
     let decl = null;
     for (const [p, blob] of files) {
@@ -1754,9 +1794,17 @@ Rules:
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
+    const path = String(params.path || "");
     const fnName = String(params.symbol || "").trim();
-    if (!projectId || !fnName) return { ok: false, error: "projectId + symbol required" };
+    if (!projectId) return { ok: false, error: "projectId required" };
     const files = ensureFiles(s, userId, projectId);
+    // Real signature help (resolved overload + param types) at a call site.
+    const offset = positionToOffset(files, path, params);
+    if (offset != null && tsLang.tsAvailable(path)) {
+      const r = tsLang.signature(files, path, offset);
+      if (r && r.found) return { ok: true, result: { symbol: fnName || null, found: true, label: r.label, parameters: r.parameters, activeParameter: r.activeParameter, source: "typescript" } };
+    }
+    if (!fnName) return { ok: false, error: "symbol or position required" };
     let sig = null;
     for (const [p, blob] of files) {
       const d = findDeclaration(blob.content, fnName, langFromPath(p));
@@ -1791,6 +1839,13 @@ Rules:
     if (!projectId) return { ok: false, error: "projectId required" };
     const prefix = String(params.prefix || "").trim();
     const files = ensureFiles(s, userId, projectId);
+    // Real type-aware completions when a cursor position + a TS/JS file are given
+    // (Monaco passes position). Falls through to the lexical scan otherwise.
+    const offset = positionToOffset(files, path, params);
+    if (offset != null && tsLang.tsAvailable(path)) {
+      const r = tsLang.completions(files, path, offset, prefix);
+      if (r) return { ok: true, result: { completions: r.entries, count: r.count, prefix, source: "typescript" } };
+    }
     const seen = new Map();
     for (const [p, blob] of files) {
       for (const sym of extractSymbols(blob.content, langFromPath(p))) {
