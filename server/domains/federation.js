@@ -88,7 +88,9 @@ export default function registerFederationActions(registerLensAction) {
       const peers = STATE?.settings?.federationPeers ?? [];
       let trustGraph = [];
       try {
-        trustGraph = listPeers(ctx?.db, {});
+        // listPeers returns { ok, peers: [...] } — unwrap to the array.
+        const lp = listPeers(ctx?.db, {});
+        trustGraph = Array.isArray(lp) ? lp : (lp?.peers ?? []);
       } catch { /* DB-dependent helper — empty list on minimal builds */ }
       return {
         ok: true,
@@ -402,7 +404,11 @@ export default function registerFederationActions(registerLensAction) {
       const STATE = globalThis._concordSTATE;
       const configured = STATE?.settings?.federationPeers ?? [];
       let graphCount = 0;
-      try { graphCount = listPeers(ctx?.db, {})?.length ?? 0; } catch { /* minimal build */ }
+      try {
+        // listPeers returns { ok, peers: [...] } — count the array.
+        const lp = listPeers(ctx?.db, {});
+        graphCount = (Array.isArray(lp) ? lp : (lp?.peers ?? [])).length;
+      } catch { /* minimal build */ }
       relay.lastPullAt = now();
       relay.discoveredPeers = configured.length + graphCount;
       relay.status = "active";
