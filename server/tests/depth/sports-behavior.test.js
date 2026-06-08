@@ -228,3 +228,210 @@ describe("sports — STATE CRUD round-trips + validation (shared ctx)", () => {
     assert.match(bad.result.error, /homeTeam and awayTeam required/);
   });
 });
+
+describe("sports — followed teams + team news round-trips (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("sports-teams"); });
+
+  it("team-follow toggles following on then off; team-list reflects it", async () => {
+    const on = await lensRun("sports", "team-follow", { params: { name: "Comets", league: "NBA" } }, ctx);
+    assert.equal(on.ok, true);
+    assert.equal(on.result.following, true);
+    assert.equal(on.result.league, "nba"); // lowercased
+    const listed = await lensRun("sports", "team-list", {}, ctx);
+    assert.ok(listed.result.teams.some((t) => t.name === "Comets" && t.league === "nba"));
+    // toggling the same (name, league) again unfollows
+    const off = await lensRun("sports", "team-follow", { params: { name: "Comets", league: "NBA" } }, ctx);
+    assert.equal(off.result.following, false);
+    const after = await lensRun("sports", "team-list", {}, ctx);
+    assert.equal(after.result.teams.some((t) => t.name === "Comets"), false);
+  });
+
+  it("team-follow: rejects an empty team name", async () => {
+    const bad = await lensRun("sports", "team-follow", { params: { name: "" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /team name required/);
+  });
+
+  it("team-news-add → team-news-list: newest-first, filterable by team", async () => {
+    await lensRun("sports", "team-news-add", { params: { team: "Comets", headline: "Older", date: "2026-05-01" } }, ctx);
+    const newer = await lensRun("sports", "team-news-add", { params: { team: "Comets", headline: "Newer" } }, ctx);
+    assert.equal(newer.ok, true);
+    assert.equal(newer.result.news.team, "Comets");
+    await lensRun("sports", "team-news-add", { params: { team: "Rivals", headline: "Other team" } }, ctx);
+    const filtered = await lensRun("sports", "team-news-list", { params: { team: "Comets" } }, ctx);
+    assert.equal(filtered.ok, true);
+    assert.equal(filtered.result.count, 2); // only Comets items
+    assert.ok(filtered.result.news.every((n) => n.team === "Comets"));
+    // sorted newest-first by createdAt → "Newer" precedes "Older"
+    assert.equal(filtered.result.news[0].headline, "Newer");
+  });
+
+  it("team-news-add: rejects when headline is missing", async () => {
+    const bad = await lensRun("sports", "team-news-add", { params: { team: "Comets" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /team and headline required/);
+  });
+});
+
+describe("sports — game mutation + detail + delete (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("sports-gamemut"); });
+
+  it("game-update-score: live→final flips winner; clamps negatives to 0", async () => {
+    const g = await lensRun("sports", "game-add", {
+      params: { homeTeam: "Tigers", awayTeam: "Pumas", status: "scheduled" },
+    }, ctx);
+    const id = g.result.game.id;
+    const upd = await lensRun("sports", "game-update-score", {
+      params: { id, homeScore: 21, awayScore: -5, status: "final" },
+    }, ctx);
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.game.homeScore, 21);
+    assert.equal(upd.result.game.awayScore, 0); // negative clamped
+    assert.equal(upd.result.game.status, "final");
+    assert.equal(upd.result.game.winner, "Tigers"); // 21 > 0
+  });
+
+  it("game-update-score: rejects an unknown game id", async () => {
+    const bad = await lensRun("sports", "game-update-score", { params: { id: "missing", homeScore: 3 } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /game not found/);
+  });
+
+  it("game-detail: returns the game plus its predictions", async () => {
+    const g = await lensRun("sports", "game-add", {
+      params: { homeTeam: "Eagles", awayTeam: "Crows", homeScore: 14, awayScore: 7, status: "final" },
+    }, ctx);
+    const id = g.result.game.id;
+    await lensRun("sports", "prediction-make", { params: { gameId: id, predictedWinner: "Eagles" } }, ctx);
+    const detail = await lensRun("sports", "game-detail", { params: { id } }, ctx);
+    assert.equal(detail.ok, true);
+    assert.equal(detail.result.game.id, id);
+    assert.equal(detail.result.game.winner, "Eagles");
+    assert.equal(detail.result.predictions.length, 1);
+    assert.equal(detail.result.predictions[0].predictedWinner, "Eagles");
+  });
+
+  it("game-delete: removes the game so a re-list no longer finds it", async () => {
+    const g = await lensRun("sports", "game-add", {
+      params: { homeTeam: "Sharks", awayTeam: "Rays", status: "scheduled" },
+    }, ctx);
+    const id = g.result.game.id;
+    const del = await lensRun("sports", "game-delete", { params: { id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, id);
+    const list = await lensRun("sports", "game-list", {}, ctx);
+    assert.equal(list.result.games.some((x) => x.id === id), false);
+    const again = await lensRun("sports", "game-delete", { params: { id } }, ctx);
+    assert.equal(again.result.ok, false);
+    assert.match(again.result.error, /game not found/);
+  });
+});
+
+describe("sports — watchlist remove + personalized feeds (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("sports-feeds"); });
+
+  it("watchlist-remove: removing a tracked game shrinks the list; missing rejected", async () => {
+    const g = await lensRun("sports", "game-add", {
+      params: { homeTeam: "Bolts", awayTeam: "Surge", status: "live" },
+    }, ctx);
+    const id = g.result.game.id;
+    const add = await lensRun("sports", "watchlist-add", { params: { gameId: id } }, ctx);
+    assert.equal(add.result.watchlistSize, 1);
+    const rem = await lensRun("sports", "watchlist-remove", { params: { gameId: id } }, ctx);
+    assert.equal(rem.ok, true);
+    assert.equal(rem.result.watchlistSize, 0);
+    const bad = await lensRun("sports", "watchlist-remove", { params: { gameId: id } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /game not on watchlist/);
+  });
+
+  it("athlete-list: tracked athletes read back", async () => {
+    const a = await lensRun("sports", "athlete-track", { params: { name: "Quill", team: "Bolts", position: "guard" } }, ctx);
+    const list = await lensRun("sports", "athlete-list", {}, ctx);
+    assert.equal(list.ok, true);
+    assert.ok(list.result.athletes.some((x) => x.id === a.result.athlete.id && x.name === "Quill"));
+  });
+
+  it("my-scores: only games involving a followed team appear; live counted", async () => {
+    await lensRun("sports", "team-follow", { params: { name: "Voltaics", league: "x" } }, ctx);
+    // game involving followed team, live
+    await lensRun("sports", "game-add", { params: { homeTeam: "Voltaics", awayTeam: "Misc", status: "live" } }, ctx);
+    // game with no followed team — must be excluded
+    await lensRun("sports", "game-add", { params: { homeTeam: "Nobody", awayTeam: "Nope", status: "final" } }, ctx);
+    const my = await lensRun("sports", "my-scores", {}, ctx);
+    assert.equal(my.ok, true);
+    assert.ok(my.result.games.every((g) => g.homeTeam === "Voltaics" || g.awayTeam === "Voltaics"));
+    assert.ok(my.result.games.some((g) => g.homeTeam === "Voltaics" && g.status === "live"));
+    assert.equal(my.result.live, 1); // exactly one live game with a followed team
+    assert.ok(my.result.followedTeams >= 1);
+  });
+
+  it("sports-dashboard: aggregates counts + prediction accuracy", async () => {
+    const g = await lensRun("sports", "game-add", {
+      params: { homeTeam: "Drake", awayTeam: "Mole", homeScore: 5, awayScore: 2, status: "final" },
+    }, ctx);
+    await lensRun("sports", "prediction-make", { params: { gameId: g.result.game.id, predictedWinner: "Drake" } }, ctx);
+    const dash = await lensRun("sports", "sports-dashboard", {}, ctx);
+    assert.equal(dash.ok, true);
+    assert.ok(dash.result.trackedGames >= 1);
+    assert.equal(dash.result.predictionAccuracy, 100); // the one decided pick was correct
+    assert.equal(typeof dash.result.followedTeams, "number");
+  });
+});
+
+describe("sports — reminders + bracket list/delete round-trips (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("sports-reminders"); });
+
+  it("reminder-set → reminder-list → reminder-delete: full lifecycle", async () => {
+    const set = await lensRun("sports", "reminder-set", {
+      params: { matchup: "Bolts vs Surge", sport: "NBA", kickoff: "2099-01-01T00:00:00Z" },
+    }, ctx);
+    assert.equal(set.ok, true);
+    assert.equal(set.result.reminder.matchup, "Bolts vs Surge");
+    assert.equal(set.result.reminder.sport, "nba"); // lowercased
+    const id = set.result.reminder.id;
+    const list = await lensRun("sports", "reminder-list", {}, ctx);
+    const row = list.result.reminders.find((r) => r.id === id);
+    assert.ok(row);
+    assert.equal(row.upcoming, true); // kickoff is in the far future
+    const del = await lensRun("sports", "reminder-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, id);
+    const after = await lensRun("sports", "reminder-list", {}, ctx);
+    assert.equal(after.result.reminders.some((r) => r.id === id), false);
+  });
+
+  it("reminder-set: rejects a missing matchup", async () => {
+    const bad = await lensRun("sports", "reminder-set", { params: { matchup: "" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /matchup required/);
+  });
+
+  it("reminder-delete: rejects an unknown id", async () => {
+    const bad = await lensRun("sports", "reminder-delete", { params: { id: "nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /reminder not found/);
+  });
+
+  it("bracket-create → bracket-list → bracket-delete: round-trip", async () => {
+    const b = await lensRun("sports", "bracket-create", {
+      params: { name: "Open Cup", teams: ["W", "X", "Y", "Z"] },
+    }, ctx);
+    const id = b.result.bracket.id;
+    const list = await lensRun("sports", "bracket-list", {}, ctx);
+    assert.ok(list.result.brackets.some((x) => x.id === id && x.name === "Open Cup"));
+    const del = await lensRun("sports", "bracket-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, id);
+    const after = await lensRun("sports", "bracket-list", {}, ctx);
+    assert.equal(after.result.brackets.some((x) => x.id === id), false);
+  });
+
+  it("bracket-create: rejects fewer than 2 teams", async () => {
+    const bad = await lensRun("sports", "bracket-create", { params: { name: "Tiny", teams: ["Solo"] } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /at least 2 teams required/);
+  });
+});

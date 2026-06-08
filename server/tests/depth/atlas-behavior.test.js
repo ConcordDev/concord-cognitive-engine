@@ -581,3 +581,161 @@ describe("atlas — uncovered deterministic branches on calc + CRUD macros (dept
     assert.match(r.result.error, /placeId OR name\+lat\+lng required/);
   });
 });
+
+describe("atlas — network-backed macros: pre-fetch validation-rejection branches (offline, depth fleet)", () => {
+  // Each macro below validates its inputs BEFORE issuing any HTTP request.
+  // We only exercise the deterministic refusal branches — no live egress —
+  // so these run fully offline. The literal lensRun("atlas","<macro>",…)
+  // names the macro, crediting it as a behavioral invocation.
+
+  // ── nominatim-geocode / nominatim-reverse ──
+  it("nominatim-geocode: a blank query is rejected before any network call", async () => {
+    const r = await lensRun("atlas", "nominatim-geocode", { params: { query: "   " } });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /query required/);
+  });
+
+  it("nominatim-reverse: non-numeric latitude/longitude is rejected before any network call", async () => {
+    const r = await lensRun("atlas", "nominatim-reverse", { params: { latitude: "north", longitude: 10 } });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /latitude \+ longitude required/);
+  });
+
+  // ── overpass-poi ──
+  it("overpass-poi: a non-finite bbox edge is rejected", async () => {
+    const r = await lensRun("atlas", "overpass-poi", { params: { south: 0, west: 0, north: "x", east: 2 } });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /south\/west\/north\/east required/);
+  });
+
+  it("overpass-poi: an inverted bbox (south >= north) is rejected", async () => {
+    const r = await lensRun("atlas", "overpass-poi", { params: { south: 5, west: 0, north: 1, east: 2 } });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /bbox invalid/);
+  });
+
+  // ── directions (OSRM) ──
+  it("directions: fewer than 2 waypoints is rejected", async () => {
+    const r = await lensRun("atlas", "directions", { params: { waypoints: [{ lat: 1, lng: 1 }] } });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /at least 2 waypoints required/);
+  });
+
+  it("directions: a waypoint with a non-numeric coord is rejected", async () => {
+    const r = await lensRun("atlas", "directions", {
+      params: { waypoints: [{ lat: 1, lng: 1 }, { lat: "two", lng: 2 }] },
+    });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /each waypoint needs numeric lat\/lng/);
+  });
+
+  // ── route-stops (OSRM + Overpass) ──
+  it("route-stops: a start/end missing numeric coords is rejected", async () => {
+    const r = await lensRun("atlas", "route-stops", {
+      params: { start: { lat: 1, lng: 1 }, end: { lat: "x", lng: 2 } },
+    });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /start and end each need numeric lat\/lng/);
+  });
+
+  // ── directions-multimodal ──
+  it("directions-multimodal: fewer than 2 waypoints is rejected", async () => {
+    const r = await lensRun("atlas", "directions-multimodal", { params: { waypoints: [] } });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /at least 2 waypoints required/);
+  });
+
+  it("directions-multimodal: a non-numeric waypoint coord is rejected", async () => {
+    const r = await lensRun("atlas", "directions-multimodal", {
+      params: { waypoints: [{ lat: 0, lng: 0 }, { lat: 1, lng: "east" }] },
+    });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /each waypoint needs numeric lat\/lng/);
+  });
+
+  // ── live-traffic-eta ──
+  it("live-traffic-eta: fewer than 2 waypoints is rejected", async () => {
+    const r = await lensRun("atlas", "live-traffic-eta", { params: { waypoints: [{ lat: 1, lng: 1 }] } });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /at least 2 waypoints required/);
+  });
+
+  it("live-traffic-eta: a non-numeric waypoint coord is rejected", async () => {
+    const r = await lensRun("atlas", "live-traffic-eta", {
+      params: { waypoints: [{ lat: 1, lng: 1 }, { lat: 2, lng: "west" }] },
+    });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /each waypoint needs numeric lat\/lng/);
+  });
+
+  // ── transit-directions ──
+  it("transit-directions: a start/end missing numeric coords is rejected", async () => {
+    const r = await lensRun("atlas", "transit-directions", {
+      params: { start: { lat: 40, lng: -74 }, end: { lat: 41 } }, // end.lng absent
+    });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /start and end each need numeric lat\/lng/);
+  });
+
+  // ── street-imagery ──
+  it("street-imagery: non-numeric lat/lng is rejected", async () => {
+    const r = await lensRun("atlas", "street-imagery", { params: { lat: "x", lng: -74 } });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /numeric lat\/lng required/);
+  });
+
+  // ── place-details ──
+  it("place-details: a missing osmType is rejected", async () => {
+    const r = await lensRun("atlas", "place-details", { params: { osmId: 12345 } }); // no osmType
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /osmType \(node\|way\|relation\) \+ numeric osmId required/);
+  });
+
+  it("place-details: a non-numeric osmId is rejected", async () => {
+    const r = await lensRun("atlas", "place-details", { params: { osmType: "node", osmId: "abc" } });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /osmType \(node\|way\|relation\) \+ numeric osmId required/);
+  });
+
+  // ── nav-start (pre-fetch validation) ──
+  it("nav-start: fewer than 2 waypoints is rejected before routing", async () => {
+    const r = await lensRun("atlas", "nav-start", { params: { waypoints: [{ lat: 1, lng: 1 }] } });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /at least 2 waypoints/);
+  });
+
+  it("nav-start: a non-numeric waypoint coord is rejected before routing", async () => {
+    const r = await lensRun("atlas", "nav-start", {
+      params: { waypoints: [{ lat: 1, lng: 1 }, { lat: 2, lng: "two" }] },
+    });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /each waypoint needs numeric lat\/lng/);
+  });
+});
+
+describe("atlas — street-imagery no-token deterministic coverage path (offline, depth fleet)", () => {
+  it("street-imagery: with no MAPILLARY_TOKEN returns the keyless coverage-tile reference, no images, no network", async () => {
+    // MAPILLARY_TOKEN is unset in the test env, so this branch returns
+    // synchronously without issuing a fetch — a real deterministic success.
+    const r = await lensRun("atlas", "street-imagery", { params: { lat: 37.7749, lng: -122.4194 } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.hasToken, false);
+    assert.deepEqual(r.result.images, []);
+    assert.equal(r.result.lat, 37.7749);
+    assert.equal(r.result.lng, -122.4194);
+    assert.equal(r.result.source, "mapillary");
+    assert.ok(r.result.coverageTileUrl.includes("tiles.mapillary.com"));
+    assert.ok(r.result.note.includes("MAPILLARY_TOKEN"));
+  });
+});
+
+describe("atlas — nav-update no-session refusal (offline, depth fleet)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("atlas-fleet-navupdate"); });
+
+  it("nav-update: with no active session is rejected (no network)", async () => {
+    const r = await lensRun("atlas", "nav-update", { params: { lat: 1, lng: 1 } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /no active navigation session/);
+  });
+});
