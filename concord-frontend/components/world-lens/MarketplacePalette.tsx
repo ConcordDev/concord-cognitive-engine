@@ -6,58 +6,6 @@ import type { MarketplaceEntry, ComponentCategory } from '@/lib/world-lens/types
 
 const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
 
-// Seed marketplace entries
-const SEED_MARKETPLACE: MarketplaceEntry[] = [
-  {
-    dtuId: 'comp-usb-beam-v1', name: 'USB-A Standard Beam', category: 'beam',
-    creator: '@materials_lab', creatorHandle: 'materials_lab', validationStatus: 'validated',
-    citationCount: 342, performanceSpecs: { loadCapacity: 450, spanLimit: 8 },
-    materialRefs: ['mat-usb-a'], thumbnail: '', royaltyRate: 0.02, publishedAt: '2025-08-15', tags: ['structural', 'beam', 'USB'],
-  },
-  {
-    dtuId: 'comp-concrete-found-v2', name: 'Reinforced Concrete Foundation', category: 'foundation',
-    creator: '@engineer_jane', creatorHandle: 'engineer_jane', validationStatus: 'validated',
-    citationCount: 521, performanceSpecs: { loadCapacity: 2000, seismicRating: 7 },
-    materialRefs: ['mat-concrete-c40'], thumbnail: '', royaltyRate: 0.03, publishedAt: '2025-07-20', tags: ['foundation', 'concrete', 'seismic'],
-  },
-  {
-    dtuId: 'comp-solar-panel-v1', name: 'Solar Array 5kW', category: 'solar-array',
-    creator: '@power_mike', creatorHandle: 'power_mike', validationStatus: 'validated',
-    citationCount: 189, performanceSpecs: { powerOutput: 5, efficiency: 22 },
-    materialRefs: ['mat-glass-tempered'], thumbnail: '', royaltyRate: 0.05, publishedAt: '2025-09-01', tags: ['energy', 'solar', 'renewable'],
-  },
-  {
-    dtuId: 'comp-usb-column-v1', name: 'USB-B Heavy Column', category: 'column',
-    creator: '@struct_eng', creatorHandle: 'struct_eng', validationStatus: 'validated',
-    citationCount: 278, performanceSpecs: { loadCapacity: 800, heightLimit: 12 },
-    materialRefs: ['mat-usb-b'], thumbnail: '', royaltyRate: 0.02, publishedAt: '2025-08-28', tags: ['structural', 'column', 'heavy'],
-  },
-  {
-    dtuId: 'comp-glulam-truss-v1', name: 'Glulam Roof Truss', category: 'roof-truss',
-    creator: '@timber_works', creatorHandle: 'timber_works', validationStatus: 'validated',
-    citationCount: 156, performanceSpecs: { spanLimit: 12, snowLoadRating: 40 },
-    materialRefs: ['mat-timber-glulam'], thumbnail: '', royaltyRate: 0.03, publishedAt: '2025-09-15', tags: ['roof', 'timber', 'truss'],
-  },
-  {
-    dtuId: 'comp-steel-bracket-v1', name: 'Steel Connection Bracket', category: 'bracket',
-    creator: '@fab_shop', creatorHandle: 'fab_shop', validationStatus: 'validated',
-    citationCount: 412, performanceSpecs: { loadCapacity: 200, shearRating: 150 },
-    materialRefs: ['mat-steel-a36'], thumbnail: '', royaltyRate: 0.01, publishedAt: '2025-07-10', tags: ['connection', 'bracket', 'steel'],
-  },
-  {
-    dtuId: 'comp-hvac-unit-v1', name: 'HVAC Compact Unit 10kW', category: 'hvac-unit',
-    creator: '@climate_ctrl', creatorHandle: 'climate_ctrl', validationStatus: 'validated',
-    citationCount: 98, performanceSpecs: { heatingCapacity: 10, coolingCapacity: 8 },
-    materialRefs: [], thumbnail: '', royaltyRate: 0.04, publishedAt: '2025-10-01', tags: ['hvac', 'heating', 'cooling'],
-  },
-  {
-    dtuId: 'comp-pipe-joint-v1', name: 'Universal Pipe Joint', category: 'pipe-joint',
-    creator: '@plumb_pro', creatorHandle: 'plumb_pro', validationStatus: 'validated',
-    citationCount: 287, performanceSpecs: { flowRate: 500, pressureRating: 150 },
-    materialRefs: ['mat-steel-stainless-304'], thumbnail: '', royaltyRate: 0.01, publishedAt: '2025-08-05', tags: ['plumbing', 'pipe', 'joint'],
-  },
-];
-
 const SORT_OPTIONS = [
   { value: 'citations', label: 'Most Cited' },
   { value: 'newest', label: 'Newest' },
@@ -78,9 +26,10 @@ export default function MarketplacePalette({
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<string>('citations');
   const [categoryFilter, setCategoryFilter] = useState<string>(filterCategory || 'all');
-  const [liveEntries, setLiveEntries] = useState<MarketplaceEntry[] | null>(null);
+  const [liveEntries, setLiveEntries] = useState<MarketplaceEntry[]>([]);
 
-  // Fetch real marketplace listings; fall back to seed data if unavailable
+  // Fetch real marketplace listings. Stays empty (honest empty-state) on
+  // error or no data — never renders fabricated entries.
   useEffect(() => {
     fetch('/api/creative-marketplace?limit=50')
       .then(r => r.ok ? r.json() : null)
@@ -106,7 +55,7 @@ export default function MarketplacePalette({
       .catch(() => {});
   }, []);
 
-  const baseEntries = liveEntries ?? SEED_MARKETPLACE;
+  const baseEntries = liveEntries;
 
   const filtered = useMemo(() => {
     let items = [...baseEntries];

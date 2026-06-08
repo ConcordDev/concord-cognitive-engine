@@ -91,91 +91,11 @@ const EQUIP_SLOTS: { slot: EquipSlot; label: string }[] = [
   { slot: 'accessory', label: 'Accessory' },
 ];
 
-const DEMO_ITEMS: InventoryItem[] = [
-  {
-    id: '1',
-    name: 'Steel Hammer',
-    category: 'tools',
-    description: 'A sturdy hammer for construction.',
-    quantity: 1,
-    stats: { durability: 85, damage: 12 },
-    creator: 'ForgeM4ster',
-    dtuRef: 'DTU-7291',
-    dateAcquired: '2026-04-01',
-    equipSlot: 'tool',
-  },
-  {
-    id: '2',
-    name: 'Iron Ingot',
-    category: 'materials',
-    description: 'Refined iron, ready for crafting.',
-    quantity: 24,
-    creator: 'MineCo',
-    dtuRef: 'DTU-1100',
-    dateAcquired: '2026-04-02',
-  },
-  {
-    id: '3',
-    name: 'Copper Wire',
-    category: 'components',
-    description: 'Conductive copper wire bundle.',
-    quantity: 16,
-    dateAcquired: '2026-04-02',
-  },
-  {
-    id: '4',
-    name: 'Foundation Blueprint',
-    category: 'blueprints',
-    description: 'Large reinforced foundation plan.',
-    quantity: 1,
-    stats: { tier: 'Journeyman' },
-    creator: 'ArchDev',
-    dtuRef: 'DTU-4420',
-    dateAcquired: '2026-03-28',
-  },
-  {
-    id: '5',
-    name: 'Healing Salve',
-    category: 'consumables',
-    description: 'Restores 50 HP over 10 seconds.',
-    quantity: 5,
-    stats: { heal: 50 },
-    dateAcquired: '2026-04-03',
-  },
-  {
-    id: '6',
-    name: 'Hard Hat',
-    category: 'equipment',
-    description: '+10 structural protection.',
-    quantity: 1,
-    stats: { armor: 10 },
-    dateAcquired: '2026-03-30',
-    equipSlot: 'head',
-  },
-  {
-    id: '7',
-    name: 'Golden Wrench',
-    category: 'trophies',
-    description: 'Awarded for 1,000 successful validations.',
-    quantity: 1,
-    creator: 'System',
-    dateAcquired: '2026-04-04',
-  },
-  {
-    id: '8',
-    name: 'Glass Pane',
-    category: 'materials',
-    description: 'Transparent glass sheet for windows.',
-    quantity: 40,
-    dateAcquired: '2026-04-04',
-  },
-];
-
-const DEMO_EQUIPPED: EquippedItems = {
-  head: DEMO_ITEMS[5],
+const EMPTY_EQUIPPED: EquippedItems = {
+  head: null,
   body: null,
   hands: null,
-  tool: DEMO_ITEMS[0],
+  tool: null,
   accessory: null,
 };
 
@@ -185,7 +105,7 @@ const TOTAL_SLOTS = 24;
 
 export default function InventoryPanel({
   items: itemsProp,
-  equipped = DEMO_EQUIPPED,
+  equipped = EMPTY_EQUIPPED,
   onEquip,
   onUnequip,
   onUse,
@@ -232,7 +152,9 @@ export default function InventoryPanel({
       .catch(() => {});
   }, []);
 
-  const items = fetchedItems ?? itemsProp ?? DEMO_ITEMS;
+  // Real inventory only — never render fabricated items. Empty until the
+  // real /api/player-inventory fetch resolves; honest empty-state otherwise.
+  const items = fetchedItems ?? itemsProp ?? [];
 
   /* Filtering & sorting */
   const filtered = items

@@ -76,117 +76,6 @@ const ORDER_STEP_LABELS: Record<OrderStatus, string> = {
   completed: 'Completed',
 };
 
-// ─── Seed Data ───────────────────────────────────────────────────────────────
-
-const SEED_LISTINGS: Listing[] = [
-  {
-    id: 'l1',
-    title: 'Seismic Review',
-    provider: '@jane_structures',
-    avatarColor: 'bg-rose-500',
-    priceCC: 50,
-    priceUnit: 'flat',
-    rating: 4.8,
-    deliveryHours: 24,
-    category: 'Structural Analysis',
-    description:
-      'Comprehensive seismic load review for structural DTUs. Includes zone classification, response spectrum analysis, and compliance report.',
-    fullDescription:
-      'Full seismic assessment per IBC/Eurocode 8 standards. I will review your structural DTU against the target seismic zone, perform response spectrum analysis, verify base shear calculations, and produce a detailed compliance report with recommendations. Includes one revision round.\n\nDeliverables:\n- Seismic hazard classification\n- Response spectrum overlay\n- Base shear & drift check\n- Compliance summary PDF',
-    portfolio: [
-      'Bridge pier seismic retrofit',
-      'High-rise core wall analysis',
-      '3-story timber frame validation',
-    ],
-  },
-  {
-    id: 'l2',
-    title: 'Custom Bridge Design',
-    provider: '@engineer_dutch',
-    avatarColor: 'bg-blue-500',
-    priceCC: 200,
-    priceUnit: 'flat',
-    rating: 4.9,
-    deliveryHours: 72,
-    category: 'Custom Component',
-    description:
-      'End-to-end bridge component design from concept to validated DTU. Pedestrian, vehicular, or rail.',
-    fullDescription:
-      'I design bridges. From initial sketch to a fully validated DTU ready for the registry. Includes material selection, structural analysis, environmental load validation, and publication support.\n\nProcess:\n1. Requirements gathering call (30 min)\n2. Concept sketch delivery (24h)\n3. Detailed DTU with validation suite (48h)\n4. Final review & publish\n\nSupported types: pedestrian, vehicular, rail, pipeline.',
-    portfolio: ['24m pedestrian bridge', '60m cable-stayed concept', 'Railway overpass DTU'],
-  },
-  {
-    id: 'l3',
-    title: 'Material Selection',
-    provider: '@kai_marine',
-    avatarColor: 'bg-teal-500',
-    priceCC: 30,
-    priceUnit: 'per hour',
-    rating: 4.7,
-    deliveryHours: 0,
-    category: 'Materials Consulting',
-    description:
-      'Expert material selection consulting for marine and coastal environments. Corrosion, fatigue, and cost optimization.',
-    fullDescription:
-      'Specializing in material selection for harsh environments. I help you choose the right alloy, coating, or composite for marine, offshore, and coastal structures.\n\nTopics covered:\n- Corrosion resistance mapping\n- Fatigue life estimation\n- Cost-weight-performance tradeoffs\n- Galvanic compatibility checks\n- Maintenance schedule recommendations\n\nHourly rate, minimum 1 hour.',
-    portfolio: [
-      'Offshore platform riser material study',
-      'Marina dock composite selection',
-      'Subsea pipeline coating spec',
-    ],
-  },
-  {
-    id: 'l4',
-    title: 'NPC Personality Design',
-    provider: '@nova_circuits',
-    avatarColor: 'bg-purple-500',
-    priceCC: 25,
-    priceUnit: 'flat',
-    rating: 4.5,
-    deliveryHours: 48,
-    category: 'NPC Configuration',
-    description:
-      'Design compelling NPC personalities with dialogue trees, behavioral patterns, and memory configurations.',
-    fullDescription:
-      'I craft NPC personalities that feel alive. Each design includes a personality profile, dialogue tree skeleton, behavioral state machine, memory/context configuration, and integration notes for your world.\n\nIncludes:\n- Personality archetype & backstory\n- 20+ dialogue nodes\n- 3 behavioral states\n- Memory config (short/long term)\n- Integration guide',
-    portfolio: ['Merchant guild NPCs', 'Quest-giver elder', 'Dynamic companion AI'],
-  },
-  {
-    id: 'l5',
-    title: 'World Planning',
-    provider: '@proxy_builder',
-    avatarColor: 'bg-amber-500',
-    priceCC: 100,
-    priceUnit: 'flat',
-    rating: 4.6,
-    deliveryHours: 168,
-    category: 'World Building',
-    description:
-      'Full world planning service: terrain layout, district zoning, infrastructure routing, and environmental storytelling.',
-    fullDescription:
-      'Comprehensive world planning from blank canvas to a fully documented district map. I handle terrain generation guidance, district zoning with purpose-driven layouts, infrastructure routing (roads, utilities, transit), and environmental storytelling layers.\n\nDeliverables:\n- Annotated district map\n- Zoning plan with rationale\n- Infrastructure routing diagram\n- Environmental narrative document\n- 5 point-of-interest briefs\n\nTimeline: 7 days for standard world (up to 10 districts).',
-    portfolio: [
-      'Neon Harbor district plan',
-      'Verdant Heights residential zone',
-      'Industrial Spine logistics layout',
-    ],
-  },
-];
-
-const SEED_ORDERS: Order[] = [
-  {
-    id: 'o1',
-    listingId: 'l2',
-    listingTitle: 'Custom Bridge Design',
-    provider: '@engineer_dutch',
-    priceCC: 200,
-    status: 'in_progress',
-    requirements:
-      'Need a 30m pedestrian bridge for the Concord River crossing near District 7. Must support maintenance vehicle loads up to 3.5t. Coastal wind zone III.',
-    review: null,
-  },
-];
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatDelivery(hours: number): string {
@@ -213,7 +102,9 @@ export default function ServiceMarketplace() {
   const [sort, setSort] = useState<SortOption>('rating');
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [orders, setOrders] = useState<Order[]>(SEED_ORDERS);
+  // Orders are created live during this session. No backend macro supplies
+  // historical service orders, so the list starts empty — never fabricated.
+  const [orders, setOrders] = useState<Order[]>([]);
 
   // Order flow state
   const [orderingId, setOrderingId] = useState<string | null>(null);
@@ -224,7 +115,8 @@ export default function ServiceMarketplace() {
   const [reviewStars, setReviewStars] = useState(5);
   const [reviewText, setReviewText] = useState('');
 
-  // ── Live listings from backend (falls back to seed data when empty) ──
+  // ── Live listings from backend. Stays empty (honest empty-state) when
+  // the backend returns nothing — never renders fabricated listings. ──
   const { data: liveListingsData } = useQuery({
     queryKey: ['world-services'],
     queryFn: () => apiHelpers.lens.list('world').then((r) => r.data),
@@ -237,7 +129,7 @@ export default function ServiceMarketplace() {
       : Array.isArray(raw)
         ? raw
         : [];
-    if (items.length === 0) return SEED_LISTINGS;
+    if (items.length === 0) return [];
     return items.map((item: Record<string, unknown>) => ({
       id: String(item.id ?? item.dtuId ?? ''),
       title: String(item.title ?? ''),

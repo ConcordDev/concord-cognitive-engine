@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { lensRun } from '@/lib/api/client';
 import {
   X, Flame, Wrench, FlaskConical, Cog, CircleDot,
   Check, XCircle, ChevronRight, Clock, Star, ArrowRight,
@@ -67,68 +68,38 @@ const QUALITY_COLORS: Record<MaterialQuality, string> = {
   masterwork: 'text-yellow-400',
 };
 
-const DEMO_RECIPES: CraftingRecipe[] = [
-  {
-    id: 'r1', name: 'Steel Beam', station: 'forge',
-    ingredients: [
-      { name: 'Iron Ingot', required: 4, available: 24, quality: 'standard' },
-      { name: 'Coal', required: 2, available: 8, quality: 'standard' },
-    ],
-    outputName: 'Steel Beam', outputDescription: 'Structural steel beam for large construction.',
-    outputQualityBase: 60, craftTimeSeconds: 12,
-    skillRequirement: { domain: 'structural', tier: 'Apprentice', level: 15 },
-  },
-  {
-    id: 'r2', name: 'Copper Wiring Kit', station: 'workbench',
-    ingredients: [
-      { name: 'Copper Wire', required: 8, available: 16 },
-      { name: 'Insulation Wrap', required: 2, available: 0 },
-    ],
-    outputName: 'Copper Wiring Kit', outputDescription: 'Pre-assembled wiring for energy grid connections.',
-    outputQualityBase: 50, craftTimeSeconds: 8,
-  },
-  {
-    id: 'r3', name: 'Reinforced Glass', station: 'kiln',
-    ingredients: [
-      { name: 'Glass Pane', required: 4, available: 40, quality: 'fine' },
-      { name: 'Steel Wire', required: 2, available: 3 },
-    ],
-    outputName: 'Reinforced Glass', outputDescription: 'Tempered glass for structural windows.',
-    outputQualityBase: 70, craftTimeSeconds: 15,
-    skillRequirement: { domain: 'materials', tier: 'Journeyman', level: 30 },
-  },
-  {
-    id: 'r4', name: 'Healing Salve', station: 'lab',
-    ingredients: [
-      { name: 'Herb Extract', required: 3, available: 5, quality: 'superior' },
-      { name: 'Pure Water', required: 1, available: 10 },
-    ],
-    outputName: 'Healing Salve', outputDescription: 'Restores 50 HP over 10 seconds.',
-    outputQualityBase: 55, craftTimeSeconds: 6,
-  },
-  {
-    id: 'r5', name: 'Gear Assembly', station: 'assembly',
-    ingredients: [
-      { name: 'Iron Ingot', required: 2, available: 24 },
-      { name: 'Copper Wire', required: 1, available: 16 },
-      { name: 'Lubricant', required: 1, available: 2 },
-    ],
-    outputName: 'Gear Assembly', outputDescription: 'Precision gear set for mechanical devices.',
-    outputQualityBase: 65, craftTimeSeconds: 10,
-  },
-];
-
-const DEMO_RECENT: RecentCraft[] = [
-  { id: 'rc1', recipeName: 'Steel Beam', quality: 'fine', timestamp: '2 min ago' },
-  { id: 'rc2', recipeName: 'Healing Salve', quality: 'standard', timestamp: '18 min ago' },
-  { id: 'rc3', recipeName: 'Gear Assembly', quality: 'superior', timestamp: '1 hour ago' },
-];
-
 /* ── Component ─────────────────────────────────────────────────── */
+
+// Map a quality tier label from the backend onto the panel's quality enum.
+function tierToQuality(tier: string): MaterialQuality {
+  switch ((tier || '').toLowerCase()) {
+    case 'crude': return 'poor';
+    case 'fine': return 'fine';
+    case 'exquisite': return 'superior';
+    case 'masterwork': return 'masterwork';
+    default: return 'standard';
+  }
+}
+
+function timeAgo(iso: string): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return '';
+  const diff = Math.max(0, Date.now() - t);
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+}
 
 export default function CraftingPanel({
   station: initialStation = 'forge',
-  recipes = DEMO_RECIPES,
+  // No backend macro supplies station-based recipes with ingredient
+  // availability, so recipes are empty unless passed in by a parent that
+  // has the real data. Never fabricated.
+  recipes = [],
   onCraft,
   onClose,
 }: CraftingPanelProps) {
@@ -136,7 +107,30 @@ export default function CraftingPanel({
   const [selectedRecipe, setSelectedRecipe] = useState<CraftingRecipe | null>(null);
   const [crafting, setCrafting] = useState(false);
   const [craftProgress, setCraftProgress] = useState(0);
-  const [recentCrafts] = useState<RecentCraft[]>(DEMO_RECENT);
+  const [recentCrafts, setRecentCrafts] = useState<RecentCraft[]>([]);
+
+  // Real recent crafts from the crafting domain history log. Stays empty
+  // (honest empty-state) on error or no data — never fabricated.
+  useEffect(() => {
+    let cancelled = false;
+    lensRun('crafting', 'history_list', { limit: 10 })
+      .then((r) => {
+        const hist = (r.data?.result as { history?: Record<string, unknown>[] } | null)?.history;
+        if (cancelled || !Array.isArray(hist)) return;
+        const mapped: RecentCraft[] = hist.map((h) => {
+          const best = (h.bestTier ?? {}) as { tier?: string };
+          return {
+            id: String(h.id ?? ''),
+            recipeName: String(h.recipeName ?? 'Unknown'),
+            quality: tierToQuality(String(best.tier ?? 'standard')),
+            timestamp: timeAgo(String(h.craftedAt ?? '')),
+          };
+        });
+        setRecentCrafts(mapped);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const stationRecipes = recipes.filter((r) => r.station === activeStation);
 
@@ -349,6 +343,9 @@ export default function CraftingPanel({
       <div className="border-t border-white/5 px-3 py-2">
         <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Recent Crafts</p>
         <div className="space-y-0.5">
+          {recentCrafts.length === 0 && (
+            <p className="text-[10px] text-gray-400">No crafts yet.</p>
+          )}
           {recentCrafts.map((rc) => (
             <div key={rc.id} className="flex items-center justify-between text-[10px]">
               <span className="text-gray-400">{rc.recipeName}</span>

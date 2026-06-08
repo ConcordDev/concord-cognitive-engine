@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { lensRun } from '@/lib/api/client';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -84,39 +85,6 @@ const MACHINE_PROFILES: MachineProfile[] = [
   },
 ];
 
-const SEED_HISTORY: ExportHistoryEntry[] = [
-  {
-    id: 'exp-001',
-    dtuId: 'dtu-arc-tower-7f',
-    format: 'STL',
-    machine: null,
-    timestamp: '2026-04-04T18:22:10Z',
-    hash: 'sha256:9a3f…e71b',
-    fileSize: '4.2 MB',
-    status: 'completed',
-  },
-  {
-    id: 'exp-002',
-    dtuId: 'dtu-bridge-span-02',
-    format: 'G-code',
-    machine: 'Haas VF-2',
-    timestamp: '2026-04-03T10:05:44Z',
-    hash: 'sha256:c81d…0a4e',
-    fileSize: '12.7 MB',
-    status: 'completed',
-  },
-  {
-    id: 'exp-003',
-    dtuId: 'dtu-facade-panel-19',
-    format: 'DXF',
-    machine: null,
-    timestamp: '2026-04-01T22:41:33Z',
-    hash: 'sha256:47bf…d932',
-    fileSize: '1.1 MB',
-    status: 'failed',
-  },
-];
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -162,6 +130,42 @@ export default function FabricationExportPanel() {
   const [exportProgress, setExportProgress] = useState(0);
   const [validationHash, setValidationHash] = useState<string | null>(null);
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [history, setHistory] = useState<ExportHistoryEntry[]>([]);
+
+  // Real export history from the export domain. Stays empty (honest
+  // empty-state) on error or no data — never renders fabricated runs.
+  useEffect(() => {
+    let cancelled = false;
+    lensRun('export', 'history-list', { limit: 50 })
+      .then((r) => {
+        const runs = (r.data?.result as { runs?: Record<string, unknown>[] } | null)?.runs;
+        if (cancelled || !Array.isArray(runs)) return;
+        const fmtBytes = (b: number): string => {
+          if (!b) return '0 B';
+          if (b < 1024) return `${b} B`;
+          if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+          return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+        };
+        const mapped: ExportHistoryEntry[] = runs.map((run) => {
+          const sources = Array.isArray(run.dataSources) ? (run.dataSources as string[]) : [];
+          const fmt = String(run.format ?? '').toLowerCase();
+          const matched = FORMATS.find((f) => f.id.toLowerCase() === fmt);
+          return {
+            id: String(run.id ?? ''),
+            dtuId: sources[0] ?? String(run.filename ?? run.id ?? ''),
+            format: matched ? matched.id : 'STL',
+            machine: null,
+            timestamp: run.at ? new Date(Number(run.at)).toISOString() : new Date().toISOString(),
+            hash: run.scheduleId ? String(run.scheduleId) : '',
+            fileSize: fmtBytes(Number(run.byteLength) || 0),
+            status: 'completed',
+          };
+        });
+        setHistory(mapped);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const formatInfo = useMemo(() => FORMATS.find(f => f.id === selectedFormat)!, [selectedFormat]);
   const machineInfo = useMemo(
@@ -441,12 +445,15 @@ export default function FabricationExportPanel() {
           onClick={() => setHistoryExpanded(!historyExpanded)}
           className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-white/40 hover:text-white/60 transition-colors"
         >
-          <span>{historyExpanded ? '▾' : '▸'}</span> Export History ({SEED_HISTORY.length})
+          <span>{historyExpanded ? '▾' : '▸'}</span> Export History ({history.length})
         </button>
 
         {historyExpanded && (
           <div className="space-y-2">
-            {SEED_HISTORY.map(entry => (
+            {history.length === 0 && (
+              <p className="text-[11px] text-white/30 py-2">No exports yet.</p>
+            )}
+            {history.map(entry => (
               <div
                 key={entry.id}
                 className="p-3 rounded-lg border border-white/10 bg-white/5 space-y-1"
