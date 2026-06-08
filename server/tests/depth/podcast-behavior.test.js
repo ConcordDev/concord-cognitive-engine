@@ -260,4 +260,267 @@ describe("podcast — listening-app CRUD round-trips + rejections", () => {
     assert.equal(run.result.rulesApplied, 1);
     assert.equal(run.result.added, 2); // only 2 newest auto-downloaded
   });
+
+  it("download-rule-list reflects the set rule with the show title joined", async () => {
+    const show = await lensRun("podcast", "show-add", { params: { title: "RuleList Cast" } }, ctx);
+    const showId = show.result.show.id;
+    await lensRun("podcast", "download-rule-set", { params: { showId, autoDownload: true, keepRecent: 4 } }, ctx);
+    const list = await lensRun("podcast", "download-rule-list", {}, ctx);
+    const row = list.result.rules.find((r) => r.showId === showId);
+    assert.ok(row, "rule for the show should appear in the list");
+    assert.equal(row.showTitle, "RuleList Cast");
+    assert.equal(row.keepRecent, 4);
+  });
+});
+
+describe("podcast — remaining listening-app round-trips, prefs, sync & discovery", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("depth:podcast:b"); });
+
+  it("show-delete removes the show; non-owner is rejected", async () => {
+    const add = await lensRun("podcast", "show-add", { params: { title: "Doomed Cast" } }, ctx);
+    const showId = add.result.show.id;
+
+    // A different user (own ctx) cannot delete a show they didn't add.
+    const other = await depthCtx("depth:podcast:other");
+    const denied = await lensRun("podcast", "show-delete", { params: { id: showId } }, other);
+    assert.equal(denied.result.ok, false);
+    assert.match(denied.result.error, /only the contributor/);
+
+    // Owner deletes it, then detail reports not found.
+    const del = await lensRun("podcast", "show-delete", { params: { id: showId } }, ctx);
+    assert.equal(del.result.deleted, showId);
+    const gone = await lensRun("podcast", "show-detail", { params: { id: showId } }, ctx);
+    assert.equal(gone.result.ok, false);
+    assert.match(gone.result.error, /show not found/);
+  });
+
+  it("episode-mark-played sets played + full position, then unplayed resets to 0", async () => {
+    const show = await lensRun("podcast", "show-add", { params: { title: "Mark Cast" } }, ctx);
+    const ep = await lensRun("podcast", "episode-add", { params: { showId: show.result.show.id, title: "M1", durationSec: 900 } }, ctx);
+    const episodeId = ep.result.episode.id;
+
+    const played = await lensRun("podcast", "episode-mark-played", { params: { episodeId } }, ctx);
+    assert.equal(played.result.played, true);
+    const afterPlayed = await lensRun("podcast", "episode-detail", { params: { id: episodeId } }, ctx);
+    assert.equal(afterPlayed.result.episode.positionSec, 900); // set to full duration
+
+    const reset = await lensRun("podcast", "episode-mark-played", { params: { episodeId, unplayed: true } }, ctx);
+    assert.equal(reset.result.played, false);
+    const afterReset = await lensRun("podcast", "episode-detail", { params: { id: episodeId } }, ctx);
+    assert.equal(afterReset.result.episode.positionSec, 0);
+  });
+
+  it("continue-listening surfaces only in-progress (unplayed, position>0) episodes", async () => {
+    const show = await lensRun("podcast", "show-add", { params: { title: "Continue Cast" } }, ctx);
+    const showId = show.result.show.id;
+    const ip = await lensRun("podcast", "episode-add", { params: { showId, title: "InProg", durationSec: 1000 } }, ctx);
+    const fin = await lensRun("podcast", "episode-add", { params: { showId, title: "Finished", durationSec: 1000 } }, ctx);
+
+    await lensRun("podcast", "playback-update", { params: { episodeId: ip.result.episode.id, positionSec: 300 } }, ctx);
+    await lensRun("podcast", "playback-update", { params: { episodeId: fin.result.episode.id, positionSec: 1000 } }, ctx); // played
+
+    const cl = await lensRun("podcast", "continue-listening", {}, ctx);
+    assert.ok(cl.result.episodes.some((e) => e.id === ip.result.episode.id), "in-progress episode present");
+    assert.ok(!cl.result.episodes.some((e) => e.id === fin.result.episode.id), "completed episode excluded");
+  });
+
+  it("queue-reorder moves an episode down within the queue", async () => {
+    const show = await lensRun("podcast", "show-add", { params: { title: "Reorder Cast" } }, ctx);
+    const showId = show.result.show.id;
+    const e1 = await lensRun("podcast", "episode-add", { params: { showId, title: "Z1", durationSec: 100 } }, ctx);
+    const e2 = await lensRun("podcast", "episode-add", { params: { showId, title: "Z2", durationSec: 100 } }, ctx);
+    const id1 = e1.result.episode.id;
+    const id2 = e2.result.episode.id;
+    await lensRun("podcast", "queue-add", { params: { episodeId: id1 } }, ctx);
+    await lensRun("podcast", "queue-add", { params: { episodeId: id2 } }, ctx);
+    // queue is [id1, id2]; move id1 down → [id2, id1].
+    const re = await lensRun("podcast", "queue-reorder", { params: { episodeId: id1, direction: "down" } }, ctx);
+    assert.deepEqual(re.result.queue, [id2, id1]);
+
+    const bad = await lensRun("podcast", "queue-reorder", { params: { episodeId: "absent", direction: "down" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /not in queue/);
+  });
+
+  it("playlist-list reports created playlists with episodeCount", async () => {
+    const created = await lensRun("podcast", "playlist-create", { params: { name: "List Test PL" } }, ctx);
+    const blank = await lensRun("podcast", "playlist-create", { params: { name: "  " } }, ctx);
+    assert.equal(blank.result.ok, false);
+    assert.match(blank.result.error, /playlist name required/);
+
+    const list = await lensRun("podcast", "playlist-list", {}, ctx);
+    const row = list.result.playlists.find((p) => p.id === created.result.playlist.id);
+    assert.ok(row, "created playlist should be listed");
+    assert.equal(row.episodeCount, 0);
+  });
+
+  it("new-episodes lists unplayed episodes of subscribed shows only", async () => {
+    const show = await lensRun("podcast", "show-add", { params: { title: "New Eps Cast" } }, ctx);
+    const showId = show.result.show.id;
+    const ep = await lensRun("podcast", "episode-add", { params: { showId, title: "Fresh", durationSec: 600, publishDate: "2026-05-01" } }, ctx);
+    const episodeId = ep.result.episode.id;
+
+    // Not subscribed yet → not in new-episodes.
+    const before = await lensRun("podcast", "new-episodes", {}, ctx);
+    assert.ok(!before.result.episodes.some((e) => e.id === episodeId), "unsubscribed show excluded");
+
+    await lensRun("podcast", "show-subscribe", { params: { id: showId } }, ctx);
+    const after = await lensRun("podcast", "new-episodes", {}, ctx);
+    assert.ok(after.result.episodes.some((e) => e.id === episodeId), "subscribed unplayed episode included");
+  });
+
+  it("listening-stats sums listened seconds + counts completed/started", async () => {
+    const lctx = await depthCtx("depth:podcast:stats");
+    const show = await lensRun("podcast", "show-add", { params: { title: "Stats Cast" } }, lctx);
+    const showId = show.result.show.id;
+    const a = await lensRun("podcast", "episode-add", { params: { showId, title: "SA", durationSec: 1000 } }, lctx);
+    const b = await lensRun("podcast", "episode-add", { params: { showId, title: "SB", durationSec: 1000 } }, lctx);
+    await lensRun("podcast", "playback-update", { params: { episodeId: a.result.episode.id, positionSec: 200 } }, lctx); // started
+    await lensRun("podcast", "playback-update", { params: { episodeId: b.result.episode.id, positionSec: 1000 } }, lctx); // completed
+
+    const stats = await lensRun("podcast", "listening-stats", {}, lctx);
+    assert.equal(stats.result.listenedSec, 1200); // 200 + 1000
+    assert.equal(stats.result.episodesStarted, 2);
+    assert.equal(stats.result.episodesCompleted, 1);
+  });
+
+  it("podcast-dashboard aggregates counts for the user", async () => {
+    const dctx = await depthCtx("depth:podcast:dash");
+    const show = await lensRun("podcast", "show-add", { params: { title: "Dash Cast" } }, dctx);
+    const showId = show.result.show.id;
+    await lensRun("podcast", "show-subscribe", { params: { id: showId } }, dctx);
+    const ep = await lensRun("podcast", "episode-add", { params: { showId, title: "DE", durationSec: 1000 } }, dctx);
+    await lensRun("podcast", "queue-add", { params: { episodeId: ep.result.episode.id } }, dctx);
+    await lensRun("podcast", "download-episode", { params: { episodeId: ep.result.episode.id } }, dctx);
+    await lensRun("podcast", "playback-update", { params: { episodeId: ep.result.episode.id, positionSec: 300 } }, dctx); // in progress
+
+    const dash = await lensRun("podcast", "podcast-dashboard", {}, dctx);
+    assert.equal(dash.result.subscriptions, 1);
+    assert.equal(dash.result.queueLength, 1);
+    assert.equal(dash.result.downloads, 1);
+    assert.equal(dash.result.inProgress, 1);
+  });
+
+  it("playback-prefs-set clamps + round-trips through playback-prefs-get", async () => {
+    const set = await lensRun("podcast", "playback-prefs-set", { params: { trimSilence: true, skipIntroSec: 999, sleepTimerMin: 30 } }, ctx);
+    assert.equal(set.result.trimSilence, true);
+    assert.equal(set.result.skipIntroSec, 300); // clamped 0..300
+    assert.equal(set.result.sleepTimerMin, 30);
+
+    const get = await lensRun("podcast", "playback-prefs-get", {}, ctx);
+    assert.equal(get.result.trimSilence, true);
+    assert.equal(get.result.skipIntroSec, 300);
+    assert.ok(get.result.sleepTimerRemainingSec > 0 && get.result.sleepTimerRemainingSec <= 1800);
+  });
+
+  it("episode-stream returns the audio descriptor or rejects when no enclosure", async () => {
+    const show = await lensRun("podcast", "show-add", { params: { title: "Stream Cast" } }, ctx);
+    const ep = await lensRun("podcast", "episode-add", { params: { showId: show.result.show.id, title: "NoAudio", durationSec: 500 } }, ctx);
+    // Manually-added episodes have no audioUrl → stream rejects.
+    const noAudio = await lensRun("podcast", "episode-stream", { params: { episodeId: ep.result.episode.id } }, ctx);
+    assert.equal(noAudio.result.ok, false);
+    assert.match(noAudio.result.error, /no audio enclosure/);
+
+    const missing = await lensRun("podcast", "episode-stream", { params: { episodeId: "nope" } }, ctx);
+    assert.equal(missing.result.ok, false);
+    assert.match(missing.result.error, /episode not found/);
+  });
+
+  it("transcript-get reads back a set transcript and reports hasTranscript=false when absent", async () => {
+    const show = await lensRun("podcast", "show-add", { params: { title: "TG Cast" } }, ctx);
+    const ep = await lensRun("podcast", "episode-add", { params: { showId: show.result.show.id, title: "TG1", durationSec: 60 } }, ctx);
+    const episodeId = ep.result.episode.id;
+
+    const absent = await lensRun("podcast", "transcript-get", { params: { episodeId } }, ctx);
+    assert.equal(absent.result.hasTranscript, false);
+
+    await lensRun("podcast", "transcript-set", { params: { episodeId, text: "One. Two. Three." } }, ctx);
+    const present = await lensRun("podcast", "transcript-get", { params: { episodeId } }, ctx);
+    assert.equal(present.result.hasTranscript, true);
+    assert.equal(present.result.segments.length, 3);
+  });
+
+  it("recommendations ranks unsubscribed shows by category affinity from history", async () => {
+    const rctx = await depthCtx("depth:podcast:rec");
+    // Listened show in "science"; candidate also "science" should be recommended.
+    const listened = await lensRun("podcast", "show-add", { params: { title: "Listened Sci", category: "science" } }, rctx);
+    const candidate = await lensRun("podcast", "show-add", { params: { title: "Candidate Sci", category: "science" } }, rctx);
+    const ep = await lensRun("podcast", "episode-add", { params: { showId: listened.result.show.id, title: "L1", durationSec: 1000 } }, rctx);
+    await lensRun("podcast", "playback-update", { params: { episodeId: ep.result.episode.id, positionSec: 1000 } }, rctx); // played → affinity weight 3
+    await lensRun("podcast", "show-subscribe", { params: { id: listened.result.show.id } }, rctx); // subscribed excludes it from recs
+
+    const rec = await lensRun("podcast", "recommendations", {}, rctx);
+    assert.equal(rec.result.basedOn, "listening history");
+    const c = rec.result.recommendations.find((sh) => sh.id === candidate.result.show.id);
+    assert.ok(c, "same-category unsubscribed show should be recommended");
+    assert.match(c.reason, /science/);
+    assert.ok(!rec.result.recommendations.some((sh) => sh.id === listened.result.show.id), "subscribed show excluded");
+  });
+
+  it("sync-push merges newer positions (LWW) and sync-state returns nowResuming", async () => {
+    const sctx = await depthCtx("depth:podcast:sync");
+    const show = await lensRun("podcast", "show-add", { params: { title: "Sync Cast" } }, sctx);
+    const ep = await lensRun("podcast", "episode-add", { params: { showId: show.result.show.id, title: "SY1", durationSec: 2000 } }, sctx);
+    const episodeId = ep.result.episode.id;
+
+    const push1 = await lensRun("podcast", "sync-push", { params: { episodeId, positionSec: 500, reportedAt: "2026-01-01T00:00:00.000Z", device: "phone" } }, sctx);
+    assert.equal(push1.result.merged, true);
+    assert.equal(push1.result.positionSec, 500);
+
+    // Older report → not merged.
+    const stale = await lensRun("podcast", "sync-push", { params: { episodeId, positionSec: 100, reportedAt: "2025-01-01T00:00:00.000Z" } }, sctx);
+    assert.equal(stale.result.merged, false);
+    assert.equal(stale.result.positionSec, 500); // unchanged
+
+    const state = await lensRun("podcast", "sync-state", {}, sctx);
+    assert.ok(state.result.nowResuming);
+    assert.equal(state.result.nowResuming.episodeId, episodeId);
+    assert.equal(state.result.nowResuming.positionSec, 500);
+  });
+});
+
+describe("podcast — external-feed macros: pre-fetch validation + no-egress graceful refusal", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("depth:podcast:ext"); });
+
+  it("itunes-search rejects a blank query and a malformed country before any fetch", async () => {
+    const blank = await lensRun("podcast", "itunes-search", { params: { query: "  " } }, ctx);
+    assert.equal(blank.result.ok, false);
+    assert.match(blank.result.error, /query required/);
+
+    const badCountry = await lensRun("podcast", "itunes-search", { params: { query: "tech", country: "USA" } }, ctx);
+    assert.equal(badCountry.result.ok, false);
+    assert.match(badCountry.result.error, /2-letter code/);
+  });
+
+  it("itunes-search returns a graceful refusal when egress is blocked", async () => {
+    const r = await lensRun("podcast", "itunes-search", { params: { query: "history" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /itunes unreachable/);
+  });
+
+  it("itunes-podcast rejects a missing/invalid collectionId before any fetch", async () => {
+    const r = await lensRun("podcast", "itunes-podcast", { params: { collectionId: 0 } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /collectionId required/);
+  });
+
+  it("rss-refresh rejects a show with no valid feedUrl before any fetch", async () => {
+    const show = await lensRun("podcast", "show-add", { params: { title: "No Feed Cast" } }, ctx);
+    const r = await lensRun("podcast", "rss-refresh", { params: { showId: show.result.show.id } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /no valid feedUrl/);
+
+    const missing = await lensRun("podcast", "rss-refresh", { params: { showId: "nope" } }, ctx);
+    assert.equal(missing.result.ok, false);
+    assert.match(missing.result.error, /show not found/);
+  });
+
+  it("rss-refresh returns a graceful 'feed unreachable' when egress is blocked", async () => {
+    const show = await lensRun("podcast", "show-add", { params: { title: "Feed Cast", feedUrl: "https://example.com/feed.xml" } }, ctx);
+    const r = await lensRun("podcast", "rss-refresh", { params: { showId: show.result.show.id } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /feed unreachable/);
+  });
 });
