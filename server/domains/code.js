@@ -2062,6 +2062,28 @@ Rules:
     }
   });
 
+  // ── Phase 7: run a Concord DSL program (confined by a capability manifest) ──
+  // The program transpiles to macro calls and executes through a Phase-2 confined
+  // ctx, so it can reach ONLY the macros its manifest grants. Default-deny: with
+  // no manifest, every macro call is rejected.
+  registerLensAction("code", "dsl", async (ctx, _a, params = {}) => {
+    try {
+      const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
+      if (typeof runMacro !== "function") return { ok: false, error: "runMacro unavailable" };
+      const program = String(params.program || params.source || "").trim();
+      if (!program) return { ok: false, error: "program required" };
+      const userId = aidC(ctx);
+      const { makeConfinedCtx } = await import("../lib/confined-ctx.js");
+      const { runDsl } = await import("../lib/dsl.js");
+      const grants = Array.isArray(params.manifest) ? params.manifest : (params.manifest?.macros || []);
+      const confined = makeConfinedCtx({ userId, runMacro, llm: ctx?.llm, db: ctx?.db, manifest: { macros: grants } });
+      const out = await runDsl(program, { runMacro: confined.runMacro });
+      return { ok: out.ok, result: out };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
   // ── Codebase-wide AI chat with @-file context ─────────────────
   // Cursor's killer feature: an AI chat where the user references
   // files with @path and the macro injects their real content.
