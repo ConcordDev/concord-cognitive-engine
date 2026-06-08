@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 import { CoreLensNav } from '@/components/common/CoreLensNav';
 import { CommandPalette } from '@/components/common/CommandPalette';
 import { ConKayOverlay } from '@/components/conkay/ConKayOverlay';
+import { GlobalPanelHost } from '@/components/panels/GlobalPanelHost';
+import { CrossMountedPanels } from '@/components/panels/CrossMountedPanels';
 import { LensErrorBoundary } from '@/components/common/LensErrorBoundary';
 import { RepairBoundary } from '@/components/RepairBoundary';
 import { SmartContextBar } from '@/components/common/SmartContextBar';
@@ -109,6 +111,11 @@ function UniversalLensFeatures({ children }: { children: React.ReactNode }) {
         </Suspense>
       </LensStateProvider>
 
+      {/* Cross-lens panels — curated panels from OTHER lenses that deepen this
+          destination (lib/panel-affinity). Renders only on destinations with a
+          curated affinity list; null elsewhere. Pure recombination, no new build. */}
+      <CrossMountedPanels destination={slug} />
+
       {/* Bottom: Activity Timeline */}
       <ActivityTimeline domain={slug} />
 
@@ -147,6 +154,10 @@ export default function LensLayout({ children }: { children: React.ReactNode }) 
       {/* ConKay — summonable on ANY lens (⌘/Ctrl+J), operates the host lens'
           real macros. The cross-lens "take over and operate" surface. */}
       <ConKayOverlay />
+      {/* GlobalPanelHost — summon ANY registered panel as a modal over any lens
+          (lib/panel-dispatcher openPanel + command palette). The ad-hoc half of
+          cross-mounting; the inverse of ConKay (a feature into any lens). */}
+      <GlobalPanelHost />
       <CoreLensNavWrapper />
       <LensErrorBoundary name="Lens">
         <RepairBoundary lens={lensName}>

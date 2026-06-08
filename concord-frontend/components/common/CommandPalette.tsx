@@ -14,7 +14,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Search, CornerDownLeft, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
+import { Search, CornerDownLeft, ArrowUp, ArrowDown, Sparkles, LayoutPanelLeft } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 import {
   getCommandPaletteLenses,
@@ -22,6 +22,8 @@ import {
   type LensEntry,
   type LensCategory,
 } from '@/lib/lens-registry';
+import { allPanels } from '@/lib/panel-registry';
+import { openPanel } from '@/lib/panel-dispatcher';
 import { cn } from '@/lib/utils';
 
 // ── Fuzzy matching ──────────────────────────────────────────────
@@ -139,7 +141,22 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
       order: 0,
       keywords: ['conkay', 'kay', 'jarvis', 'friday', 'assistant', 'majordomo', 'voice', 'ai', 'brief'],
     };
-    return [conkay, ...getCommandPaletteLenses()];
+    // Cross-lens panels — every registered panel is summonable from anywhere as
+    // a modal (GlobalPanelHost). Surfaced as `panel:<id>` pseudo-entries so the
+    // same fuzzy search finds them; selecting one calls openPanel (see below).
+    const panelEntries: LensEntry[] = allPanels().map((p) => ({
+      id: `panel:${p.id}`,
+      name: `Panel — ${p.label}`,
+      icon: LayoutPanelLeft,
+      description: p.description || 'Cross-lens panel',
+      category: 'system',
+      showInSidebar: false,
+      showInCommandPalette: true,
+      path: '',
+      order: 900,
+      keywords: ['panel', ...(p.keywords ?? [])],
+    }));
+    return [conkay, ...getCommandPaletteLenses(), ...panelEntries];
   }, []);
 
   // Filtered + scored results
@@ -240,6 +257,12 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
   const navigateToLens = useCallback(
     (lens: LensEntry) => {
       setOpen(false);
+      // A `panel:<id>` entry summons that panel as a modal over the current lens
+      // (GlobalPanelHost) instead of navigating away.
+      if (lens.id.startsWith('panel:') && typeof window !== 'undefined') {
+        openPanel(lens.id.slice('panel:'.length));
+        return;
+      }
       // "Summon Kay" opens the cross-lens ConKay overlay ON the current lens
       // (operates the host lens' real macros) rather than navigating away.
       if (lens.id === 'conkay' && typeof window !== 'undefined') {
