@@ -75,26 +75,22 @@ const VISIBILITY_META: Record<VisibilityMode, { label: string; icon: React.Compo
 
 type ListTab = 'nearby' | 'friends' | 'firm';
 
-/* ── Seed Data ─────────────────────────────────────────────────── */
-
-const SEED_PLAYERS: Player[] = [
-  { id: 'p1', name: 'ArchitectAlice', profession: 'Structural Engineer', firmName: 'Ironclad Designs', activity: 'building', online: true, reputationSummary: 'Top 5% structural, 340 citations', distance: 3 },
-  { id: 'p2', name: 'BuilderBob', profession: 'Materials Scientist', firmName: 'Ironclad Designs', activity: 'trading', online: true, reputationSummary: '120 royalties earned, materials expert', distance: 7 },
-  { id: 'p3', name: 'CivicCarla', profession: 'Urban Planner', activity: 'exploring', online: true, reputationSummary: 'District Governor, infrastructure specialist', distance: 12 },
-  { id: 'p4', name: 'DesignDave', profession: 'Architect', firmName: 'Nova Build Co.', activity: 'socializing', online: true, reputationSummary: '28 DTUs published, 5 awards', distance: 5 },
-  { id: 'p5', name: 'EngineerEve', profession: 'Energy Systems', firmName: 'Ironclad Designs', activity: 'mentoring', online: false, reputationSummary: 'Master mentor, 50 mentees', distance: 20 },
-  { id: 'p6', name: 'FrontierFinn', profession: 'Geologist', activity: 'spectating', online: true, reputationSummary: 'Explorer rank 3, 12 worlds visited', distance: 15 },
-  { id: 'p7', name: 'GridGrace', profession: 'Infrastructure', firmName: 'Nova Build Co.', activity: 'idle', online: true, reputationSummary: 'Grid specialist, 89 citations', distance: 2 },
-];
+/* ── Defaults ──────────────────────────────────────────────────── */
+// TODO: wire to backend — no macro/route currently returns the rich nearby-
+// player shape this panel renders (profession + firm + live activity status +
+// reputation summary + distance). /api/presence/active only exposes generic
+// {userId, lens} activity rows, which can't populate these fields without
+// fabrication. Defaults are empty so the list shows an honest "No players
+// found" state. Callers may still pass real `players`/`friends`/`firmMembers`.
 
 /* ── Component ─────────────────────────────────────────────────── */
 
 export default function PlayerPresence({
-  players = SEED_PLAYERS,
-  friends = SEED_PLAYERS.filter((_, i) => i < 3),
-  firmMembers = SEED_PLAYERS.filter(p => p.firmName === 'Ironclad Designs'),
+  players = [],
+  friends = [],
+  firmMembers = [],
   myVisibility = 'public',
-  instancePlayerCount = 47,
+  instancePlayerCount = 0,
   onMessage,
   onAddFriend,
   onViewProfile,

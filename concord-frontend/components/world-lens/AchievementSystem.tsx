@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ds } from '@/lib/design-system';
+import { api } from '@/lib/api/client';
 
 type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 type AchievementCategory = 'Creation' | 'Validation' | 'Citation' | 'Social' | 'Exploration' | 'Mentorship' | 'Governance' | 'Mastery';
@@ -25,8 +26,8 @@ interface AchievementProgress {
 }
 
 interface AchievementSystemProps {
-  achievements: Achievement[];
-  progress: AchievementProgress[];
+  achievements?: Achievement[];
+  progress?: AchievementProgress[];
   onShare?: (achievement: Achievement) => void;
 }
 
@@ -73,26 +74,77 @@ const CATEGORIES: AchievementCategory[] = [
   'Exploration', 'Mentorship', 'Governance', 'Mastery',
 ];
 
-const SEED_ACHIEVEMENTS: Achievement[] = [
-  { id: 'first-validated', title: 'First Validated Structure', description: 'Successfully validate your first DTU structure.', icon: '✅', rarity: 'common', category: 'Validation', unlocked: false },
-  { id: 'hundred-citations', title: 'Hundred Citations', description: 'Your work has been cited 100 times by other creators.', icon: '📚', rarity: 'rare', category: 'Citation', unlocked: false },
-  { id: 'district-architect', title: 'District Architect', description: 'Design and validate 10 structures in a single district.', icon: '🏛️', rarity: 'epic', category: 'Creation', unlocked: false },
-  { id: 'foundation-builder', title: 'Foundation Builder', description: 'Create a DTU that becomes the foundation for 5+ other structures.', icon: '🧱', rarity: 'uncommon', category: 'Creation', unlocked: false },
-  { id: 'bridge-master', title: 'Bridge Master', description: 'Design and validate 5 bridge structures.', icon: '🌉', rarity: 'rare', category: 'Mastery', unlocked: false },
-  { id: 'material-pioneer', title: 'Material Pioneer', description: 'Be the first to use a new material in a validated structure.', icon: '🔬', rarity: 'epic', category: 'Exploration', unlocked: false },
-  { id: 'mentor-of-ten', title: 'Mentor of Ten', description: 'Guide 10 new creators through their first validation.', icon: '🎓', rarity: 'rare', category: 'Mentorship', unlocked: false },
-  { id: 'governance-voice', title: 'Governance Voice', description: 'Participate in 20 governance votes.', icon: '🗳️', rarity: 'uncommon', category: 'Governance', unlocked: false },
-  { id: 'explorer-all-districts', title: 'Explorer of All Districts', description: 'Visit and interact with every district in Concordia.', icon: '🗺️', rarity: 'rare', category: 'Exploration', unlocked: false },
-  { id: 'storm-survivor', title: 'Storm Survivor', description: 'Have a structure survive a simulated environmental stress event.', icon: '⛈️', rarity: 'uncommon', category: 'Validation', unlocked: false },
-  { id: 'forge-master', title: 'Forge Master', description: 'Create 50 validated DTUs.', icon: '🔥', rarity: 'epic', category: 'Mastery', unlocked: false },
-  { id: 'economy-engine', title: 'Economy Engine', description: 'Earn 10,000 citation royalties.', icon: '💰', rarity: 'legendary', category: 'Citation', unlocked: false },
-  { id: 'social-butterfly', title: 'Social Butterfly', description: 'Collaborate with 25 different creators.', icon: '🦋', rarity: 'uncommon', category: 'Social', unlocked: false },
-  { id: 'perfect-score', title: 'Perfect Score', description: 'Achieve a perfect validation score on a complex structure.', icon: '💯', rarity: 'epic', category: 'Validation', unlocked: false },
-  { id: 'legendary-creator', title: 'Legendary Creator', description: 'Reach the highest creator tier in Concordia. Your name echoes through the world.', icon: '👑', rarity: 'legendary', category: 'Mastery', unlocked: false },
-];
+/** Raw catalog/earned rows from /api/achievements/*. Categories + rarities
+ *  arrive as free-form lowercase strings; normalize to the component sets. */
+interface RawAchievement {
+  id?: string;
+  title?: string;
+  description?: string;
+  icon?: string;
+  rarity?: string;
+  category?: string;
+  achievement_id?: string;
+  earned_at?: string | number;
+}
 
-export default function AchievementSystem({ achievements: propAchievements, progress, onShare }: AchievementSystemProps) {
-  const achievements = propAchievements.length > 0 ? propAchievements : SEED_ACHIEVEMENTS;
+const RARITY_SET: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+function normRarity(r?: string): Rarity {
+  const v = (r || '').toLowerCase();
+  return (RARITY_SET as string[]).includes(v) ? (v as Rarity) : 'common';
+}
+function normCategory(c?: string): AchievementCategory {
+  const v = (c || '').toLowerCase();
+  const hit = CATEGORIES.find((cat) => cat.toLowerCase() === v);
+  return hit ?? 'Mastery';
+}
+function fmtDate(d?: string | number): string | undefined {
+  if (d == null) return undefined;
+  const ms = typeof d === 'number' ? (d < 1e12 ? d * 1000 : d) : Date.parse(d);
+  if (!Number.isFinite(ms)) return undefined;
+  return new Date(ms).toLocaleDateString();
+}
+
+export default function AchievementSystem({ achievements: propAchievements, progress: propProgress, onShare }: AchievementSystemProps) {
+  // Real achievements: /api/achievements/catalog (all definitions) merged with
+  // /api/achievements/mine (the user's earned rows). No seed fallback — an
+  // empty catalog renders the honest empty state below.
+  const [fetched, setFetched] = useState<Achievement[]>([]);
+  const achievements = (propAchievements && propAchievements.length > 0) ? propAchievements : fetched;
+  const progress = propProgress ?? [];
+
+  useEffect(() => {
+    if (propAchievements && propAchievements.length > 0) return; // caller supplied data
+    let cancelled = false;
+    (async () => {
+      try {
+        const [catRes, mineRes] = await Promise.all([
+          api.get('/api/achievements/catalog'),
+          api.get('/api/achievements/mine').catch(() => null),
+        ]);
+        if (cancelled) return;
+        const catalog: RawAchievement[] = Array.isArray(catRes?.data?.catalog) ? catRes.data.catalog : [];
+        const earned: RawAchievement[] = Array.isArray(mineRes?.data?.earned) ? mineRes!.data.earned : [];
+        const earnedMap = new Map<string, RawAchievement>();
+        for (const e of earned) earnedMap.set(String(e.achievement_id ?? e.id ?? ''), e);
+        const merged: Achievement[] = catalog.map((a) => {
+          const id = String(a.id ?? '');
+          const e = earnedMap.get(id);
+          return {
+            id,
+            title: a.title ?? id,
+            description: a.description ?? '',
+            icon: a.icon ?? '🏆',
+            rarity: normRarity(a.rarity),
+            category: normCategory(a.category),
+            unlocked: !!e,
+            unlockDate: e ? fmtDate(e.earned_at) : undefined,
+          };
+        });
+        setFetched(merged);
+      } catch { /* keep empty state */ }
+    })();
+    return () => { cancelled = true; };
+  }, [propAchievements]);
   const [activeCategory, setActiveCategory] = useState<AchievementCategory | 'All'>('All');
   const [notification, setNotification] = useState<Achievement | null>(null);
   const [notificationVisible, setNotificationVisible] = useState(false);
@@ -209,6 +261,13 @@ export default function AchievementSystem({ achievements: propAchievements, prog
       </div>
 
       {/* Achievement Gallery */}
+      {filtered.length === 0 ? (
+        <div className={`${panelStyle} p-8 text-center`}>
+          <p className="text-2xl mb-2">🏆</p>
+          <p className="text-sm text-white/60">No achievements yet.</p>
+          <p className="text-xs text-white/40 mt-1">Your legacy in Concordia will appear here as you earn it.</p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map((achievement) => {
           const rarity = RARITY_CONFIG[achievement.rarity];
@@ -287,6 +346,7 @@ export default function AchievementSystem({ achievements: propAchievements, prog
           );
         })}
       </div>
+      )}
 
       {/* World Impact Section */}
       <div className={`${panelStyle} p-4`}>

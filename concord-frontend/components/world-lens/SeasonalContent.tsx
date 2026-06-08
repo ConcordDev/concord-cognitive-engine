@@ -54,32 +54,20 @@ const SEASON_CONFIG: Record<Season, { icon: string; color: string; weather: stri
   winter: { icon: '❄️', color: 'text-blue-300', weather: 'Snow accumulation tests roof loads. Freeze-thaw cycles.' },
 };
 
-const SEED_EVENTS: SeasonalEventData[] = [
-  { id: 'evt-spring-fest', name: 'Spring Engineering Festival', season: 'spring', startDate: '2026-03-20', endDate: '2026-04-10', description: 'Celebrate new builds with bonus citation rates.', type: 'festival' },
-  { id: 'evt-summer-comp', name: 'Summer Bridge Challenge', season: 'summer', startDate: '2026-06-15', endDate: '2026-07-15', description: 'Design bridges that survive extreme heat expansion.', type: 'competition' },
-  { id: 'evt-fall-harvest', name: 'Fall Harvest Market', season: 'fall', startDate: '2026-10-01', endDate: '2026-10-31', description: 'Special marketplace rates and rare material drops.', type: 'holiday' },
-  { id: 'evt-winter-stress', name: 'Winter Stress Test Derby', season: 'winter', startDate: '2026-12-20', endDate: '2027-01-05', description: 'Buildings tested under blizzard + earthquake simultaneously.', type: 'challenge' },
-];
-
-const SEED_CHALLENGE: MonthlyChallenge = {
-  id: 'mc-apr-2026', title: 'Bridge Builder Challenge', description: 'Design a pedestrian bridge rated for 200+ occupants',
-  objective: 'Build and validate a pedestrian bridge', progress: 0, maxProgress: 1,
-  reward: { type: 'title', value: 'Bridge Master' }, leaderboardId: 'lb-bridge-apr',
-};
-
-const SEED_COMPETITION: AnnualCompetition = {
-  id: 'ac-2026', title: '2026 Concordia Grand Design Awards',
-  categories: ['Best Residential', 'Best Infrastructure', 'Most Innovative Material Use', 'Strongest Structure', 'Best Fantasy World'],
-  submissionDeadline: '2026-11-30', prizes: ['1000 Concord Coin', '500 Concord Coin', '250 Concord Coin'], entryCount: 347,
-};
+// TODO: wire to backend — no generic seasonal-content macro/route currently
+// returns this component's shape. Festivals exist (/api/festivals/active) but
+// are world-scoped (require a worldId) and carry a different shape; monthly
+// challenges + annual competitions have no backing source yet. Defaults are
+// empty so each tab shows an honest empty state instead of fabricated events.
+// Callers may still pass real `events`/`challenges`/`competitions` via props.
 
 // ── Component ──────────────────────────────────────────────────────
 
 export default function SeasonalContent({
   currentSeason = 'spring',
-  events = SEED_EVENTS,
-  challenges = [SEED_CHALLENGE],
-  competitions = [SEED_COMPETITION],
+  events = [],
+  challenges = [],
+  competitions = [],
   onJoinChallenge,
 }: SeasonalContentProps) {
   const [selectedTab, setSelectedTab] = useState<'events' | 'challenges' | 'competitions'>('events');
@@ -137,6 +125,9 @@ export default function SeasonalContent({
       {/* Tab Content */}
       {selectedTab === 'events' && (
         <div className="space-y-2">
+          {events.length === 0 && (
+            <p className="text-center text-white/30 text-xs py-6">No seasonal events yet</p>
+          )}
           {events.map(evt => (
             <div key={evt.id} className="flex items-center justify-between p-2 bg-white/5 rounded">
               <div>
@@ -156,6 +147,9 @@ export default function SeasonalContent({
 
       {selectedTab === 'challenges' && (
         <div className="space-y-3">
+          {challenges.length === 0 && (
+            <p className="text-center text-white/30 text-xs py-6">No active challenges yet</p>
+          )}
           {challenges.map(ch => (
             <div key={ch.id} className="p-3 bg-white/5 rounded-lg">
               <h4 className="text-white font-semibold">{ch.title}</h4>
@@ -180,6 +174,9 @@ export default function SeasonalContent({
 
       {selectedTab === 'competitions' && (
         <div className="space-y-3">
+          {competitions.length === 0 && (
+            <p className="text-center text-white/30 text-xs py-6">No competitions yet</p>
+          )}
           {competitions.map(comp => (
             <div key={comp.id} className="p-3 bg-white/5 rounded-lg">
               <h4 className="text-white font-semibold">{comp.title}</h4>

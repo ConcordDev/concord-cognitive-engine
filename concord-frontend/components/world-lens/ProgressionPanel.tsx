@@ -7,6 +7,7 @@ import {
   Compass, GraduationCap, Landmark, Hammer,
 } from 'lucide-react';
 import { ds } from '@/lib/design-system';
+import { lensRun } from '@/lib/api/client';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -95,43 +96,12 @@ const DOMAIN_META: Record<ReputationDomain, { label: string; icon: React.Compone
   exploration:    { label: 'Exploration',    icon: Compass,        color: 'text-teal-400' },
 };
 
-const DEMO_PROFILE: ProfileProgression = {
-  totalCitations: 347,
-  totalRoyalties: 1285.50,
-  domains: [
-    { domain: 'structural',     tier: 'Journeyman', citations: 128, citationsToNextTier: 200, percentile: 5 },
-    { domain: 'materials',      tier: 'Apprentice',  citations: 64,  citationsToNextTier: 100 },
-    { domain: 'infrastructure', tier: 'Journeyman', citations: 95,  citationsToNextTier: 200, percentile: 12 },
-    { domain: 'energy',         tier: 'Novice',      citations: 22,  citationsToNextTier: 50 },
-    { domain: 'architecture',   tier: 'Expert',      citations: 210, citationsToNextTier: 500, percentile: 3 },
-    { domain: 'mentorship',     tier: 'Apprentice',  citations: 38,  citationsToNextTier: 100 },
-    { domain: 'governance',     tier: 'Novice',      citations: 12,  citationsToNextTier: 50 },
-    { domain: 'exploration',    tier: 'Novice',      citations: 30,  citationsToNextTier: 50 },
-  ],
-  badges: [
-    { id: 'b1', name: 'First Foundation',   description: 'Placed your first structural foundation.',          icon: '🏗', earnedDate: '2026-03-01' },
-    { id: 'b2', name: 'Peer Reviewer',      description: 'Validated 50 structures from other engineers.',     icon: '✅', earnedDate: '2026-03-15' },
-    { id: 'b3', name: 'Market Maker',       description: 'Earned 500 royalties from DTU citations.',          icon: '💰', earnedDate: '2026-03-28' },
-    { id: 'b4', name: 'Storm Survivor',     description: 'All your structures survived a Category 3 storm.',  icon: '🌪', earnedDate: '2026-04-02' },
-    { id: 'b5', name: 'Architect\'s Eye',   description: 'Reached Expert tier in Architecture.',              icon: '👁', earnedDate: '2026-04-04' },
-  ],
+const EMPTY_PROFILE: ProfileProgression = {
+  totalCitations: 0,
+  totalRoyalties: 0,
+  domains: [],
+  badges: [],
 };
-
-const DEMO_MILESTONES: Milestone[] = [
-  { id: 'm1', title: 'Expert Architect',          description: 'Reached Expert tier in Architecture domain.',       timestamp: '2 days ago', domain: 'architecture' },
-  { id: 'm2', title: '300 Citations',             description: 'Your work has been cited 300 times across all domains.', timestamp: '5 days ago' },
-  { id: 'm3', title: 'Storm Survivor',            description: 'All structures survived the Category 3 storm event.',   timestamp: '1 week ago' },
-  { id: 'm4', title: '1000 Royalties',            description: 'Earned over 1,000 total royalties from citations.',     timestamp: '2 weeks ago' },
-];
-
-const DEMO_UNLOCKS: UnlockInfo[] = [
-  { id: 'u1', domain: 'structural',     citationsRequired: 200, title: 'Large Foundation Blueprints',  description: 'Unlock 4x4 and 6x6 foundation sizes.',        unlocked: false },
-  { id: 'u2', domain: 'materials',      citationsRequired: 100, title: 'Alloy Recipes',               description: 'Access advanced alloy crafting recipes.',       unlocked: false },
-  { id: 'u3', domain: 'architecture',   citationsRequired: 500, title: 'Master Architect Tools',      description: 'Unlock freeform design and curved surfaces.',   unlocked: false },
-  { id: 'u4', domain: 'infrastructure', citationsRequired: 100, title: 'Smart Grid Access',           description: 'Design automated infrastructure networks.',     unlocked: false },
-  { id: 'u5', domain: 'energy',         citationsRequired: 50,  title: 'Solar Panel Blueprints',      description: 'Unlock renewable energy structure designs.',    unlocked: false },
-  { id: 'u6', domain: 'exploration',    citationsRequired: 50,  title: 'District Fast Travel',        description: 'Unlock instant travel between discovered hubs.', unlocked: false },
-];
 
 /* ── Component ─────────────────────────────────────────────────── */
 
@@ -142,29 +112,26 @@ export default function ProgressionPanel({
   onClose,
 }: ProgressionPanelProps) {
   // Real progression from progression.creator_summary (citations/royalties/
-  // domains/badges/unlocks/milestones from live data). DEMO_* is now only a
-  // fallback for when the caller passes nothing AND the fetch yields nothing.
-  const [profile, setProfile] = useState<ProfileProgression>(profileProp ?? DEMO_PROFILE);
-  const [milestones, setMilestones] = useState<Milestone[]>(milestonesProp ?? DEMO_MILESTONES);
-  const [unlocks, setUnlocks] = useState<UnlockInfo[]>(unlocksProp ?? DEMO_UNLOCKS);
+  // domains/badges/unlocks/milestones from live data). No mock fallback —
+  // before the fetch resolves (or on error / no data) we show an honest
+  // empty state, never fabricated numbers.
+  const [profile, setProfile] = useState<ProfileProgression>(profileProp ?? EMPTY_PROFILE);
+  const [milestones, setMilestones] = useState<Milestone[]>(milestonesProp ?? []);
+  const [unlocks, setUnlocks] = useState<UnlockInfo[]>(unlocksProp ?? []);
   useEffect(() => {
     if (profileProp) return; // caller supplied data — respect it
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch('/api/lens/run', {
-          method: 'POST', credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ domain: 'progression', name: 'creator_summary', input: {} }),
-        });
-        if (!r.ok) return;
-        const j = await r.json();
-        const payload = (j.result ?? j) as { ok?: boolean; profile?: ProfileProgression; milestones?: Milestone[]; unlocks?: UnlockInfo[] };
-        if (cancelled || !payload?.ok || !payload.profile) return;
+        const r = await lensRun<{ profile?: ProfileProgression; milestones?: Milestone[]; unlocks?: UnlockInfo[] }>(
+          'progression', 'creator_summary', {},
+        );
+        const payload = r.data?.result;
+        if (cancelled || !r.data?.ok || !payload?.profile) return;
         setProfile(payload.profile);
         if (Array.isArray(payload.milestones)) setMilestones(payload.milestones);
         if (Array.isArray(payload.unlocks)) setUnlocks(payload.unlocks);
-      } catch { /* keep demo fallback */ }
+      } catch { /* keep empty state */ }
     })();
     return () => { cancelled = true; };
   }, [profileProp]);
@@ -230,6 +197,12 @@ export default function ProgressionPanel({
         {/* Domains tab */}
         {activeTab === 'domains' && (
           <div className="p-3 space-y-1.5">
+            {profile.domains.length === 0 && (
+              <div className="flex flex-col items-center py-8 text-center">
+                <TrendingUp className="w-8 h-8 text-gray-700 mb-2" />
+                <p className="text-xs text-gray-400">No reputation earned yet.</p>
+              </div>
+            )}
             {profile.domains.map((dr) => {
               const meta = DOMAIN_META[dr.domain];
               const Icon = meta.icon;
@@ -333,6 +306,12 @@ export default function ProgressionPanel({
         {/* Unlocks tab */}
         {activeTab === 'unlocks' && (
           <div className="p-3 space-y-1.5">
+            {unlocks.length === 0 && (
+              <div className="flex flex-col items-center py-8 text-center">
+                <Lock className="w-8 h-8 text-gray-700 mb-2" />
+                <p className="text-xs text-gray-400">No unlocks available yet.</p>
+              </div>
+            )}
             {unlocks.map((u) => {
               const domainRep = profile.domains.find((d) => d.domain === u.domain);
               const currentCitations = domainRep?.citations ?? 0;
@@ -387,6 +366,9 @@ export default function ProgressionPanel({
       <div className="border-t border-white/5 px-3 py-2">
         <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1.5">Recent Milestones</p>
         <div className="space-y-1">
+          {milestones.length === 0 && (
+            <p className="text-[10px] text-gray-600">No milestones yet.</p>
+          )}
           {milestones.slice(0, 3).map((m) => (
             <div key={m.id} className="flex items-center gap-2 text-[10px]">
               <Award className="w-3 h-3 text-yellow-400 shrink-0" />
