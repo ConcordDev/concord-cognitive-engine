@@ -58,4 +58,10 @@ describe('ARPreview — no fabricated AR data (source contract)', () => {
   it('captures from the real canvas, not a synthesized string', () => {
     expect(source).toMatch(/toDataURL/);
   });
+  it('releases GPU + hit-test resources on session end (no leak)', () => {
+    expect(source).toMatch(/hitTestSourceRef\.current\?\.cancel/);
+    expect(source).toMatch(/\.dispose\?\.\(\)/);          // renderer.dispose
+    expect(source).toMatch(/disposablesRef/);             // geometry/material disposal
+    expect(source).toMatch(/setFoveation/);               // perf best practice
+  });
 });

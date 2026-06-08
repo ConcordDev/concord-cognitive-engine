@@ -63,6 +63,12 @@ export default function ARPreview({ dtuId, dtuData, onCapture, supported }: ARPr
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rendererRef = useRef<any>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // Hit-test subscription + GPU disposables — released on session end to avoid
+  // leaking the WebGL context / hit-test source across sessions (MDN/Three.js BCP).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const hitTestSourceRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const disposablesRef = useRef<any[]>([]);
 
   const panelStyle = ds.panelFloating;
   const dims = dtuData.dimensions ?? { width: 10, height: 15, depth: 8 };
@@ -86,7 +92,15 @@ export default function ARPreview({ dtuId, dtuData, onCapture, supported }: ARPr
   }, [supported]);
 
   const endAR = useCallback(() => {
+    // Stop the loop first, then release the hit-test source, dispose GPU
+    // resources (geometries/materials Three.js won't free for us), dispose the
+    // renderer (frees the WebGL context), and end the session. Order matters.
     try { rendererRef.current?.setAnimationLoop?.(null); } catch { /* noop */ }
+    try { hitTestSourceRef.current?.cancel?.(); } catch { /* noop */ }
+    hitTestSourceRef.current = null;
+    for (const d of disposablesRef.current) { try { d?.dispose?.(); } catch { /* noop */ } }
+    disposablesRef.current = [];
+    try { rendererRef.current?.dispose?.(); } catch { /* noop */ }
     try { sessionRef.current?.end?.(); } catch { /* noop */ }
     sessionRef.current = null;
     rendererRef.current = null;
@@ -113,6 +127,7 @@ export default function ARPreview({ dtuId, dtuData, onCapture, supported }: ARPr
       const gl = canvas.getContext('webgl2', { xrCompatible: true }) as WebGLRenderingContext;
       const renderer = new THREE.WebGLRenderer({ canvas, context: gl, preserveDrawingBuffer: true });
       renderer.xr.enabled = true;
+      try { renderer.xr.setFoveation?.(1); } catch { /* optional perf knob */ }
       rendererRef.current = renderer;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await renderer.xr.setSession(session as any);
@@ -128,21 +143,21 @@ export default function ARPreview({ dtuId, dtuData, onCapture, supported }: ARPr
         Math.max(0.02, dims.height * sceneScale),
         Math.max(0.02, dims.depth * sceneScale),
       );
-      const dtuMesh = new THREE.Mesh(
-        geo,
-        new THREE.MeshStandardMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.85 }),
-      );
+      const dtuMat = new THREE.MeshStandardMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.85 });
+      const dtuMesh = new THREE.Mesh(geo, dtuMat);
       dtuMesh.visible = false; // appears once the user places it via hit-test
       scene.add(dtuMesh);
 
       // A reticle that snaps to detected real-world surfaces (hit-test).
-      const reticle = new THREE.Mesh(
-        new THREE.RingGeometry(0.07, 0.09, 24).rotateX(-Math.PI / 2),
-        new THREE.MeshBasicMaterial({ color: 0x22d3ee }),
-      );
-      reticle.matrixAutoUpdate = false;
+      const reticleGeo = new THREE.RingGeometry(0.07, 0.09, 24).rotateX(-Math.PI / 2);
+      const reticleMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee });
+      const reticle = new THREE.Mesh(reticleGeo, reticleMat);
+      reticle.matrixAutoUpdate = false; // we write reticle.matrix from the hit-test pose
       reticle.visible = false;
       scene.add(reticle);
+
+      // Track GPU resources so endAR() can dispose them (Three.js won't).
+      disposablesRef.current = [geo, dtuMat, reticleGeo, reticleMat];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const xrSession = session as any;
@@ -150,6 +165,7 @@ export default function ARPreview({ dtuId, dtuData, onCapture, supported }: ARPr
       try {
         const viewerSpace = await xrSession.requestReferenceSpace?.('viewer');
         hitTestSource = await xrSession.requestHitTestSource?.({ space: viewerSpace });
+        hitTestSourceRef.current = hitTestSource; // so endAR can cancel() it
       } catch { hitTestSource = null; }
 
       // Tap to place the DTU at the reticle.

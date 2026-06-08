@@ -13,11 +13,63 @@
 import crypto from "node:crypto";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
-// Refresh a little early so a token doesn't expire mid-request.
-const EXPIRY_SKEW_S = 60;
+// Refresh proactively well before expiry to absorb clock skew + in-flight
+// latency (OAuth 2.0 BCP guidance is a conservative buffer; ~5 min).
+const EXPIRY_SKEW_S = 300;
 
 function nowS() {
   return Math.floor(Date.now() / 1000);
+}
+
+// ── Encryption at rest (RFC 6819 §5.1.4.1.3: tokens are long-term secrets and
+// must not be stored in clear text). AES-256-GCM (authenticated) with a key
+// derived from the deployment secret. Ciphertext format: enc:v1:<iv>:<tag>:<ct>
+// (all hex). If no secret is configured we degrade to plaintext with a one-time
+// warning rather than encrypting under a hardcoded (false-security) key. ──
+const ENC_PREFIX = "enc:v1:";
+let _warnedNoKey = false;
+
+function tokenKey() {
+  const raw =
+    process.env.CONCORD_CONNECTOR_TOKEN_KEY ||
+    process.env.JWT_SECRET ||
+    process.env.SESSION_SECRET ||
+    "";
+  if (!raw) return null;
+  return crypto.createHash("sha256").update(String(raw)).digest(); // 32 bytes
+}
+
+function encryptSecret(plain) {
+  if (plain == null) return null;
+  const key = tokenKey();
+  if (!key) {
+    if (!_warnedNoKey) {
+      console.warn("[connector-tokens] no CONCORD_CONNECTOR_TOKEN_KEY/JWT_SECRET/SESSION_SECRET set — OAuth tokens stored UNENCRYPTED. Set a secret to enable AES-256-GCM at rest.");
+      _warnedNoKey = true;
+    }
+    return String(plain);
+  }
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const ct = Buffer.concat([cipher.update(String(plain), "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `${ENC_PREFIX}${iv.toString("hex")}:${tag.toString("hex")}:${ct.toString("hex")}`;
+}
+
+function decryptSecret(stored) {
+  if (stored == null) return null;
+  const s = String(stored);
+  if (!s.startsWith(ENC_PREFIX)) return s; // back-compat: legacy plaintext row
+  const key = tokenKey();
+  if (!key) return null; // can't decrypt without the key → treat as needs-reauth
+  try {
+    const [ivHex, tagHex, ctHex] = s.slice(ENC_PREFIX.length).split(":");
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(ivHex, "hex"));
+    decipher.setAuthTag(Buffer.from(tagHex, "hex"));
+    return Buffer.concat([decipher.update(Buffer.from(ctHex, "hex")), decipher.final()]).toString("utf8");
+  } catch {
+    return null; // tampered or wrong key → fail safe
+  }
 }
 
 /** Persist (upsert) a connector's tokens for a user. Returns the stored row. */
@@ -50,8 +102,8 @@ export function persistConnectorToken(db, userId, connectorId, tokens = {}) {
     id,
     userId,
     connectorId,
-    tokens.access_token,
-    tokens.refresh_token || null,
+    encryptSecret(tokens.access_token),
+    tokens.refresh_token ? encryptSecret(tokens.refresh_token) : null,
     tokens.token_type || "Bearer",
     expiresAt,
     JSON.stringify(scopes),
@@ -59,14 +111,19 @@ export function persistConnectorToken(db, userId, connectorId, tokens = {}) {
   return getConnectorToken(db, userId, connectorId);
 }
 
-/** Read a connector token row, or null. */
+/** Read a connector token row (tokens decrypted), or null. */
 export function getConnectorToken(db, userId, connectorId) {
   if (!db) return null;
   const row = db
     .prepare("SELECT * FROM connector_oauth_tokens WHERE user_id = ? AND connector_id = ?")
     .get(userId, connectorId);
   if (!row) return null;
-  return { ...row, scopes: safeParseArray(row.scopes_json) };
+  return {
+    ...row,
+    access_token: decryptSecret(row.access_token),
+    refresh_token: decryptSecret(row.refresh_token),
+    scopes: safeParseArray(row.scopes_json),
+  };
 }
 
 /** Remove a connector's tokens (disconnect). */
@@ -110,7 +167,17 @@ export async function refreshGoogleToken(db, userId, connectorId, { fetchImpl = 
   } catch (e) {
     return { ok: false, reason: "refresh_request_failed", detail: String(e?.message || e) };
   }
-  if (!res?.ok) return { ok: false, reason: "refresh_rejected", status: res?.status };
+  if (!res?.ok) {
+    // invalid_grant (revoked/expired refresh token, password change, etc.) is
+    // TERMINAL — do not retry. Drop the dead token and signal re-consent.
+    let body = null;
+    try { body = await res.json(); } catch { body = null; }
+    if (body?.error === "invalid_grant") {
+      deleteConnectorToken(db, userId, connectorId);
+      return { ok: false, reason: "reauth_required" };
+    }
+    return { ok: false, reason: "refresh_rejected", status: res?.status };
+  }
   const tokens = await res.json();
   // Google refresh responses omit refresh_token (the old one stays valid).
   const updated = persistConnectorToken(db, userId, connectorId, {

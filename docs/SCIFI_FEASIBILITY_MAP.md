@@ -114,20 +114,30 @@ the *intersection*. Concord's defensible claim is the combination × depth — n
 
 Real gaps = hardware / physics / real-world **+ connector depth**:
 
-- **External connectors (Gmail/Calendar/Sheets/Slack/GitHub/Notion)** — **scaffold only.**
-  `domains/integrations.js` `connectApp` stores a fake `tok_${random}`; zero real API calls.
-  OAuth (`oauth-providers.js`) is sign-in/identity only — access/refresh tokens are discarded, no
-  write-back. iCal (`domains/calendar.js`) is **read-only pull**; `direction: push|two-way` is
-  accepted but unimplemented (in-memory). **The real integration surface is MCP** (`mcp-server.js`
-  exposes ~200 macros to MCP clients; `mcp-client.js` calls external MCP servers, SSRF-guarded).
-  → **On the build roadmap as a wedge item** (real OAuth-token persistence + Google Calendar two-way).
-- **Machine translation** — no subsystem (i18n UI only). LLM-capable but not wired.
+- **External connectors (Gmail/Calendar/Sheets/Slack/GitHub/Notion)** — **foundation now built;
+  live sync needs secrets.** The token core is real: `migration 331 connector_oauth_tokens` +
+  `lib/connector-tokens.js` persist access/refresh tokens **encrypted at rest (AES-256-GCM)** with
+  refresh-rotation and **`invalid_grant`→re-consent** handling; `lib/connector-client.js` is an
+  SSRF-guarded outbound client (Bearer + 401 forced-refresh retry) with a Google Calendar write
+  helper; `domains/calendar.js#accounts-push-event` is a direction-gated two-way write;
+  `integrations.connectApp` no longer fabricates a token. Hardened to the OAuth security BCP
+  ([RFC 6819 §5.1.4.1.3](https://datatracker.ietf.org/doc/html/rfc6819),
+  [RFC 9700](https://datatracker.ietf.org/doc/rfc9700/),
+  [OWASP SSRF](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html)).
+  **Still required for *live* Gmail/Calendar:** real `GOOGLE_CLIENT_ID/SECRET` + the
+  connector-authorize callback (the documented wiring point). MCP remains the other real surface.
+- **Machine translation** — ✅ **shipped** (was a gap): `domains/translation.js` (translate/detect/
+  batch/languages) through the local LLM, lens at `/lenses/translation`, 16 tests. No external API.
 - **Physical robots & exo-suits** — hardware; not built. (Where ConKay-as-R&D-partner aims.)
 - **Engineering-grade tetra/nonlinear FEA & full CAD** — the *beam-frame* FEA + CAS are **real**
   (corrected above); the frontier is tetrahedral meshes, nonlinear/large-deformation, contact
   elements, and parametric CAD. ⚠️ *Pitch the real beam-frame FEA + CAS; do not overclaim full CAD.*
-- **AR / holographic display** — `domains/ar.js` + `ARPreview.tsx` are a mock facade (~3–4 files);
-  needs real WebXR + AR hardware.
+- **AR / holographic display** — `ARPreview.tsx` is now a **real WebXR `immersive-ar` surface**
+  (feature-detect → session → hit-test placement → honest non-XR fallback), built to the WebXR BCP
+  (GPU/hit-test disposal on session end, foveation, transient-activation —
+  [MDN WebXR](https://developer.mozilla.org/en-US/docs/Web/API/WebXR_Device_API),
+  [W3C Hit Test](https://www.w3.org/TR/webxr-hit-test-1/)). **Live AR still needs AR hardware**
+  (Quest/ARCore; not iOS Safari / visionOS as of 2026); the detection + fallback are verified headless.
 - **Real-world prediction** (psychohistory applied to reality) — sandbox only; do **not** claim it.
 - **Verified phenomenal consciousness** — unmeasurable in principle, for anyone; the code correctly
   ships *functional* constructs labeled as correlates (`agent-awareness-index.js`, `causal-closure.js`),

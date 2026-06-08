@@ -108,6 +108,54 @@ describe("getValidAccessToken + refresh rotation", () => {
   });
 });
 
+describe("encryption at rest (AES-256-GCM)", () => {
+  let db;
+  const ORIG = process.env.CONCORD_CONNECTOR_TOKEN_KEY;
+  beforeEach(() => { db = freshDb(); process.env.CONCORD_CONNECTOR_TOKEN_KEY = "test-key-please-rotate"; });
+  afterEach(() => {
+    db.close();
+    if (ORIG === undefined) delete process.env.CONCORD_CONNECTOR_TOKEN_KEY;
+    else process.env.CONCORD_CONNECTOR_TOKEN_KEY = ORIG;
+  });
+
+  it("stores ciphertext in the DB but reads back plaintext", () => {
+    persistConnectorToken(db, "u1", "google_calendar", { access_token: "super-secret-at", refresh_token: "super-secret-rt" });
+    const raw = db.prepare("SELECT access_token, refresh_token FROM connector_oauth_tokens WHERE user_id=? AND connector_id=?").get("u1", "google_calendar");
+    assert.ok(raw.access_token.startsWith("enc:v1:"), "access token encrypted at rest");
+    assert.ok(raw.refresh_token.startsWith("enc:v1:"), "refresh token encrypted at rest");
+    assert.ok(!raw.access_token.includes("super-secret-at"), "plaintext not present in column");
+    const row = getConnectorToken(db, "u1", "google_calendar");
+    assert.equal(row.access_token, "super-secret-at");
+    assert.equal(row.refresh_token, "super-secret-rt");
+  });
+
+  it("still reads a legacy plaintext row (back-compat)", () => {
+    // Simulate a row written before encryption shipped.
+    db.prepare("INSERT INTO connector_oauth_tokens (id,user_id,connector_id,access_token) VALUES ('x','u9','google_calendar','legacy-plain')").run();
+    assert.equal(getConnectorToken(db, "u9", "google_calendar").access_token, "legacy-plain");
+  });
+});
+
+describe("invalid_grant is terminal (re-consent, not retry)", () => {
+  let db;
+  const ORIG = { id: process.env.GOOGLE_CLIENT_ID, secret: process.env.GOOGLE_CLIENT_SECRET };
+  beforeEach(() => { db = freshDb(); process.env.GOOGLE_CLIENT_ID = "cid"; process.env.GOOGLE_CLIENT_SECRET = "csec"; });
+  afterEach(() => {
+    db.close();
+    if (ORIG.id === undefined) delete process.env.GOOGLE_CLIENT_ID; else process.env.GOOGLE_CLIENT_ID = ORIG.id;
+    if (ORIG.secret === undefined) delete process.env.GOOGLE_CLIENT_SECRET; else process.env.GOOGLE_CLIENT_SECRET = ORIG.secret;
+  });
+
+  it("drops the dead token and returns reauth_required", async () => {
+    persistConnectorToken(db, "u1", "google_calendar", { access_token: "at", refresh_token: "rt", expires_in: -10 });
+    const fetchImpl = async () => ({ ok: false, status: 400, json: async () => ({ error: "invalid_grant" }) });
+    const r = await refreshGoogleToken(db, "u1", "google_calendar", { fetchImpl });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "reauth_required");
+    assert.equal(getConnectorToken(db, "u1", "google_calendar"), null, "dead token removed");
+  });
+});
+
 describe("connector-client honest failure (no network when no token)", () => {
   let db;
   beforeEach(() => { db = freshDb(); });
