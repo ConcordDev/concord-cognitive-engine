@@ -57,6 +57,32 @@ Legend: ✅ feasible now (substrate built) · 🟡 foundation present, depth var
 
 **Result: ~10/13 feasible now; engineering (row 6) is a strength not a gap; translation (row 12)
 and AR display are the software-side frontier; real-world prediction (row 3) is out of scope by design.**
+*(Update 2026-06-08: row 12 translation is **no longer a gap** — a real machine-translation lens now
+ships via the local LLM: `server/domains/translation.js` + `lib/prompt-registry.js#machineTranslate`,
+`/lenses/translation`, 16 contract tests. Sovereignty intact — no external API. AR display moved too:
+see §1a Holodeck + the AR note in §3.)*
+
+### 1a. Tier 2/3 + bonus analogs (audit + canon-verified)
+
+Same legend, plus **🛠️ = foundation present, surfacing/polish in progress** (the user's "buildable"
+tier). Canon was web-verified (see § Sources) so the mappings are accurate, not misremembered.
+
+| Sci-Fi system | Canon (verified) | Concord mapping | Verdict | Code anchor |
+|---|---|---|---|---|
+| **TRON — enter the Grid** | Humans digitized *into* a computer world where Programs live as inhabitants. | Concordia 3D world you navigate as an avatar | 🛠️ | `concord-frontend/lib/world-lens/` + `components/world-lens/ConcordiaScene.tsx` |
+| **Westworld — Hosts** | Androids run authored narrative *loops*; the show's core question is whether they're truly conscious. | NPC sim (loops/schedules/memory) **with the ethics caution kept** | 🛠️ + ⛔ (consciousness) | `server/lib/npc-*.js`, `server/lib/oracle-brain.js`, `server/emergent/quest-engine.js` |
+| **Mass Effect — EDI + Codex** | EDI = the ship's AI; the Codex = the unlockable in-game knowledge archive. | ConKay (ship AI) + DTU archive (Codex) | ✅ / 🛠️ | `components/conkay/*` + the DTU substrate (674 tables) |
+| **Stargate — Repository of Knowledge** | Ancient device that *downloads* a vast knowledge bank into a human mind — which can't hold it. | The DTU vault is the archive ✅; the **brain-download is the ⛔** (no neural write-back — by design) | ✅ archive / ⛔ download | DTU substrate; ⛔ = same refusal as mind-upload below |
+| **Ex Machina — "is it conscious, or just convincing me?"** | A Turing-test-style eval the film deliberately leaves unresolved. | The honest answer stays **unmeasurable, never claimed**; the code ships *functional* correlates only | ⛔ by design | `server/lib/causal-closure.js` + `agent-awareness-index.js` |
+| **Star Wars — droids** | General-purpose autonomous robots. | Suits/robots hardware roadmap (frontier, sequenced after users) | ⛔ hardware | — (the frontier track) |
+| **Star Trek — Holodeck** | A room simulating any environment with interactive characters. | Concordia as a **proto-holodeck** — screen now, VR later via the existing WebXR path | 🛠️ | world-lens + the `renderer.xr` WebXR session in `app/lenses/ar/page.tsx` |
+| **Mind-upload (Black Mirror "cookie" / San Junipero)** | A digital copy of a person's *consciousness* with full subjective experience. | **The on-brand NO.** Functional persona-persistence is real — "a holocron of a person" (knowledge, voice, recorded character) — but phenomenal experience is untransferable + unverifiable. **Make the holocron; never promise the soul.** | ⛔ by design (headline refusal) | `server/lib/agent-self.js`, `agent-autobiography.js`, `foundation-identity.js` |
+
+Two canon refinements worth keeping honest: (a) Snow Crash's Librarian (§1 row 4) *explicitly disclaims
+being intelligent* — it retrieves + connects, candid about its limits; that candor is exactly the
+Grounded-badge discipline, so the mapping is tighter than flattering. (b) The Star Wars Holocron
+"gatekeeper gauges the user's worthiness" detail (§1 row 2) is chiefly *Legends* canon — cite it as the
+Legends conception, not current canon.
 
 ---
 
@@ -175,6 +201,20 @@ sci-fi software capabilities already sit in the repo. That changes the roadmap s
 
 ---
 
+## Sources (sci-fi canon for §1a — web-verified)
+
+The §1a mappings were checked against canon so they're accurate, not misremembered (all confirmed):
+- TRON — https://en.wikipedia.org/wiki/Tron
+- Westworld (Hosts + the consciousness question) — https://www.imdb.com/title/tt0475784/
+- Mass Effect — EDI https://masseffect.fandom.com/wiki/EDI · Codex https://masseffect.fandom.com/wiki/Codex
+- Stargate SG-1 — Repository of Knowledge https://stargate.fandom.com/wiki/Repository_of_knowledge
+- Ex Machina — https://en.wikipedia.org/wiki/Ex_Machina_(film)
+- Star Trek — Holodeck https://en.wikipedia.org/wiki/Holodeck
+- Black Mirror — the "cookie" / mind-copy https://reactormag.com/black-mirror-shared-universe-cookies-human-rights-copies/
+- Person of Interest — the Machine vs. Samaritan design contrast https://personofinterest.fandom.com/wiki/Samaritan
+- Snow Crash — the Librarian (and its disclaimer that it isn't intelligent) https://en.wikiquote.org/wiki/Snow_Crash
+- Star Wars — Holocron gatekeeper (*Legends* conception) https://starwars.fandom.com/wiki/Gatekeeper/Legends
+
 ## Cross-references
 - **Market-demand half** (web-researched evidence, competitive landscape, sizing, wedge segments):
   [`docs/MARKET_DEMAND_MAP.md`](MARKET_DEMAND_MAP.md).
@@ -185,5 +225,7 @@ sci-fi software capabilities already sit in the repo. That changes the roadmap s
 *This document rates capability against source code as of 2026-06-08. Ratings reflect substrate
 presence, not product polish. Counts were replaced with anchor-files + depth verdicts after a
 three-agent verification pass (re-spot-checked 2026-06-08: all seven load-bearing anchors still hold).
-The Market-Demand half (§2) is now backed by a web-research pass with cited sources — see the
-companion `MARKET_DEMAND_MAP.md`. Where a claim could not be confirmed from code, it is marked "verify."*
+§1a adds canon-verified Tier-2/3 + bonus analogs (TRON, Westworld, Mass Effect, Stargate, Ex Machina,
+droids, Holodeck, mind-upload) with code anchors + sources. The Market-Demand half (§2) is backed by a
+web-research pass with cited sources — see the companion `MARKET_DEMAND_MAP.md`. Where a claim could not
+be confirmed from code, it is marked "verify."*
