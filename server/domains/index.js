@@ -241,6 +241,8 @@ import serviceMarket from './service-market.js';
 import digitalTwin from './digital-twin.js';
 import registerDistrictActions from './district.js';
 import registerCobuildActions from './cobuild.js';
+import registerCompanionActions from './companion.js';
+import hub from './hub.js';
 
 export default [
   healthcare,
@@ -475,4 +477,6 @@ export default [
   digitalTwin,
   registerDistrictActions,
   registerCobuildActions,
+  registerCompanionActions,
+  hub,
 ];

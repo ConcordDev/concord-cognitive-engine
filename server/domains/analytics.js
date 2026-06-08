@@ -741,4 +741,160 @@ export default function registerAnalyticsActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // ─── World + Global structural analytics (REAL, DB-backed) ──────────
+  // Aggregate genuine per-world / cross-world facts from the live SQLite
+  // tables (worlds, world_events, world_buildings, world_visits, dtus).
+  // Every count is a real query; absent tables degrade to honest zeros and
+  // a `hasData:false`/empty shape — NEVER fabricated rows.
+  const anTableExists = (db, name) => {
+    try {
+      return !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name);
+    } catch (_e) { return false; }
+  };
+  const anCount = (db, sql, ...args) => {
+    try {
+      const row = db.prepare(sql).get(...args);
+      const v = row ? Object.values(row)[0] : 0;
+      return Number.isFinite(Number(v)) ? Number(v) : 0;
+    } catch (_e) { return 0; }
+  };
+
+  // world-summary — real analytics for a single world. Counts active
+  // presence (open visits), buildings, world events, and world-tagged DTUs.
+  registerLensAction("analytics", "world-summary", (ctx, _a, params = {}) => {
+    try {
+      const db = ctx?.db;
+      if (!db) return { ok: false, error: "db unavailable" };
+      const worldId = anClean(params.worldId || params.world_id, 120);
+      if (!worldId) return { ok: false, error: "worldId required" };
+
+      const hasWorlds = anTableExists(db, "worlds");
+      const hasEvents = anTableExists(db, "world_events");
+      const hasBuildings = anTableExists(db, "world_buildings");
+      const hasVisits = anTableExists(db, "world_visits");
+      const hasDtus = anTableExists(db, "dtus");
+
+      let worldName = null;
+      let population = 0;
+      let totalVisits = 0;
+      let npcCount = 0;
+      let status = null;
+      if (hasWorlds) {
+        try {
+          const w = db.prepare(
+            "SELECT name, population, total_visits, npc_count, status FROM worlds WHERE id = ?"
+          ).get(worldId);
+          if (w) {
+            worldName = w.name ?? null;
+            population = Number(w.population) || 0;
+            totalVisits = Number(w.total_visits) || 0;
+            npcCount = Number(w.npc_count) || 0;
+            status = w.status ?? null;
+          }
+        } catch (_e) { /* column drift — degrade to zeros */ }
+      }
+      const found = worldName !== null || status !== null;
+
+      const buildingCount = hasBuildings
+        ? anCount(db, "SELECT COUNT(*) AS c FROM world_buildings WHERE world_id = ?", worldId) : 0;
+      const standingBuildings = hasBuildings
+        ? anCount(db, "SELECT COUNT(*) AS c FROM world_buildings WHERE world_id = ? AND state = 'standing'", worldId) : 0;
+      const eventCount = hasEvents
+        ? anCount(db, "SELECT COUNT(*) AS c FROM world_events WHERE world_id = ?", worldId) : 0;
+      // Players currently present = visits with no departed_at.
+      const activePresence = hasVisits
+        ? anCount(db, "SELECT COUNT(*) AS c FROM world_visits WHERE world_id = ? AND departed_at IS NULL", worldId) : 0;
+      const uniqueVisitors = hasVisits
+        ? anCount(db, "SELECT COUNT(DISTINCT user_id) AS c FROM world_visits WHERE world_id = ?", worldId) : 0;
+      const taggedDtus = hasDtus
+        ? anCount(db, "SELECT COUNT(*) AS c FROM dtus WHERE world_id = ?", worldId) : 0;
+
+      const infraCoverage = buildingCount > 0
+        ? Math.round((standingBuildings / buildingCount) * 100) : 0;
+
+      return {
+        ok: true,
+        result: {
+          worldId,
+          worldName,
+          found,
+          status,
+          population,
+          npcCount,
+          buildingCount,
+          standingBuildings,
+          infraCoverage,
+          eventCount,
+          activePresence,
+          uniqueVisitors,
+          totalVisits,
+          taggedDtus,
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // global-summary — real cross-world / platform aggregate. Total worlds,
+  // total buildings, total events, total/public DTUs, and the most-active
+  // worlds by building count.
+  registerLensAction("analytics", "global-summary", (ctx, _a, _params = {}) => {
+    try {
+      const db = ctx?.db;
+      if (!db) return { ok: false, error: "db unavailable" };
+
+      const hasWorlds = anTableExists(db, "worlds");
+      const hasEvents = anTableExists(db, "world_events");
+      const hasBuildings = anTableExists(db, "world_buildings");
+      const hasVisits = anTableExists(db, "world_visits");
+      const hasDtus = anTableExists(db, "dtus");
+      const hasCitations = anTableExists(db, "dtu_citations");
+
+      const totalWorlds = hasWorlds
+        ? anCount(db, "SELECT COUNT(*) AS c FROM worlds") : 0;
+      const activeWorlds = hasWorlds
+        ? anCount(db, "SELECT COUNT(*) AS c FROM worlds WHERE status = 'active'") : 0;
+      const totalBuildings = hasBuildings
+        ? anCount(db, "SELECT COUNT(*) AS c FROM world_buildings") : 0;
+      const totalEvents = hasEvents
+        ? anCount(db, "SELECT COUNT(*) AS c FROM world_events") : 0;
+      const totalDtus = hasDtus
+        ? anCount(db, "SELECT COUNT(*) AS c FROM dtus") : 0;
+      const publicDtus = hasDtus
+        ? anCount(db, "SELECT COUNT(*) AS c FROM dtus WHERE visibility IN ('public','marketplace')") : 0;
+      const activeUsers = hasVisits
+        ? anCount(db, "SELECT COUNT(DISTINCT user_id) AS c FROM world_visits") : 0;
+      const totalCitations = hasCitations
+        ? anCount(db, "SELECT COALESCE(SUM(citation_count),0) AS c FROM dtu_citations") : 0;
+
+      let topWorlds = [];
+      if (hasWorlds) {
+        try {
+          topWorlds = db.prepare(
+            "SELECT id, name, population, npc_count FROM worlds ORDER BY population DESC, npc_count DESC LIMIT 5"
+          ).all().map((w) => ({
+            worldId: w.id,
+            name: w.name ?? null,
+            population: Number(w.population) || 0,
+            npcCount: Number(w.npc_count) || 0,
+          }));
+        } catch (_e) { topWorlds = []; }
+      }
+
+      return {
+        ok: true,
+        result: {
+          totalWorlds,
+          activeWorlds,
+          totalBuildings,
+          totalEvents,
+          totalDtus,
+          publicDtus,
+          activeUsers,
+          totalCitations,
+          topWorlds,
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
 }

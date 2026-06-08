@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Store, GraduationCap, Factory, Landmark, TreePine, Search,
   Zap, Mountain, Ship, Swords, Globe, Users, ChevronRight,
   Activity,
 } from 'lucide-react';
+import { lensRun } from '@/lib/api/client';
 
 const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
 
@@ -22,12 +23,11 @@ export interface ConcordiaDistrict {
 }
 
 // Authored district layout (static config — the named districts of Concordia
-// and which lens each maps to). Runtime stats (buildingCount / population /
-// activeUsers) are NOT hardcoded here — they default to 0 and are only shown
-// when real data is available.
-// TODO: wire to backend — there is no district-stats macro yet; when one exists
-// (candidate: a world-summary aggregating world_buildings + city_presence per
-// district) populate the counts via lensRun in an effect.
+// and which lens each maps to). KEEP this layout. Runtime stats
+// (buildingCount / population / activeUsers) are NOT hardcoded — they default
+// to 0 and are populated from the real `hub` lens-action domain
+// (`district-stats` / `hub-totals`) via the effect below. They stay 0 honestly
+// until real data exists.
 const DISTRICT_LAYOUT: Omit<ConcordiaDistrict, 'buildingCount' | 'population' | 'activeUsers'>[] = [
   { id: 'exchange', name: 'The Exchange', description: 'Economic hub — marketplace, trading floor, auctions', lens: 'marketplace', icon: Store, color: '#F59E0B' },
   { id: 'academy', name: 'The Academy', description: 'Education — libraries, lecture halls, research labs', lens: 'education', icon: GraduationCap, color: '#3B82F6' },
@@ -41,10 +41,27 @@ const DISTRICT_LAYOUT: Omit<ConcordiaDistrict, 'buildingCount' | 'population' | 
   { id: 'arena', name: 'The Arena', description: 'Competitive — stress tests, design battles, challenges', lens: 'sim', icon: Swords, color: '#DC2626' },
 ];
 
-// Districts with runtime stats zeroed — honest defaults until a stats macro exists.
+// Districts with runtime stats zeroed — honest defaults until the real
+// `district-stats` macro returns data (populated in the effect below).
 const CONCORDIA_DISTRICTS: ConcordiaDistrict[] = DISTRICT_LAYOUT.map((d) => ({
   ...d, buildingCount: 0, population: 0, activeUsers: 0,
 }));
+
+interface BackendDistrictStats {
+  districtId?: string;
+  buildingCount?: number;
+  population?: number;
+  activeUsers?: number;
+}
+
+interface BackendActivityEvent {
+  id?: string;
+  districtId?: string | null;
+  kind?: string;
+  actor?: string | null;
+  summary?: string;
+  at?: string | null;
+}
 
 interface LiveFeedEvent {
   id: string;
@@ -71,15 +88,73 @@ interface ConcordiaHubProps {
 
 export default function ConcordiaHub({ onDistrictSelect, onNavigateToLens }: ConcordiaHubProps) {
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
-  // Live feed starts empty — no fabricated activity. Honest empty state below.
-  // TODO: wire to backend — populate from a real world-activity feed macro
-  // (candidate: events log / cross-world feed) once one returns district-tagged
-  // events in this shape.
-  const [feed] = useState<LiveFeedEvent[]>([]);
 
-  const totalPop = CONCORDIA_DISTRICTS.reduce((s, d) => s + d.population, 0);
-  const totalBuildings = CONCORDIA_DISTRICTS.reduce((s, d) => s + d.buildingCount, 0);
-  const totalActive = CONCORDIA_DISTRICTS.reduce((s, d) => s + d.activeUsers, 0);
+  // District runtime stats — start from the authored layout (zeroed) and fill
+  // in real counts from the `hub` lens-action domain. Stays 0 honestly when no
+  // source data exists.
+  const [districts, setDistricts] = useState<ConcordiaDistrict[]>(CONCORDIA_DISTRICTS);
+
+  // Live feed starts empty — populated from the real `hub.activity-feed` macro
+  // (recorded hub activity + world_events). Honest empty state below.
+  const [feed, setFeed] = useState<LiveFeedEvent[]>([]);
+
+  // Pull real per-district stats for every authored district on mount.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          DISTRICT_LAYOUT.map((d) => lensRun('hub', 'district-stats', { districtId: d.id })),
+        );
+        if (cancelled) return;
+        setDistricts(
+          DISTRICT_LAYOUT.map((d, i): ConcordiaDistrict => {
+            const stats = (results[i]?.data?.result as BackendDistrictStats) || {};
+            return {
+              ...d,
+              buildingCount: Number(stats.buildingCount) || 0,
+              population: Number(stats.population) || 0,
+              activeUsers: Number(stats.activeUsers) || 0,
+            };
+          }),
+        );
+      } catch {
+        if (!cancelled) setDistricts(CONCORDIA_DISTRICTS);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Pull the real activity feed — scoped to the selected district when one is
+  // chosen, world-wide otherwise. Empty when no source has data.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const input = selectedDistrict ? { districtId: selectedDistrict, limit: 50 } : { limit: 50 };
+        const r = await lensRun('hub', 'activity-feed', input);
+        const rows = (r.data?.result?.events as BackendActivityEvent[]) || [];
+        if (cancelled) return;
+        setFeed(
+          rows.map((e, i): LiveFeedEvent => ({
+            id: e.id || `feed-${i}`,
+            type: (e.kind as LiveFeedEvent['type']) || 'event',
+            message: e.summary || '',
+            district: e.districtId || '',
+            lens: '',
+            timestamp: e.at || '',
+          })),
+        );
+      } catch {
+        if (!cancelled) setFeed([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedDistrict]);
+
+  const totalPop = districts.reduce((s, d) => s + d.population, 0);
+  const totalBuildings = districts.reduce((s, d) => s + d.buildingCount, 0);
+  const totalActive = districts.reduce((s, d) => s + d.activeUsers, 0);
 
   return (
     <div className="space-y-4">
@@ -101,7 +176,7 @@ export default function ConcordiaHub({ onDistrictSelect, onNavigateToLens }: Con
 
       {/* District Grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        {CONCORDIA_DISTRICTS.map(d => {
+        {districts.map(d => {
           const Icon = d.icon;
           const isSelected = selectedDistrict === d.id;
           return (
@@ -131,7 +206,7 @@ export default function ConcordiaHub({ onDistrictSelect, onNavigateToLens }: Con
 
       {/* Selected district detail */}
       {selectedDistrict && (() => {
-        const d = CONCORDIA_DISTRICTS.find(d => d.id === selectedDistrict);
+        const d = districts.find(d => d.id === selectedDistrict);
         if (!d) return null;
         const Icon = d.icon;
         return (

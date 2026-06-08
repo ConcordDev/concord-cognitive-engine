@@ -45,6 +45,8 @@ interface AnalyticsDashboardProps {
   personalStats?: PersonalStats;
   worldStats?: WorldStats;
   globalStats?: GlobalStats;
+  /** Which world the World tab should fetch real analytics for. */
+  worldId?: string;
   timeRange?: TimeRange;
   onTimeRangeChange?: (range: TimeRange) => void;
 }
@@ -70,10 +72,38 @@ interface AnalyticsDashboardResult {
   eventTypes?: number;
 }
 
+interface WorldSummaryResult {
+  worldId?: string;
+  worldName?: string | null;
+  found?: boolean;
+  population?: number;
+  buildingCount?: number;
+  standingBuildings?: number;
+  infraCoverage?: number;
+  eventCount?: number;
+  activePresence?: number;
+  uniqueVisitors?: number;
+  totalVisits?: number;
+  taggedDtus?: number;
+}
+
+interface GlobalSummaryResult {
+  totalWorlds?: number;
+  activeWorlds?: number;
+  totalBuildings?: number;
+  totalEvents?: number;
+  totalDtus?: number;
+  publicDtus?: number;
+  activeUsers?: number;
+  totalCitations?: number;
+  topWorlds?: { worldId: string; name: string | null; population: number; npcCount: number }[];
+}
+
 export default function AnalyticsDashboard({
   personalStats: personalProp,
   worldStats: worldProp,
   globalStats: globalProp,
+  worldId,
   timeRange = '30d',
   onTimeRangeChange,
 }: AnalyticsDashboardProps) {
@@ -86,11 +116,13 @@ export default function AnalyticsDashboard({
   // this panel was seeded with. We surface what genuinely maps and empty-state
   // the rest rather than fabricate.
   const [personalStats, setPersonalStats] = useState<PersonalStats | null>(personalProp ?? null);
-  // TODO: wire to backend — no macro exposes per-world build/visitor/economic
-  // analytics or platform-wide trending/top-creator stats yet. Honest empty
-  // state until those macros exist; caller may still pass real props.
-  const [worldStats] = useState<WorldStats | null>(worldProp ?? null);
-  const [globalStats] = useState<GlobalStats | null>(globalProp ?? null);
+  // World + Global tabs are now backed by REAL macros:
+  //   analytics.world-summary  — per-world buildings / events / presence / DTUs
+  //   analytics.global-summary — cross-world worlds / buildings / events / DTUs
+  // Only fields the macros genuinely provide are mapped; the rest stay
+  // empty/zero — never invented. Caller-supplied props still win.
+  const [worldStats, setWorldStats] = useState<WorldStats | null>(worldProp ?? null);
+  const [globalStats, setGlobalStats] = useState<GlobalStats | null>(globalProp ?? null);
 
   useEffect(() => {
     if (personalProp) return; // caller supplied real stats — don't override
@@ -120,6 +152,63 @@ export default function AnalyticsDashboard({
     })();
     return () => { cancelled = true; };
   }, [personalProp]);
+
+  // World tab — real per-world analytics for `worldId`.
+  useEffect(() => {
+    if (worldProp) return; // caller supplied real stats
+    if (!worldId) { setWorldStats(null); return; } // no world selected → empty
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun<WorldSummaryResult>('analytics', 'world-summary', { worldId });
+        if (cancelled) return;
+        const d = r.data?.result;
+        if (!r.data?.ok || !d || d.found === false) { setWorldStats(null); return; }
+        // Map only fields the macro genuinely provides. Economic activity has
+        // no backend source here, so it stays 0; no fabricated timeseries.
+        setWorldStats({
+          worldId: d.worldId ?? worldId,
+          population: d.population ?? 0,
+          buildingCount: d.buildingCount ?? 0,
+          infraCoverage: d.infraCoverage ?? 0,
+          envScore: 0,
+          economicActivity: 0,
+          visitorCount: d.uniqueVisitors ?? 0,
+        });
+      } catch {
+        if (!cancelled) setWorldStats(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [worldProp, worldId]);
+
+  // Global tab — real cross-world / platform aggregate.
+  useEffect(() => {
+    if (globalProp) return; // caller supplied real stats
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun<GlobalSummaryResult>('analytics', 'global-summary', {});
+        if (cancelled) return;
+        const d = r.data?.result;
+        if (!r.data?.ok || !d) { setGlobalStats(null); return; }
+        // Map only real aggregates. Trending components + top creators have no
+        // backend source here → empty arrays, never invented.
+        setGlobalStats({
+          activeDistricts: d.activeWorlds ?? 0,
+          totalBuildings: d.totalBuildings ?? 0,
+          totalCitations: d.totalCitations ?? 0,
+          activeUsers: d.activeUsers ?? 0,
+          totalWorlds: d.totalWorlds ?? 0,
+          trendingComponents: [],
+          topCreators: [],
+        });
+      } catch {
+        if (!cancelled) setGlobalStats(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [globalProp]);
 
   const maxReputation = useMemo(() => {
     const vals = personalStats ? Object.values(personalStats.reputationByDomain) : [];

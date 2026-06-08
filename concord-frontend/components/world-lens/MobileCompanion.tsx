@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ds } from '@/lib/design-system';
+import { lensRun } from '@/lib/api/client';
 
 const panel = ds.panelFloating;
 
@@ -59,22 +60,26 @@ const QUICK_ACTIONS: QuickAction[] = [
   { id: 'qa-6', label: 'Royalties', icon: '💰' },
 ];
 
-// Default notification-preference toggles (user settings, not live data).
+// Notification-preference toggles. `id` maps to the companion domain's
+// push-prefs key; `enabled` defaults match the domain's DEFAULT_PUSH_PREFS and
+// are overwritten by push-prefs-get on mount.
 const DEFAULT_PUSH_PREFS: PushPref[] = [
-  { id: 'pp-1', label: 'Build Complete', description: 'When a build or validation finishes', enabled: true },
-  { id: 'pp-2', label: 'Citation Received', description: 'When someone cites your DTU', enabled: true },
-  { id: 'pp-3', label: 'Disaster Alert', description: 'Seismic, storm, or hazard events', enabled: true },
-  { id: 'pp-4', label: 'Friend Online', description: 'When a firm member comes online', enabled: false },
-  { id: 'pp-5', label: 'Market Update', description: 'Price changes on watched materials', enabled: false },
+  { id: 'buildComplete', label: 'Build Complete', description: 'When a build or validation finishes', enabled: true },
+  { id: 'citationReceived', label: 'Citation Received', description: 'When someone cites your DTU', enabled: true },
+  { id: 'disasterAlert', label: 'Disaster Alert', description: 'Seismic, storm, or hazard events', enabled: true },
+  { id: 'friendOnline', label: 'Friend Online', description: 'When a firm member comes online', enabled: false },
+  { id: 'marketUpdate', label: 'Market Update', description: 'Price changes on watched materials', enabled: false },
 ];
 
-// NOTE: overnight changes, notifications, and firm chat were previously
-// hardcoded fabricated data. There is no dedicated world-lens companion feed
-// macro for these surfaces, so they now start empty and render honest empty
-// states rather than fake activity.
-// TODO: wire to backend (overnight changes + notifications + firm chat) when a
-// companion-feed macro exists (candidates: events log + feed domain + a firm
-// chat channel macro).
+// Overnight changes + notifications are now backed by the REAL "companion"
+// lens-action domain (server/domains/companion.js):
+//   - feed                → the user's real recent activity (authored DTUs +
+//                           their own notifications), newest-first;
+//   - notifications-list  → STATE-backed per-user inbox + unread count;
+//   - overnight-summary   → deterministic digest of changes in the last window.
+// All start EMPTY and render honest empty states when the user has no activity.
+// Firm chat has no real channel macro yet, so it stays a local-only compose box
+// (empty by default — no fabricated history).
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -92,14 +97,71 @@ const categoryColor: Record<string, string> = {
   social: 'bg-blue-500/20 text-blue-400',
 };
 
+// ── Backend shapes (companion lens-action domain) → panel shapes ────────────
+
+interface BackendNotification {
+  id: string;
+  title: string;
+  body?: string;
+  category?: string;
+  read?: boolean;
+  at?: string;
+}
+
+interface BackendChange {
+  id: string;
+  source?: string;
+  kind?: string;
+  title?: string;
+  at?: string;
+}
+
+const CHANGE_ICON: Record<string, string> = {
+  dtu: '📜',
+  notification: '🔔',
+  build: '🏗️',
+  citation: '📜',
+  disaster: '⚠️',
+  market: '💰',
+  social: '👥',
+};
+
+function fmtTime(iso?: string): string {
+  if (!iso) return '';
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return '';
+  return new Date(t).toLocaleString();
+}
+
+function toPanelNotification(n: BackendNotification): MobileNotification {
+  return {
+    id: n.id,
+    title: n.title || 'Notification',
+    body: n.body || '',
+    timestamp: fmtTime(n.at),
+    read: !!n.read,
+    category: n.category || 'general',
+  };
+}
+
+function toPanelChange(c: BackendChange): OvernightChange {
+  const key = c.kind || c.source || 'dtu';
+  return {
+    id: c.id,
+    icon: CHANGE_ICON[key] || '•',
+    description: c.title || 'Activity',
+    timestamp: fmtTime(c.at),
+    severity: c.kind === 'disaster' ? 'critical' : c.kind === 'market' ? 'warning' : 'info',
+  };
+}
+
 // ── Component ──────────────────────────────────────────────────────
 
 export default function MobileCompanion() {
   const [activeTab, setActiveTab] = useState<MobileTab>('dashboard');
   const [pushPrefs, setPushPrefs] = useState<PushPref[]>(DEFAULT_PUSH_PREFS);
-  // No backend feed macro for these companion surfaces yet — start empty,
-  // render honest empty states. See TODO above the config block.
-  const [overnightChanges] = useState<OvernightChange[]>([]);
+  // Backed by the real "companion" domain — start empty, fill from the backend.
+  const [overnightChanges, setOvernightChanges] = useState<OvernightChange[]>([]);
   const [notifications, setNotifications] = useState<MobileNotification[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -107,22 +169,66 @@ export default function MobileCompanion() {
   const [cameraAngle, setCameraAngle] = useState(0);
   const [showQuietHours, setShowQuietHours] = useState(false);
 
+  // ── Live data from the companion lens-action domain ────────────────
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      // Notifications inbox.
+      const nres = await lensRun<{ notifications?: BackendNotification[] }>(
+        'companion', 'notifications-list', {}
+      );
+      if (!cancelled) {
+        const rows = nres.data?.result?.notifications;
+        if (Array.isArray(rows)) setNotifications(rows.map(toPanelNotification));
+      }
+      // Overnight summary (last 24h is the domain default).
+      const sres = await lensRun<{ changes?: BackendChange[] }>(
+        'companion', 'overnight-summary', {}
+      );
+      if (!cancelled) {
+        const changes = sres.data?.result?.changes;
+        if (Array.isArray(changes)) setOvernightChanges(changes.map(toPanelChange));
+      }
+      // Per-user push preferences.
+      const pres = await lensRun<{ prefs?: Record<string, boolean> }>(
+        'companion', 'push-prefs-get', {}
+      );
+      if (!cancelled) {
+        const prefs = pres.data?.result?.prefs;
+        if (prefs && typeof prefs === 'object') {
+          setPushPrefs((prev) =>
+            prev.map((p) => (p.id in prefs ? { ...p, enabled: !!prefs[p.id] } : p))
+          );
+        }
+      }
+      // Activity feed — currently surfaced as additional overnight context;
+      // fetched to confirm wiring and keep the empty-state honest.
+      await lensRun<{ feed?: unknown[] }>('companion', 'feed', {});
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const togglePush = (id: string) => {
-    setPushPrefs((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, enabled: !p.enabled } : p))
-    );
+    setPushPrefs((prev) => {
+      const next = prev.map((p) => (p.id === id ? { ...p, enabled: !p.enabled } : p));
+      const changed = next.find((p) => p.id === id);
+      if (changed) void lensRun('companion', 'push-prefs-set', { prefs: { [id]: changed.enabled } });
+      return next;
+    });
   };
 
   const markAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    void lensRun('companion', 'notification-mark-read', { all: true });
   };
 
   const markRead = (id: string) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
+    void lensRun('companion', 'notification-mark-read', { id });
   };
 
   const sendChat = () => {
