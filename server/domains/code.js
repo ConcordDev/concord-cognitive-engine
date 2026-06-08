@@ -2046,6 +2046,16 @@ Rules:
         citations: Array.isArray(params.citations) ? params.citations : [],
         maxIterations,
       });
+      // Phase 6 — record this build into long-term memory so future turns can
+      // recall it ("last time you built X"). Best-effort; never blocks the result.
+      try {
+        const { recordAction } = await import("../lib/agent-action-log.js");
+        await recordAction(ctx?.db, {
+          userId, sessionId: params.sessionId || null, action: "code.build",
+          input: { request, language }, output: result.status, tool: "code.build",
+          outcome: result.ok ? "ok" : result.status,
+        });
+      } catch { /* memory must not break the build */ }
       return { ok: result.ok, result };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
