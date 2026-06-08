@@ -120,6 +120,23 @@ export default function registerIngestActions(registerLensAction) {
         { key: "stream", label: "Stream", type: "select", options: ["issues", "pull_requests", "commits", "releases"], required: true },
       ],
     },
+    {
+      id: "gmail", name: "Gmail", category: "saas", auth: "oauth",
+      icon: "mail", incremental: true,
+      // Least-privilege: gmail.send (fan-out) — NOT full gmail read/modify.
+      oauth: { provider: "google", scopes: ["https://www.googleapis.com/auth/gmail.send"] },
+      fields: [
+        { key: "defaultFrom", label: "Default From (optional)", type: "text", required: false },
+      ],
+    },
+    {
+      id: "slack", name: "Slack", category: "saas", auth: "oauth",
+      icon: "message-circle", incremental: false,
+      oauth: { provider: "slack", scopes: ["chat:write", "channels:read"] },
+      fields: [
+        { key: "channel", label: "Default channel", type: "text", required: false },
+      ],
+    },
   ];
   const CATALOG_BY_ID = new Map(CONNECTOR_CATALOG.map((c) => [c.id, c]));
 
@@ -165,7 +182,9 @@ export default function registerIngestActions(registerLensAction) {
         config, createdAt: now(),
         status: connector.auth === "oauth" ? "pending_oauth" : "configured",
         oauthUrl: connector.auth === "oauth"
-          ? `/api/oauth/${connector.oauth.provider}/authorize?connection=${id}`
+          ? `/api/oauth/${connector.oauth.provider}/authorize?connection=${id}` +
+            `&connector=${encodeURIComponent(connectorId)}` +
+            `&scopes=${encodeURIComponent((connector.oauth.scopes || []).join(" "))}`
           : null,
         lastSyncAt: null, cursor: null,
       };

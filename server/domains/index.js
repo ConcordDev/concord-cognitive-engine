@@ -179,6 +179,7 @@ import veterinary from './veterinary.js';
 import artistry from './artistry.js';
 import atlas from './atlas.js';
 import graph from './graph.js';
+import gmail from './gmail.js';
 import importdomain from './importdomain.js';
 import ingest from './ingest.js';
 import law from './law.js';
@@ -415,6 +416,7 @@ export default [
   artistry,
   atlas,
   graph,
+  gmail,
   importdomain,
   ingest,
   law,

@@ -995,6 +995,24 @@ export default function registerCalendarActions(registerLensAction) {
     return { ok: true, result: { accounts: listCal(s.connectedAccounts, aidCal(ctx)) } };
   });
 
+  // Track C — return the connector-OAuth authorize URL the frontend redirects to
+  // so the user grants real Google Calendar access. Tokens persist under
+  // connector_id "google_calendar" (what writeGoogleCalendarEvent reads). Scope
+  // is least-privilege calendar.events (read/write events, not the whole calendar).
+  registerLensAction("calendar", "accounts-connect-google", (_ctx, _a, params = {}) => {
+    const scope = "https://www.googleapis.com/auth/calendar.events";
+    const qs = new URLSearchParams({ token_key: "google_calendar", scopes: scope });
+    if (params.redirect) qs.set("redirect", String(params.redirect));
+    return {
+      ok: true,
+      result: {
+        provider: "google",
+        authorizeUrl: `/api/oauth/google/authorize?${qs.toString()}`,
+        scopes: [scope],
+      },
+    };
+  });
+
   // Track C — push an event back to the provider (real two-way sync). Honors the
   // account's direction (pull accounts refuse) and only supports providers with a
   // real connector client (Google today). Returns honest reasons; when no OAuth

@@ -11,10 +11,12 @@
 
 import { useMemo, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import type { ConKayState } from './conkay-persona';
 import { CONKAY_STATE_COLOR } from './ConKayHud';
 import { useConkayHudStore } from './conkayHudStore';
+import HolographicMaterial from './HolographicMaterial';
 
 // Cosmic palette for the galaxy-discs (the lattice canopy).
 const GALAXY_PALETTE = ['#22d3ee', '#a855f7', '#34d399', '#fb7185', '#7dd3fc', '#c084fc', '#5eead4', '#f0abfc'];
@@ -272,6 +274,36 @@ function OrbitalRings() {
   );
 }
 
+// Phase 3 — a holographic fresnel/scanline shell wrapping the trunk. Its glow
+// intensity is driven by ConKay's REAL state (brightens while a macro is in
+// flight, tints to the active state color), and its scanlines scroll on uTime.
+// No ambient "progress" — when ConKay is idle it settles to a low rim glow.
+function HoloShell({ stateRef }: { stateRef: React.MutableRefObject<ConKayState> }) {
+  const mat = useMemo(() => {
+    const m = new (HolographicMaterial as unknown as { new (): THREE.ShaderMaterial & Record<string, unknown> })();
+    m.transparent = true;
+    m.blending = THREE.AdditiveBlending;
+    m.depthWrite = false;
+    m.side = THREE.DoubleSide;
+    return m;
+  }, []);
+  const tint = useMemo(() => new THREE.Color('#22d3ee'), []);
+  useFrame((_, dt) => {
+    const u = mat as unknown as { uTime: number; uIntensity: number; uFresnelColor: THREE.Color };
+    u.uTime += dt;
+    const inFlight = useConkayHudStore.getState().inFlight;
+    const target = inFlight > 0 ? 0.95 : 0.4;
+    u.uIntensity += (target - u.uIntensity) * Math.min(1, dt * 2.2);
+    tint.set(CONKAY_STATE_COLOR[stateRef.current] || '#22d3ee');
+    u.uFresnelColor.lerp(tint, Math.min(1, dt * 2));
+  });
+  return (
+    <mesh material={mat} position={[0, 1.15, 0]} scale={[1.5, 3.3, 1.5]}>
+      <icosahedronGeometry args={[1, 3]} />
+    </mesh>
+  );
+}
+
 function Scene({ stateRef, amplitudeRef }: {
   stateRef: React.MutableRefObject<ConKayState>;
   amplitudeRef: React.MutableRefObject<number>;
@@ -283,19 +315,29 @@ function Scene({ stateRef, amplitudeRef }: {
     <group position={[0, -1.0, 0]} scale={1.35}>
       <Shards />
       <EnergyTrunk stateRef={stateRef} amplitudeRef={amplitudeRef} />
+      <HoloShell stateRef={stateRef} />
       <GalaxyCanopy stateRef={stateRef} amplitudeRef={amplitudeRef} tex={tex} />
       <OrbitalRings />
     </group>
   );
 }
 
-export function ConKayScene({ state, amplitudeRef, className }: {
+export function ConKayScene({ state, amplitudeRef, className, bloom }: {
   state: ConKayState;
   amplitudeRef: React.MutableRefObject<number>;
   className?: string;
+  /** Phase 3 Bloom post-pass. Defaults on, off when the user prefers reduced motion. */
+  bloom?: boolean;
 }) {
   const stateRef = useRef<ConKayState>(state);
   stateRef.current = state;
+  // Respect reduced-motion + allow an explicit opt-out. The Canvas itself keeps
+  // its GL-crash → 2D fallback (ConKayBackdrop dynamic loader) regardless.
+  const enableBloom = useMemo(() => {
+    if (bloom === false) return false;
+    if (typeof window === 'undefined') return true;
+    return !window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  }, [bloom]);
   return (
     <div className={className} aria-hidden>
       <Canvas
@@ -305,6 +347,11 @@ export function ConKayScene({ state, amplitudeRef, className }: {
         dpr={[1, 1.75]}
       >
         <Scene stateRef={stateRef} amplitudeRef={amplitudeRef} />
+        {enableBloom && (
+          <EffectComposer>
+            <Bloom mipmapBlur luminanceThreshold={0.15} luminanceSmoothing={0.4} intensity={0.7} />
+          </EffectComposer>
+        )}
       </Canvas>
     </div>
   );
