@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ds } from '@/lib/design-system';
+import { lensRun } from '@/lib/api/client';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -54,35 +55,54 @@ const SEASON_CONFIG: Record<Season, { icon: string; color: string; weather: stri
   winter: { icon: '❄️', color: 'text-blue-300', weather: 'Snow accumulation tests roof loads. Freeze-thaw cycles.' },
 };
 
-const SEED_EVENTS: SeasonalEventData[] = [
-  { id: 'evt-spring-fest', name: 'Spring Engineering Festival', season: 'spring', startDate: '2026-03-20', endDate: '2026-04-10', description: 'Celebrate new builds with bonus citation rates.', type: 'festival' },
-  { id: 'evt-summer-comp', name: 'Summer Bridge Challenge', season: 'summer', startDate: '2026-06-15', endDate: '2026-07-15', description: 'Design bridges that survive extreme heat expansion.', type: 'competition' },
-  { id: 'evt-fall-harvest', name: 'Fall Harvest Market', season: 'fall', startDate: '2026-10-01', endDate: '2026-10-31', description: 'Special marketplace rates and rare material drops.', type: 'holiday' },
-  { id: 'evt-winter-stress', name: 'Winter Stress Test Derby', season: 'winter', startDate: '2026-12-20', endDate: '2027-01-05', description: 'Buildings tested under blizzard + earthquake simultaneously.', type: 'challenge' },
-];
-
-const SEED_CHALLENGE: MonthlyChallenge = {
-  id: 'mc-apr-2026', title: 'Bridge Builder Challenge', description: 'Design a pedestrian bridge rated for 200+ occupants',
-  objective: 'Build and validate a pedestrian bridge', progress: 0, maxProgress: 1,
-  reward: { type: 'title', value: 'Bridge Master' }, leaderboardId: 'lb-bridge-apr',
-};
-
-const SEED_COMPETITION: AnnualCompetition = {
-  id: 'ac-2026', title: '2026 Concordia Grand Design Awards',
-  categories: ['Best Residential', 'Best Infrastructure', 'Most Innovative Material Use', 'Strongest Structure', 'Best Fantasy World'],
-  submissionDeadline: '2026-11-30', prizes: ['1000 Concord Coin', '500 Concord Coin', '250 Concord Coin'], entryCount: 347,
-};
+// Wired to the `seasonal` lens-action domain (server/domains/seasonal.js):
+//   - events-list derives REAL content from the Concordia season calendar
+//     (server/lib/seasons.js — 6 seasons × 7-day = 42-day year).
+//   - challenges-list / competitions-list return the user's STATE-backed CRUD.
+// Each tab shows an honest empty state until there's data. Callers may still
+// pass real `events`/`challenges`/`competitions` via props to override.
 
 // ── Component ──────────────────────────────────────────────────────
 
 export default function SeasonalContent({
-  currentSeason = 'spring',
-  events = SEED_EVENTS,
-  challenges = [SEED_CHALLENGE],
-  competitions = [SEED_COMPETITION],
+  currentSeason: currentSeasonProp = 'spring',
+  events: eventsProp = [],
+  challenges: challengesProp = [],
+  competitions: competitionsProp = [],
   onJoinChallenge,
 }: SeasonalContentProps) {
   const [selectedTab, setSelectedTab] = useState<'events' | 'challenges' | 'competitions'>('events');
+
+  const [events, setEvents] = useState<SeasonalEventData[]>(eventsProp);
+  const [challenges, setChallenges] = useState<MonthlyChallenge[]>(challengesProp);
+  const [competitions, setCompetitions] = useState<AnnualCompetition[]>(competitionsProp);
+  const [currentSeason, setCurrentSeason] = useState<Season>(currentSeasonProp);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [ev, ch, co] = await Promise.all([
+          lensRun('seasonal', 'events-list', {}),
+          lensRun('seasonal', 'challenges-list', {}),
+          lensRun('seasonal', 'competitions-list', {}),
+        ]);
+        if (cancelled) return;
+        const evResult = ev.data?.result as
+          | { events?: SeasonalEventData[]; currentSeason?: Season }
+          | null;
+        if (evResult?.events) setEvents(evResult.events);
+        if (evResult?.currentSeason) setCurrentSeason(evResult.currentSeason);
+        const chList = (ch.data?.result as { challenges?: MonthlyChallenge[] } | null)?.challenges;
+        if (chList) setChallenges(chList);
+        const coList = (co.data?.result as { competitions?: AnnualCompetition[] } | null)?.competitions;
+        if (coList) setCompetitions(coList);
+      } catch {
+        /* keep prop defaults / empty states on failure */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const seasonInfo = SEASON_CONFIG[currentSeason];
   const seasonEvents = useMemo(() => events.filter(e => e.season === currentSeason), [events, currentSeason]);
@@ -137,6 +157,9 @@ export default function SeasonalContent({
       {/* Tab Content */}
       {selectedTab === 'events' && (
         <div className="space-y-2">
+          {events.length === 0 && (
+            <p className="text-center text-white/30 text-xs py-6">No seasonal events yet</p>
+          )}
           {events.map(evt => (
             <div key={evt.id} className="flex items-center justify-between p-2 bg-white/5 rounded">
               <div>
@@ -156,6 +179,9 @@ export default function SeasonalContent({
 
       {selectedTab === 'challenges' && (
         <div className="space-y-3">
+          {challenges.length === 0 && (
+            <p className="text-center text-white/30 text-xs py-6">No active challenges yet</p>
+          )}
           {challenges.map(ch => (
             <div key={ch.id} className="p-3 bg-white/5 rounded-lg">
               <h4 className="text-white font-semibold">{ch.title}</h4>
@@ -180,6 +206,9 @@ export default function SeasonalContent({
 
       {selectedTab === 'competitions' && (
         <div className="space-y-3">
+          {competitions.length === 0 && (
+            <p className="text-center text-white/30 text-xs py-6">No competitions yet</p>
+          )}
           {competitions.map(comp => (
             <div key={comp.id} className="p-3 bg-white/5 rounded-lg">
               <h4 className="text-white font-semibold">{comp.title}</h4>

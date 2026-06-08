@@ -538,3 +538,199 @@ describe("food — suggestMeals (calc, dietary filter)", () => {
     assert.equal(rb.ingredientsAvailable, 2);
   });
 });
+
+// ── APPENDED (Track A depth-fleet, 2nd pass): remaining uncovered deterministic
+// list/detail/map macros. Skipped still: vision, vision-identify,
+// recipe-substitute, recipe-import-url, meal-plan-generate, barcode-lookup,
+// feed (all fetch/brain/vision — non-deterministic, gated by no-egress preload).
+
+describe("food — directory list reads + not-found rejections (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("food-listreads"); });
+
+  it("biz-list returns every created business with the live count", async () => {
+    const a = await lensRun("food", "biz-create", { params: { name: "List One", cuisine: "ramen" } }, ctx);
+    const b = await lensRun("food", "biz-create", { params: { name: "List Two", cuisine: "ramen" } }, ctx);
+    const list = await lensRun("food", "biz-list", {}, ctx);
+    assert.equal(list.result.count, list.result.businesses.length);
+    assert.ok(list.result.businesses.some((x) => x.id === a.result.business.id));
+    assert.ok(list.result.businesses.some((x) => x.id === b.result.business.id));
+    assert.ok(list.result.count >= 2);
+  });
+
+  it("photo-list returns the photos for a business and rejects an unknown business", async () => {
+    const biz = await lensRun("food", "biz-create", { params: { name: "Photo List Cafe", cuisine: "thai" } }, ctx);
+    const bizId = biz.result.business.id;
+    const p1 = await lensRun("food", "photo-add", { params: { bizId, caption: "plate", url: "http://x/1.jpg" } }, ctx);
+    const listed = await lensRun("food", "photo-list", { params: { bizId } }, ctx);
+    assert.equal(listed.result.photos.length, 1);
+    assert.equal(listed.result.photos[0].id, p1.result.photo.id);
+    const bad = await lensRun("food", "photo-list", { params: { bizId: "nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("business not found"));
+  });
+
+  it("collection-list reports each collection with its bizCount", async () => {
+    const biz = await lensRun("food", "biz-create", { params: { name: "Col Spot", cuisine: "korean" } }, ctx);
+    const col = await lensRun("food", "collection-create", { params: { name: "Brunch Picks" } }, ctx);
+    await lensRun("food", "collection-add-biz", { params: { collectionId: col.result.collection.id, bizId: biz.result.business.id } }, ctx);
+    const list = await lensRun("food", "collection-list", {}, ctx);
+    const row = list.result.collections.find((c) => c.id === col.result.collection.id);
+    assert.equal(row.bizCount, 1);
+    assert.equal(list.result.count, list.result.collections.length);
+  });
+
+  it("reservation-list returns the user's reservations sorted by dateTime", async () => {
+    const biz = await lensRun("food", "biz-create", { params: { name: "Resv List", cuisine: "french" } }, ctx);
+    const bizId = biz.result.business.id;
+    await lensRun("food", "reservation-create", { params: { bizId, partySize: 2, dateTime: "2026-09-10T20:00" } }, ctx);
+    await lensRun("food", "reservation-create", { params: { bizId, partySize: 2, dateTime: "2026-09-05T18:00" } }, ctx);
+    const list = await lensRun("food", "reservation-list", {}, ctx);
+    const dts = list.result.reservations.map((r) => r.dateTime);
+    const earlier = dts.indexOf("2026-09-05T18:00");
+    const later = dts.indexOf("2026-09-10T20:00");
+    assert.ok(earlier >= 0 && later >= 0);
+    assert.ok(earlier < later);   // ascending dateTime order
+  });
+});
+
+describe("food — waitlist-status recomputes live position (shared biz)", () => {
+  it("waitlist-status reflects the joiner's recomputed position + estimated wait", async () => {
+    const owner = await depthCtx("food-wlstatus-owner");
+    const userA = await depthCtx("food-wlstatus-a");
+    const userB = await depthCtx("food-wlstatus-b");
+    const biz = await lensRun("food", "biz-create", { params: { name: "Status Bar", cuisine: "tapas" } }, owner);
+    const bizId = biz.result.business.id;
+    // A joins first (party 2), B joins second (party 8)
+    await lensRun("food", "waitlist-join", { params: { bizId, partySize: 2 } }, userA);
+    const bJoin = await lensRun("food", "waitlist-join", { params: { bizId, partySize: 8 } }, userB);
+    // B's status: position 2 → est = (2-1)*12 + ceil(8/4)*5 = 12 + 10 = 22
+    const status = await lensRun("food", "waitlist-status", {}, userB);
+    const mine = status.result.entries.find((e) => e.id === bJoin.result.entry.id);
+    assert.ok(mine, "B should see their own waitlist entry");
+    assert.equal(mine.position, 2);
+    assert.equal(mine.estimatedWaitMin, 22);
+    assert.equal(mine.bizName, "Status Bar");
+    // After A leaves, B advances to position 1 → est = 0*12 + 10 = 10
+    const aEntries = (await lensRun("food", "waitlist-status", {}, userA)).result.entries;
+    await lensRun("food", "waitlist-leave", { params: { bizId, id: aEntries[0].id } }, userA);
+    const status2 = await lensRun("food", "waitlist-status", {}, userB);
+    const mine2 = status2.result.entries.find((e) => e.id === bJoin.result.entry.id);
+    assert.equal(mine2.position, 1);
+    assert.equal(mine2.estimatedWaitMin, 10);
+  });
+});
+
+describe("food — recipe photo gallery (shared ctx, step ordering + rejections)", () => {
+  let ctx, recipeId;
+  before(async () => {
+    ctx = await depthCtx("food-recipephotos");
+    const add = await lensRun("food", "recipe-add", { params: { title: "Layered Cake" } }, ctx);
+    recipeId = add.result.recipe.id;
+  });
+
+  it("recipe-photo-add requires recipeId and a dataUrl/url", async () => {
+    const noRecipe = await lensRun("food", "recipe-photo-add", { params: { dataUrl: "data:img" } }, ctx);
+    assert.equal(noRecipe.result.ok, false);
+    assert.ok(noRecipe.result.error.includes("recipeId required"));
+    const noUrl = await lensRun("food", "recipe-photo-add", { params: { recipeId } }, ctx);
+    assert.equal(noUrl.result.ok, false);
+    assert.ok(noUrl.result.error.includes("dataUrl or url required"));
+  });
+
+  it("recipe-photo-list orders by stepNumber (null step sorts first); delete removes the row", async () => {
+    const step2 = await lensRun("food", "recipe-photo-add", { params: { recipeId, url: "http://x/step2.jpg", stepNumber: 2 } }, ctx);
+    const step1 = await lensRun("food", "recipe-photo-add", { params: { recipeId, url: "http://x/step1.jpg", stepNumber: 1 } }, ctx);
+    const noStep = await lensRun("food", "recipe-photo-add", { params: { recipeId, url: "http://x/hero.jpg" } }, ctx);
+    const listed = await lensRun("food", "recipe-photo-list", { params: { recipeId } }, ctx);
+    assert.equal(listed.result.count, 3);
+    // null stepNumber sorts before step 1 before step 2
+    assert.equal(listed.result.photos[0].id, noStep.result.photo.id);
+    assert.equal(listed.result.photos[1].id, step1.result.photo.id);
+    assert.equal(listed.result.photos[2].id, step2.result.photo.id);
+    const del = await lensRun("food", "recipe-photo-delete", { params: { id: step2.result.photo.id } }, ctx);
+    assert.equal(del.result.deleted, step2.result.photo.id);
+    const after = await lensRun("food", "recipe-photo-list", { params: { recipeId } }, ctx);
+    assert.equal(after.result.count, 2);
+    assert.ok(!after.result.photos.some((p) => p.id === step2.result.photo.id));
+  });
+
+  it("recipe-photo-delete rejects an unknown photo id", async () => {
+    const bad = await lensRun("food", "recipe-photo-delete", { params: { id: "rpho_does_not_exist" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("photo not found"));
+  });
+});
+
+describe("food — food-discover-dashboard aggregates the user's footprint", () => {
+  it("dashboard counts businesses, reviews, check-ins, collections, reservations, waitlists", async () => {
+    const ctx = await depthCtx("food-dashboard");
+    const biz = await lensRun("food", "biz-create", { params: { name: "Dash Diner", cuisine: "american" } }, ctx);
+    const bizId = biz.result.business.id;
+    await lensRun("food", "review-create", { params: { bizId, rating: 4, text: "good" } }, ctx);
+    await lensRun("food", "checkin", { params: { bizId } }, ctx);
+    await lensRun("food", "collection-create", { params: { name: "Dash List" } }, ctx);
+    await lensRun("food", "reservation-create", { params: { bizId, partySize: 2, dateTime: "2026-10-01T19:00" } }, ctx);
+    await lensRun("food", "waitlist-join", { params: { bizId, partySize: 2 } }, ctx);
+    const dash = await lensRun("food", "food-discover-dashboard", {}, ctx);
+    assert.ok(dash.result.businesses >= 1);
+    assert.equal(dash.result.myReviews, 1);
+    assert.equal(dash.result.myCheckins, 1);
+    assert.equal(dash.result.myCollections, 1);
+    assert.equal(dash.result.upcomingReservations, 1);
+    assert.equal(dash.result.onWaitlists, 1);
+  });
+});
+
+describe("food — biz-map (haversine distance, geo filtering)", () => {
+  it("biz-map computes haversine distance, sorts nearest-first, and counts geo-less rows", async () => {
+    const ctx = await depthCtx("food-bizmap");
+    // SF-ish coords: near (37.7749,-122.4194) vs far (40.7128,-74.0060 = NYC)
+    const near = await lensRun("food", "biz-create", { params: { name: "Near Spot", cuisine: "sushi", lat: 37.7749, lng: -122.4194 } }, ctx);
+    const far = await lensRun("food", "biz-create", { params: { name: "Far Spot", cuisine: "sushi", lat: 40.7128, lng: -74.0060 } }, ctx);
+    // one business with no coords → counted in withoutGeo, excluded from markers
+    await lensRun("food", "biz-create", { params: { name: "No Geo", cuisine: "sushi" } }, ctx);
+    const map = await lensRun("food", "biz-map", { params: { cuisine: "sushi", originLat: 37.7749, originLng: -122.4194 } }, ctx);
+    const nearRow = map.result.markers.find((m) => m.id === near.result.business.id);
+    const farRow = map.result.markers.find((m) => m.id === far.result.business.id);
+    assert.equal(nearRow.distanceKm, 0);            // origin == near coords → 0 km
+    assert.ok(farRow.distanceKm > 4000);            // SF→NYC ≈ 4130 km
+    // nearest-first ordering
+    const nearIdx = map.result.markers.findIndex((m) => m.id === near.result.business.id);
+    const farIdx = map.result.markers.findIndex((m) => m.id === far.result.business.id);
+    assert.ok(nearIdx < farIdx);
+    assert.ok(map.result.withoutGeo >= 1);
+    assert.ok(nearRow.directionsUrl.includes("openstreetmap.org"));
+  });
+});
+
+describe("food — meal-plan-list + grocery-list-build (date-range reads)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("food-planreads"); });
+
+  it("meal-plan-list returns only meals inside the requested date window", async () => {
+    // seed a real plan via the recipe library + meal-plan-auto path
+    await lensRun("food", "recipe-add", { params: { title: "Window Oats", slot: "Breakfast", calories: 300 } }, ctx);
+    await lensRun("food", "meal-plan-auto", { params: { startDate: "2026-11-01", days: 2, mealsPerDay: 1 } }, ctx);
+    const inWindow = await lensRun("food", "meal-plan-list", { params: { startDate: "2026-11-01", days: 2 } }, ctx);
+    assert.equal(inWindow.result.meals.length, 2);     // 2 days × 1 slot
+    assert.ok(inWindow.result.meals.every((m) => m.date >= "2026-11-01" && m.date < "2026-11-03"));
+    // a window far in the future has no meals
+    const empty = await lensRun("food", "meal-plan-list", { params: { startDate: "2030-01-01", days: 7 } }, ctx);
+    assert.equal(empty.result.meals.length, 0);
+  });
+
+  it("grocery-list-build groups suggested items by aisle for the planned range", async () => {
+    const shop = await lensRun("food", "grocery-list-build", { params: { startDate: "2026-11-01", days: 2 } }, ctx);
+    assert.ok(Array.isArray(shop.result.byAisle));
+    assert.ok(shop.result.byAisle.some((a) => a.aisle === "Produce"));
+    assert.equal(shop.result.days, 2);
+    // each aisle group carries item rows with a name + qty + unit shape
+    for (const group of shop.result.byAisle) {
+      for (const item of group.items) {
+        assert.equal(typeof item.name, "string");
+        assert.equal(item.unit, "item");
+      }
+    }
+  });
+});

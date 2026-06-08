@@ -105,7 +105,7 @@ function SystemGuidePanel() {
     return (
       <button
         onClick={() => setCollapsed(false)}
-        className="fixed top-20 right-4 z-30 p-2 rounded-lg bg-lattice-surface border border-lattice-border hover:bg-lattice-border/50 transition-colors"
+        className="fixed bottom-6 left-6 z-30 p-2 rounded-lg bg-lattice-surface border border-lattice-border hover:bg-lattice-border/50 transition-colors"
         title="Expand Guide"
       >
         <Lightbulb className="w-4 h-4 text-neon-blue" />

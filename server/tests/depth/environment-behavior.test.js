@@ -216,3 +216,305 @@ describe("environment — carbon accounting CRUD + calc (shared ctx)", () => {
     assert.equal(r.result.activeTargets, 1);            // Net-50 created above
   });
 });
+
+describe("environment — supplier portal CRUD round-trips (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("environment-suppliers"); });
+
+  it("suppliers-add: persists a supplier and reads it back; rejects missing name/email", async () => {
+    const add = await lensRun("environment", "suppliers-add", {
+      params: { name: "Acme Steel", email: "esg@acme.example", contactName: "Pat", spendUsd: 250000, categoryCode: "C1" },
+    }, ctx);
+    assert.equal(add.ok, true);
+    assert.equal(add.result.supplier.name, "Acme Steel");
+    assert.equal(add.result.supplier.spendUsd, 250000);
+    assert.equal(add.result.supplier.invitationStatus, "not_invited");
+    assert.equal(add.result.supplier.reportedCo2eTonnes, null);
+
+    const list = await lensRun("environment", "suppliers-list", {}, ctx);
+    assert.ok(list.result.suppliers.some((x) => x.id === add.result.supplier.id));
+
+    const bad = await lensRun("environment", "suppliers-add", { params: { name: "No Email" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /name and email required/);
+  });
+
+  it("suppliers-invite → suppliers-record-disclosure: status walks not_invited → invited → responded", async () => {
+    const add = await lensRun("environment", "suppliers-add", { params: { name: "Beta Logistics", email: "co2@beta.example" } }, ctx);
+    const id = add.result.supplier.id;
+
+    const inv = await lensRun("environment", "suppliers-invite", { params: { id } }, ctx);
+    assert.equal(inv.ok, true);
+    assert.equal(inv.result.supplier.invitationStatus, "invited");
+    assert.ok(inv.result.supplier.portalToken);
+    assert.ok(inv.result.portalLink.startsWith("/supplier-portal/"));
+
+    const disc = await lensRun("environment", "suppliers-record-disclosure", { params: { id, co2eTonnes: 42.567, year: "2025" } }, ctx);
+    assert.equal(disc.ok, true);
+    assert.equal(disc.result.supplier.invitationStatus, "responded");
+    assert.equal(disc.result.supplier.reportedCo2eTonnes, 42.57);   // rounded to 2dp
+    assert.equal(disc.result.supplier.reportingYear, "2025");
+  });
+
+  it("suppliers-invite: unknown id is rejected; suppliers-record-disclosure rejects negative tonnes", async () => {
+    const inv = await lensRun("environment", "suppliers-invite", { params: { id: "sup-nope" } }, ctx);
+    assert.equal(inv.result.ok, false);
+    assert.match(inv.result.error, /supplier not found/);
+
+    const add = await lensRun("environment", "suppliers-add", { params: { name: "Gamma", email: "g@x.example" } }, ctx);
+    const neg = await lensRun("environment", "suppliers-record-disclosure", { params: { id: add.result.supplier.id, co2eTonnes: -1 } }, ctx);
+    assert.equal(neg.result.ok, false);
+    assert.match(neg.result.error, /co2eTonnes must be >= 0/);
+  });
+});
+
+describe("environment — targets / projects / RECs / offsets lifecycle (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("environment-lifecycle"); });
+
+  it("targets-create then targets-list returns it; targets-progress computes on-track against a base year", async () => {
+    // base 2020, target 2030, 50% reduction off 1000t. With no current-year activity,
+    // currentEmissions = 0, so reductionAchieved = 100% which beats expected → onTrack.
+    const t = await lensRun("environment", "targets-create", {
+      params: { name: "Track-50", baseYear: 2020, targetYear: 2030, baseCo2eTonnes: 1000, reductionPct: 50, scopes: [1, 2] },
+    }, ctx);
+    assert.equal(t.ok, true);
+    const id = t.result.target.id;
+
+    const list = await lensRun("environment", "targets-list", {}, ctx);
+    assert.ok(list.result.targets.some((x) => x.id === id));
+
+    const prog = await lensRun("environment", "targets-progress", { params: { id } }, ctx);
+    assert.equal(prog.ok, true);
+    assert.equal(prog.result.target.id, id);
+    assert.equal(prog.result.currentEmissions, 0);          // no current-year activity in this ctx
+    assert.equal(prog.result.reductionAchievedPct, 100);    // (1000−0)/1000*100
+    assert.equal(prog.result.onTrack, true);
+    assert.equal(prog.result.gapToTarget, -500);            // 0 − 500 target
+  });
+
+  it("targets-progress: unknown target id is rejected", async () => {
+    const r = await lensRun("environment", "targets-progress", { params: { id: "tgt-nope" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /target not found/);
+  });
+
+  it("projects-create → projects-update-status: proposed → completed stamps actual reduction; rejects bad status", async () => {
+    const p = await lensRun("environment", "projects-create", {
+      params: { name: "Heat-pump swap", description: "replace gas boilers", expectedReductionTonnesPerYear: 80, costUsd: 120000, paybackYears: 6 },
+    }, ctx);
+    assert.equal(p.ok, true);
+    assert.equal(p.result.project.status, "proposed");
+    assert.equal(p.result.project.expectedReductionTonnesPerYear, 80);
+    assert.equal(p.result.project.actualReductionTonnes, 0);
+    const id = p.result.project.id;
+
+    const list = await lensRun("environment", "projects-list", {}, ctx);
+    assert.ok(list.result.projects.some((x) => x.id === id));
+
+    const done = await lensRun("environment", "projects-update-status", { params: { id, status: "completed", actualReductionTonnes: 75 } }, ctx);
+    assert.equal(done.ok, true);
+    assert.equal(done.result.project.status, "completed");
+    assert.equal(done.result.project.actualReductionTonnes, 75);
+    assert.ok(done.result.project.completedAt);
+
+    const bad = await lensRun("environment", "projects-update-status", { params: { id, status: "frobnicate" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /invalid status/);
+
+    const noProj = await lensRun("environment", "projects-update-status", { params: { id: "prj-nope", status: "approved" } }, ctx);
+    assert.equal(noProj.result.ok, false);
+    assert.match(noProj.result.error, /project not found/);
+  });
+
+  it("projects-create rejects a missing name", async () => {
+    const r = await lensRun("environment", "projects-create", { params: { description: "no name" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /name required/);
+  });
+
+  it("recs-purchase → recs-list: a purchased REC appears; recs-purchase rejects non-positive mwh", async () => {
+    const buy = await lensRun("environment", "recs-purchase", { params: { mwh: 25, tech: "solar", registry: "M-RETS" } }, ctx);
+    assert.equal(buy.ok, true);
+    assert.equal(buy.result.rec.tech, "solar");
+    assert.equal(buy.result.rec.registry, "M-RETS");
+    assert.equal(buy.result.rec.status, "purchased");
+
+    const list = await lensRun("environment", "recs-list", {}, ctx);
+    assert.ok(list.result.recs.some((x) => x.id === buy.result.rec.id));
+
+    const zero = await lensRun("environment", "recs-purchase", { params: { mwh: 0 } }, ctx);
+    assert.equal(zero.result.ok, false);
+    assert.match(zero.result.error, /mwh must be > 0/);
+  });
+
+  it("recs-purchase coerces an invalid tech/registry to safe defaults", async () => {
+    const buy = await lensRun("environment", "recs-purchase", { params: { mwh: 10, tech: "fusion", registry: "BOGUS" } }, ctx);
+    assert.equal(buy.ok, true);
+    assert.equal(buy.result.rec.tech, "solar");      // default
+    assert.equal(buy.result.rec.registry, "WREGIS"); // default
+  });
+
+  it("offsets-purchase → offsets-list → offsets-retire: retires once, second retire rejected", async () => {
+    const buy = await lensRun("environment", "offsets-purchase", {
+      params: { tonnes: 100, project: "Mangrove REDD+", kind: "forestry_redd", registry: "Verra_VCS" },
+    }, ctx);
+    assert.equal(buy.ok, true);
+    assert.equal(buy.result.offset.tonnes, 100);
+    assert.equal(buy.result.offset.status, "purchased");
+    const id = buy.result.offset.id;
+
+    const list = await lensRun("environment", "offsets-list", {}, ctx);
+    assert.ok(list.result.offsets.some((x) => x.id === id));
+
+    const retire = await lensRun("environment", "offsets-retire", { params: { id, reason: "compliance" } }, ctx);
+    assert.equal(retire.ok, true);
+    assert.equal(retire.result.offset.status, "retired");
+    assert.equal(retire.result.offset.retirementReason, "compliance");
+
+    const again = await lensRun("environment", "offsets-retire", { params: { id } }, ctx);
+    assert.equal(again.result.ok, false);
+    assert.match(again.result.error, /offset already retired/);
+  });
+
+  it("offsets-purchase rejects non-positive tonnes; offsets-retire rejects unknown id", async () => {
+    const zero = await lensRun("environment", "offsets-purchase", { params: { tonnes: 0 } }, ctx);
+    assert.equal(zero.result.ok, false);
+    assert.match(zero.result.error, /tonnes must be > 0/);
+
+    const nope = await lensRun("environment", "offsets-retire", { params: { id: "off-nope" } }, ctx);
+    assert.equal(nope.result.ok, false);
+    assert.match(nope.result.error, /offset not found/);
+  });
+});
+
+describe("environment — activity verification + audit trail + reporting (shared ctx)", () => {
+  let ctx;
+  let activityId;
+  before(async () => {
+    ctx = await depthCtx("environment-audit");
+    // seed two activities the report/trend/audit macros aggregate over
+    const a = await lensRun("environment", "activities-log", {
+      params: { factorKey: "diesel_gallon", amount: 200, date: "2024-04-01", facility: "Plant A" },
+    }, ctx);
+    activityId = a.result.activity.id;
+    await lensRun("environment", "activities-log", {
+      params: { factorKey: "electricity_kwh_us_avg", amount: 1000, date: "2025-04-01", facility: "Plant A" },
+    }, ctx);
+  });
+
+  it("activity-set-verification: logs the status transition into the activity audit trail; rejects a bad status", async () => {
+    const v = await lensRun("environment", "activity-set-verification", {
+      params: { id: activityId, status: "verified", verifier: "Auditor Co", note: "matched fuel receipts" },
+    }, ctx);
+    assert.equal(v.ok, true);
+    assert.equal(v.result.activity.verificationStatus, "verified");
+    assert.equal(v.result.activity.verifier, "Auditor Co");
+    assert.ok(Array.isArray(v.result.activity.auditTrail));
+    const last = v.result.activity.auditTrail[v.result.activity.auditTrail.length - 1];
+    assert.equal(last.action, "verification_change");
+    assert.equal(last.from, "unverified");
+    assert.equal(last.to, "verified");
+
+    const bad = await lensRun("environment", "activity-set-verification", { params: { id: activityId, status: "wibble" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /status must be unverified/);
+
+    const noAct = await lensRun("environment", "activity-set-verification", { params: { id: "env-nope", status: "verified" } }, ctx);
+    assert.equal(noAct.result.ok, false);
+    assert.match(noAct.result.error, /activity not found/);
+  });
+
+  it("audit-trail: surfaces the logged + verification events and a status rollup", async () => {
+    const r = await lensRun("environment", "audit-trail", {}, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.totalActivities, 2);
+    // the verified diesel row contributes a 'logged' event AND a 'verification_change' event
+    assert.ok(r.result.events.some((e) => e.action === "logged" && e.activityId === activityId));
+    assert.ok(r.result.events.some((e) => e.action === "verification_change" && e.to === "verified"));
+    assert.equal(r.result.statusRollup.verified, 1);
+    assert.equal(r.result.statusRollup.unverified, 1);
+  });
+
+  it("audit-trail: scoped to a single activity id; unknown id is rejected", async () => {
+    const scoped = await lensRun("environment", "audit-trail", { params: { id: activityId } }, ctx);
+    assert.equal(scoped.ok, true);
+    assert.ok(scoped.result.events.every((e) => e.activityId === activityId));
+
+    const nope = await lensRun("environment", "audit-trail", { params: { id: "env-nope" } }, ctx);
+    assert.equal(nope.result.ok, false);
+    assert.match(nope.result.error, /activity not found/);
+  });
+
+  it("emissions-trend: builds an inclusive year series with YoY deltas across the two logged years", async () => {
+    const r = await lensRun("environment", "emissions-trend", {}, ctx);
+    assert.equal(r.ok, true);
+    const y2024 = r.result.series.find((row) => row.year === "2024");
+    const y2025 = r.result.series.find((row) => row.year === "2025");
+    assert.ok(y2024);
+    assert.ok(y2025);
+    // diesel 200gal × 10.21 = 2042 kg = 2.04 t; electricity 1000kWh × 0.371 = 0.371 t = 0.37 t
+    assert.equal(y2024.actual, 2.04);
+    assert.equal(y2025.actual, 0.37);
+    // YoY 2024→2025: (0.37 − 2.04)/2.04 × 100 ≈ −81.86
+    assert.equal(y2025.yoyPct, -81.86);
+  });
+
+  it("inventory-report: GHG-Protocol report rolls scope totals + net of retired offsets", async () => {
+    const r = await lensRun("environment", "inventory-report", { params: { year: "2024", organization: "Plant A Inc" } }, ctx);
+    assert.equal(r.ok, true);
+    const rep = r.result.report;
+    assert.equal(rep.framework, "GHG_Protocol");
+    assert.equal(rep.organization, "Plant A Inc");
+    assert.equal(rep.reportingYear, "2024");
+    // only the diesel row is in 2024 (scope 1, 2.04 t)
+    assert.equal(rep.scopes.scope1.totalTonnes, 2.04);
+    assert.equal(rep.scopes.scope1.lineItemCount, 1);
+    assert.equal(rep.summary.grossEmissionsTonnes, 2.04);
+    assert.equal(rep.summary.netEmissionsTonnes, 2.04);   // no retired offsets in this ctx
+    assert.equal(rep.summary.verifiedLineItems, 1);       // the diesel row was verified above
+    assert.equal(rep.summary.verifiedPct, 100);
+  });
+});
+
+describe("environment — activities-delete round-trip", () => {
+  it("activities-delete removes a logged activity; deleting again reports not-found", async () => {
+    const ctx = await depthCtx("environment-delete");
+    const log = await lensRun("environment", "activities-log", {
+      params: { factorKey: "diesel_gallon", amount: 10, date: "2026-01-01" },
+    }, ctx);
+    const id = log.result.activity.id;
+
+    const del = await lensRun("environment", "activities-delete", { params: { id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, true);
+    assert.equal(del.result.id, id);
+
+    const list = await lensRun("environment", "activities-list", {}, ctx);
+    assert.ok(!list.result.activities.some((a) => a.id === id));
+
+    const again = await lensRun("environment", "activities-delete", { params: { id } }, ctx);
+    assert.equal(again.result.ok, false);
+    assert.match(again.result.error, /activity not found/);
+  });
+});
+
+describe("environment — external-API macros assert the deterministic pre-fetch validation branch (no egress)", () => {
+  it("epa-ejscreen: missing lat/lng is rejected before any network call", async () => {
+    const r = await lensRun("environment", "epa-ejscreen", { params: {} });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /lat and lng required/);
+  });
+
+  it("noaa-climate-stations: an unconfigured NOAA token is reported before any network call", async () => {
+    const prior = process.env.NOAA_CDO_TOKEN;
+    delete process.env.NOAA_CDO_TOKEN;
+    try {
+      const r = await lensRun("environment", "noaa-climate-stations", { params: { lat: 40, lng: -74 } });
+      assert.equal(r.result.ok, false);
+      assert.match(r.result.error, /NOAA_CDO_TOKEN not configured/);
+    } finally {
+      if (prior !== undefined) process.env.NOAA_CDO_TOKEN = prior;
+    }
+  });
+});

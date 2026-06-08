@@ -221,4 +221,195 @@ describe("landscaping — plant health diary (round-trip + filter)", () => {
     assert.equal(r.result.ok, false);
     assert.match(String(r.result.error), /plant name required/i);
   });
+
+  it("diary-delete: removes a diary entry; unknown id rejects", async () => {
+    const add = await lensRun("landscaping", "diary-add", { params: { plant: "Peach", date: "2026-06-01" } }, ctx);
+    const id = add.result.entry.id;
+    const del = await lensRun("landscaping", "diary-delete", { params: { id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, id);
+    const tl = await lensRun("landscaping", "diary-timeline", { params: { plant: "Peach" } }, ctx);
+    assert.equal(tl.result.count, 0, "deleted Peach entry is gone");
+    const bad = await lensRun("landscaping", "diary-delete", { params: { id: "missing" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /diary entry not found/i);
+  });
+});
+
+describe("landscaping — seasonal plan (4-season schedule + month-derived current season)", () => {
+  it("seasonalPlan: returns all four seasons; currentSeason matches the month table; immediateActions echoes it", async () => {
+    const r = await lensRun("landscaping", "seasonalPlan", { data: { hardnessZone: 7 } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.zone, 7);
+    // each season has its full authored task list
+    assert.equal(r.result.plan.spring.length, 5);
+    assert.equal(r.result.plan.summer.length, 5);
+    assert.equal(r.result.plan.fall.length, 5);
+    assert.equal(r.result.plan.winter.length, 5);
+    assert.ok(r.result.plan.spring.includes("Plant annuals"), "spring includes Plant annuals");
+    // currentSeason is derived from the month table — assert it matches the same table
+    const expected = ["winter","winter","spring","spring","spring","summer","summer","summer","fall","fall","fall","winter"][new Date().getMonth()];
+    assert.equal(r.result.currentSeason, expected);
+    // immediateActions is exactly the plan for the current season
+    assert.deepEqual(r.result.immediateActions, r.result.plan[expected]);
+  });
+
+  it("seasonalPlan: defaults zone to 7 when omitted", async () => {
+    const r = await lensRun("landscaping", "seasonalPlan", { data: {} });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.zone, 7);
+  });
+});
+
+describe("landscaping — dashboard aggregation (counts roll up across beds)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("landscaping-dash"); });
+
+  it("landscaping-dashboard: aggregates bed count, total sqft, plantings and care events", async () => {
+    // start clean (fresh ctx → empty store)
+    const empty = await lensRun("landscaping", "landscaping-dashboard", { params: {} }, ctx);
+    assert.equal(empty.ok, true);
+    assert.equal(empty.result.beds, 0);
+    assert.equal(empty.result.totalSqft, 0);
+
+    const b1 = await lensRun("landscaping", "bed-add", { params: { name: "Plot A", sizeSqft: 100 } }, ctx);
+    const b2 = await lensRun("landscaping", "bed-add", { params: { name: "Plot B", sizeSqft: 50 } }, ctx);
+    await lensRun("landscaping", "planting-add", { params: { bedId: b1.result.bed.id, plant: "Basil", quantity: 3 } }, ctx);
+    await lensRun("landscaping", "planting-add", { params: { bedId: b2.result.bed.id, plant: "Mint" } }, ctx);
+    await lensRun("landscaping", "care-log", { params: { bedId: b1.result.bed.id, kind: "water" } }, ctx);
+
+    const dash = await lensRun("landscaping", "landscaping-dashboard", { params: {} }, ctx);
+    assert.equal(dash.ok, true);
+    assert.equal(dash.result.beds, 2);
+    assert.equal(dash.result.totalSqft, 150, "100 + 50");
+    assert.equal(dash.result.plantings, 2);
+    assert.equal(dash.result.careEvents, 1);
+  });
+});
+
+describe("landscaping — layout-delete (round-trip removal)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("landscaping-layout-del"); });
+
+  it("layout-delete: removes a created layout; unknown id rejects", async () => {
+    const created = await lensRun("landscaping", "layout-create", { params: { name: "Side Yard", plotWidthFt: 20, plotHeightFt: 15 } }, ctx);
+    const id = created.result.layout.id;
+    const del = await lensRun("landscaping", "layout-delete", { params: { id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, id);
+    const list = await lensRun("landscaping", "layout-list", { params: {} }, ctx);
+    assert.ok(!list.result.layouts.some((l) => l.id === id), "deleted layout is gone");
+    const bad = await lensRun("landscaping", "layout-delete", { params: { id: "missing" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /layout not found/i);
+  });
+
+  it("layout-create: rejects a layout with no name and clamps plot bounds to [4,2000]", async () => {
+    const noName = await lensRun("landscaping", "layout-create", { params: { plotWidthFt: 10 } }, ctx);
+    assert.equal(noName.result.ok, false);
+    assert.match(String(noName.result.error), /layout name required/i);
+    // width 1 clamps up to 4; height 9999 clamps down to 2000
+    const clamped = await lensRun("landscaping", "layout-create", { params: { name: "Tiny", plotWidthFt: 1, plotHeightFt: 9999 } }, ctx);
+    assert.equal(clamped.ok, true);
+    assert.equal(clamped.result.layout.plotWidthFt, 4);
+    assert.equal(clamped.result.layout.plotHeightFt, 2000);
+  });
+});
+
+describe("landscaping — AR photo overlay (create / place / list / delete)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("landscaping-overlay"); });
+
+  it("overlay-create → overlay-list: photo stored, heavy photoUrl not echoed, hasPhoto flagged", async () => {
+    const created = await lensRun("landscaping", "overlay-create", { params: { name: "Front", photoUrl: "data:image/png;base64,AAAA" } }, ctx);
+    assert.equal(created.ok, true);
+    assert.equal(created.result.overlay.name, "Front");
+    assert.equal(created.result.overlay.hasPhoto, true);
+    assert.equal(created.result.overlay.photoUrl, undefined, "create does not echo the heavy photoUrl");
+    const id = created.result.overlay.id;
+    const list = await lensRun("landscaping", "overlay-list", { params: {} }, ctx);
+    assert.equal(list.ok, true);
+    const found = list.result.overlays.find((o) => o.id === id);
+    assert.ok(found, "overlay listed");
+    assert.equal(found.placementCount, 0);
+  });
+
+  it("overlay-create: rejects when photoUrl missing", async () => {
+    const r = await lensRun("landscaping", "overlay-create", { params: { name: "NoPhoto" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(String(r.result.error), /photoUrl required/i);
+  });
+
+  it("overlay-place: clamps placement percentages/scale and reads back via list", async () => {
+    const created = await lensRun("landscaping", "overlay-create", { params: { photoUrl: "data:image/png;base64,BBBB" } }, ctx);
+    const overlayId = created.result.overlay.id;
+    // xPct 150 clamps to 100; yPct -10 clamps to 0; scalePct 999 clamps to 300
+    const placed = await lensRun("landscaping", "overlay-place", {
+      params: { overlayId, placements: [{ plant: "Rose", xPct: 150, yPct: -10, scalePct: 999 }] },
+    }, ctx);
+    assert.equal(placed.ok, true);
+    assert.equal(placed.result.overlay.placements.length, 1);
+    const pl = placed.result.overlay.placements[0];
+    assert.equal(pl.plant, "Rose");
+    assert.equal(pl.xPct, 100, "xPct clamped to 100");
+    assert.equal(pl.yPct, 0, "yPct clamped to 0");
+    assert.equal(pl.scalePct, 300, "scalePct clamped to 300");
+    const list = await lensRun("landscaping", "overlay-list", { params: {} }, ctx);
+    const found = list.result.overlays.find((o) => o.id === overlayId);
+    assert.equal(found.placementCount, 1);
+  });
+
+  it("overlay-place: rejects an unknown overlay id", async () => {
+    const r = await lensRun("landscaping", "overlay-place", { params: { overlayId: "nope", placements: [] } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(String(r.result.error), /overlay not found/i);
+  });
+
+  it("overlay-delete: removes an overlay; unknown id rejects", async () => {
+    const created = await lensRun("landscaping", "overlay-create", { params: { photoUrl: "data:image/png;base64,CCCC" } }, ctx);
+    const id = created.result.overlay.id;
+    const del = await lensRun("landscaping", "overlay-delete", { params: { id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, id);
+    const list = await lensRun("landscaping", "overlay-list", { params: {} }, ctx);
+    assert.ok(!list.result.overlays.some((o) => o.id === id), "deleted overlay is gone");
+    const bad = await lensRun("landscaping", "overlay-delete", { params: { id: "missing" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(String(bad.result.error), /overlay not found/i);
+  });
+});
+
+describe("landscaping — maintenance calendar (12-month schedule + bed bias)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("landscaping-cal"); });
+
+  it("maintenance-calendar (no bed): generic 12-month schedule with authored tasks", async () => {
+    const r = await lensRun("landscaping", "maintenance-calendar", { params: {} }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.generic.length, 12);
+    assert.equal(r.result.generic[0].month, "Jan");
+    assert.ok(r.result.generic[0].tasks.includes("Plan layout"), "Jan has Plan layout");
+    assert.equal(r.result.generic[11].month, "Dec");
+    assert.ok(r.result.generic[11].tasks.includes("Protect from frost"), "Dec has frost protection");
+  });
+
+  it("maintenance-calendar (per-bed): full-sun bed gets summer water bias + planting inspection", async () => {
+    const bed = await lensRun("landscaping", "bed-add", { params: { name: "Sun Bed", sizeSqft: 80, sunExposure: "full" } }, ctx);
+    const bedId = bed.result.bed.id;
+    await lensRun("landscaping", "planting-add", { params: { bedId, plant: "Sunflower", quantity: 4 } }, ctx);
+    const r = await lensRun("landscaping", "maintenance-calendar", { params: { bedId } }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.bedId, bedId);
+    assert.equal(r.result.months.length, 12);
+    // months 5,6,7 (Jun/Jul/Aug) get the full-sun extra-water bias
+    assert.ok(r.result.months[6].tasks.includes("Extra water — full sun"), "Jul biased for full sun");
+    // months 3 and 9 get the planting-inspection note (1 planting)
+    assert.ok(r.result.months[3].tasks.includes("Inspect 1 planting(s)"), "Apr inspects plantings");
+  });
+
+  it("maintenance-calendar: rejects an unknown bed id", async () => {
+    const r = await lensRun("landscaping", "maintenance-calendar", { params: { bedId: "nope" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(String(r.result.error), /bed not found/i);
+  });
 });

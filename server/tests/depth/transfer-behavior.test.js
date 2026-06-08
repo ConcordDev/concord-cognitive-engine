@@ -355,3 +355,263 @@ describe("transfer — connector + pipeline CRUD + sync (STATE round-trips)", ()
     assert.ok(due.result.due.some((d) => d.pipelineId === pipe.result.pipeline.id && d.mode === "interval"));
   });
 });
+
+describe("transfer — connector-delete + pipeline-list/delete (STATE round-trips)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("transfer-lifecycle"); });
+
+  it("connector-delete removes a connector so a follow-up read fails", async () => {
+    const up = await lensRun("transfer", "connector-upsert", {
+      params: { name: "Doomed", role: "source", kind: "inline", rows: [{ a: 1 }] },
+    }, ctx);
+    const cid = up.result.connector.id;
+
+    const del = await lensRun("transfer", "connector-delete", { params: { id: cid } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, cid);
+
+    // gone: a read of the deleted connector now errors, and the list omits it.
+    const read = await lensRun("transfer", "connector-read", { params: { id: cid } }, ctx);
+    assert.equal(read.result.ok, false);
+    assert.match(read.result.error, /not found/i);
+    const list = await lensRun("transfer", "connector-list", {}, ctx);
+    assert.equal(list.result.connectors.some((c) => c.id === cid), false);
+  });
+
+  it("connector-delete rejects an unknown id", async () => {
+    const r = await lensRun("transfer", "connector-delete", { params: { id: "conn_does_not_exist" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /not found/i);
+  });
+
+  it("pipeline-list surfaces a pipeline with its last-run summary after a sync", async () => {
+    const src = await lensRun("transfer", "connector-upsert", {
+      params: { name: "PL Src", role: "source", kind: "inline", rows: [{ id: "1", v: "x" }] },
+    }, ctx);
+    const dst = await lensRun("transfer", "connector-upsert", {
+      params: { name: "PL Dst", role: "destination", kind: "inline" },
+    }, ctx);
+    const pipe = await lensRun("transfer", "pipeline-upsert", {
+      params: {
+        name: "Listable",
+        sourceConnectorId: src.result.connector.id,
+        destConnectorId: dst.result.connector.id,
+        mappings: [{ source: "id", target: "id" }, { source: "v", target: "v" }],
+      },
+    }, ctx);
+    const pid = pipe.result.pipeline.id;
+
+    // before any run: runCount 0, lastRun null.
+    const before = await lensRun("transfer", "pipeline-list", {}, ctx);
+    const entryBefore = before.result.pipelines.find((p) => p.id === pid);
+    assert.ok(entryBefore);
+    assert.equal(entryBefore.runCount, 0);
+    assert.equal(entryBefore.lastRun, null);
+
+    // one successful sync (no validation rules → every row passes).
+    const run = await lensRun("transfer", "run-sync", { params: { pipelineId: pid } }, ctx);
+    assert.equal(run.result.run.status, "success");
+
+    const after = await lensRun("transfer", "pipeline-list", {}, ctx);
+    const entryAfter = after.result.pipelines.find((p) => p.id === pid);
+    assert.equal(entryAfter.runCount, 1);
+    assert.equal(entryAfter.lastRun.status, "success");
+    assert.equal(entryAfter.lastRun.rowsWritten, 1);
+    assert.equal(entryAfter.lastRun.rowsQuarantined, 0);
+  });
+
+  it("pipeline-delete removes a pipeline; subsequent dry-run + delete fail", async () => {
+    const src = await lensRun("transfer", "connector-upsert", {
+      params: { name: "Del Src", role: "source", kind: "inline", rows: [{ id: "1" }] },
+    }, ctx);
+    const pipe = await lensRun("transfer", "pipeline-upsert", {
+      params: { name: "ToDelete", sourceConnectorId: src.result.connector.id },
+    }, ctx);
+    const pid = pipe.result.pipeline.id;
+
+    const del = await lensRun("transfer", "pipeline-delete", { params: { id: pid } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, pid);
+
+    const dry = await lensRun("transfer", "dry-run", { params: { pipelineId: pid } }, ctx);
+    assert.equal(dry.result.ok, false);
+    assert.match(dry.result.error, /pipeline not found/i);
+
+    const delAgain = await lensRun("transfer", "pipeline-delete", { params: { id: pid } }, ctx);
+    assert.equal(delAgain.result.ok, false);
+    assert.match(delAgain.result.error, /pipeline not found/i);
+  });
+
+  it("pipeline-delete rejects an unknown id", async () => {
+    const r = await lensRun("transfer", "pipeline-delete", { params: { id: "pipe_nope" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /not found/i);
+  });
+});
+
+describe("transfer — mapping-suggest (auto-fill field mappings)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("transfer-suggest"); });
+
+  it("suggests name-similar mappings and adds a cast transform for type mismatches", async () => {
+    // Source schema inferred from inline rows: user_name(string), age(number).
+    const src = await lensRun("transfer", "connector-upsert", {
+      params: {
+        name: "Sug Src",
+        role: "source",
+        kind: "inline",
+        rows: [{ user_name: "Alice", age: 30 }, { user_name: "Bob", age: 25 }],
+      },
+    }, ctx);
+    const pipe = await lensRun("transfer", "pipeline-upsert", {
+      params: { name: "Suggestable", sourceConnectorId: src.result.connector.id },
+    }, ctx);
+
+    // explicit target schema: username(string) high-similarity, age typed string → cast.
+    const r = await lensRun("transfer", "mapping-suggest", {
+      params: {
+        pipelineId: pipe.result.pipeline.id,
+        targetSchema: [
+          { name: "username", type: "string" },
+          { name: "age", type: "string" },
+        ],
+      },
+    }, ctx);
+    assert.equal(r.ok, true);
+    const userMap = r.result.mappings.find((m) => m.source === "user_name");
+    assert.ok(userMap, "user_name should map to username (norm strips _ → 'username')");
+    assert.equal(userMap.target, "username");
+    assert.equal(userMap.confidence, 1);           // normalized names identical
+    // source string vs target string → no cast transform.
+    assert.deepEqual(userMap.transforms, []);
+    // age: source inferred number, target declared string → cast transform inserted.
+    const ageMap = r.result.mappings.find((m) => m.source === "age");
+    assert.equal(ageMap.target, "age");
+    assert.ok(ageMap.transforms.some((t) => t.type === "cast" && t.to === "string"));
+  });
+
+  it("falls back to an identity (source-mirror) mapping when no target schema is given", async () => {
+    const src = await lensRun("transfer", "connector-upsert", {
+      params: { name: "Mirror Src", role: "source", kind: "inline", rows: [{ alpha: "1", beta: "2" }] },
+    }, ctx);
+    const pipe = await lensRun("transfer", "pipeline-upsert", {
+      params: { name: "MirrorPipe", sourceConnectorId: src.result.connector.id },
+    }, ctx);
+    const r = await lensRun("transfer", "mapping-suggest", {
+      params: { pipelineId: pipe.result.pipeline.id },
+    }, ctx);
+    assert.equal(r.ok, true);
+    // identity: each source field maps to a same-named target with confidence 1.
+    const alpha = r.result.mappings.find((m) => m.source === "alpha");
+    assert.equal(alpha.target, "alpha");
+    assert.equal(alpha.confidence, 1);
+    assert.equal(r.result.unmappedSource.length, 0);
+  });
+
+  it("rejects when the pipeline does not exist", async () => {
+    const r = await lensRun("transfer", "mapping-suggest", { params: { pipelineId: "pipe_missing" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /pipeline not found/i);
+  });
+});
+
+describe("transfer — incremental change-data-capture (run-sync CDC branch)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("transfer-cdc"); });
+
+  it("first incremental run reads all rows, advances cursor; second run only reads newer rows", async () => {
+    const src = await lensRun("transfer", "connector-upsert", {
+      params: {
+        name: "CDC Src",
+        role: "source",
+        kind: "inline",
+        rows: [
+          { id: "1", updated: "2024-01-01" },
+          { id: "2", updated: "2024-01-02" },
+        ],
+      },
+    }, ctx);
+    const dst = await lensRun("transfer", "connector-upsert", {
+      params: { name: "CDC Dst", role: "destination", kind: "inline" },
+    }, ctx);
+    const pipe = await lensRun("transfer", "pipeline-upsert", {
+      params: {
+        name: "Incremental",
+        sourceConnectorId: src.result.connector.id,
+        destConnectorId: dst.result.connector.id,
+        mappings: [
+          { source: "id", target: "id" },
+          { source: "updated", target: "updated" },
+        ],
+        schedule: { mode: "incremental", cdcKey: "updated" },
+      },
+    }, ctx);
+    const pid = pipe.result.pipeline.id;
+
+    // First incremental run: no cursor yet → both rows pass, cursor advances to max "2024-01-02".
+    const run1 = await lensRun("transfer", "run-sync", { params: { pipelineId: pid } }, ctx);
+    assert.equal(run1.ok, true);
+    assert.equal(run1.result.run.mode, "incremental");
+    assert.equal(run1.result.run.rowsProcessed, 2);
+    assert.equal(run1.result.run.rowsWritten, 2);
+    assert.equal(run1.result.run.cdcCursor, "2024-01-02");
+
+    // Second incremental run with unchanged source: nothing newer than the cursor → 0 processed.
+    const run2 = await lensRun("transfer", "run-sync", { params: { pipelineId: pid } }, ctx);
+    assert.equal(run2.result.run.rowsProcessed, 0);
+    assert.equal(run2.result.run.rowsWritten, 0);
+    assert.equal(run2.result.run.cdcCursor, "2024-01-02");
+
+    // Append a newer row, then a third incremental run picks up ONLY that row.
+    await lensRun("transfer", "connector-upsert", {
+      params: {
+        id: src.result.connector.id,
+        name: "CDC Src",
+        role: "source",
+        kind: "inline",
+        rows: [
+          { id: "1", updated: "2024-01-01" },
+          { id: "2", updated: "2024-01-02" },
+          { id: "3", updated: "2024-01-03" },
+        ],
+      },
+    }, ctx);
+    const run3 = await lensRun("transfer", "run-sync", { params: { pipelineId: pid } }, ctx);
+    assert.equal(run3.result.run.rowsProcessed, 1);
+    assert.equal(run3.result.run.rowsWritten, 1);
+    assert.equal(run3.result.run.cdcCursor, "2024-01-03");
+    assert.equal(run3.result.writtenSample[0].id, "3");
+
+    // Destination accumulated all 3 across the incremental runs.
+    const dstRead = await lensRun("transfer", "connector-read", { params: { id: dst.result.connector.id } }, ctx);
+    assert.equal(dstRead.result.rowCount, 3);
+  });
+
+  it("a full-mode run on a CDC pipeline reprocesses every row regardless of cursor", async () => {
+    const src = await lensRun("transfer", "connector-upsert", {
+      params: {
+        name: "CDC Full Src",
+        role: "source",
+        kind: "inline",
+        rows: [{ id: "1", updated: "2024-05-01" }, { id: "2", updated: "2024-05-02" }],
+      },
+    }, ctx);
+    const pipe = await lensRun("transfer", "pipeline-upsert", {
+      params: {
+        name: "FullOverride",
+        sourceConnectorId: src.result.connector.id,
+        mappings: [{ source: "id", target: "id" }, { source: "updated", target: "updated" }],
+        schedule: { mode: "incremental", cdcKey: "updated" },
+      },
+    }, ctx);
+    const pid = pipe.result.pipeline.id;
+
+    // advance the cursor with an incremental run first.
+    await lensRun("transfer", "run-sync", { params: { pipelineId: pid } }, ctx);
+    // explicit full mode ignores the cursor and reprocesses both rows.
+    const full = await lensRun("transfer", "run-sync", { params: { pipelineId: pid, mode: "full" } }, ctx);
+    assert.equal(full.result.run.mode, "full");
+    assert.equal(full.result.run.rowsProcessed, 2);
+    assert.equal(full.result.run.rowsWritten, 2);
+  });
+});

@@ -36619,6 +36619,20 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
   // Platform fee
   payments.push({ recipient: "platform", amount: Math.round(platformFee * 100) / 100, type: "platform_fee" });
 
+  // Clone DTU to buyer — created BEFORE the credit loop because the
+  // idempotency key below references clone.id. (Previously the `const clone`
+  // declaration sat after this loop, so `clone.id` here hit a temporal-dead-zone
+  // ReferenceError and every PAID purchase threw before any wallet was credited.)
+  const clone = JSON.parse(JSON.stringify(dtu));
+  clone.id = uid("dtu");
+  clone.scope = "local";
+  clone.meta = clone.meta || {};
+  clone.meta.purchasedFrom = dtuId;
+  clone.meta.purchasedAt = new Date().toISOString();
+  clone.meta.owner = ctx?.actor?.userId;
+  delete clone.marketplace;
+  STATE.dtus.set(clone.id, clone);
+
   // ── ACTUALLY CREDIT WALLETS ──────────────────────────────────────
   // Every payment computed above MUST hit the wallet immediately.
   // No deferred settlement — creators get paid the instant a sale happens.
@@ -36661,17 +36675,6 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
     });
   } catch { /* XP best-effort */ }
   saveStateDebounced();
-
-  // Clone DTU to buyer
-  const clone = JSON.parse(JSON.stringify(dtu));
-  clone.id = uid("dtu");
-  clone.scope = "local";
-  clone.meta = clone.meta || {};
-  clone.meta.purchasedFrom = dtuId;
-  clone.meta.purchasedAt = new Date().toISOString();
-  clone.meta.owner = ctx?.actor?.userId;
-  delete clone.marketplace;
-  STATE.dtus.set(clone.id, clone);
 
   dtu.marketplace.purchases = (dtu.marketplace.purchases || 0) + 1;
 

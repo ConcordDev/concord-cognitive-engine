@@ -675,3 +675,251 @@ describe("finance — subscriptions + dividends-calendar + envelopes/household (
     assert.equal(rm.result.household.members.some((m) => m.userId === "partner-42"), false);
   });
 });
+
+// ════════════════════════════════════════════════════════════════════════
+// finance — coverage top-up (previously-uncovered macros)
+// ════════════════════════════════════════════════════════════════════════
+
+describe("finance — delete-side CRUD round-trips (uncovered)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("finance-cov-deletes"); });
+
+  it("bills-delete removes the bill; bills-list no longer carries it", async () => {
+    const b = await lensRun("finance", "bills-add", { params: { name: "Trash Service", amount: 35, dueDay: 5, cadence: "monthly" } }, ctx);
+    const billId = b.result.bill.id;
+    const del = await lensRun("finance", "bills-delete", { params: { id: billId } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, true);
+    assert.equal(del.result.id, billId);
+    const list = await lensRun("finance", "bills-list", {}, ctx);
+    assert.equal(list.result.bills.some((x) => x.id === billId), false);
+  });
+
+  it("bills-delete on a missing id is rejected", async () => {
+    const bad = await lensRun("finance", "bills-delete", { params: { id: "no-such-bill" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("bill not found"));
+  });
+
+  it("goals-delete removes the goal; goals-list no longer carries it", async () => {
+    const g = await lensRun("finance", "goals-create", { params: { name: "Vacation", target: 5000, initialSaved: 1000 } }, ctx);
+    const goalId = g.result.goal.id;
+    const del = await lensRun("finance", "goals-delete", { params: { id: goalId } }, ctx);
+    assert.equal(del.result.deleted, true);
+    const list = await lensRun("finance", "goals-list", {}, ctx);
+    assert.equal(list.result.goals.some((x) => x.id === goalId), false);
+  });
+
+  it("goals-delete on a missing id is rejected", async () => {
+    const bad = await lensRun("finance", "goals-delete", { params: { id: "nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("goal not found"));
+  });
+
+  it("credit-score-delete removes a logged reading; report drops it", async () => {
+    const cctx = await depthCtx("finance-cov-csdel");
+    const rec = await lensRun("finance", "credit-score-record", { params: { score: 700, date: "2026-02-01" } }, cctx);
+    const entryId = rec.result.entry.id;
+    const del = await lensRun("finance", "credit-score-delete", { params: { id: entryId } }, cctx);
+    assert.equal(del.result.deleted, true);
+    const report = await lensRun("finance", "credit-score-report", {}, cctx);
+    // last reading deleted → history empty → report returns latest:null
+    assert.equal(report.result.latest, null);
+    assert.equal(report.result.history.length, 0);
+  });
+
+  it("credit-score-delete on a missing id is rejected", async () => {
+    const cctx = await depthCtx("finance-cov-csdel-bad");
+    const bad = await lensRun("finance", "credit-score-delete", { params: { id: "cs_nope" } }, cctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("entry not found"));
+  });
+});
+
+describe("finance — categorisation rules: list + delete + default fallthrough (uncovered)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("finance-cov-rules"); });
+
+  it("rules-create → rules-list reads it back; rules-delete drops it", async () => {
+    const created = await lensRun("finance", "rules-create", { params: { matchText: "Sweetgreen", category: "Dining", matchKind: "contains", priority: 5 } }, ctx);
+    const ruleId = created.result.rule.id;
+    // rules-create lowercases matchText
+    assert.equal(created.result.rule.matchText, "sweetgreen");
+    const list = await lensRun("finance", "rules-list", {}, ctx);
+    assert.ok(list.result.rules.some((r) => r.id === ruleId && r.category === "Dining"));
+    const del = await lensRun("finance", "rules-delete", { params: { id: ruleId } }, ctx);
+    assert.equal(del.result.deleted, true);
+    const list2 = await lensRun("finance", "rules-list", {}, ctx);
+    assert.equal(list2.result.rules.some((r) => r.id === ruleId), false);
+  });
+
+  it("rules-delete on a missing id is rejected", async () => {
+    const bad = await lensRun("finance", "rules-delete", { params: { id: "rule_nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("rule not found"));
+  });
+
+  it("rules-apply with no matching user rule falls through to the default categoriser", async () => {
+    const rctx = await depthCtx("finance-cov-rules-fall");
+    // no user rules; "Spotify" maps to Entertainment by the default ruleBasedCategorize
+    const r = await lensRun("finance", "rules-apply", { params: { description: "SPOTIFY USA" } }, rctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.category, "Entertainment");
+    assert.equal(r.result.source, "rules");
+  });
+
+  it("rules-apply honours starts_with match kind", async () => {
+    const rctx = await depthCtx("finance-cov-rules-sw");
+    await lensRun("finance", "rules-create", { params: { matchText: "ACME", category: "Shopping", matchKind: "starts_with", priority: 1 } }, rctx);
+    const hit = await lensRun("finance", "rules-apply", { params: { description: "acme hardware store" } }, rctx);
+    assert.equal(hit.result.category, "Shopping");
+    assert.equal(hit.result.source, "user_rule");
+    // a description that doesn't START with acme should NOT match the rule
+    const miss = await lensRun("finance", "rules-apply", { params: { description: "buy from acme later" } }, rctx);
+    assert.equal(miss.result.source, "rules");   // fell through to default
+  });
+});
+
+describe("finance — household-get + rollover-rule list/delete (uncovered)", () => {
+  it("household-get returns null before create, then the created household after", async () => {
+    const hctx = await depthCtx("finance-cov-hhget");
+    const before = await lensRun("finance", "household-get", {}, hctx);
+    assert.equal(before.ok, true);
+    assert.equal(before.result.household, null);
+    const create = await lensRun("finance", "household-create", { params: { name: "Get Household" } }, hctx);
+    const after = await lensRun("finance", "household-get", {}, hctx);
+    assert.equal(after.result.household.id, create.result.household.id);
+    assert.equal(after.result.household.name, "Get Household");
+  });
+
+  it("rollover-rule-set → rollover-rules-list reads it back; rollover-rule-delete drops it", async () => {
+    const ectx = await depthCtx("finance-cov-roll-crud");
+    const env = await lensRun("finance", "envelopes-create", { params: { category: "Gifts", monthlyTarget: 200 } }, ectx);
+    const envelopeId = env.result.envelope.id;
+    const setR = await lensRun("finance", "rollover-rule-set", { params: { envelopeId, mode: "full" } }, ectx);
+    const ruleId = setR.result.rule.id;
+    assert.equal(setR.result.rule.mode, "full");
+    const list = await lensRun("finance", "rollover-rules-list", {}, ectx);
+    assert.ok(list.result.rules.some((r) => r.id === ruleId && r.envelopeId === envelopeId));
+    const del = await lensRun("finance", "rollover-rule-delete", { params: { id: ruleId } }, ectx);
+    assert.equal(del.result.deleted, true);
+    const list2 = await lensRun("finance", "rollover-rules-list", {}, ectx);
+    assert.equal(list2.result.rules.some((r) => r.id === ruleId), false);
+  });
+
+  it("rollover-rule-set is upsert — a second set on the same envelope mutates in place", async () => {
+    const ectx = await depthCtx("finance-cov-roll-upsert");
+    const env = await lensRun("finance", "envelopes-create", { params: { category: "Hobbies", monthlyTarget: 150 } }, ectx);
+    const envelopeId = env.result.envelope.id;
+    const first = await lensRun("finance", "rollover-rule-set", { params: { envelopeId, mode: "full" } }, ectx);
+    const second = await lensRun("finance", "rollover-rule-set", { params: { envelopeId, mode: "capped", cap: 50 } }, ectx);
+    assert.equal(first.result.rule.id, second.result.rule.id);   // same rule mutated, not a new one
+    assert.equal(second.result.rule.mode, "capped");
+    assert.equal(second.result.rule.cap, 50);
+    const list = await lensRun("finance", "rollover-rules-list", {}, ectx);
+    assert.equal(list.result.rules.filter((r) => r.envelopeId === envelopeId).length, 1);
+  });
+
+  it("rollover-rule-delete on a missing id is rejected", async () => {
+    const ectx = await depthCtx("finance-cov-roll-del-bad");
+    const bad = await lensRun("finance", "rollover-rule-delete", { params: { id: "rr_nope" } }, ectx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("rule not found"));
+  });
+});
+
+describe("finance — earnings-calendar + retirement-monte-carlo (uncovered)", () => {
+  it("earnings-calendar: one deterministic-dated event per held ticker within the horizon", async () => {
+    const ectx = await depthCtx("finance-cov-earn");
+    await lensRun("finance", "holdings-add", { params: { symbol: "AAPL", shares: 10, price: 100 } }, ectx);
+    await lensRun("finance", "holdings-add", { params: { symbol: "MSFT", shares: 5, price: 200 } }, ectx);
+    const r = await lensRun("finance", "earnings-calendar", { params: { days: 90 } }, ectx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.days, 90);
+    // exactly one event per holding
+    assert.equal(r.result.events.length, 2);
+    assert.ok(r.result.events.some((e) => e.symbol === "AAPL"));
+    assert.ok(r.result.events.some((e) => e.symbol === "MSFT"));
+    // each event carries a before/after-market session + a numeric EPS estimate
+    assert.ok(r.result.events.every((e) => ["after_market", "before_market"].includes(e.when)));
+    assert.ok(r.result.events.every((e) => typeof e.estimateEps === "number"));
+    // events are sorted ascending by date
+    const dates = r.result.events.map((e) => e.date);
+    assert.deepEqual(dates, [...dates].sort((a, b) => a.localeCompare(b)));
+  });
+
+  it("earnings-calendar on an empty portfolio yields no events", async () => {
+    const ectx = await depthCtx("finance-cov-earn-empty");
+    const r = await lensRun("finance", "earnings-calendar", {}, ectx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.events.length, 0);
+    assert.equal(r.result.days, 90);   // default horizon
+  });
+
+  it("retirement-monte-carlo: clamps + simulates the full life horizon with a valid success probability", async () => {
+    const r = await lensRun("finance", "retirement-monte-carlo", { params: {
+      currentAge: 40, retireAge: 65, currentSavings: 500000, annualContribution: 20000,
+      expectedReturn: 0.06, volatility: 0.12, annualSpendInRetirement: 40000, paths: 200,
+    } });
+    assert.equal(r.ok, true);
+    // years = livesTo(95) − currentAge(40) = 55
+    assert.equal(r.result.years, 55);
+    assert.equal(r.result.paths, 200);
+    // success probability is a fraction in [0,1]
+    assert.ok(r.result.successProbability >= 0 && r.result.successProbability <= 1);
+    // ordered percentiles: p10 ≤ median ≤ p90
+    assert.ok(r.result.p10Final <= r.result.medianFinalBalance);
+    assert.ok(r.result.medianFinalBalance <= r.result.p90Final);
+  });
+
+  it("retirement-monte-carlo clamps a retireAge ≤ currentAge up to currentAge+1", async () => {
+    const r = await lensRun("finance", "retirement-monte-carlo", { params: {
+      currentAge: 60, retireAge: 50, currentSavings: 100000, paths: 100,
+    } });
+    assert.equal(r.ok, true);
+    // currentAge clamps within [18,90]=60; years = 95 − 60 = 35; paths floored at 100
+    assert.equal(r.result.years, 35);
+    assert.equal(r.result.paths, 100);
+  });
+});
+
+describe("finance — LLM macros fall back deterministically under no-egress (uncovered)", () => {
+  it("categorize-transaction yields the rule-based category when the brain is unreachable", async () => {
+    // ctx.llm.chat is present but the brain host is non-loopback → blocked → catch → rule fallback.
+    const r = await lensRun("finance", "categorize-transaction", { params: { description: "WHOLE FOODS MARKET", amount: -64.20 } });
+    assert.equal(r.ok, true);
+    // ruleBasedCategorize maps "whole foods" → Groceries regardless of which fallback branch ran
+    assert.equal(r.result.category, "Groceries");
+    assert.ok(["rules", "utility-brain"].includes(r.result.source));
+    assert.ok(typeof r.result.confidence === "number" && r.result.confidence > 0 && r.result.confidence <= 1);
+  });
+
+  it("categorize-transaction rejects an empty description", async () => {
+    const bad = await lensRun("finance", "categorize-transaction", { params: { description: "  ", amount: -10 } });
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("description required"));
+  });
+
+  it("weekly-commentary round-trips the week param and never flags error when the brain resolves", async () => {
+    const r = await lensRun("finance", "weekly-commentary", { params: { week: "2026-W10", totalSpent: 1200, totalIncome: 4000, topCategories: [{ category: "Dining", amount: 300 }] } });
+    assert.equal(r.ok, true);
+    // the requested week echoes back verbatim
+    assert.equal(r.result.week, "2026-W10");
+    assert.equal(typeof r.result.text, "string");
+    // a resolved chat (even empty under no-egress) is NOT the catch-branch error payload
+    assert.notEqual(r.result.error, true);
+  });
+
+  it("assistant-ask rejects an empty question, then answers from the conscious brain when asked", async () => {
+    const actx = await depthCtx("finance-cov-assistant");
+    const bad = await lensRun("finance", "assistant-ask", { params: { question: "   " } }, actx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("question required"));
+    const r = await lensRun("finance", "assistant-ask", { params: { question: "How much do I have invested?" } }, actx);
+    assert.equal(r.ok, true);
+    assert.equal(typeof r.result.answer, "string");
+    // chat resolved → tagged conscious-brain, not the fallback/error branch
+    assert.equal(r.result.source, "conscious-brain");
+    assert.notEqual(r.result.error, true);
+  });
+});

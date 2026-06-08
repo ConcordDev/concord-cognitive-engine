@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { lensRun } from '@/lib/api/client';
 import {
   Users, Eye, EyeOff, Shield, Lock, UserPlus, MessageSquare,
   User, Hammer, TrendingUp, Compass, Heart, GraduationCap,
@@ -24,7 +25,9 @@ interface Player {
   id: string;
   name: string;
   avatar?: string;
-  profession: string;
+  /** Optional — live presence data does not carry a profession, so it is
+   *  omitted rather than fabricated. Callers passing rich rosters may set it. */
+  profession?: string;
   firmName?: string;
   firmEmblem?: string;
   activity: ActivityStatus;
@@ -39,6 +42,13 @@ interface PlayerPresenceProps {
   firmMembers?: Player[];
   myVisibility?: VisibilityMode;
   instancePlayerCount?: number;
+  /**
+   * When set, the panel fetches live presence for this world from the
+   * `presence.active-list` lens-action and renders real users in the Nearby
+   * tab. Caller-supplied `players` (if any) take precedence and disable the
+   * fetch. Omit to keep the panel purely prop-driven.
+   */
+  worldId?: string;
   onMessage?: (playerId: string) => void;
   onAddFriend?: (playerId: string) => void;
   onViewProfile?: (playerId: string) => void;
@@ -75,26 +85,46 @@ const VISIBILITY_META: Record<VisibilityMode, { label: string; icon: React.Compo
 
 type ListTab = 'nearby' | 'friends' | 'firm';
 
-/* ── Seed Data ─────────────────────────────────────────────────── */
+/* ── Presence wiring ───────────────────────────────────────────── */
+// Nearby players come from the `presence.active-list` lens-action (REAL data —
+// users who have sent a heartbeat in this world within the window). The macro
+// returns only fields it can honestly know: { userId, name?, avatar?, activity,
+// online }. It carries NO profession/firm/reputation/distance, so those are
+// omitted here rather than invented; the list still shows "No players found"
+// until real heartbeats exist.
 
-const SEED_PLAYERS: Player[] = [
-  { id: 'p1', name: 'ArchitectAlice', profession: 'Structural Engineer', firmName: 'Ironclad Designs', activity: 'building', online: true, reputationSummary: 'Top 5% structural, 340 citations', distance: 3 },
-  { id: 'p2', name: 'BuilderBob', profession: 'Materials Scientist', firmName: 'Ironclad Designs', activity: 'trading', online: true, reputationSummary: '120 royalties earned, materials expert', distance: 7 },
-  { id: 'p3', name: 'CivicCarla', profession: 'Urban Planner', activity: 'exploring', online: true, reputationSummary: 'District Governor, infrastructure specialist', distance: 12 },
-  { id: 'p4', name: 'DesignDave', profession: 'Architect', firmName: 'Nova Build Co.', activity: 'socializing', online: true, reputationSummary: '28 DTUs published, 5 awards', distance: 5 },
-  { id: 'p5', name: 'EngineerEve', profession: 'Energy Systems', firmName: 'Ironclad Designs', activity: 'mentoring', online: false, reputationSummary: 'Master mentor, 50 mentees', distance: 20 },
-  { id: 'p6', name: 'FrontierFinn', profession: 'Geologist', activity: 'spectating', online: true, reputationSummary: 'Explorer rank 3, 12 worlds visited', distance: 15 },
-  { id: 'p7', name: 'GridGrace', profession: 'Infrastructure', firmName: 'Nova Build Co.', activity: 'idle', online: true, reputationSummary: 'Grid specialist, 89 citations', distance: 2 },
-];
+const PRESENCE_POLL_MS = 30_000;
+
+interface PresenceRow {
+  userId: string;
+  name?: string;
+  avatar?: string;
+  activity?: ActivityStatus;
+  online?: boolean;
+}
+
+function presenceRowToPlayer(row: PresenceRow): Player {
+  const activity = ACTIVITY_META[row.activity as ActivityStatus] ? (row.activity as ActivityStatus) : 'idle';
+  return {
+    id: row.userId,
+    name: row.name || row.userId,
+    avatar: row.avatar,
+    activity,
+    online: row.online !== false,
+    // profession / firmName / reputationSummary / distance intentionally omitted —
+    // live presence does not provide them and we never fabricate.
+  };
+}
 
 /* ── Component ─────────────────────────────────────────────────── */
 
 export default function PlayerPresence({
-  players = SEED_PLAYERS,
-  friends = SEED_PLAYERS.filter((_, i) => i < 3),
-  firmMembers = SEED_PLAYERS.filter(p => p.firmName === 'Ironclad Designs'),
+  players = [],
+  friends = [],
+  firmMembers = [],
   myVisibility = 'public',
-  instancePlayerCount = 47,
+  instancePlayerCount = 0,
+  worldId,
   onMessage,
   onAddFriend,
   onViewProfile,
@@ -106,11 +136,43 @@ export default function PlayerPresence({
   const [visibility, setVisibility] = useState<VisibilityMode>(myVisibility);
   const [visDropdown, setVisDropdown] = useState(false);
   const [search, setSearch] = useState('');
+  // Live nearby roster fetched from presence.active-list (empty until heartbeats).
+  const [livePlayers, setLivePlayers] = useState<Player[]>([]);
+
+  // Caller-supplied players win for back-compat; otherwise poll live presence.
+  const usePropPlayers = players.length > 0;
+
+  useEffect(() => {
+    if (usePropPlayers || !worldId) {
+      setLivePlayers([]);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const r = await lensRun<{ players?: PresenceRow[] }>(
+          'presence',
+          'active-list',
+          { worldId },
+        );
+        if (cancelled) return;
+        const rows = Array.isArray(r.data?.result?.players) ? r.data!.result!.players! : [];
+        setLivePlayers(rows.map(presenceRowToPlayer));
+      } catch {
+        if (!cancelled) setLivePlayers([]);
+      }
+    };
+    load();
+    const t = setInterval(load, PRESENCE_POLL_MS);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [worldId, usePropPlayers]);
 
   const visInfo = VISIBILITY_META[visibility];
 
+  const nearbyList = usePropPlayers ? players : livePlayers;
+
   const listMap: Record<ListTab, Player[]> = {
-    nearby: players,
+    nearby: nearbyList,
     friends,
     firm: firmMembers,
   };
@@ -119,7 +181,9 @@ export default function PlayerPresence({
     p.name.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const nearbyCount = players.filter(p => (p.distance ?? 99) <= 15).length;
+  // Presence rows carry no distance; treat undefined distance as "nearby" so
+  // the live roster still reflects the count rather than reading 0.
+  const nearbyCount = nearbyList.filter(p => (p.distance ?? 0) <= 15).length;
 
   const handleVisibility = (mode: VisibilityMode) => {
     setVisibility(mode);
@@ -137,7 +201,7 @@ export default function PlayerPresence({
           </div>
           <div>
             <h3 className="text-white font-semibold">{player.name}</h3>
-            <span className="text-xs text-white/50">{player.profession}</span>
+            {player.profession && <span className="text-xs text-white/50">{player.profession}</span>}
           </div>
         </div>
         <button onClick={() => setSelectedPlayer(null)} className="text-white/40 hover:text-white" aria-label="Close"><X size={16} /></button>
@@ -286,7 +350,9 @@ export default function PlayerPresence({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-white font-medium truncate">{player.name}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/50 shrink-0">{player.profession}</span>
+                  {player.profession && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/50 shrink-0">{player.profession}</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   {player.firmName && (

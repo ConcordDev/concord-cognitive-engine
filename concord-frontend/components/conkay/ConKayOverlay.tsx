@@ -21,6 +21,7 @@ import { ConKayMessage, type ConKayReplyFields } from './ConKayViz';
 import { useConKayVoice } from './useConKayVoice';
 import { matchConKaySkill, type ConKaySkill } from './conkay-skills';
 import { ConKayWorkStatus, type WorkStep } from './ConKayWorkStatus';
+import { useConkayHudStore } from './conkayHudStore';
 import type { ConKayState } from './conkay-persona';
 import { getLensById } from '@/lib/lens-registry';
 import { lensRun } from '@/lib/api/client';
@@ -58,6 +59,35 @@ function activeLensFromPath(pathname: string | null): { id: string; name: string
   const id = m[1];
   const entry = getLensById(id);
   return { id, name: entry?.name || id };
+}
+
+// A live telemetry chip — every value here is a pure function of the real
+// macro:* lifecycle (via the HUD store), never a guess. While a real macro is in
+// flight it reads "● live · domain.action"; on completion it shows the actual
+// returned facts (ok/failed + the elapsed ms the backend reported).
+function ConKayTelemetryChip() {
+  const inFlight = useConkayHudStore((s) => s.inFlight);
+  const activeLabel = useConkayHudStore((s) => s.activeLabel);
+  const last = useConkayHudStore((s) => s.last);
+  if (inFlight > 0) {
+    return (
+      <span className="flex items-center gap-1.5 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[11px] text-cyan-200" title="A real backend macro is in flight">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-300" />
+        live · {activeLabel ?? 'backend'}
+      </span>
+    );
+  }
+  if (last) {
+    return (
+      <span
+        className={`rounded-full border px-2 py-0.5 text-[11px] ${last.ok ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-rose-400/30 bg-rose-400/10 text-rose-200'}`}
+        title="Last real macro result reported by the backend"
+      >
+        {last.domain}.{last.action} · {last.ok ? 'ok' : 'failed'}{last.ms != null ? ` · ${last.ms} ms` : ''}
+      </span>
+    );
+  }
+  return null;
 }
 
 export function ConKayOverlay() {
@@ -135,6 +165,9 @@ export function ConKayOverlay() {
             ? prev
             : [...prev, { id: d.runId!, label, state: 'active' as const }],
         );
+        // Feed the honest HUD store (its ONLY writer) — the scene's rings spin
+        // iff a real macro is in flight; this is that signal.
+        useConkayHudStore.getState().macroStarted({ runId: d.runId, domain: d.domain, action: d.action });
       },
     );
     const offDone = subscribe<{ runId?: string; domain?: string; action?: string; ok?: boolean; ms?: number; error?: string }>(
@@ -148,9 +181,13 @@ export function ConKayOverlay() {
           prev.map((s) => (s.id === d.runId ? { ...s, state: failed ? ('error' as const) : ('done' as const), label } : s)),
         );
         setWorkStatus(failed ? 'Backend returned an error' : `Completed${ms}`);
+        // Telemetry the HUD shows is the REAL returned facts (ok + elapsed ms).
+        useConkayHudStore.getState().macroCompleted({ runId: d.runId, domain: d.domain, action: d.action, ok: d.ok, ms: d.ms });
       },
     );
-    return () => { offStart(); offDone(); };
+    // Resetting on teardown clears any in-flight count so the rings never spin
+    // after ConKay closes (no orphaned "work" with nothing running).
+    return () => { offStart(); offDone(); useConkayHudStore.getState().reset(); };
   }, [open]);
 
   const append = useCallback((m: OverlayMsg) => setMessages((prev) => [...prev, m]), []);
@@ -434,7 +471,7 @@ export function ConKayOverlay() {
         onClick={() => setOpen(true)}
         aria-label="Summon ConKay (⌘/Ctrl+J)"
         title="Summon Kay — ask in one sentence (⌘/Ctrl+J)"
-        className="group fixed bottom-5 right-5 z-[55] flex h-12 w-12 items-center justify-center rounded-full border border-cyan-400/40 bg-black/70 text-cyan-200 shadow-lg shadow-cyan-500/20 backdrop-blur transition hover:scale-105 hover:bg-cyan-500/20 hover:text-cyan-100"
+        className="group fixed bottom-6 right-6 z-[55] flex h-12 w-12 items-center justify-center rounded-full border border-cyan-400/40 bg-black/70 text-cyan-200 shadow-lg shadow-cyan-500/20 backdrop-blur transition hover:scale-105 hover:bg-cyan-500/20 hover:text-cyan-100"
       >
         <Sparkles className="h-5 w-5" />
         <span className="pointer-events-none absolute right-14 whitespace-nowrap rounded-md bg-black/80 px-2 py-1 text-xs text-cyan-100 opacity-0 transition group-hover:opacity-100">
@@ -465,6 +502,7 @@ export function ConKayOverlay() {
               : conkayState === 'processing' ? 'working…'
                 : conkayState === 'presenting' ? 'speaking…' : 'ready'}
         </span>
+        <ConKayTelemetryChip />
         <div className="ml-auto flex items-center gap-1.5">
           <button onClick={() => setMuted((x) => !x)} title={muted ? 'Unmute' : 'Mute'} aria-label={muted ? 'Unmute' : 'Mute'}
             className="rounded-lg p-2 text-cyan-200 hover:bg-cyan-400/10">

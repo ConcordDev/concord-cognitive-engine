@@ -236,4 +236,183 @@ describe("chem — structure + notebook CRUD (shared ctx round-trips)", () => {
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /title required/);
   });
+
+  it("notebook-delete: removes an entry; deleting a bogus id is rejected", async () => {
+    const add = await lensRun("chem", "notebook-add", { params: { title: "Grignard run" } }, ctx);
+    assert.equal(add.ok, true);
+    const id = add.result.id;
+    // present before delete
+    const before = await lensRun("chem", "notebook-list", {}, ctx);
+    assert.ok(before.result.entries.some((e) => e.id === id));
+
+    const del = await lensRun("chem", "notebook-delete", { params: { id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, id);
+
+    const after = await lensRun("chem", "notebook-list", {}, ctx);
+    assert.ok(!after.result.entries.some((e) => e.id === id));
+
+    const bad = await lensRun("chem", "notebook-delete", { params: { id: "lab-nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /entry not found/);
+  });
+});
+
+describe("chem — periodic table + element profiles (exact bundled data)", () => {
+  it("periodic-table: returns 118 elements with correct atomic masses for O and U", async () => {
+    const r = await lensRun("chem", "periodic-table", {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 118);
+    assert.equal(Object.keys(r.result.elements).length, 118);
+    assert.equal(r.result.elements.O.z, 8);
+    assert.equal(r.result.elements.O.mass, 15.999);
+    assert.equal(r.result.elements.O.category, "nonmetal");
+    assert.equal(r.result.elements.U.z, 92);
+    assert.equal(r.result.elements.U.category, "actinide");
+    assert.equal(r.result.elements.Og.z, 118);   // last entry, Oganesson
+  });
+
+  it("explore-element: Fe (iron) → Z 26, transition, period 4, atomicMass 55.845", async () => {
+    const r = await lensRun("chem", "explore-element", { params: { symbol: "Fe" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.symbol, "Fe");
+    assert.equal(r.result.z, 26);
+    assert.equal(r.result.period, 4);
+    assert.equal(r.result.category, "transition");
+    assert.equal(r.result.atomicMass, 55.845);
+    assert.ok(r.result.uses.includes("steel"));
+    assert.ok(r.result.summary.includes("Iron"));
+  });
+
+  it("explore-element: case-insensitive + reads from artifact.data.symbol", async () => {
+    const r = await lensRun("chem", "explore-element", { data: { symbol: "au" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.symbol, "Au");   // canonicalized from "au"
+    assert.equal(r.result.z, 79);
+    assert.equal(r.result.name, "Gold");
+  });
+
+  it("explore-element: an unknown element returns ok with a not-in-library message", async () => {
+    const r = await lensRun("chem", "explore-element", { params: { symbol: "Zz" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.requested, "Zz");
+    assert.ok(r.result.message.includes("not in bundled library"));
+  });
+});
+
+describe("chem — lab safety + incompatibilities (exact rule lookups)", () => {
+  it("generate-safety: sulfuric acid → corrosive, GHS05/06, corrosive storage", async () => {
+    const r = await lensRun("chem", "generate-safety", { data: { name: "Sulfuric acid", formula: "H2SO4" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.compound, "Sulfuric acid");
+    assert.equal(r.result.formula, "H2SO4");
+    assert.ok(r.result.hazardClasses.includes("corrosive"));
+    assert.ok(r.result.ghsPictograms.includes("GHS05"));
+    assert.ok(r.result.ghsPictograms.includes("GHS06"));
+    assert.ok(r.result.storage.includes("Corrosive cabinet"));
+    assert.ok(r.result.firstAid.eye.includes("Eyewash"));
+  });
+
+  it("generate-safety: methanol → flammable + flammable-cabinet storage", async () => {
+    const r = await lensRun("chem", "generate-safety", { data: { name: "Methanol" } });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.hazardClasses.includes("flammable"));
+    assert.ok(r.result.ghsPictograms.includes("GHS02"));
+    assert.ok(r.result.storage.includes("Flammable cabinet"));
+  });
+
+  it("generate-safety: an unmatched compound returns the unspecified default profile", async () => {
+    const r = await lensRun("chem", "generate-safety", { data: { name: "Glucose monohydrate" } });
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.hazardClasses, ["unspecified"]);
+    assert.deepEqual(r.result.ghsPictograms, []);
+    assert.ok(r.result.summary.includes("no preset hazard profile"));
+  });
+
+  it("check-interactions: bleach + ammonia → one HIGH-severity chloramine interaction", async () => {
+    const r = await lensRun("chem", "check-interactions", {
+      params: { compounds: ["bleach", "ammonia solution"] },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.severity, "high");
+    assert.equal(r.result.interactions.length, 1);
+    assert.ok(r.result.interactions[0].issue.includes("chloramine"));
+    assert.deepEqual(r.result.interactions[0].between, ["bleach", "ammonia solution"]);
+  });
+
+  it("check-interactions: two inert compounds → ok with zero interactions", async () => {
+    const r = await lensRun("chem", "check-interactions", {
+      params: { compounds: ["distilled water", "table salt"] },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.severity, "ok");
+    assert.equal(r.result.interactions.length, 0);
+  });
+
+  it("check-interactions: rejects fewer than two compounds", async () => {
+    const r = await lensRun("chem", "check-interactions", { params: { compounds: ["acid"] } });
+    assert.equal(r.result.ok, false);
+    assert.equal(r.result.error, "need_two");
+  });
+});
+
+describe("chem — mechanisms + 2D layout + network-validation branches", () => {
+  it("reaction-mechanism: SN2 → 2 steps, 2nd-order kinetics, backside-attack arrow", async () => {
+    const r = await lensRun("chem", "reaction-mechanism", { params: { type: "sn2" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.type, "sn2");
+    assert.equal(r.result.stepCount, 2);
+    assert.equal(r.result.steps.length, 2);
+    assert.ok(r.result.kinetics.includes("2nd order"));
+    assert.ok(r.result.steps[0].title.includes("Backside attack"));
+  });
+
+  it("reaction-mechanism: no type → lists the available mechanism catalog", async () => {
+    const r = await lensRun("chem", "reaction-mechanism", {});
+    assert.equal(r.ok, true);
+    const keys = r.result.available.map((m) => m.key);
+    assert.ok(keys.includes("sn1"));
+    assert.ok(keys.includes("esterification"));
+  });
+
+  it("reaction-mechanism: rejects an unknown mechanism type", async () => {
+    const r = await lensRun("chem", "reaction-mechanism", { params: { type: "diels-alder" } });
+    assert.equal(r.result.ok, false);
+    assert.ok(r.result.error.includes("unknown mechanism"));
+  });
+
+  it("structure-layout: CCO → C2H6O, 3 heavy-atom coords + 2 bonds", async () => {
+    const r = await lensRun("chem", "structure-layout", { params: { smiles: "CCO" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.formula, "C2H6O");
+    assert.equal(r.result.atoms.length, 3);
+    assert.equal(r.result.bonds.length, 2);
+    // every atom carries finite 2D coordinates
+    assert.ok(r.result.atoms.every((a) => Number.isFinite(a.x) && Number.isFinite(a.y)));
+    assert.equal(r.result.atoms[0].element, "C");
+    assert.equal(r.result.atoms[2].element, "O");
+  });
+
+  it("structure-layout: rejects an empty SMILES", async () => {
+    const r = await lensRun("chem", "structure-layout", { params: { smiles: "" } });
+    assert.equal(r.result.ok, false);
+    assert.equal(r.result.error, "smiles required");
+  });
+
+  // Network macros — assert ONLY the deterministic input-validation branch,
+  // which returns before any PubChem fetch (no egress).
+  it("resolve-structure: rejects an empty query before any network call", async () => {
+    const r = await lensRun("chem", "resolve-structure", { params: { query: "" } });
+    assert.equal(r.result.ok, false);
+    assert.ok(r.result.error.includes("query required"));
+  });
+
+  it("conformer-3d: rejects a non-positive / non-integer cid before any network call", async () => {
+    const r0 = await lensRun("chem", "conformer-3d", { params: { cid: 0 } });
+    assert.equal(r0.result.ok, false);
+    assert.ok(r0.result.error.includes("valid integer cid"));
+    const rNeg = await lensRun("chem", "conformer-3d", { params: { cid: -5 } });
+    assert.equal(rNeg.result.ok, false);
+    assert.ok(rNeg.result.error.includes("valid integer cid"));
+  });
 });

@@ -281,12 +281,27 @@ function integrateSystemDynamics(model, opts) {
   }
 
   // Detect reinforcing / balancing feedback loops from flow expr references.
+  // Loop polarity on a referenced stock S is the product of two signs:
+  //   (a) how the flow expr depends on S (a leading/explicit '-' flips it), and
+  //   (b) the flow's direction on S: +1 when it ADDS to S (to===S),
+  //       -1 when it DRAINS S (from===S).
+  // A drain whose rate grows with the stock (e.g. expr "tank*0.2", from:"tank")
+  // is negative (balancing) feedback — the bigger the stock, the faster it
+  // empties back toward equilibrium. Looking only at the expr sign mislabels
+  // every such outflow as "reinforcing".
   const stockNames = stocks.map((s) => s.name);
   const loops = [];
   for (const f of flows) {
     const refs = stockNames.filter((sn) => new RegExp(`\\b${sn}\\b`).test(String(f.expr || "")));
     if (refs.length) {
-      const polarity = /-/.test(String(f.expr)) ? "balancing" : "reinforcing";
+      const exprSign = /-/.test(String(f.expr)) ? -1 : 1;
+      const refPolarities = refs.map((sn) => {
+        const dirSign = f.from === sn ? -1 : f.to === sn ? 1 : 1;
+        return exprSign * dirSign >= 0 ? "reinforcing" : "balancing";
+      });
+      // Overall flow polarity: reinforcing only if every referenced-stock
+      // contribution is reinforcing; otherwise balancing.
+      const polarity = refPolarities.every((p) => p === "reinforcing") ? "reinforcing" : "balancing";
       loops.push({ flow: f.name, referencesStocks: refs, polarity });
     }
   }

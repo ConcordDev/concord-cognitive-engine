@@ -451,3 +451,75 @@ describe("paper — uncovered macro round-trips (shared ctx)", () => {
     assert.equal(allRead.result.markedRead, 0);
   });
 });
+
+// Network / LLM macros — DETERMINISTIC validation + fallback branches only.
+// These never reach egress: every assertion below targets a pre-fetch guard
+// (empty/invalid input), a no-LLM fallback (ctx without llm.chat), or a loop
+// that skips ineligible records before any fetch. No real arXiv / CrossRef /
+// Semantic Scholar request is exercised.
+describe("paper — network/LLM macro deterministic branches (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("paper-netbranch"); });
+
+  it("search: an empty query is rejected before any arXiv call", async () => {
+    const bad = await lensRun("paper", "search", { params: { query: "   " } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.equal(bad.result.error, "query required");
+  });
+
+  it("summarize: text under 300 chars is rejected before any LLM call", async () => {
+    const bad = await lensRun("paper", "summarize", { params: { text: "way too short to summarize" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.equal(bad.result.error, "text too short");
+  });
+
+  it("summarize: with no LLM available, returns the deterministic (AI unavailable) fallback", async () => {
+    // Clone the ctx with llm stripped so the `!ctx?.llm?.chat` branch fires.
+    const noLlm = { ...ctx, llm: undefined };
+    const longText = "A".repeat(150) + " " + "research methodology and results ".repeat(20);
+    assert.ok(longText.length >= 300);
+    const r = await lensRun("paper", "summarize", { params: { text: longText } }, noLlm);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.problem, "(AI unavailable)");
+    assert.equal(r.result.approach, longText.slice(0, 200)); // first 200 chars verbatim
+    assert.deepEqual(r.result.keyTerms, []);
+  });
+
+  it("paper-capture: a missing doi/url is rejected", async () => {
+    const bad = await lensRun("paper", "paper-capture", { params: {} }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.equal(bad.result.error, "doi or url required");
+  });
+
+  it("paper-capture: an unparseable DOI is rejected before any CrossRef call", async () => {
+    const bad = await lensRun("paper", "paper-capture", { params: { doi: "not a real doi at all" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.equal(bad.result.error, "could not parse a DOI");
+  });
+
+  it("paper-enrich: a paper that is not in the library is rejected", async () => {
+    const bad = await lensRun("paper", "paper-enrich", { params: { paperId: "pp_does_not_exist" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.equal(bad.result.error, "paper not found");
+  });
+
+  it("paper-enrich: a saved paper with no DOI or arXiv id cannot be enriched", async () => {
+    const save = await lensRun("paper", "paper-save", { params: { title: `No-ID Paper ${randomUUID()}` } }, ctx);
+    const bad = await lensRun("paper", "paper-enrich", { params: { paperId: save.result.paper.id } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /no DOI or arXiv id to enrich/);
+  });
+
+  it("paper-check-alerts: skips papers with no DOI/arXiv id → checked:0, no network hit", async () => {
+    const u = await depthCtx("paper-alerts-check-" + randomUUID());
+    // Save a manual paper (refId defaults to the lowercased title — NOT an arxiv: prefix,
+    // and no DOI), so the lookup-resolution `continue` fires for every paper.
+    await lensRun("paper", "paper-save", { params: { title: `Local Only ${randomUUID()}` } }, u);
+    const r = await lensRun("paper", "paper-check-alerts", {}, u);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.checked, 0);          // nothing eligible → loop skipped every paper
+    assert.equal(r.result.newAlertCount, 0);
+    assert.deepEqual(r.result.newAlerts, []);
+    assert.ok(typeof r.result.checkedAt === "string"); // stamp still set
+  });
+});

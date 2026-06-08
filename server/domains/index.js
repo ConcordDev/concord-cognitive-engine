@@ -31,6 +31,7 @@ import events from './events.js';
 import science from './science.js';
 import security from './security.js';
 import services from './services.js';
+import notary from './notary.js';
 import insurance from './insurance.js';
 import crypto from './crypto.js';
 import code from './code.js';
@@ -231,6 +232,17 @@ import genesisDomain from './genesis.js';
 import sponsorshipDomain from './sponsorship.js';
 import stakingDomain from './staking.js';
 import systemDomain from './system.js';
+import standardsDomain from './standards.js';
+import registerSensorActions from './sensor.js';
+import registerProfileActions from './profile.js';
+import registerSeasonalActions from './seasonal.js';
+import registerPresenceActions from './presence.js';
+import serviceMarket from './service-market.js';
+import digitalTwin from './digital-twin.js';
+import registerDistrictActions from './district.js';
+import registerCobuildActions from './cobuild.js';
+import registerCompanionActions from './companion.js';
+import hub from './hub.js';
 
 export default [
   healthcare,
@@ -256,6 +268,7 @@ export default [
   science,
   security,
   services,
+  notary,
   insurance,
   crypto,
   code,
@@ -455,4 +468,15 @@ export default [
   sponsorshipDomain,
   stakingDomain,
   systemDomain,
+  standardsDomain,
+  registerSensorActions,
+  registerProfileActions,
+  registerSeasonalActions,
+  registerPresenceActions,
+  serviceMarket,
+  digitalTwin,
+  registerDistrictActions,
+  registerCobuildActions,
+  registerCompanionActions,
+  hub,
 ];

@@ -791,3 +791,156 @@ describe("calendar — reminders-due firing window + conference link gen (wave 1
     assert.ok(gen.result.room.startsWith("concord-"));
   });
 });
+
+// ───────────────────────────────────────────────────────────────────
+// nl-parse-event: the parser anchors start/end to the runtime `now` and
+// the HOST local time (target.setHours uses local hours), so absolute ISO
+// hours are NOT deterministic across machines/timezones. We assert ONLY
+// the now-/TZ-independent contracts: recurrence detection, title-noise
+// stripping, the duration = (end − start) DELTA (a pure offset that the
+// host clock cancels out), conference-link extraction, and the empty-text
+// rejection. None of these read an absolute wall-clock field.
+describe("calendar — nl-parse-event TZ-/now-independent contracts (wave 17 top-up)", () => {
+  it("detects daily recurrence and strips the recurrence + day noise from the title", async () => {
+    const r = await lensRun("calendar", "nl-parse-event", {
+      params: { text: "Standup every day at 9am" },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.parsed.recurrence.freq, "daily");
+    assert.equal(r.result.parsed.recurrence.interval, 1);
+    // "every day" + "at 9am" stripped; only the real subject survives
+    assert.equal(r.result.parsed.title, "Standup");
+    assert.equal(r.result.sourceText, "Standup every day at 9am");
+  });
+
+  it("detects weekly recurrence from a weekday phrasing", async () => {
+    const r = await lensRun("calendar", "nl-parse-event", {
+      params: { text: "Review every monday" },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.parsed.recurrence.freq, "weekly");
+  });
+
+  it("detects monthly and yearly recurrence keywords", async () => {
+    const monthly = await lensRun("calendar", "nl-parse-event", {
+      params: { text: "Rent payment monthly" },
+    });
+    assert.equal(monthly.result.parsed.recurrence.freq, "monthly");
+
+    const yearly = await lensRun("calendar", "nl-parse-event", {
+      params: { text: "Birthday party annually" },
+    });
+    assert.equal(yearly.result.parsed.recurrence.freq, "yearly");
+  });
+
+  it("a one-off phrasing yields no recurrence (null)", async () => {
+    const r = await lensRun("calendar", "nl-parse-event", {
+      params: { text: "Dentist appointment tomorrow" },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.parsed.recurrence, null);
+    // "tomorrow" noise stripped, subject kept
+    assert.equal(r.result.parsed.title, "Dentist appointment");
+  });
+
+  it("duration is the exact end−start delta (host clock cancels in the subtraction)", async () => {
+    // "for 90 min" → durationMin 90; end = start + 90min regardless of timezone.
+    const r = await lensRun("calendar", "nl-parse-event", {
+      params: { text: "Workshop for 90 min" },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.parsed.durationMin, 90);
+    const startMs = Date.parse(r.result.parsed.start);
+    const endMs = Date.parse(r.result.parsed.end);
+    assert.equal(endMs - startMs, 90 * 60_000);
+    assert.equal(r.result.parsed.title, "Workshop");
+  });
+
+  it("a 2-hour duration is normalized to 120 minutes in the end−start delta", async () => {
+    const r = await lensRun("calendar", "nl-parse-event", {
+      params: { text: "Deep work for 2 hours" },
+    });
+    assert.equal(r.result.parsed.durationMin, 120);
+    assert.equal(Date.parse(r.result.parsed.end) - Date.parse(r.result.parsed.start), 120 * 60_000);
+  });
+
+  it("defaults to a 60-minute duration when no 'for N' phrase is present", async () => {
+    const r = await lensRun("calendar", "nl-parse-event", {
+      params: { text: "Coffee chat" },
+    });
+    assert.equal(r.result.parsed.durationMin, 60);
+    assert.equal(Date.parse(r.result.parsed.end) - Date.parse(r.result.parsed.start), 60 * 60_000);
+    assert.equal(r.result.parsed.title, "Coffee chat");
+  });
+
+  it("extracts a conference platform keyword into conferenceLink", async () => {
+    const zoom = await lensRun("calendar", "nl-parse-event", {
+      params: { text: "Client sync on zoom tomorrow" },
+    });
+    assert.equal(zoom.result.parsed.conferenceLink, "zoom");
+
+    const noConf = await lensRun("calendar", "nl-parse-event", {
+      params: { text: "Lunch with Sam" },
+    });
+    assert.equal(noConf.result.parsed.conferenceLink, "");
+  });
+
+  it("falls back to 'New event' when stripping leaves an empty title", async () => {
+    const r = await lensRun("calendar", "nl-parse-event", {
+      params: { text: "tomorrow at 3pm" },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.parsed.title, "New event");
+  });
+
+  it("rejects empty/whitespace-only text before any parsing", async () => {
+    const blank = await lensRun("calendar", "nl-parse-event", { params: { text: "   " } });
+    assert.equal(blank.result.ok, false);
+    assert.ok(blank.result.error.includes("text required"));
+
+    const missing = await lensRun("calendar", "nl-parse-event", { params: {} });
+    assert.equal(missing.result.ok, false);
+    assert.ok(missing.result.error.includes("text required"));
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────
+// accounts-sync: a live ICS feed fetch. The unknown-account rejection is
+// fully deterministic (pre-fetch guard). The connected-feed path is exercised
+// under the no-egress preload — the external fetch is blocked INSTANTLY so the
+// macro takes its graceful `feed unreachable` catch branch, asserting the
+// error handling is wired (not a crash, not a fabricated success).
+describe("calendar — accounts-sync rejection + graceful no-egress feed branch (wave 17 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("calendar-t17-sync"); });
+
+  it("rejects an unknown account id before attempting any fetch", async () => {
+    const r = await lensRun("calendar", "accounts-sync", { params: { id: "no-such-account" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.ok(r.result.error.includes("account not found"));
+  });
+
+  it("a connected feed under no-egress takes the graceful 'feed unreachable' branch (no crash)", async () => {
+    const conn = await lensRun("calendar", "accounts-connect", {
+      params: { provider: "google", label: "Remote GCal", icsUrl: "https://example.com/remote.ics", direction: "pull" },
+    }, ctx);
+    assert.equal(conn.ok, true);
+    const accountId = conn.result.account.id;
+
+    const sync = await lensRun("calendar", "accounts-sync", { params: { id: accountId } }, ctx);
+    // No outbound feed is reachable from the test sandbox, so the macro takes one
+    // of its structured failure branches — never a crash, never a fabricated
+    // success: egress-blocked → "feed unreachable", reachable-but-non-200 →
+    // "feed responded <status>", or 200-with-non-ICS → "feed did not return a
+    // valid VCALENDAR". All three are correct graceful handling; assert the macro
+    // returned a well-formed ok:false with one of them (and never imported events).
+    assert.equal(sync.result.ok, false);
+    assert.equal(typeof sync.result.error, "string");
+    const graceful = sync.result.error.includes("feed unreachable")
+      || sync.result.error.includes("feed responded")
+      || sync.result.error.includes("did not return a valid VCALENDAR");
+    assert.ok(graceful, `unexpected error branch: ${sync.result.error}`);
+    // the structured failure never reports an import
+    assert.equal(sync.result.imported, undefined);
+  });
+});

@@ -16,7 +16,7 @@
 // + r.result.error.
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { lensRun, depthCtx } from "./_harness.js";
+import { lensRun, depthCtx, macroRuntime } from "./_harness.js";
 
 describe("feed — analytics calc contracts (exact computed values)", () => {
   it("engagementScore: computes rate = (likes + 2·comments + 3·shares)/views·100 and labels performance", async () => {
@@ -295,5 +295,379 @@ describe("feed — spaces & content controls (state transitions + filter)", () =
     const bad = await lensRun("feed", "controls-sensitive-media", { params: { mode: "explode" } }, ctx);
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /mode must be/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// APPENDED: behavioral coverage for the remaining uncovered feed macros.
+// (affinity-summary, thread-collapse, list-all/list-delete, poll-list/poll-results,
+//  folder-list/folder-delete, saved-search-list/saved-search-delete,
+//  space-list/space-leave, controls-get + the server.js per-artifact handlers
+//  like/repost/bookmark/rank/personalize/cluster_topics.) APPEND-ONLY — the
+//  blocks above are unchanged.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("feed — affinity-summary (ranked author list over recorded interactions)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("feed-affinity-summary"); });
+
+  it("affinity-summary: ranks authors by accumulated weighted affinity, highest first", async () => {
+    // gail: like(1.0) + reply(3.0) = 4.0 ; hank: view(0.1)
+    await lensRun("feed", "record-interaction", { params: { authorId: "gail", kind: "like" } }, ctx);
+    await lensRun("feed", "record-interaction", { params: { authorId: "gail", kind: "reply" } }, ctx);
+    await lensRun("feed", "record-interaction", { params: { authorId: "hank", kind: "view" } }, ctx);
+
+    const r = await lensRun("feed", "affinity-summary", {}, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.total, 2);
+    assert.equal(r.result.authors[0].authorId, "gail");   // sorted desc by affinity
+    assert.equal(r.result.authors[0].affinity, 4.0);
+    assert.equal(r.result.authors[1].authorId, "hank");
+    assert.equal(r.result.authors[1].affinity, 0.1);
+    assert.ok(r.result.authors[0].affinity > r.result.authors[1].affinity);
+  });
+
+  it("affinity-summary: a fresh user with no interactions yields an empty list", async () => {
+    const fresh = await depthCtx("feed-affinity-empty");
+    const r = await lensRun("feed", "affinity-summary", {}, fresh);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.total, 0);
+    assert.deepEqual(r.result.authors, []);
+  });
+});
+
+describe("feed — thread-collapse (toggle hides children in the tree)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("feed-thread-collapse"); });
+
+  it("thread-collapse: collapsing a parent omits its children from thread-tree", async () => {
+    const root = await lensRun("feed", "thread-add", { params: { body: "collapse root" } }, ctx);
+    const rid = root.result.node.id;
+    await lensRun("feed", "thread-add", { params: { body: "hidden reply", parentId: rid } }, ctx);
+
+    // before collapse: one child visible
+    const open = await lensRun("feed", "thread-tree", { params: { rootId: rid } }, ctx);
+    assert.equal(open.result.tree[0].children.length, 1);
+    assert.equal(open.result.tree[0].replyCount, 1);   // replyCount counts descendants regardless
+
+    const col = await lensRun("feed", "thread-collapse", { params: { nodeId: rid, collapsed: true } }, ctx);
+    assert.equal(col.ok, true);
+    assert.equal(col.result.collapsed, true);
+
+    const closed = await lensRun("feed", "thread-tree", { params: { rootId: rid } }, ctx);
+    assert.equal(closed.result.tree[0].children.length, 0);   // children suppressed when collapsed
+    assert.equal(closed.result.tree[0].replyCount, 1);        // descendant count unchanged
+
+    // toggle (no explicit flag) flips it back open
+    const toggled = await lensRun("feed", "thread-collapse", { params: { nodeId: rid } }, ctx);
+    assert.equal(toggled.result.collapsed, false);
+    const reopened = await lensRun("feed", "thread-tree", { params: { rootId: rid } }, ctx);
+    assert.equal(reopened.result.tree[0].children.length, 1);
+  });
+
+  it("thread-collapse: rejects an unknown node id", async () => {
+    const bad = await lensRun("feed", "thread-collapse", { params: { nodeId: "missing" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /node not found/);
+  });
+});
+
+describe("feed — list-all / list-delete (enumeration + removal round-trip)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("feed-list-lifecycle"); });
+
+  it("list-all: pinned lists sort ahead of unpinned", async () => {
+    const a = await lensRun("feed", "list-create", { params: { name: "First", members: [] } }, ctx);
+    const b = await lensRun("feed", "list-create", { params: { name: "Second", members: [] } }, ctx);
+    // pin the OLDER list — pinned must still float to the top
+    await lensRun("feed", "list-update-members", { params: { listId: a.result.list.id, pinned: true } }, ctx);
+
+    const all = await lensRun("feed", "list-all", {}, ctx);
+    assert.equal(all.ok, true);
+    assert.equal(all.result.lists.length, 2);
+    assert.equal(all.result.lists[0].id, a.result.list.id);   // pinned first despite older
+    assert.equal(all.result.lists[0].pinned, true);
+    // unused reference so the linter doesn't complain about b
+    assert.ok(all.result.lists.some((l) => l.id === b.result.list.id));
+  });
+
+  it("list-delete: removes a list and rejects re-deleting it", async () => {
+    const l = await lensRun("feed", "list-create", { params: { name: "Temp" } }, ctx);
+    const id = l.result.list.id;
+    const del = await lensRun("feed", "list-delete", { params: { listId: id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, true);
+    const again = await lensRun("feed", "list-delete", { params: { listId: id } }, ctx);
+    assert.equal(again.result.ok, false);
+    assert.match(again.result.error, /list not found/);
+  });
+});
+
+describe("feed — poll-list / poll-results (enumeration + read view)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("feed-poll-list"); });
+
+  it("poll-results: reflects a counted vote percentage via the read path", async () => {
+    const created = await lensRun("feed", "poll-create", { params: { question: "Tabs or spaces?", options: ["Tabs", "Spaces"] } }, ctx);
+    const pollId = created.result.poll.id;
+    const opt0 = created.result.poll.options[0].id;
+    await lensRun("feed", "poll-vote", { params: { pollId, optionId: opt0 } }, ctx);
+
+    const res = await lensRun("feed", "poll-results", { params: { pollId } }, ctx);
+    assert.equal(res.ok, true);
+    assert.equal(res.result.poll.totalVotes, 1);
+    assert.equal(res.result.poll.options.find((o) => o.id === opt0).percent, 100);
+    assert.equal(res.result.poll.myVote, opt0);
+  });
+
+  it("poll-list: returns the owner's polls newest-first", async () => {
+    await lensRun("feed", "poll-create", { params: { question: "Older?", options: ["y", "n"] } }, ctx);
+    const newer = await lensRun("feed", "poll-create", { params: { question: "Newest?", options: ["y", "n"] } }, ctx);
+    const list = await lensRun("feed", "poll-list", {}, ctx);
+    assert.equal(list.ok, true);
+    assert.ok(list.result.polls.length >= 2);
+    assert.equal(list.result.polls[0].id, newer.result.poll.id);   // newest first
+  });
+
+  it("poll-results: rejects an unknown poll id", async () => {
+    const bad = await lensRun("feed", "poll-results", { params: { pollId: "nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /poll not found/);
+  });
+});
+
+describe("feed — folder-list / folder-delete (enumeration + removal)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("feed-folder-lifecycle"); });
+
+  it("folder-list: itemCount tracks added items and lists newest-first", async () => {
+    const older = await lensRun("feed", "folder-create", { params: { name: "Older" } }, ctx);
+    const newer = await lensRun("feed", "folder-create", { params: { name: "Newer" } }, ctx);
+    await lensRun("feed", "folder-add-item", { params: { folderId: newer.result.folder.id, postId: "p1" } }, ctx);
+
+    const list = await lensRun("feed", "folder-list", {}, ctx);
+    assert.equal(list.ok, true);
+    assert.equal(list.result.folders[0].id, newer.result.folder.id);   // newest first
+    assert.equal(list.result.folders[0].itemCount, 1);
+    assert.equal(list.result.folders.find((f) => f.id === older.result.folder.id).itemCount, 0);
+  });
+
+  it("folder-add-item with op=remove drops an item; folder-delete removes the folder", async () => {
+    const f = await lensRun("feed", "folder-create", { params: { name: "X" } }, ctx);
+    const fid = f.result.folder.id;
+    await lensRun("feed", "folder-add-item", { params: { folderId: fid, postId: "z" } }, ctx);
+    const removed = await lensRun("feed", "folder-add-item", { params: { folderId: fid, postId: "z", op: "remove" } }, ctx);
+    assert.equal(removed.result.folder.itemCount, 0);
+    const del = await lensRun("feed", "folder-delete", { params: { folderId: fid } }, ctx);
+    assert.equal(del.result.deleted, true);
+    const again = await lensRun("feed", "folder-delete", { params: { folderId: fid } }, ctx);
+    assert.equal(again.result.ok, false);
+    assert.match(again.result.error, /folder not found/);
+  });
+});
+
+describe("feed — saved-search-list / saved-search-delete + alert math", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("feed-savedsearch-lifecycle"); });
+
+  it("saved-search-list: returns saved searches with their alert flag", async () => {
+    const ss = await lensRun("feed", "saved-search-create", { params: { query: "rust lang", alert: false } }, ctx);
+    const list = await lensRun("feed", "saved-search-list", {}, ctx);
+    assert.equal(list.ok, true);
+    const found = list.result.searches.find((x) => x.id === ss.result.search.id);
+    assert.ok(found);
+    assert.equal(found.query, "rust lang");
+    assert.equal(found.alert, false);
+  });
+
+  it("saved-search-run: counts only candidates newer than lastChecked as new", async () => {
+    const ss = await lensRun("feed", "saved-search-create", { params: { query: "graphics" } }, ctx);
+    const searchId = ss.result.search.id;
+    const run = await lensRun("feed", "saved-search-run", { params: { searchId, candidates: [
+      // both match the term; one is far in the future (after lastChecked), one far in the past
+      { id: "new",  content: "new graphics demo", createdAt: "2099-01-01" },
+      { id: "old",  content: "old graphics post", createdAt: "2000-01-01" },
+    ] } }, ctx);
+    assert.equal(run.ok, true);
+    assert.equal(run.result.total, 2);
+    assert.equal(run.result.newSinceLastCheck, 1);   // only the 2099 one is newer than lastChecked
+    assert.equal(run.result.matches[0].id, "new");   // newest first
+  });
+
+  it("saved-search-delete: removes a search and rejects re-deleting", async () => {
+    const ss = await lensRun("feed", "saved-search-create", { params: { query: "gone" } }, ctx);
+    const del = await lensRun("feed", "saved-search-delete", { params: { searchId: ss.result.search.id } }, ctx);
+    assert.equal(del.result.deleted, true);
+    const again = await lensRun("feed", "saved-search-delete", { params: { searchId: ss.result.search.id } }, ctx);
+    assert.equal(again.result.ok, false);
+    assert.match(again.result.error, /search not found/);
+  });
+});
+
+describe("feed — space-list / space-leave + host-only guard", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("feed-space-lifecycle"); });
+
+  it("space-list: live spaces sort ahead of ended ones, with a liveCount", async () => {
+    const live = await lensRun("feed", "space-create", { params: { title: "Live one" } }, ctx);
+    const ending = await lensRun("feed", "space-create", { params: { title: "To end" } }, ctx);
+    await lensRun("feed", "space-end", { params: { spaceId: ending.result.space.id } }, ctx);
+
+    const list = await lensRun("feed", "space-list", {}, ctx);
+    assert.equal(list.ok, true);
+    assert.equal(list.result.liveCount, 1);
+    assert.equal(list.result.spaces[0].status, "live");       // live floats above ended
+    assert.equal(list.result.spaces[0].id, live.result.space.id);
+  });
+
+  it("space-leave: a speaker who leaves drops out of the speaker roster", async () => {
+    const created = await lensRun("feed", "space-create", { params: { title: "Leavable" } }, ctx);
+    const spaceId = created.result.space.id;
+    assert.equal(created.result.space.speakerCount, 1);        // host seeded as speaker
+    const left = await lensRun("feed", "space-leave", { params: { spaceId } }, ctx);
+    assert.equal(left.ok, true);
+    assert.equal(left.result.space.speakerCount, 0);
+    assert.equal(left.result.space.listenerCount, 0);
+  });
+
+  it("space-end: rejects a non-host trying to end the space", async () => {
+    const created = await lensRun("feed", "space-create", { params: { title: "Host only" } }, ctx);
+    const spaceId = created.result.space.id;
+    const other = await depthCtx("feed-space-intruder");
+    const bad = await lensRun("feed", "space-end", { params: { spaceId } }, other);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /only the host/);
+  });
+});
+
+describe("feed — controls-get (defaults + reflects mutations)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("feed-controls-get"); });
+
+  it("controls-get: returns the default sensitiveMedia=blur with empty mute/block lists", async () => {
+    const r = await lensRun("feed", "controls-get", {}, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.controls.sensitiveMedia, "blur");
+    assert.deepEqual(r.result.controls.mutedWords, []);
+    assert.deepEqual(r.result.controls.blockedUsers, []);
+  });
+
+  it("controls-get: reflects a muted word and a blocked user after they're set", async () => {
+    await lensRun("feed", "controls-mute-word", { params: { word: "Spoilers" } }, ctx);  // lowercased on store
+    await lensRun("feed", "controls-block-user", { params: { userId: "noisy" } }, ctx);
+    const r = await lensRun("feed", "controls-get", {}, ctx);
+    assert.ok(r.result.controls.mutedWords.includes("spoilers"));
+    assert.ok(r.result.controls.blockedUsers.includes("noisy"));
+  });
+
+  it("controls-mute-word with op=remove un-mutes; controls-block-user requires a target", async () => {
+    await lensRun("feed", "controls-mute-word", { params: { word: "temp" } }, ctx);
+    await lensRun("feed", "controls-mute-word", { params: { word: "temp", op: "remove" } }, ctx);
+    const r = await lensRun("feed", "controls-get", {}, ctx);
+    assert.ok(!r.result.controls.mutedWords.includes("temp"));
+    const bad = await lensRun("feed", "controls-block-user", { params: { userId: "" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /userId required/);
+  });
+});
+
+// server.js inline per-artifact feed handlers. These return a BARE { ok, ... }
+// (no `result` key), so lens.run does NOT unwrap — the whole object lands in
+// r.result. Therefore r.result.ok is the handler's ok, and fields are r.result.<f>.
+describe("feed — per-artifact engagement handlers (like / repost / bookmark)", () => {
+  it("like: increments the artifact like count", async () => {
+    const r = await lensRun("feed", "like", { data: { likes: 4 } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.ok, true);
+    assert.equal(r.result.likes, 5);
+  });
+
+  it("like: defaults a missing like count to start at 1", async () => {
+    const r = await lensRun("feed", "like", { data: {} });
+    assert.equal(r.result.likes, 1);
+  });
+
+  it("repost: records a repost with the caller as reposter and links the original", async () => {
+    const ctx = await depthCtx("feed-repost");
+    const r = await lensRun("feed", "repost", { data: {} }, ctx);
+    assert.equal(r.result.ok, true);
+    assert.equal(r.result.repost.reposterId, ctx.actor.userId);
+    assert.ok(r.result.repost.originalId);
+    assert.ok(r.result.repost.id.startsWith("rp"));
+  });
+
+  it("bookmark: marks the artifact bookmarked", async () => {
+    const r = await lensRun("feed", "bookmark", { data: {} });
+    assert.equal(r.result.ok, true);
+    assert.equal(r.result.bookmarked, true);
+  });
+});
+
+describe("feed — rank (engagement + velocity + decay scoring)", () => {
+  it("rank: a post with more engagement outscores a quieter one of the same age", async () => {
+    const createdAt = new Date(Date.now() - 48 * 3600000).toISOString();  // 48h old → decayFactor 0.5
+    const hot = await lensRun("feed", "rank", {
+      data: { likes: 10, reposts: [{ id: "r1" }, { id: "r2" }], bookmarked: true, commentCount: 4 },
+    });
+    // engagement = 10*1 + 2*3 + 1*2 + 4*2 = 26
+    assert.equal(hot.result.ok, true);
+    assert.equal(hot.result.rank.factors.engagementScore, 26);
+    assert.equal(hot.result.rank.factors.likes, 10);
+    assert.equal(hot.result.rank.factors.reposts, 2);
+    assert.equal(hot.result.rank.factors.bookmarks, 1);
+
+    const quiet = await lensRun("feed", "rank", { data: { likes: 1 } });
+    assert.equal(quiet.result.rank.factors.engagementScore, 1);
+    assert.ok(hot.result.rank.score > quiet.result.rank.score);
+    // createdAt-derived factors are present
+    assert.ok(typeof quiet.result.rank.factors.decayFactor === "number");
+    void createdAt;
+  });
+});
+
+describe("feed — personalize / cluster_topics (over the global feed artifact pool)", () => {
+  // These two handlers read the WHOLE feed artifact pool via
+  // STATE.lensDomainIndex (not just the artifact passed in). The harness's
+  // lensRun seeds STATE.lensArtifacts but NOT the domain index, so we seed the
+  // index directly here and invoke through the live runMacro("lens","run",…).
+  let runMacro, STATE, ctx;
+  before(async () => { ({ runMacro, STATE, ctx } = await macroRuntime("feed-pool")); });
+
+  function seedFeedArtifact(id, data) {
+    STATE.lensArtifacts.set(id, {
+      id, domain: "feed", type: "feed", data,
+      ownerId: ctx.actor.userId, createdBy: ctx.actor.userId,
+      createdAt: new Date().toISOString(),
+    });
+    if (!STATE.lensDomainIndex.has("feed")) STATE.lensDomainIndex.set("feed", new Set());
+    STATE.lensDomainIndex.get("feed").add(id);
+  }
+
+  it("personalize: relevance reflects tag affinity from the user's reposted posts", async () => {
+    // a reposted post about "ai" → reposts weight 5 → strong tag affinity for "ai"
+    seedFeedArtifact("perz-src", {
+      tags: ["ai"], authorId: "writer",
+      reposts: [{ reposterId: ctx.actor.userId }],
+    });
+    seedFeedArtifact("perz-target", { tags: ["ai"], authorId: "writer" });
+
+    const r = await runMacro("lens", "run", { id: "perz-target", action: "personalize", params: {} }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.ok, true);
+    assert.ok(r.result.personalized.relevanceScore > 0);          // matched the "ai" affinity
+    assert.ok(r.result.personalized.matchedTags >= 1);
+    assert.ok(r.result.personalized.finalScore >= 0 && r.result.personalized.finalScore <= 1);
+  });
+
+  it("cluster_topics: surfaces tag clusters + co-occurrence from the feed pool", async () => {
+    seedFeedArtifact("clus-1", { tags: ["graphql", "api"] });
+    seedFeedArtifact("clus-2", { tags: ["graphql", "schema"] });
+    const r = await runMacro("lens", "run", { id: "clus-1", action: "cluster_topics", params: {} }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.ok, true);
+    const gq = r.result.clusters.find((c) => c.topic === "graphql");
+    assert.ok(gq);                                                // graphql in 2 seeded artifacts
+    assert.ok(gq.postCount >= 2);
+    assert.ok(gq.related.some((rel) => rel.tag === "api" || rel.tag === "schema"));  // co-occurrence
   });
 });

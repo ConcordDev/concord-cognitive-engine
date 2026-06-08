@@ -15,7 +15,7 @@
 // skipped; ai-price-suggest is exercised on its deterministic peer-stats path.
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { lensRun, depthCtx } from "./_harness.js";
+import { lensRun, depthCtx, macroRuntime } from "./_harness.js";
 
 describe("marketplace — calc contracts (exact computed values)", () => {
   it("listingScore: a fully-optimized listing scores 100 with an Excellent rating and no tips", async () => {
@@ -881,5 +881,302 @@ describe("marketplace — promotions-list + saved-search delete + cart-update (w
     const bad = await lensRun("marketplace", "cart-update", { params: { lineId: "ln_nope", qty: 1 } }, ctx);
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /cart line not found/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// register()/runMacro-family marketplace macros (NOT lens actions, so not
+// reachable via lensRun). These are the DTU-marketplace + plugin-marketplace +
+// royalty-cascade money paths. Invoked directly through runMacro, so SUCCESS
+// fields live at r.<field> (no lens.run unwrap) and a refusal is r.ok===false.
+// Money note: fee/royalty math is asserted at its REAL constitutional values
+// (platformFee 5%, creatorPool 95%; ROYALTY_RATES reference 0.05 / derivative
+// 0.15, DEPTH_DECAY 0.5, MAX_TOTAL 0.30) — NONE of those constants are touched.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("marketplace — plugin marketplace (register family)", () => {
+  let runMacro, ctx;
+  before(async () => { ({ runMacro, ctx } = await macroRuntime("marketplace-plugins")); });
+
+  it("submit registers a plugin listing pending review; browse surfaces it; review averages ratings", async () => {
+    const s = await runMacro("marketplace", "submit", { name: "Tidy Tabs", githubUrl: "https://github.com/acme/tidy-tabs", category: "productivity", description: "keeps tabs tidy" }, ctx);
+    assert.equal(s.ok, true);
+    assert.equal(s.listing.status, "pending_review");
+    assert.equal(s.listing.downloads, 0);
+    assert.equal(s.listing.category, "productivity");
+    const pluginId = s.listing.id;
+
+    const browse = await runMacro("marketplace", "browse", { search: "tidy" }, ctx);
+    assert.equal(browse.ok, true);
+    assert.ok(browse.items.some((l) => l.id === pluginId), "submitted plugin appears in browse");
+
+    // two reviews → listing.rating becomes their average
+    await runMacro("marketplace", "review", { pluginId, rating: 4, comment: "good" }, ctx);
+    const r2 = await runMacro("marketplace", "review", { pluginId, rating: 2 }, ctx);
+    assert.equal(r2.ok, true);
+    const browse2 = await runMacro("marketplace", "browse", {}, ctx);
+    const row = browse2.items.find((l) => l.id === pluginId);
+    assert.equal(row.rating, 3); // (4 + 2) / 2
+  });
+
+  it("submit: a missing githubUrl is rejected", async () => {
+    const bad = await runMacro("marketplace", "submit", { name: "No URL Plugin" }, ctx);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /Name and GitHub URL required/);
+  });
+
+  it("install from a listing increments downloads and lands in installed", async () => {
+    const s = await runMacro("marketplace", "submit", { name: "Quick Notes", githubUrl: "https://github.com/acme/quick-notes" }, ctx);
+    const pluginId = s.listing.id;
+    const inst = await runMacro("marketplace", "install", { pluginId }, ctx);
+    assert.equal(inst.ok, true);
+    assert.equal(inst.plugin.id, pluginId);
+    assert.equal(inst.plugin.enabled, true);
+
+    const installed = await runMacro("marketplace", "installed", {}, ctx);
+    assert.ok(installed.plugins.some((p) => p.id === pluginId));
+
+    // browse now reflects the bumped download count
+    const browse = await runMacro("marketplace", "browse", { sort: "downloads" }, ctx);
+    assert.equal(browse.items.find((l) => l.id === pluginId).downloads, 1);
+  });
+
+  it("install from a malformed GitHub URL is rejected", async () => {
+    const bad = await runMacro("marketplace", "install", { fromGithub: true, githubUrl: "not-a-github-url" }, ctx);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /Invalid GitHub URL/);
+  });
+
+  it("install: an unknown pluginId is rejected", async () => {
+    const bad = await runMacro("marketplace", "install", { pluginId: "plugin_nope" }, ctx);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /Plugin not found/);
+  });
+
+  it("review: missing rating is rejected", async () => {
+    const bad = await runMacro("marketplace", "review", { pluginId: "plugin_x" }, ctx);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /Plugin ID and rating required/);
+  });
+
+  it("heartbeatSync reports installed + auto-update counts", async () => {
+    const r = await runMacro("marketplace", "heartbeatSync", {}, ctx);
+    assert.equal(r.ok, true);
+    assert.ok(r.installed >= 1);            // at least the Quick Notes install above
+    assert.ok(r.updateChecks >= 1);        // installed plugins default autoUpdate:true
+  });
+});
+
+describe("marketplace — DTU listing + plain purchase (register family)", () => {
+  let runMacro, STATE, ctx;
+  before(async () => { ({ runMacro, STATE, ctx } = await macroRuntime("marketplace-dtu")); });
+
+  function seedDtu(id, overrides = {}) {
+    const dtu = {
+      id,
+      title: overrides.title || `DTU ${id}`,
+      scope: "personal",
+      ownerId: ctx.actor.userId,
+      human: { summary: overrides.summary || `summary ${id}` },
+      meta: { createdBy: ctx.actor.userId, type: "dtu_pack", tags: overrides.tags || [] },
+      lineage: overrides.lineage || { parents: [] },
+      ...overrides,
+    };
+    STATE.dtus.set(id, dtu);
+    return dtu;
+  }
+
+  it("list flips a DTU to a marketplace listing with price + contentType; dtu_browse surfaces it", async () => {
+    seedDtu("mk-dtu-1", { title: "Recipe Pack", tags: ["food"] });
+    const l = await runMacro("marketplace", "list", { dtuId: "mk-dtu-1", price: 12, currency: "USD", contentType: "recipe", title: "Recipe Pack", tags: ["food"] }, ctx);
+    assert.equal(l.ok, true);
+    assert.equal(l.listing.listed, true);
+    assert.equal(l.listing.price, 12);
+    assert.equal(l.listing.contentType, "recipe");
+    assert.equal(l.listing.purchases, 0);
+
+    const browse = await runMacro("marketplace", "dtu_browse", { contentType: "recipe" }, ctx);
+    assert.equal(browse.ok, true);
+    const row = browse.listings.find((x) => x.id === "mk-dtu-1");
+    assert.ok(row, "listed DTU appears in dtu_browse");
+    assert.equal(row.price, 12);
+  });
+
+  it("list: an unknown dtuId is rejected", async () => {
+    const bad = await runMacro("marketplace", "list", { dtuId: "mk-dtu-nope", price: 5 }, ctx);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /dtu_not_found/);
+  });
+
+  it("purchase clones a listed DTU to the buyer and increments the listing purchase count", async () => {
+    seedDtu("mk-dtu-2", { title: "Brush Pack" });
+    await runMacro("marketplace", "list", { dtuId: "mk-dtu-2", price: 0 }, ctx);
+    const p = await runMacro("marketplace", "purchase", { dtuId: "mk-dtu-2" }, ctx);
+    assert.equal(p.ok, true);
+    assert.ok(p.purchasedDtuId, "a clone id is returned");
+    const clone = STATE.dtus.get(p.purchasedDtuId);
+    assert.equal(clone.scope, "local");
+    assert.equal(clone.meta.purchasedFrom, "mk-dtu-2");
+    assert.equal(STATE.dtus.get("mk-dtu-2").marketplace.purchases, 1);
+  });
+
+  it("purchase: a DTU that was never listed is rejected", async () => {
+    seedDtu("mk-dtu-3");
+    const bad = await runMacro("marketplace", "purchase", { dtuId: "mk-dtu-3" }, ctx);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /not_listed/);
+  });
+
+  it("dtu_browse sorts by price_low and filters by tag", async () => {
+    seedDtu("mk-dtu-cheap", { tags: ["sort"] });
+    seedDtu("mk-dtu-pricey", { tags: ["sort"] });
+    await runMacro("marketplace", "list", { dtuId: "mk-dtu-cheap", price: 3, tags: ["sort"] }, ctx);
+    await runMacro("marketplace", "list", { dtuId: "mk-dtu-pricey", price: 30, tags: ["sort"] }, ctx);
+    const browse = await runMacro("marketplace", "dtu_browse", { tags: ["sort"], sort: "price_low" }, ctx);
+    const sortRows = browse.listings.filter((x) => x.tags?.includes("sort"));
+    assert.ok(sortRows.length >= 2);
+    // price_low ordering: the cheaper one precedes the pricier one
+    const idxCheap = sortRows.findIndex((x) => x.id === "mk-dtu-cheap");
+    const idxPricey = sortRows.findIndex((x) => x.id === "mk-dtu-pricey");
+    assert.ok(idxCheap < idxPricey, "price_low sorts cheapest first");
+  });
+});
+
+describe("marketplace — purchaseWithRoyalties money path (register family)", () => {
+  let runMacro, STATE, ctx;
+  before(async () => { ({ runMacro, STATE, ctx } = await macroRuntime("marketplace-royalty")); });
+
+  // helper: read an economic-wallet balance (0 when the wallet doesn't exist yet)
+  function bal(userId) {
+    return STATE.economic?.wallets?.get(userId)?.balance || 0;
+  }
+  function seedListedDtu(id, { price, seller, parents = [] } = {}) {
+    STATE.dtus.set(id, {
+      id, title: `Listed ${id}`, scope: "marketplace",
+      ownerId: seller, meta: { createdBy: seller, type: "dtu_pack" },
+      human: { summary: `summary ${id}` },
+      lineage: { parents, citationType: "reference" },
+      marketplace: { listed: true, price, currency: "USD", seller, purchases: 0, listedAt: new Date().toISOString() },
+    });
+  }
+
+  it("a price-0 purchase clones the DTU with no royalties and no wallet movement", async () => {
+    seedListedDtu("rk-free", { price: 0, seller: "seller-free" });
+    const r = await runMacro("marketplace", "purchaseWithRoyalties", { dtuId: "rk-free" }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.price, 0);
+    assert.deepEqual(r.royalties, []);
+    assert.ok(STATE.dtus.get(r.purchasedDtuId), "clone exists");
+  });
+
+  it("a paid purchase with NO ancestors pays seller 95% + platform 5% and credits the seller wallet exactly", async () => {
+    // buyer must have funds; ctx.actor.userId is the buyer
+    const buyer = ctx.actor.userId;
+    STATE.economic = STATE.economic || { wallets: new Map() };
+    STATE.economic.wallets.set(buyer, { odId: buyer, balance: 1000, tokensEarned: 0, tokensSpent: 0 });
+    seedListedDtu("rk-noanc", { price: 100, seller: "seller-noanc" });
+
+    const sellerBefore = bal("seller-noanc");
+    const r = await runMacro("marketplace", "purchaseWithRoyalties", { dtuId: "rk-noanc" }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.price, 100);
+    // no ancestors → empty cascade; seller gets the full 95% creator pool
+    assert.equal(r.breakdown.royaltiesPaid.length, 0);
+    assert.equal(r.breakdown.platformFee, 5);       // 100 * 0.05
+    assert.equal(r.breakdown.sellerReceived, 95);   // 100 * 0.95
+    // seller wallet actually credited 95 (this path threw a TDZ ReferenceError
+    // before the clone-ordering fix, so nothing was ever credited)
+    assert.equal(bal("seller-noanc") - sellerBefore, 95);
+    // buyer debited the full price
+    assert.equal(bal(buyer), 900);
+  });
+
+  it("a paid purchase WITH one cited ancestor pays the reference royalty (5% of creator pool) and the seller the remainder", async () => {
+    const buyer = ctx.actor.userId;
+    STATE.economic.wallets.set(buyer, { odId: buyer, balance: 1000, tokensEarned: 0, tokensSpent: 0 });
+    // ancestor DTU authored by a creator with an existing wallet so it pays direct (not escrow)
+    STATE.dtus.set("rk-parent", {
+      id: "rk-parent", title: "Ancestor", scope: "personal", ownerId: "creator-anc",
+      meta: { createdBy: "creator-anc" }, human: { summary: "ancestor work" }, lineage: { parents: [] },
+    });
+    STATE.economic.wallets.set("creator-anc", { odId: "creator-anc", balance: 0, tokensEarned: 0, tokensSpent: 0 });
+    seedListedDtu("rk-deriv", { price: 200, seller: "seller-deriv", parents: ["rk-parent"] });
+
+    const ancBefore = bal("creator-anc");
+    const sellerBefore = bal("seller-deriv");
+    const r = await runMacro("marketplace", "purchaseWithRoyalties", { dtuId: "rk-deriv" }, ctx);
+    assert.equal(r.ok, true);
+    // creatorPool = 200 * 0.95 = 190; reference royalty rate 0.05 at depth 0 → 190 * 0.05 = 9.5
+    assert.equal(r.breakdown.royaltiesPaid.length, 1);
+    assert.equal(r.breakdown.royaltiesPaid[0].amount, 9.5);
+    assert.equal(r.breakdown.royaltiesPaid[0].recipient, "creator-anc");
+    // seller gets the remainder of the pool: 190 - 9.5 = 180.5
+    assert.equal(r.breakdown.sellerReceived, 180.5);
+    assert.equal(r.breakdown.platformFee, 10);          // 200 * 0.05
+    assert.equal(r.breakdown.totalRoyaltyPercent, 5);   // reference rate 5%
+    // wallets actually credited
+    assert.equal(bal("creator-anc") - ancBefore, 9.5);
+    assert.equal(bal("seller-deriv") - sellerBefore, 180.5);
+  });
+
+  it("an unlisted DTU is rejected", async () => {
+    STATE.dtus.set("rk-unlisted", { id: "rk-unlisted", title: "Nope", scope: "personal", meta: {}, lineage: { parents: [] } });
+    const bad = await runMacro("marketplace", "purchaseWithRoyalties", { dtuId: "rk-unlisted" }, ctx);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /not_listed/);
+  });
+
+  it("a paid purchase with insufficient buyer balance is rejected before any settlement", async () => {
+    const buyer = ctx.actor.userId;
+    STATE.economic.wallets.set(buyer, { odId: buyer, balance: 5, tokensEarned: 0, tokensSpent: 0 });
+    seedListedDtu("rk-broke", { price: 50, seller: "seller-broke" });
+    const sellerBefore = bal("seller-broke");
+    const bad = await runMacro("marketplace", "purchaseWithRoyalties", { dtuId: "rk-broke" }, ctx);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /insufficient_balance/);
+    assert.equal(bad.balance, 5);
+    assert.equal(bad.price, 50);
+    assert.equal(bal("seller-broke"), sellerBefore); // nothing credited
+  });
+});
+
+describe("marketplace — royalties earnings query (register family)", () => {
+  let runMacro, STATE, ctx;
+  before(async () => { ({ runMacro, STATE, ctx } = await macroRuntime("marketplace-royalties-query")); });
+
+  it("royalties aggregates royalty_record DTUs naming the user into totalEarned + per-source streams", async () => {
+    const me = ctx.actor.userId;
+    // seed two royalty_record DTUs that mention this user in their summary
+    STATE.dtus.set("ry-rec-1", {
+      id: "ry-rec-1", machine: { kind: "royalty_record" },
+      human: { summary: `Royalty: $9.5 to ${me} for reference of Source Alpha` },
+      core: { claims: ["Amount: $9.5", "Type: reference", "Depth: 0"] },
+      lineage: { parents: ["src-buy", "src-alpha"] },
+      meta: { createdAt: new Date().toISOString() },
+    });
+    STATE.dtus.set("ry-rec-2", {
+      id: "ry-rec-2", machine: { kind: "royalty_record" },
+      human: { summary: `Royalty: $4 to ${me} for reference of Source Alpha` },
+      core: { claims: ["Amount: $4", "Type: reference", "Depth: 0"] },
+      lineage: { parents: ["src-buy", "src-alpha"] },
+      meta: { createdAt: new Date().toISOString() },
+    });
+    const r = await runMacro("marketplace", "royalties", {}, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.totalEarned, 13.5); // 9.5 + 4
+    assert.equal(r.thisMonth, 13.5);   // both created just now
+    const stream = r.streams.find((s) => s.id === "src-alpha");
+    assert.ok(stream, "a per-source royalty stream is rolled up");
+    assert.equal(stream.totalSales, 2);
+    assert.equal(stream.totalRoyalties, 13.5);
+  });
+
+  it("royalties: no resolvable userId is rejected", async () => {
+    // an internal ctx that passes authz but carries no actor.userId, and no
+    // input.userId → the handler's `input?.userId || ctx?.actor?.userId` is empty
+    const anon = { ...ctx, internal: true, actor: { ...ctx.actor, userId: undefined } };
+    const bad = await runMacro("marketplace", "royalties", {}, anon);
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /userId required/);
   });
 });

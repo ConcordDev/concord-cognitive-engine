@@ -321,3 +321,375 @@ describe("pharmacy — measurements + reminders + auto-reorder (shared ctx)", ()
     assert.ok(!run2.result.triggered.some((x) => x.medId === medId), "open request blocks a duplicate reorder");
   });
 });
+
+describe("pharmacy — med-update + med-archive (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("pharmacy-medupdate"); });
+
+  it("med-update: patches mutable fields and clamps quantity to >= 0", async () => {
+    const add = await lensRun("pharmacy", "med-add", { params: { name: "Amlodipine", strength: "5mg", quantity: 30, refillsRemaining: 2 } }, ctx);
+    const id = add.result.medication.id;
+    const upd = await lensRun("pharmacy", "med-update", {
+      params: { id, strength: "10mg", condition: "hypertension", quantity: -5, refillsRemaining: 4 },
+    }, ctx);
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.medication.strength, "10mg");
+    assert.equal(upd.result.medication.condition, "hypertension");
+    assert.equal(upd.result.medication.quantity, 0);      // max(0, round(-5))
+    assert.equal(upd.result.medication.refillsRemaining, 4);
+  });
+
+  it("med-update: unknown id is rejected", async () => {
+    const r = await lensRun("pharmacy", "med-update", { params: { id: "nope", strength: "1mg" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.ok(String(r.result.error).toLowerCase().includes("not found"));
+  });
+
+  it("med-archive then unarchive: toggles the archived flag + hides from default med-list", async () => {
+    const add = await lensRun("pharmacy", "med-add", { params: { name: "Gabapentin", quantity: 90 } }, ctx);
+    const id = add.result.medication.id;
+
+    const arc = await lensRun("pharmacy", "med-archive", { params: { id } }, ctx);
+    assert.equal(arc.ok, true);
+    assert.equal(arc.result.medication.archived, true);
+
+    // default list excludes archived
+    const def = await lensRun("pharmacy", "med-list", {}, ctx);
+    assert.ok(!def.result.medications.some((m) => m.id === id), "archived med hidden by default");
+    // includeArchived surfaces it again
+    const all = await lensRun("pharmacy", "med-list", { params: { includeArchived: true } }, ctx);
+    assert.ok(all.result.medications.some((m) => m.id === id), "archived med visible with includeArchived");
+
+    const un = await lensRun("pharmacy", "med-archive", { params: { id, unarchive: true } }, ctx);
+    assert.equal(un.result.medication.archived, false);
+  });
+});
+
+describe("pharmacy — dose-history + today-doses (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("pharmacy-dosehist"); });
+
+  it("dose-history: returns logged doses newest-first with the med name attached", async () => {
+    const add = await lensRun("pharmacy", "med-add", { params: { name: "Citalopram", quantity: 30 } }, ctx);
+    const medId = add.result.medication.id;
+    await lensRun("pharmacy", "schedule-set", { params: { medId, times: ["09:00"] } }, ctx);
+    await lensRun("pharmacy", "dose-log", { params: { medId, status: "taken", scheduledTime: "09:00" } }, ctx);
+    await lensRun("pharmacy", "dose-log", { params: { medId, status: "skipped", scheduledTime: "21:00" } }, ctx);
+
+    const hist = await lensRun("pharmacy", "dose-history", { params: { medId } }, ctx);
+    assert.equal(hist.ok, true);
+    assert.equal(hist.result.count, 2);
+    // newest-first ordering by createdAt
+    assert.ok(hist.result.doses[0].createdAt >= hist.result.doses[1].createdAt);
+    assert.equal(hist.result.doses[0].medName, "Citalopram");
+  });
+
+  it("dose-history: an unknown medId scopes to zero doses", async () => {
+    const r = await lensRun("pharmacy", "dose-history", { params: { medId: "does-not-exist" } }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 0);
+    assert.deepEqual(r.result.doses, []);
+  });
+
+  it("today-doses: schedule for today's weekday yields pending until logged taken", async () => {
+    // use a fresh ctx so other meds don't pollute the per-day projection
+    const c2 = await depthCtx("pharmacy-today");
+    const add = await lensRun("pharmacy", "med-add", { params: { name: "Tamsulosin", quantity: 30 } }, c2);
+    const medId = add.result.medication.id;
+    // all 7 days of week → schedule is active today regardless of run date
+    await lensRun("pharmacy", "schedule-set", { params: { medId, times: ["08:00", "20:00"] } }, c2);
+
+    const before = await lensRun("pharmacy", "today-doses", {}, c2);
+    assert.equal(before.ok, true);
+    assert.equal(before.result.total, 2);
+    assert.equal(before.result.pending, 2);
+    assert.equal(before.result.taken, 0);
+
+    await lensRun("pharmacy", "dose-log", { params: { medId, status: "taken", scheduledTime: "08:00" } }, c2);
+    const after = await lensRun("pharmacy", "today-doses", {}, c2);
+    assert.equal(after.result.taken, 1);
+    assert.equal(after.result.pending, 1);
+    const taken = after.result.doses.find((d) => d.time === "08:00");
+    assert.equal(taken.status, "taken");
+  });
+});
+
+describe("pharmacy — pharmacies + price-list + coupons (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("pharmacy-pharmacies"); });
+
+  it("pharmacy-add → pharmacy-list: a named pharmacy round-trips", async () => {
+    const add = await lensRun("pharmacy", "pharmacy-add", { params: { name: "Costco Pharmacy", address: "123 Main St", phone: "555-0100" } }, ctx);
+    assert.equal(add.ok, true);
+    assert.equal(add.result.pharmacy.name, "Costco Pharmacy");
+    assert.equal(add.result.pharmacy.address, "123 Main St");
+
+    const list = await lensRun("pharmacy", "pharmacy-list", {}, ctx);
+    assert.equal(list.ok, true);
+    assert.ok(list.result.pharmacies.some((p) => p.id === add.result.pharmacy.id));
+  });
+
+  it("pharmacy-add: a blank name is rejected", async () => {
+    const r = await lensRun("pharmacy", "pharmacy-add", { params: { name: "  " } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.ok(String(r.result.error).toLowerCase().includes("name required"));
+  });
+
+  it("price-record resolves a stored pharmacy by id; price-list returns newest-first", async () => {
+    const ph = await lensRun("pharmacy", "pharmacy-add", { params: { name: "Walgreens #42" } }, ctx);
+    const rec = await lensRun("pharmacy", "price-record", { params: { drugName: "Atorvastatin", pharmacyId: ph.result.pharmacy.id, cashPrice: 14.99 } }, ctx);
+    assert.equal(rec.ok, true);
+    assert.equal(rec.result.price.pharmacyName, "Walgreens #42"); // resolved from id
+    assert.equal(rec.result.price.cashPrice, 14.99);
+    assert.equal(rec.result.price.drugName, "atorvastatin"); // lowercased
+
+    const list = await lensRun("pharmacy", "price-list", {}, ctx);
+    assert.equal(list.ok, true);
+    assert.ok(list.result.count >= 1);
+    // newest-first: first entry recordedAt >= last
+    assert.ok(list.result.prices[0].recordedAt >= list.result.prices[list.result.prices.length - 1].recordedAt);
+  });
+
+  it("coupon-save → coupon-list: a coupon round-trips, list is reverse-chronological", async () => {
+    const c1 = await lensRun("pharmacy", "coupon-save", { params: { drugName: "Metformin", pharmacyName: "CVS", discountedPrice: 4.5, code: "SAVE10" } }, ctx);
+    assert.equal(c1.ok, true);
+    assert.equal(c1.result.coupon.drugName, "Metformin");
+    assert.equal(c1.result.coupon.discountedPrice, 4.5);
+    const c2 = await lensRun("pharmacy", "coupon-save", { params: { drugName: "Lisinopril", discountedPrice: 3 } }, ctx);
+    const list = await lensRun("pharmacy", "coupon-list", {}, ctx);
+    assert.equal(list.ok, true);
+    // .reverse() → most-recently-saved is first
+    assert.equal(list.result.coupons[0].id, c2.result.coupon.id);
+  });
+
+  it("coupon-save: a blank drugName is rejected", async () => {
+    const r = await lensRun("pharmacy", "coupon-save", { params: { discountedPrice: 5 } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.ok(String(r.result.error).toLowerCase().includes("drugname"));
+  });
+});
+
+describe("pharmacy — journal + dashboard (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("pharmacy-journal"); });
+
+  it("journal-add → journal-list: an entry stores mood + symptoms, list newest-first", async () => {
+    const a1 = await lensRun("pharmacy", "journal-add", { params: { note: "felt fine", mood: "GOOD", symptoms: ["headache", ""] } }, ctx);
+    assert.equal(a1.ok, true);
+    assert.equal(a1.result.entry.mood, "good"); // lowercased
+    assert.deepEqual(a1.result.entry.symptoms, ["headache"]); // blanks filtered
+    const a2 = await lensRun("pharmacy", "journal-add", { params: { note: "second entry" } }, ctx);
+    const list = await lensRun("pharmacy", "journal-list", {}, ctx);
+    assert.equal(list.ok, true);
+    assert.equal(list.result.count, 2);
+    assert.equal(list.result.entries[0].id, a2.result.entry.id); // newest-first
+  });
+
+  it("journal-add: a blank note is rejected", async () => {
+    const r = await lensRun("pharmacy", "journal-add", { params: { note: "   " } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.ok(String(r.result.error).toLowerCase().includes("note required"));
+  });
+
+  it("pharmacy-dashboard: aggregates med count, today doses, and refills-due", async () => {
+    const c2 = await depthCtx("pharmacy-dashboard");
+    const add = await lensRun("pharmacy", "med-add", { params: { name: "Hydrochlorothiazide", quantity: 4 } }, c2);
+    const medId = add.result.medication.id;
+    // perDay 1, qty 4 → daysOfSupply 4 (<=7 → refillsDue)
+    await lensRun("pharmacy", "schedule-set", { params: { medId, times: ["08:00"] } }, c2);
+    await lensRun("pharmacy", "dose-log", { params: { medId, status: "taken", scheduledTime: "08:00" } }, c2);
+
+    const dash = await lensRun("pharmacy", "pharmacy-dashboard", {}, c2);
+    assert.equal(dash.ok, true);
+    assert.equal(dash.result.medications, 1);
+    assert.equal(dash.result.todayDoses.total, 1);
+    assert.equal(dash.result.todayDoses.taken, 1);
+    assert.equal(dash.result.todayDoses.pending, 0);
+    // qty was 4, dose-log "taken" decremented to 3 → floor(3/1)=3 <=7
+    assert.equal(dash.result.refillsDue, 1);
+  });
+});
+
+describe("pharmacy — reminder list/toggle/delete/due (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("pharmacy-reminders"); });
+
+  it("reminder-set explicit times → reminder-list → reminder-toggle off", async () => {
+    const add = await lensRun("pharmacy", "med-add", { params: { name: "Aspirin", quantity: 100 } }, ctx);
+    const medId = add.result.medication.id;
+    const rem = await lensRun("pharmacy", "reminder-set", { params: { medId, times: ["08:00", "08:00", "12:00"], leadMinutes: 200, snoozeMinutes: 99 } }, ctx);
+    assert.equal(rem.ok, true);
+    assert.deepEqual(rem.result.reminder.times, ["08:00", "12:00"]); // deduped + sorted
+    assert.equal(rem.result.reminder.leadMinutes, 120); // clamped to <=120
+    assert.equal(rem.result.reminder.snoozeMinutes, 60); // clamped to <=60
+
+    const list = await lensRun("pharmacy", "reminder-list", {}, ctx);
+    assert.equal(list.ok, true);
+    assert.equal(list.result.count, 1);
+
+    const toggled = await lensRun("pharmacy", "reminder-toggle", { params: { id: rem.result.reminder.id, enabled: false } }, ctx);
+    assert.equal(toggled.result.reminder.enabled, false);
+  });
+
+  it("reminder-set upserts (one reminder per med, not duplicates)", async () => {
+    const add = await lensRun("pharmacy", "med-add", { params: { name: "Clopidogrel", quantity: 30 } }, ctx);
+    const medId = add.result.medication.id;
+    const r1 = await lensRun("pharmacy", "reminder-set", { params: { medId, times: ["09:00"] } }, ctx);
+    const r2 = await lensRun("pharmacy", "reminder-set", { params: { medId, times: ["10:00"] } }, ctx);
+    assert.equal(r1.result.reminder.id, r2.result.reminder.id); // same id reused
+    assert.deepEqual(r2.result.reminder.times, ["10:00"]);     // replaced, not appended
+  });
+
+  it("reminder-toggle: unknown id is rejected", async () => {
+    const r = await lensRun("pharmacy", "reminder-toggle", { params: { id: "nope" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.ok(String(r.result.error).toLowerCase().includes("not found"));
+  });
+
+  it("reminder-delete: removes the reminder and reports the deleted count", async () => {
+    const add = await lensRun("pharmacy", "med-add", { params: { name: "DeleteMe", quantity: 10 } }, ctx);
+    const medId = add.result.medication.id;
+    const rem = await lensRun("pharmacy", "reminder-set", { params: { medId, times: ["07:00"] } }, ctx);
+    const del = await lensRun("pharmacy", "reminder-delete", { params: { id: rem.result.reminder.id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, 1);
+    const del2 = await lensRun("pharmacy", "reminder-delete", { params: { id: rem.result.reminder.id } }, ctx);
+    assert.equal(del2.result.deleted, 0); // already gone
+  });
+
+  it("reminder-due: an all-day reminder with a wide window surfaces and excludes taken doses", async () => {
+    const c2 = await depthCtx("pharmacy-due");
+    const add = await lensRun("pharmacy", "med-add", { params: { name: "DueMed", quantity: 30 } }, c2);
+    const medId = add.result.medication.id;
+    await lensRun("pharmacy", "schedule-set", { params: { medId, times: ["00:00", "23:59"] } }, c2);
+    await lensRun("pharmacy", "reminder-set", { params: { medId, times: ["00:00", "23:59"] } }, c2);
+    // 720-min window covers the whole day from any clock time → both times within window
+    const due = await lensRun("pharmacy", "reminder-due", { params: { windowMinutes: 720 } }, c2);
+    assert.equal(due.ok, true);
+    assert.equal(due.result.windowMinutes, 720);
+    const startCount = due.result.count;
+    assert.ok(startCount >= 1, "at least one reminder time falls within a 12h window");
+
+    // log one as taken → it's excluded from the due list
+    const takenTime = due.result.due[0].time;
+    await lensRun("pharmacy", "dose-log", { params: { medId, status: "taken", scheduledTime: takenTime } }, c2);
+    const due2 = await lensRun("pharmacy", "reminder-due", { params: { windowMinutes: 720 } }, c2);
+    assert.ok(!due2.result.due.some((d) => d.time === takenTime), "taken dose excluded from due list");
+    assert.equal(due2.result.count, startCount - 1);
+  });
+});
+
+describe("pharmacy — caregivers + alerts (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("pharmacy-caregivers"); });
+
+  it("caregiver-add → caregiver-list → caregiver-remove round-trip", async () => {
+    const add = await lensRun("pharmacy", "caregiver-add", { params: { name: "Jane Doe", contact: "jane@x.com", relationship: "daughter", missedThreshold: 99 } }, ctx);
+    assert.equal(add.ok, true);
+    assert.equal(add.result.caregiver.name, "Jane Doe");
+    assert.equal(add.result.caregiver.missedThreshold, 10); // clamped to <=10
+    assert.equal(add.result.caregiver.notifyOnMissed, true); // default
+
+    const list = await lensRun("pharmacy", "caregiver-list", {}, ctx);
+    assert.ok(list.result.caregivers.some((c) => c.id === add.result.caregiver.id));
+
+    const rem = await lensRun("pharmacy", "caregiver-remove", { params: { id: add.result.caregiver.id } }, ctx);
+    assert.equal(rem.result.removed, 1);
+  });
+
+  it("caregiver-add: a blank name is rejected", async () => {
+    const r = await lensRun("pharmacy", "caregiver-add", { params: { name: "" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.ok(String(r.result.error).toLowerCase().includes("name required"));
+  });
+
+  it("caregiver-alerts: refill-due alert fires for a caregiver opted into refill notifications", async () => {
+    const c2 = await depthCtx("pharmacy-alerts");
+    // caregiver only wants refill-due alerts (notifyOnMissed off so no missed-dose noise)
+    await lensRun("pharmacy", "caregiver-add", { params: { name: "Care Bot", notifyOnMissed: false, notifyOnRefillDue: true } }, c2);
+    const add = await lensRun("pharmacy", "med-add", { params: { name: "LowSupply", quantity: 2 } }, c2);
+    const medId = add.result.medication.id;
+    // perDay 1, qty 2 → daysOfSupply 2 (<=7 → refillsLow)
+    await lensRun("pharmacy", "schedule-set", { params: { medId, times: ["08:00"] } }, c2);
+
+    const alerts = await lensRun("pharmacy", "caregiver-alerts", {}, c2);
+    assert.equal(alerts.ok, true);
+    assert.equal(alerts.result.refillsLow, 1);
+    assert.equal(alerts.result.count, 1);
+    const reason = alerts.result.alerts[0].reasons.find((r) => r.kind === "refill_due");
+    assert.ok(reason, "a refill_due reason should be present");
+    assert.equal(reason.count, 1);
+  });
+});
+
+describe("pharmacy — autoreorder list/remove (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("pharmacy-aro"); });
+
+  it("autoreorder-set → autoreorder-list → autoreorder-remove round-trip", async () => {
+    const add = await lensRun("pharmacy", "med-add", { params: { name: "Pantoprazole", quantity: 30 } }, ctx);
+    const medId = add.result.medication.id;
+    const set = await lensRun("pharmacy", "autoreorder-set", { params: { medId, thresholdDays: 99, pharmacy: "CVS" } }, ctx);
+    assert.equal(set.ok, true);
+    assert.equal(set.result.config.thresholdDays, 60); // clamped to <=60
+    assert.equal(set.result.config.enabled, true);
+
+    const list = await lensRun("pharmacy", "autoreorder-list", {}, ctx);
+    assert.ok(list.result.configs.some((c) => c.medId === medId));
+
+    const rem = await lensRun("pharmacy", "autoreorder-remove", { params: { medId } }, ctx);
+    assert.equal(rem.result.removed, 1);
+    const list2 = await lensRun("pharmacy", "autoreorder-list", {}, ctx);
+    assert.ok(!list2.result.configs.some((c) => c.medId === medId));
+  });
+
+  it("autoreorder-set: upserts (one config per med)", async () => {
+    const add = await lensRun("pharmacy", "med-add", { params: { name: "Rosuvastatin", quantity: 30 } }, ctx);
+    const medId = add.result.medication.id;
+    await lensRun("pharmacy", "autoreorder-set", { params: { medId, thresholdDays: 5 } }, ctx);
+    await lensRun("pharmacy", "autoreorder-set", { params: { medId, thresholdDays: 14 } }, ctx);
+    const list = await lensRun("pharmacy", "autoreorder-list", {}, ctx);
+    const matches = list.result.configs.filter((c) => c.medId === medId);
+    assert.equal(matches.length, 1);          // single config, not two
+    assert.equal(matches[0].thresholdDays, 14); // last write wins
+  });
+});
+
+describe("pharmacy — adherence gamification (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("pharmacy-gamify"); });
+
+  it("adherence-calendar: a perfect-today produces a 'perfect' cell + non-null overallPct", async () => {
+    const c2 = await depthCtx("pharmacy-calendar");
+    const add = await lensRun("pharmacy", "med-add", { params: { name: "CalMed", quantity: 30 } }, c2);
+    const medId = add.result.medication.id;
+    await lensRun("pharmacy", "schedule-set", { params: { medId, times: ["08:00"] } }, c2);
+    await lensRun("pharmacy", "dose-log", { params: { medId, status: "taken", scheduledTime: "08:00" } }, c2);
+
+    const cal = await lensRun("pharmacy", "adherence-calendar", { params: { days: 30 } }, c2);
+    assert.equal(cal.ok, true);
+    assert.equal(cal.result.days, 30);
+    assert.equal(cal.result.cells.length, 30);
+    const todayCell = cal.result.cells[cal.result.cells.length - 1]; // sorted ascending → today last
+    assert.equal(todayCell.scheduled, 1);
+    assert.equal(todayCell.taken, 1);
+    assert.equal(todayCell.status, "perfect");
+    assert.ok(cal.result.perfectDays >= 1);
+    assert.ok(cal.result.overallPct != null);
+  });
+
+  it("adherence-streak: one perfect day yields currentStreak 1 and nextMilestone 3", async () => {
+    const c2 = await depthCtx("pharmacy-streak");
+    const add = await lensRun("pharmacy", "med-add", { params: { name: "StreakMed", quantity: 30 } }, c2);
+    const medId = add.result.medication.id;
+    await lensRun("pharmacy", "schedule-set", { params: { medId, times: ["08:00"] } }, c2);
+    await lensRun("pharmacy", "dose-log", { params: { medId, status: "taken", scheduledTime: "08:00" } }, c2);
+
+    const streak = await lensRun("pharmacy", "adherence-streak", {}, c2);
+    assert.equal(streak.ok, true);
+    assert.equal(streak.result.currentStreak, 1);
+    assert.equal(streak.result.totalDosesTaken, 1);
+    assert.equal(streak.result.nextMilestone, 3);
+    assert.deepEqual(streak.result.badges, []); // need >=3 for the first badge
+  });
+});

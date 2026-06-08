@@ -233,4 +233,206 @@ describe("markets — alerts CRUD (per-user, shared ctx)", () => {
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /condition must be/);
   });
+
+  it("alert-create rejects a missing symbol and a non-numeric threshold", async () => {
+    const noSym = await lensRun("markets", "alert-create", {
+      params: { condition: "price_above", threshold: 100 },
+    }, ctx);
+    assert.equal(noSym.result.ok, false);
+    assert.match(noSym.result.error, /symbol required/);
+    const badThresh = await lensRun("markets", "alert-create", {
+      params: { symbol: "SPY", condition: "price_above", threshold: "not-a-number" },
+    }, ctx);
+    assert.equal(badThresh.result.ok, false);
+    assert.match(badThresh.result.error, /threshold must be a number/);
+  });
+
+  it("alert-cancel rejects an unknown id and a missing id", async () => {
+    const noId = await lensRun("markets", "alert-cancel", { params: {} }, ctx);
+    assert.equal(noId.result.ok, false);
+    assert.match(noId.result.error, /id required/);
+    const notFound = await lensRun("markets", "alert-cancel", { params: { id: "alert_nope" } }, ctx);
+    assert.equal(notFound.result.ok, false);
+    assert.match(notFound.result.error, /not found/);
+  });
+});
+
+describe("markets — market-get / market-list / market-history (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("markets-readside"); });
+
+  it("market-get returns a created market's summary; unknown id rejects", async () => {
+    const created = await lensRun("markets", "market-create", {
+      params: {
+        question: "Get-by-id round-trip market question",
+        resolutionCriteria: "Resolves on the official record.",
+        category: "tech", seedSparks: 20,
+      },
+    }, ctx);
+    const marketId = created.result.market.id;
+    const got = await lensRun("markets", "market-get", { params: { marketId } }, ctx);
+    assert.equal(got.ok, true);
+    assert.equal(got.result.market.id, marketId);
+    assert.equal(got.result.market.category, "tech");
+    // seed 20 → symmetric 10/10 pool
+    assert.equal(got.result.market.poolYes, 10);
+    assert.equal(got.result.market.poolNo, 10);
+    assert.equal(got.result.market.totalPool, 20);
+    const missing = await lensRun("markets", "market-get", { params: { marketId: "mkt_nope" } }, ctx);
+    assert.equal(missing.result.ok, false);
+    assert.match(missing.result.error, /market not found/);
+  });
+
+  it("market-list filters by category + search and reports facet counts", async () => {
+    // create a uniquely-categorised market with a unique search token
+    await lensRun("markets", "market-create", {
+      params: {
+        question: "Zorptastic listing token market question",
+        resolutionCriteria: "Resolves on evidence link.",
+        category: "science",
+      },
+    }, ctx);
+    const byCat = await lensRun("markets", "market-list", { params: { category: "science" } }, ctx);
+    assert.equal(byCat.ok, true);
+    assert.ok(byCat.result.markets.every((m) => m.category === "science"));
+    assert.ok(byCat.result.facets.science >= 1);
+    // categories list is exposed for the browse UI
+    assert.ok(byCat.result.categories.includes("science"));
+    // search narrows to the unique token
+    const bySearch = await lensRun("markets", "market-list", { params: { search: "zorptastic" } }, ctx);
+    assert.equal(bySearch.result.markets.length, 1);
+    assert.match(bySearch.result.markets[0].question, /Zorptastic/);
+  });
+
+  it("market-list respects the limit clamp and the status filter", async () => {
+    const limited = await lensRun("markets", "market-list", { params: { limit: 1 } }, ctx);
+    assert.ok(limited.result.markets.length <= 1);
+    const openOnly = await lensRun("markets", "market-list", { params: { status: "open" } }, ctx);
+    assert.ok(openOnly.result.markets.every((m) => m.status === "open"));
+  });
+
+  it("market-history records one point per price-moving event", async () => {
+    const created = await lensRun("markets", "market-create", {
+      params: { question: "Price history tracking market question", resolutionCriteria: "Resolves on evidence." },
+    }, ctx);
+    const marketId = created.result.market.id;
+    // create() records one point; each position-open records another.
+    const h0 = await lensRun("markets", "market-history", { params: { marketId } }, ctx);
+    assert.equal(h0.ok, true);
+    assert.equal(h0.result.count, 1);
+    assert.equal(h0.result.points[0].yesPercent, 50); // symmetric seed
+    await lensRun("markets", "position-open", { params: { marketId, side: "yes", stakeSparks: 30 } }, ctx);
+    const h1 = await lensRun("markets", "market-history", { params: { marketId } }, ctx);
+    assert.equal(h1.result.count, 2);
+    // after a 30-spark YES bet onto a 5/5 pool: poolYes 35, poolNo 5 → 87.5% → 88
+    assert.equal(h1.result.points[1].yesPercent, 88);
+    assert.equal(h1.result.points[1].poolYes, 35);
+  });
+
+  it("market-history rejects an unknown market", async () => {
+    const bad = await lensRun("markets", "market-history", { params: { marketId: "mkt_nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /market not found/);
+  });
+});
+
+describe("markets — position-cashout + market-resolution + leaderboard (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("markets-cashout"); });
+
+  it("position-cashout closes an open YES position at current odds minus a 2% exit fee", async () => {
+    const created = await lensRun("markets", "market-create", {
+      params: { question: "Cashout exit fee market question check", resolutionCriteria: "Resolves on evidence." },
+    }, ctx);
+    const marketId = created.result.market.id;
+    // Bet 10 YES onto the 5/5 seed → poolYes 15, poolNo 5.
+    const pos = await lensRun("markets", "position-open", { params: { marketId, side: "yes", stakeSparks: 10 } }, ctx);
+    const positionId = pos.result.position.id;
+    // current odds (post-bet): prob = 15/20 = 0.75 ; winPool 15 losePool 5
+    // grossIfWin = 10 + (10/15)*5 = 13.3333... ; rawCashout = gross * 0.75 = 10.0
+    // exitFee = 10.0 * 0.02 = 0.20 ; cashout = 9.80 ; pnl = -0.20
+    const cash = await lensRun("markets", "position-cashout", { params: { positionId } }, ctx);
+    assert.equal(cash.ok, true);
+    assert.ok(Math.abs(cash.result.cashoutSparks - 9.80) < 0.01,
+      `cashout ${cash.result.cashoutSparks} != ~9.80`);
+    assert.ok(Math.abs(cash.result.exitFee - 0.20) < 0.01, `exitFee ${cash.result.exitFee} != ~0.20`);
+    assert.ok(Math.abs(cash.result.realizedPnl - (-0.20)) < 0.01, `pnl ${cash.result.realizedPnl} != ~-0.20`);
+    assert.equal(cash.result.position.status, "cashed_out");
+  });
+
+  it("position-cashout cannot be replayed and rejects another user", async () => {
+    const created = await lensRun("markets", "market-create", {
+      params: { question: "Cashout replay guard market question", resolutionCriteria: "Resolves on evidence." },
+    }, ctx);
+    const marketId = created.result.market.id;
+    const pos = await lensRun("markets", "position-open", { params: { marketId, side: "no", stakeSparks: 8 } }, ctx);
+    const positionId = pos.result.position.id;
+    const other = await depthCtx("markets-cashout-other");
+    const notYours = await lensRun("markets", "position-cashout", { params: { positionId } }, other);
+    assert.equal(notYours.result.ok, false);
+    assert.match(notYours.result.error, /not your position/);
+    const first = await lensRun("markets", "position-cashout", { params: { positionId } }, ctx);
+    assert.equal(first.ok, true);
+    const replay = await lensRun("markets", "position-cashout", { params: { positionId } }, ctx);
+    assert.equal(replay.result.ok, false);
+    assert.match(replay.result.error, /position is cashed_out/);
+  });
+
+  it("market-resolution reports unresolved then resolved with settled-position counts", async () => {
+    const created = await lensRun("markets", "market-create", {
+      params: { question: "Resolution view reporting market question", resolutionCriteria: "Resolves on evidence." },
+    }, ctx);
+    const marketId = created.result.market.id;
+    await lensRun("markets", "position-open", { params: { marketId, side: "yes", stakeSparks: 10 } }, ctx);
+    await lensRun("markets", "position-open", { params: { marketId, side: "no", stakeSparks: 10 } }, ctx);
+    const before = await lensRun("markets", "market-resolution", { params: { marketId } }, ctx);
+    assert.equal(before.result.resolved, false);
+    assert.equal(before.result.status, "open");
+    await lensRun("markets", "market-resolve", {
+      params: { marketId, outcome: "yes", evidence: "Observed YES per the record." },
+    }, ctx);
+    const after = await lensRun("markets", "market-resolution", { params: { marketId } }, ctx);
+    assert.equal(after.result.resolved, true);
+    assert.equal(after.result.resolution.outcome, "yes");
+    assert.equal(after.result.settledPositions, 2);
+    assert.equal(after.result.winners, 1);
+    assert.equal(after.result.losers, 1);
+  });
+
+  it("leaderboard ranks the user by realized P&L with a derived win rate and ROI", async () => {
+    const lb = await lensRun("markets", "leaderboard", {}, ctx);
+    assert.equal(lb.ok, true);
+    const me = lb.result.leaderboard.find((row) => row.userId === ctx.actor.userId);
+    assert.ok(me, "expected this user on the leaderboard");
+    assert.equal(me.rank >= 1, true);
+    // From the resolution test above this ctx has at least one win and one loss.
+    assert.ok(me.wins >= 1 && me.losses >= 1);
+    // winRate = wins/(wins+losses); roi = realizedPnl/staked — both finite numbers
+    assert.ok(me.winRate !== null && me.winRate >= 0 && me.winRate <= 1);
+    assert.ok(me.roi !== null && Number.isFinite(me.roi));
+  });
+});
+
+describe("markets — network macro pre-fetch validation branches (no egress)", () => {
+  it("quote-history rejects a missing symbol, bad range, and bad interval before any fetch", async () => {
+    const noSym = await lensRun("markets", "quote-history", { params: {} });
+    assert.equal(noSym.result.ok, false);
+    assert.match(noSym.result.error, /symbol required/);
+    const badRange = await lensRun("markets", "quote-history", { params: { symbol: "SPY", range: "7mo" } });
+    assert.equal(badRange.result.ok, false);
+    assert.match(badRange.result.error, /invalid range/);
+    const badInterval = await lensRun("markets", "quote-history", {
+      params: { symbol: "SPY", range: "1mo", interval: "13m" },
+    });
+    assert.equal(badInterval.result.ok, false);
+    assert.match(badInterval.result.error, /invalid interval/);
+  });
+
+  it("depth-of-book with a symbol falls through to the graceful fetch-failure branch (egress blocked)", async () => {
+    // No pre-fetch validation rejects a non-empty symbol, so the no-egress
+    // block trips the catch → a well-formed { ok:false } error shape.
+    const r = await lensRun("markets", "depth-of-book", { params: { symbol: "SPY" } });
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /depth quote fetch failed/);
+  });
 });

@@ -78,29 +78,22 @@ const LOG_TYPE_COLORS: Record<CombatLogEntry['type'], string> = {
   info:           'text-gray-400',
 };
 
-const DEMO_STATE: CombatState = {
-  health: 72,
-  maxHealth: 100,
-  stamina: 45,
-  maxStamina: 80,
-  armor: 18,
-  weapon: { name: 'Steel Hammer', damage: 12, speed: 1.2, type: 'melee' },
-  target: { name: 'Rubble Golem', health: 340, maxHealth: 500, level: 8, type: 'enemy' },
-  coverBonus: 15,
+// Neutral idle state — this HUD is prop-driven by the live world-lens combat
+// path (combat:impact / combat:hit socket events feed the parent, which passes
+// a real CombatState down). When no live combat is in progress we render a
+// blank/idle HUD rather than fabricated HP/target/log values.
+const IDLE_STATE: CombatState = {
+  health: 0,
+  maxHealth: 0,
+  stamina: 0,
+  maxStamina: 0,
+  armor: 0,
+  weapon: null,
+  target: null,
+  coverBonus: 0,
   isDead: false,
   damageNumbers: [],
-  combatLog: [
-    { id: 'cl1', message: 'You hit Rubble Golem for 12 damage.', type: 'damage-dealt', timestamp: '0:42' },
-    { id: 'cl2', message: 'Rubble Golem strikes you for 8 damage.', type: 'damage-taken', timestamp: '0:40' },
-    { id: 'cl3', message: 'You blocked! Absorbed 6 damage.', type: 'block', timestamp: '0:38' },
-    { id: 'cl4', message: 'Healing Salve restores 15 HP.', type: 'heal', timestamp: '0:35' },
-    { id: 'cl5', message: 'You hit Rubble Golem for 18 damage (crit).', type: 'damage-dealt', timestamp: '0:32' },
-    { id: 'cl6', message: 'Rubble Golem summons debris shield.', type: 'info', timestamp: '0:30' },
-    { id: 'cl7', message: 'You hit Rubble Golem for 12 damage.', type: 'damage-dealt', timestamp: '0:27' },
-    { id: 'cl8', message: 'Rubble Golem strikes you for 10 damage.', type: 'damage-taken', timestamp: '0:24' },
-    { id: 'cl9', message: 'You moved behind cover (+15 armor).', type: 'info', timestamp: '0:20' },
-    { id: 'cl10', message: 'You hit Rubble Golem for 12 damage.', type: 'damage-dealt', timestamp: '0:18' },
-  ],
+  combatLog: [],
   damageFlash: false,
 };
 
@@ -113,7 +106,7 @@ function HealthBar({ current, max, label, color, icon: Icon }: {
   color: string;
   icon: React.ComponentType<{ className?: string }>;
 }) {
-  const pct = Math.max(0, Math.min(100, (current / max) * 100));
+  const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0;
   return (
     <div className="space-y-0.5">
       <div className="flex items-center justify-between">
@@ -140,7 +133,7 @@ function HealthBar({ current, max, label, color, icon: Icon }: {
 /* ── Component ─────────────────────────────────────────────────── */
 
 export default function CombatSystem({
-  combatState = DEMO_STATE,
+  combatState = IDLE_STATE,
   onAttack,
   onBlock,
   onUseItem,
@@ -177,9 +170,10 @@ export default function CombatSystem({
     onAttack?.();
   }, [onAttack]);
 
-  const healthColor = state.health / state.maxHealth > 0.5
+  const healthFrac = state.maxHealth > 0 ? state.health / state.maxHealth : 0;
+  const healthColor = healthFrac > 0.5
     ? 'text-green-400'
-    : state.health / state.maxHealth > 0.25
+    : healthFrac > 0.25
     ? 'text-yellow-400'
     : 'text-red-400';
 
@@ -323,6 +317,9 @@ export default function CombatSystem({
           <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Combat Log</span>
         </div>
         <div className="max-h-36 overflow-y-auto px-3 py-1.5 space-y-0.5">
+          {state.combatLog.length === 0 && (
+            <p className="text-[10px] text-gray-600 italic py-1">No combat activity.</p>
+          )}
           {state.combatLog.map((entry) => (
             <div key={entry.id} className="flex gap-2 text-[10px]">
               <span className="text-gray-600 shrink-0">{entry.timestamp}</span>

@@ -239,8 +239,9 @@ export default function registerStakingActions(registerLensAction) {
       const pool = poolById(poolId);
       if (!pool) return { ok: false, error: "unknown_pool" };
       const principal = Math.floor(Number(params.principalCc) || 0);
-      const months = Math.max(1, Math.min(60, Math.floor(Number(params.months) || 0)));
-      if (!months) return { ok: false, error: "missing_months" };
+      const rawMonths = Math.floor(Number(params.months) || 0);
+      if (!rawMonths) return { ok: false, error: "missing_months" };
+      const months = Math.max(1, Math.min(60, rawMonths));
       if (principal < pool.minStake) {
         return { ok: false, error: `min_stake_${pool.minStake}_cc` };
       }

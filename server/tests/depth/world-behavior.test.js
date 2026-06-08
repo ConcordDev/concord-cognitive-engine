@@ -359,3 +359,265 @@ describe("world — photo gallery save / share / delete (shared ctx)", () => {
     assert.equal(r.result.ok, false);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// APPENDED: behavioral coverage for previously-uncovered deterministic macros.
+// All emits are best-effort try/catch in source, so these run cleanly headless.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe("world — share links create + list (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("world-share"); });
+
+  it("create stamps a url with rounded coords + note query; list returns it newest-first", async () => {
+    const c = await lensRun("world", "share-link-create", {
+      params: { worldId: "shareW", x: 12.34, y: 56.78, z: 90.12, note: "meet here" },
+    }, ctx);
+    assert.equal(c.ok, true);
+    assert.equal(c.result.link.worldId, "shareW");
+    assert.equal(c.result.link.x, 12.34);
+    // url encodes worldId + x.toFixed(1)=12.3 + note as n
+    assert.ok(c.result.link.url.includes("world=shareW"));
+    assert.ok(c.result.link.url.includes("x=12.3"));
+    assert.ok(c.result.link.url.includes("n=meet"));
+    const id = c.result.link.id;
+
+    const list = await lensRun("world", "share-links-list", {}, ctx);
+    assert.equal(list.ok, true);
+    assert.ok(list.result.links.some((l) => l.id === id));
+  });
+
+  it("share-link-create without worldId is rejected", async () => {
+    const r = await lensRun("world", "share-link-create", { params: { x: 1, y: 2, z: 3 } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.ok(String(r.result.error).includes("worldId"));
+  });
+});
+
+describe("world — quest summary + pin toggle (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("world-quest"); });
+
+  it("summary groups quests by chain with active/completed counts", async () => {
+    const r = await lensRun("world", "quest-summary", { params: { worldId: "qW" } }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.worldId, "qW");
+    const onb = r.result.chains.find((c) => c.chainId === "onboarding");
+    // sample fallback onboarding: 2 completed, 1 active
+    assert.equal(onb.completedCount, 2);
+    assert.equal(onb.activeCount, 1);
+    assert.equal(r.result.pinnedCount, 0);
+  });
+
+  it("pin-toggle flips on then off and is reflected in summary's pinned flag", async () => {
+    const on = await lensRun("world", "quest-pin-toggle", { params: { questId: "q_arc_1" } }, ctx);
+    assert.equal(on.ok, true);
+    assert.equal(on.result.pinned, true);
+    assert.equal(on.result.totalPinned, 1);
+
+    const sum = await lensRun("world", "quest-summary", { params: { worldId: "qW" } }, ctx);
+    const arc = sum.result.chains.find((c) => c.chainId === "main_arc");
+    assert.equal(arc.quests.find((q) => q.id === "q_arc_1").pinned, true);
+
+    const off = await lensRun("world", "quest-pin-toggle", { params: { questId: "q_arc_1" } }, ctx);
+    assert.equal(off.result.pinned, false);
+    assert.equal(off.result.totalPinned, 0);
+  });
+
+  it("pin-toggle without questId is rejected", async () => {
+    const r = await lensRun("world", "quest-pin-toggle", { params: {} }, ctx);
+    assert.equal(r.result.ok, false);
+  });
+});
+
+describe("world — faction overlay + marketplace summary (empty-real fallback)", () => {
+  it("faction-overlay-data returns empty + a content-path hint when unseeded", async () => {
+    const r = await lensRun("world", "faction-overlay-data", { params: { worldId: "unseeded-world" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "empty");
+    assert.deepEqual(r.result.factions, []);
+    assert.ok(String(r.result.notes).includes("unseeded-world"));
+  });
+
+  it("marketplace-summary returns empty + a publish hint when no listings exist", async () => {
+    const r = await lensRun("world", "marketplace-summary", { params: { worldId: "empty-mkt", kind: "all" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.kind, "all");
+    assert.equal(r.result.source, "empty");
+    assert.deepEqual(r.result.listings, []);
+    assert.ok(String(r.result.notes).includes("empty-mkt"));
+  });
+});
+
+describe("world — overlay prefs get/set (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("world-overlay"); });
+
+  it("defaults out of the box, then set persists valid fields and rejects invalid hotbarMode", async () => {
+    const def = await lensRun("world", "overlay-prefs-get", {}, ctx);
+    assert.equal(def.ok, true);
+    assert.equal(def.result.prefs.factionOverlay, false);
+    assert.equal(def.result.prefs.hotbarMode, "auto");
+
+    const set = await lensRun("world", "overlay-prefs-set", {
+      params: { factionOverlay: true, hotbarMode: "combat", photoTemplate: "nordic" },
+    }, ctx);
+    assert.equal(set.ok, true);
+    assert.equal(set.result.prefs.factionOverlay, true);
+    assert.equal(set.result.prefs.hotbarMode, "combat");
+    assert.equal(set.result.prefs.photoTemplate, "nordic");
+
+    // invalid hotbarMode is ignored (unchanged), valid factionOverlay still applies
+    const set2 = await lensRun("world", "overlay-prefs-set", { params: { hotbarMode: "warp", factionOverlay: false } }, ctx);
+    assert.equal(set2.result.prefs.hotbarMode, "combat"); // unchanged — "warp" not allowed
+    assert.equal(set2.result.prefs.factionOverlay, false);
+
+    const get = await lensRun("world", "overlay-prefs-get", {}, ctx);
+    assert.equal(get.result.prefs.hotbarMode, "combat");
+  });
+});
+
+describe("world — inventory get + remove (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("world-inv2"); });
+
+  it("inventory-get exposes empty slots + slotNames; add then remove clears equip", async () => {
+    const empty = await lensRun("world", "inventory-get", {}, ctx);
+    assert.equal(empty.ok, true);
+    assert.deepEqual(empty.result.items, []);
+    assert.ok(empty.result.slotNames.includes("mainhand"));
+    assert.equal(empty.result.slots.head, null);
+
+    const add = await lensRun("world", "inventory-add-item", { params: { name: "Sword", slot: "mainhand", quantity: 2 } }, ctx);
+    const id = add.result.item.id;
+    assert.equal(add.result.item.quantity, 2);
+
+    const equip = await lensRun("world", "inventory-equip", { params: { id, slot: "mainhand" } }, ctx);
+    assert.equal(equip.result.slots.mainhand, id);
+
+    const rm = await lensRun("world", "inventory-remove-item", { params: { id } }, ctx);
+    assert.equal(rm.ok, true);
+    assert.equal(rm.result.removed, id);
+
+    const after = await lensRun("world", "inventory-get", {}, ctx);
+    assert.ok(!after.result.items.some((i) => i.id === id), "removed item is gone");
+    assert.equal(after.result.slots.mainhand, null, "remove also clears the equip slot");
+  });
+
+  it("inventory-remove-item on a missing id is rejected", async () => {
+    const r = await lensRun("world", "inventory-remove-item", { params: { id: "item_nope" } }, ctx);
+    assert.equal(r.result.ok, false);
+  });
+});
+
+describe("world — marker delete (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("world-mark2"); });
+
+  it("create → delete → gone from list", async () => {
+    const c = await lensRun("world", "marker-create", { params: { worldId: "mW", name: "Camp", x: 1, z: 2 } }, ctx);
+    const id = c.result.marker.id;
+    const del = await lensRun("world", "marker-delete", { params: { id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, id);
+    const list = await lensRun("world", "marker-list", { params: { worldId: "mW" } }, ctx);
+    assert.ok(!list.result.markers.some((m) => m.id === id));
+  });
+
+  it("marker-delete on a missing id is rejected", async () => {
+    const r = await lensRun("world", "marker-delete", { params: { id: "mark_nope" } }, ctx);
+    assert.equal(r.result.ok, false);
+  });
+});
+
+describe("world — combat-ability-trigger cooldown gate (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("world-trigger"); });
+
+  it("an ability fires ready on first use then is gated by its cooldown on the second", async () => {
+    // long cooldown → ready first (lastUsedMs=0), then gated after firing.
+    const big = await lensRun("world", "combat-ability-add", { params: { name: "Nova", slot: 2, cooldownMs: 600000 } }, ctx);
+    const bigId = big.result.ability.id;
+    assert.equal(big.result.ability.ready, true); // never used → ready
+
+    const first = await lensRun("world", "combat-ability-trigger", { params: { id: bigId } }, ctx);
+    assert.equal(first.ok, true);
+    assert.equal(first.result.ability.cooldownRemainingMs, 600000); // just stamped lastUsedMs
+
+    // Refusal here carries an explicit { result: { cooldownRemainingMs } }, so
+    // lens.run forwards that result (outer ok stays true) — the gate is observable
+    // as a positive remaining cooldown that the first (ready) fire did not report.
+    const second = await lensRun("world", "combat-ability-trigger", { params: { id: bigId } }, ctx);
+    assert.ok(second.result.cooldownRemainingMs > 0, "second fire is gated by remaining cooldown");
+    assert.equal(second.result.ability, undefined, "gated fire does not return the fired ability view");
+  });
+
+  it("triggering a missing ability is rejected", async () => {
+    const r = await lensRun("world", "combat-ability-trigger", { params: { id: "abil_nope" } }, ctx);
+    assert.equal(r.result.ok, false);
+  });
+});
+
+describe("world — spatial voice cell lifecycle (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("world-voice"); });
+
+  it("join → peers-in-cell → update within same cell → leave round-trip", async () => {
+    // first member: no peers yet
+    const join = await lensRun("world", "voice-join-cell", { params: { worldId: "vW", x: 10, y: 0, z: 10 } }, ctx);
+    assert.equal(join.ok, true);
+    assert.equal(join.result.peerCount, 0);
+    assert.equal(join.result.cellSizeM, 50);
+    const cellKey = join.result.cellKey;
+
+    const peers = await lensRun("world", "voice-peers-in-cell", {}, ctx);
+    assert.equal(peers.result.cellKey, cellKey);
+    assert.equal(peers.result.peerCount, 0);
+
+    // move within the same 50m cell → cellChanged false
+    const same = await lensRun("world", "voice-update-position", { params: { x: 20, y: 0, z: 20 } }, ctx);
+    assert.equal(same.ok, true);
+    assert.equal(same.result.cellChanged, false);
+    assert.equal(same.result.cellKey, cellKey);
+
+    // cross into a new cell (x=60 → floor(60/50)=1, different from floor(10/50)=0)
+    const moved = await lensRun("world", "voice-update-position", { params: { x: 60, y: 0, z: 10 } }, ctx);
+    assert.equal(moved.result.cellChanged, true);
+    assert.notEqual(moved.result.cellKey, cellKey);
+
+    const leave = await lensRun("world", "voice-leave-cell", {}, ctx);
+    assert.equal(leave.ok, true);
+    const after = await lensRun("world", "voice-peers-in-cell", {}, ctx);
+    assert.equal(after.result.cellKey, null);
+  });
+
+  it("voice-join-cell without numeric position is rejected", async () => {
+    const r = await lensRun("world", "voice-join-cell", { params: { worldId: "vW", x: "nope" } }, ctx);
+    assert.equal(r.result.ok, false);
+  });
+
+  it("voice-update-position before joining is rejected", async () => {
+    const fresh = await depthCtx("world-voice-fresh");
+    const r = await lensRun("world", "voice-update-position", { params: { x: 1, y: 1, z: 1 } }, fresh);
+    assert.equal(r.result.ok, false);
+    assert.ok(String(r.result.error).includes("voice-join-cell"));
+  });
+
+  it("voice-signal validates kind and shared-cell membership", async () => {
+    const fresh = await depthCtx("world-voice-sig");
+    await lensRun("world", "voice-join-cell", { params: { worldId: "sigW", x: 5, y: 0, z: 5 } }, fresh);
+    // bad kind
+    const badKind = await lensRun("world", "voice-signal", { params: { target: "someone", kind: "garbage", payload: {} } }, fresh);
+    assert.equal(badKind.result.ok, false);
+    assert.ok(String(badKind.result.error).includes("offer"));
+    // valid kind but target not in any cell
+    const noPeer = await lensRun("world", "voice-signal", { params: { target: "ghost-peer", kind: "offer", payload: { sdp: "x" } } }, fresh);
+    assert.equal(noPeer.result.ok, false);
+  });
+
+  it("voice-sweep-stale is idempotent and reports a numeric swept count", async () => {
+    const r = await lensRun("world", "voice-sweep-stale", {});
+    assert.equal(r.ok, true);
+    assert.equal(typeof r.result.swept, "number");
+  });
+});

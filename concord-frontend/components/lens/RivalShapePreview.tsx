@@ -13,7 +13,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { ChevronRight, ChevronDown, Sparkles, Loader2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 
@@ -33,24 +33,26 @@ import { ClimateShell } from '@/components/environment/ClimateShell';
 
 type SupportedLens = 'code' | 'crypto' | 'legal' | 'message' | 'whiteboard' | 'healthcare' | 'finance' | 'realestate' | 'retail' | 'education' | 'trades' | 'logistics' | 'agriculture' | 'studio' | 'aviation' | 'government' | 'environment';
 
-const RIVAL_LABELS: Record<SupportedLens, string> = {
-  code: 'VS Code shape',
-  crypto: 'Coinbase / Phantom shape',
-  legal: 'Notion / Word shape',
-  message: 'Gmail shape',
-  whiteboard: 'tldraw / Miro shape',
-  healthcare: 'Epic EHR shape',
-  finance: 'Robinhood / Monarch shape',
-  realestate: 'Zillow / Redfin shape',
-  retail: 'Shopify admin shape',
-  education: 'Khan / Coursera shape',
-  trades: 'ServiceTitan / Jobber shape',
-  logistics: 'Project44 / SAP TMS shape',
-  agriculture: 'John Deere / FieldView shape',
-  studio: 'Logic Pro / Ableton Live shape',
-  aviation: 'ForeFlight / FlightAware shape',
-  government: 'SeeClickFix / Accela shape',
-  environment: 'Watershed / Persefoni shape',
+// Clean, product-facing section titles (no competitor names, no "preview" framing
+// — this ships to prod and must not read like a demo).
+const SHELL_TITLES: Record<SupportedLens, string> = {
+  code: 'Workbench',
+  crypto: 'Wallet',
+  legal: 'Documents',
+  message: 'Inbox',
+  whiteboard: 'Canvas',
+  healthcare: 'Patient Workbench',
+  finance: 'Portfolio',
+  realestate: 'Listings',
+  retail: 'Storefront',
+  education: 'Classroom',
+  trades: 'Dispatch Board',
+  logistics: 'Shipments',
+  agriculture: 'Farm Operations',
+  studio: 'Studio',
+  aviation: 'Flight Deck',
+  government: 'City Services',
+  environment: 'Emissions',
 };
 
 export interface RivalShapePreviewProps {
@@ -59,32 +61,30 @@ export interface RivalShapePreviewProps {
   className?: string;
 }
 
-export function RivalShapePreview({ lensId, defaultOpen = false, className }: RivalShapePreviewProps) {
+export function RivalShapePreview({ lensId, defaultOpen = true, className }: RivalShapePreviewProps) {
   const [open, setOpen] = useState(defaultOpen);
   const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics', 'agriculture', 'studio', 'aviation', 'government', 'environment'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
-  const label = RIVAL_LABELS[lensId as SupportedLens];
+  const label = SHELL_TITLES[lensId as SupportedLens];
 
   return (
     <section
-      className={cn('mt-6 rounded-lg border border-amber-500/30 bg-amber-500/5 overflow-hidden', className)}
-      aria-labelledby={`rival-preview-${lensId}`}
+      className={cn('mt-4 rounded-lg border border-lattice-border bg-lattice-surface/40 overflow-hidden', className)}
+      aria-labelledby={`shell-${lensId}`}
     >
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-amber-500/10"
+        className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-lattice-elevated/50"
         aria-expanded={open}
       >
-        {open ? <ChevronDown className="w-4 h-4 text-amber-300" /> : <ChevronRight className="w-4 h-4 text-amber-300" />}
-        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-        <span id={`rival-preview-${lensId}`} className="text-sm font-medium text-amber-200">
-          Rival-shape preview · {label}
+        {open ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+        <span id={`shell-${lensId}`} className="text-sm font-medium text-gray-200">
+          {label}
         </span>
-        <span className="ml-auto text-[11px] text-amber-300/70">your real data</span>
       </button>
       {open && (
-        <div className="border-t border-amber-500/20 bg-black/30">
+        <div className="border-t border-lattice-border bg-black/20">
           <PreviewBody lensId={lensId as SupportedLens} />
         </div>
       )}

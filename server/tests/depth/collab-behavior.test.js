@@ -5,12 +5,13 @@
 // rejections. Every lensRun("collab", "<macro>", …) call literally names the
 // macro so the macro-depth grader credits it as a behavioral invocation.
 //
-// SKIPPED (by design): docCrdtSnapshot / docCrdtRestore / docCrdtSnapshotList —
-// they import ../lib/yjs-realtime.js and operate on a live in-memory Y.Doc
-// (encodeStateAsUpdate / replaceDoc / broadcastDocReset). Without a bound Y.Doc
-// these are non-deterministic for a behavioral assert; out of scope here. The
-// realtime emit paths (emitToDoc/emitToUser) degrade to no-op without a socket
-// server, so the macros below remain fully deterministic under no-egress.
+// NOTE: docCrdtSnapshot / docCrdtRestore / docCrdtSnapshotList ARE now covered
+// (final appended suite). They import ../lib/yjs-realtime.js, a PURE in-process
+// Yjs layer — a fresh per-doc Y.Doc encodes to a stable 2-byte update and
+// replaceDoc/broadcastDocReset are deterministic / no-op without a socket server,
+// so they are no-egress safe and behaviorally assertable. The realtime emit paths
+// (emitToDoc/emitToUser) likewise degrade to no-op without a socket server, so the
+// macros below remain fully deterministic under no-egress.
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
@@ -353,5 +354,86 @@ describe("collab — @-mention notifications (cross-user, shared ctx)", () => {
     const bad = await lensRun("collab", "markNotificationRead", { params: { notificationId: "ntf_nope" } }, target);
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /notification not found/);
+  });
+});
+
+// ── APPENDED depth coverage: CRDT-aware Y.Doc snapshots ──
+// New distinct macros exercised: docCrdtSnapshot, docCrdtSnapshotList,
+// docCrdtRestore. The earlier file header skipped these as "non-deterministic",
+// but ../lib/yjs-realtime.js is a PURE in-process Yjs layer: a fresh Y.Doc
+// encodes to a stable 2-byte update (base64 "AAA="), encodeStateAsUpdate /
+// replaceDoc / getDocText are deterministic, and broadcastDocReset degrades to a
+// no-op without a socket server (no-egress safe). So the snapshot bytes, the
+// monotonic per-doc seq counter, the newest-first list ordering, and the
+// auto-snapshot-before-restore behavior are all deterministically assertable.
+describe("collab — CRDT Y.Doc snapshot / list / restore (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("collab-crdt"); });
+
+  it("docCrdtSnapshot: captures the live Y.Doc state with non-negative byte count", async () => {
+    const c = await lensRun("collab", "docCreate", { params: { title: "Crdt", text: "seed" } }, ctx);
+    const id = c.result.id;
+    const snap = await lensRun("collab", "docCrdtSnapshot", { params: { docId: id, label: "v-alpha" } }, ctx);
+    assert.equal(snap.ok, true);
+    assert.equal(snap.result.label, "v-alpha");
+    // a fresh per-doc Y.Doc encodes to a deterministic 2-byte empty-state update.
+    assert.equal(snap.result.bytes, 2);
+    assert.equal(snap.result.totalSnapshots, 1);
+    assert.ok(typeof snap.result.id === "string" && snap.result.id.length > 0);
+  });
+
+  it("docCrdtSnapshot: a missing label defaults to a CRDT version label", async () => {
+    const c = await lensRun("collab", "docCreate", { params: { title: "CrdtDefault", text: "x" } }, ctx);
+    const snap = await lensRun("collab", "docCrdtSnapshot", { params: { docId: c.result.id } }, ctx);
+    assert.equal(snap.ok, true);
+    // label falls back to `CRDT v${count+1}` → first snapshot is "CRDT v1".
+    assert.equal(snap.result.label, "CRDT v1");
+  });
+
+  it("docCrdtSnapshotList: lists snapshots newest-first, monotonic seq tiebreak", async () => {
+    const c = await lensRun("collab", "docCreate", { params: { title: "CrdtList", text: "x" } }, ctx);
+    const id = c.result.id;
+    const s1 = await lensRun("collab", "docCrdtSnapshot", { params: { docId: id, label: "one" } }, ctx);
+    const s2 = await lensRun("collab", "docCrdtSnapshot", { params: { docId: id, label: "two" } }, ctx);
+    const list = await lensRun("collab", "docCrdtSnapshotList", { params: { docId: id } }, ctx);
+    assert.equal(list.ok, true);
+    assert.equal(list.result.total, 2);
+    const ids = list.result.snapshots.map((s) => s.id);
+    assert.ok(ids.includes(s1.result.id) && ids.includes(s2.result.id));
+    // seq is a monotonic per-doc counter — the second snapshot has the higher seq.
+    const seqOne = list.result.snapshots.find((s) => s.label === "one").seq;
+    const seqTwo = list.result.snapshots.find((s) => s.label === "two").seq;
+    assert.equal(seqTwo, seqOne + 1);
+    // newest-first ordering: when createdAt ties (same ms), higher seq sorts first.
+    const first = list.result.snapshots[0];
+    const last = list.result.snapshots[list.result.snapshots.length - 1];
+    assert.ok(first.createdAt > last.createdAt || (first.createdAt === last.createdAt && first.seq > last.seq));
+  });
+
+  it("docCrdtRestore: restores a snapshot and auto-snapshots the prior state", async () => {
+    const c = await lensRun("collab", "docCreate", { params: { title: "CrdtRestore", text: "x" } }, ctx);
+    const id = c.result.id;
+    const snap = await lensRun("collab", "docCrdtSnapshot", { params: { docId: id, label: "checkpoint" } }, ctx);
+    const before = await lensRun("collab", "docCrdtSnapshotList", { params: { docId: id } }, ctx);
+    const restore = await lensRun("collab", "docCrdtRestore", { params: { docId: id, snapshotId: snap.result.id } }, ctx);
+    assert.equal(restore.ok, true);
+    assert.equal(restore.result.restoredTo, "checkpoint");
+    // restore writes an auto-snapshot-before-restore row → total grows by one.
+    const after = await lensRun("collab", "docCrdtSnapshotList", { params: { docId: id } }, ctx);
+    assert.equal(after.result.total, before.result.total + 1);
+    assert.ok(after.result.snapshots.some((s) => s.label.includes("Auto-save before CRDT restore")));
+  });
+
+  it("validation: docCrdtSnapshot on a missing document is rejected", async () => {
+    const bad = await lensRun("collab", "docCrdtSnapshot", { params: { docId: "no_crdt_doc", label: "x" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /document not found/);
+  });
+
+  it("validation: docCrdtRestore with an unknown snapshotId is rejected", async () => {
+    const c = await lensRun("collab", "docCreate", { params: { title: "CrdtBadSnap", text: "x" } }, ctx);
+    const bad = await lensRun("collab", "docCrdtRestore", { params: { docId: c.result.id, snapshotId: "csnap_nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /snapshot not found/);
   });
 });

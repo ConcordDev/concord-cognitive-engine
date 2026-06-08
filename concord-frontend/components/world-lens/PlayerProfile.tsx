@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { lensRun } from '@/lib/api/client';
 import {
   Shield, Heart, MessageSquare, UserPlus,
   UserCheck, Eye, Quote, Coins, Globe,
@@ -91,65 +92,25 @@ const DOMAIN_META: Record<ReputationDomain, { label: string; icon: React.Compone
   exploration:    { label: 'Exploration',    icon: Compass,        color: '#F97316' },
 };
 
-/* ── Seed Data ─────────────────────────────────────────────────── */
+/* ── Empty defaults ────────────────────────────────────────────── */
+// TODO: wire to backend — no player-profile macro/route currently returns the
+// rich profile shape this component renders (reputation radar + DTU portfolio +
+// badges + visitor log). Until one exists, defaults are empty so the panel
+// shows honest empty states instead of fabricated data. Callers may still
+// pass a real `profile` (+ portfolio/badges/friends/visitorLog) via props.
 
-const SEED_PROFILE: ProfileData = {
-  id: 'p1',
-  displayName: 'ArchitectAlice',
-  profession: 'Structural Engineer',
-  firmName: 'Ironclad Designs',
-  bio: 'Passionate about designing resilient, beautiful structures. Top 5% in structural engineering. Firm lead at Ironclad Designs.',
-  totalCitations: 340,
-  totalRoyalties: 1250,
-  worldsOwned: 2,
-  firmMembership: 'Ironclad Designs',
-  followerCount: 156,
-  followingCount: 89,
-  isFollowing: false,
-  isFriend: false,
-  joinDate: 'Jan 2025',
-  reputation: [
-    { domain: 'structural', score: 92 },
-    { domain: 'materials', score: 65 },
-    { domain: 'infrastructure', score: 78 },
-    { domain: 'energy', score: 45 },
-    { domain: 'architecture', score: 88 },
-    { domain: 'mentorship', score: 72 },
-    { domain: 'governance', score: 55 },
-    { domain: 'exploration', score: 38 },
-  ],
+const EMPTY_PROFILE: ProfileData = {
+  id: '',
+  displayName: '—',
+  profession: '',
+  totalCitations: 0,
+  totalRoyalties: 0,
+  worldsOwned: 0,
+  followerCount: 0,
+  followingCount: 0,
+  joinDate: '',
+  reputation: [],
 };
-
-const SEED_PORTFOLIO: DTUPortfolioItem[] = [
-  { id: 'd1', name: 'Cantilever Bridge Mk.III', citations: 87, publishedDate: 'Mar 2026' },
-  { id: 'd2', name: 'Seismic Dampener Array', citations: 64, publishedDate: 'Feb 2026' },
-  { id: 'd3', name: 'Glass Curtain Wall System', citations: 52, publishedDate: 'Jan 2026' },
-  { id: 'd4', name: 'Tensile Roof Structure', citations: 41, publishedDate: 'Dec 2025' },
-  { id: 'd5', name: 'Modular Column Assembly', citations: 38, publishedDate: 'Nov 2025' },
-  { id: 'd6', name: 'Foundation Pile Driver v2', citations: 29, publishedDate: 'Oct 2025' },
-];
-
-const SEED_BADGES: Badge[] = [
-  { id: 'b1', name: 'Master Builder', description: 'Published 25+ DTUs', icon: '🏗️', earnedDate: 'Feb 2026' },
-  { id: 'b2', name: 'Citation Star', description: 'Received 100+ total citations', icon: '⭐', earnedDate: 'Jan 2026' },
-  { id: 'b3', name: 'Firm Founder', description: 'Founded a firm with 5+ members', icon: '🏢', earnedDate: 'Mar 2025' },
-  { id: 'b4', name: 'Mentor Gold', description: 'Mentored 10+ apprentices', icon: '🎓', earnedDate: 'Dec 2025' },
-  { id: 'b5', name: 'Earthquake Survivor', description: 'Structure survived a 7.0 quake event', icon: '🌍', earnedDate: 'Nov 2025' },
-  { id: 'b6', name: 'World Creator', description: 'Created and maintained a public world', icon: '🌐', earnedDate: 'Sep 2025' },
-];
-
-const SEED_FRIENDS: { id: string; name: string; online: boolean }[] = [
-  { id: 'p2', name: 'BuilderBob', online: true },
-  { id: 'p3', name: 'CivicCarla', online: true },
-  { id: 'p5', name: 'EngineerEve', online: false },
-  { id: 'p7', name: 'GridGrace', online: true },
-];
-
-const SEED_VISITOR_LOG: VisitorLogEntry[] = [
-  { id: 'v1', playerName: 'DesignDave', timestamp: '2 hrs ago', inspected: 'Cantilever Bridge Mk.III' },
-  { id: 'v2', playerName: 'FrontierFinn', timestamp: '5 hrs ago' },
-  { id: 'v3', playerName: 'NewbieNora', timestamp: '1 day ago', inspected: 'Seismic Dampener Array' },
-];
 
 /* ── Radar Chart (SVG) ─────────────────────────────────────────── */
 
@@ -221,12 +182,12 @@ function ReputationRadar({ scores }: { scores: ReputationScore[] }) {
 /* ── Component ─────────────────────────────────────────────────── */
 
 export default function PlayerProfile({
-  profile = SEED_PROFILE,
-  portfolio = SEED_PORTFOLIO,
-  badges = SEED_BADGES,
+  profile: profileProp,
+  portfolio: portfolioProp,
+  badges: badgesProp,
   followers: _followers,
-  friends = SEED_FRIENDS,
-  visitorLog = SEED_VISITOR_LOG,
+  friends = [],
+  visitorLog: visitorLogProp,
   isOwnProfile = false,
   onFollow,
   onMessage,
@@ -234,6 +195,79 @@ export default function PlayerProfile({
   onAddFriend,
 }: PlayerProfileProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'portfolio' | 'badges' | 'friends' | 'visitors'>('overview');
+
+  // Backend-fetched state. A caller-supplied prop always wins (the prop is
+  // passed straight through); otherwise we fetch REAL data from the `profile`
+  // lens-action domain and keep honest empty states until it resolves.
+  const [fetchedProfile, setFetchedProfile] = useState<ProfileData>(EMPTY_PROFILE);
+  const [fetchedPortfolio, setFetchedPortfolio] = useState<DTUPortfolioItem[]>([]);
+  const [fetchedBadges, setFetchedBadges] = useState<Badge[]>([]);
+  const [fetchedVisitors, setFetchedVisitors] = useState<VisitorLogEntry[]>([]);
+
+  useEffect(() => {
+    // Skip the fetch entirely if every surface was supplied via props.
+    if (profileProp && portfolioProp && badgesProp && (visitorLogProp || !isOwnProfile)) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const calls: Promise<unknown>[] = [
+          lensRun('profile', 'profile-get', {}),
+          lensRun('profile', 'reputation-summary', {}),
+          lensRun('profile', 'badges-list', {}),
+          lensRun('profile', 'portfolio-list', {}),
+        ];
+        if (isOwnProfile) calls.push(lensRun('profile', 'visitors-list', {}));
+        const [profRes, repRes, badgeRes, portRes, visRes] = await Promise.all(calls) as Array<{
+          data: { ok: boolean; result: Record<string, unknown> | null };
+        }>;
+        if (cancelled) return;
+
+        // Merge the editable profile + the derived reputation summary into the
+        // rich ProfileData shape this panel renders.
+        if (!profileProp) {
+          const ep = (profRes?.data?.result?.profile ?? {}) as Record<string, unknown>;
+          const rep = (repRes?.data?.result ?? {}) as Record<string, unknown>;
+          setFetchedProfile({
+            id: String(ep.id ?? ''),
+            displayName: String(ep.displayName ?? '') || '—',
+            avatar: ep.avatar ? String(ep.avatar) : undefined,
+            profession: String(ep.profession ?? ''),
+            firmName: ep.firmName ? String(ep.firmName) : undefined,
+            bio: ep.bio ? String(ep.bio) : undefined,
+            totalCitations: Number(rep.totalCitations ?? 0),
+            totalRoyalties: Number(rep.totalRoyalties ?? 0),
+            worldsOwned: Number(rep.worldsOwned ?? 0),
+            followerCount: 0,
+            followingCount: 0,
+            reputation: Array.isArray(rep.reputation) ? (rep.reputation as ReputationScore[]) : [],
+            joinDate: ep.updatedAt ? String(ep.updatedAt).slice(0, 10) : '',
+          });
+        }
+        if (!badgesProp) {
+          const list = (badgeRes?.data?.result?.badges ?? []) as Badge[];
+          setFetchedBadges(list);
+        }
+        if (!portfolioProp) {
+          const list = (portRes?.data?.result?.portfolio ?? []) as DTUPortfolioItem[];
+          setFetchedPortfolio(list);
+        }
+        if (!visitorLogProp && isOwnProfile && visRes) {
+          const list = (visRes?.data?.result?.visitors ?? []) as VisitorLogEntry[];
+          setFetchedVisitors(list);
+        }
+      } catch {
+        // Network/parse failure → keep honest empty states (no fabrication).
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [profileProp, portfolioProp, badgesProp, visitorLogProp, isOwnProfile]);
+
+  // Caller props win; otherwise use the fetched/real data.
+  const profile = profileProp ?? fetchedProfile;
+  const portfolio = portfolioProp ?? fetchedPortfolio;
+  const badges = badgesProp ?? fetchedBadges;
+  const visitorLog = visitorLogProp ?? fetchedVisitors;
+
   const [following, setFollowing] = useState(profile.isFollowing ?? false);
   const [friend, setFriend] = useState(profile.isFriend ?? false);
 
@@ -253,7 +287,11 @@ export default function PlayerProfile({
       {/* Reputation radar */}
       <div>
         <h4 className="text-xs text-white/50 uppercase tracking-wider mb-2">Reputation</h4>
-        <ReputationRadar scores={profile.reputation} />
+        {profile.reputation.length === 0 ? (
+          <p className="text-center text-white/30 text-xs py-6">No reputation data yet</p>
+        ) : (
+          <ReputationRadar scores={profile.reputation} />
+        )}
         <div className="grid grid-cols-4 gap-2 mt-3">
           {profile.reputation.map(r => {
             const meta = DOMAIN_META[r.domain];
@@ -309,6 +347,9 @@ export default function PlayerProfile({
   const renderPortfolio = () => (
     <div className="p-4 space-y-3">
       <h4 className="text-xs text-white/50 uppercase tracking-wider">Published DTUs</h4>
+      {portfolio.length === 0 && (
+        <p className="text-center text-white/30 text-xs py-6">No published DTUs yet</p>
+      )}
       <div className="grid grid-cols-2 gap-2">
         {portfolio.map(item => (
           <div key={item.id} className={`${panel} p-3 space-y-2`}>
@@ -346,6 +387,9 @@ export default function PlayerProfile({
   const renderBadges = () => (
     <div className="p-4 space-y-3">
       <h4 className="text-xs text-white/50 uppercase tracking-wider">Achievements & Milestones</h4>
+      {badges.length === 0 && (
+        <p className="text-center text-white/30 text-xs py-6">No badges earned yet</p>
+      )}
       <div className="grid grid-cols-3 gap-2">
         {badges.map(badge => (
           <div key={badge.id} className={`${panel} p-3 flex flex-col items-center text-center space-y-1`}>
@@ -366,6 +410,9 @@ export default function PlayerProfile({
         <span className="uppercase tracking-wider">Friends</span>
         <span>{friends.length} total</span>
       </div>
+      {friends.length === 0 && (
+        <p className="text-center text-white/30 text-xs py-6">No friends yet</p>
+      )}
       <div className="divide-y divide-white/5">
         {friends.map(f => (
           <div key={f.id} className="flex items-center gap-3 py-2">

@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Store, GraduationCap, Factory, Landmark, TreePine, Search,
   Zap, Mountain, Ship, Swords, Globe, Users, ChevronRight,
   Activity,
 } from 'lucide-react';
+import { lensRun } from '@/lib/api/client';
 
 const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
 
@@ -21,48 +22,46 @@ export interface ConcordiaDistrict {
   activeUsers: number;
 }
 
-const CONCORDIA_DISTRICTS: ConcordiaDistrict[] = [
-  {
-    id: 'exchange', name: 'The Exchange', description: 'Economic hub — marketplace, trading floor, auctions',
-    lens: 'marketplace', icon: Store, color: '#F59E0B', buildingCount: 24, population: 1800, activeUsers: 42,
-  },
-  {
-    id: 'academy', name: 'The Academy', description: 'Education — libraries, lecture halls, research labs',
-    lens: 'education', icon: GraduationCap, color: '#3B82F6', buildingCount: 18, population: 1200, activeUsers: 28,
-  },
-  {
-    id: 'forge', name: 'The Forge', description: 'Manufacturing — factories, workshops, material processing',
-    lens: 'manufacturing', icon: Factory, color: '#EF4444', buildingCount: 15, population: 900, activeUsers: 19,
-  },
-  {
-    id: 'nexus', name: 'The Nexus', description: 'Governance — policy debates, voting halls, district management',
-    lens: 'government', icon: Landmark, color: '#8B5CF6', buildingCount: 12, population: 600, activeUsers: 15,
-  },
-  {
-    id: 'commons', name: 'The Commons', description: 'Social space — parks, amphitheaters, event grounds',
-    lens: 'forum', icon: TreePine, color: '#22C55E', buildingCount: 20, population: 2000, activeUsers: 55,
-  },
-  {
-    id: 'observatory', name: 'The Observatory', description: 'Science — telescopes, physics labs, astronomy',
-    lens: 'physics', icon: Search, color: '#06B6D4', buildingCount: 8, population: 400, activeUsers: 12,
-  },
-  {
-    id: 'grid', name: 'The Grid', description: 'Infrastructure — power plants, water treatment, telecom',
-    lens: 'energy', icon: Zap, color: '#FBBF24', buildingCount: 10, population: 300, activeUsers: 8,
-  },
-  {
-    id: 'frontier', name: 'The Frontier', description: 'Edge of Concordia — new district founding',
-    lens: 'geology', icon: Mountain, color: '#78716C', buildingCount: 5, population: 150, activeUsers: 6,
-  },
-  {
-    id: 'docks', name: 'The Docks', description: 'Maritime — shipyards, ports, naval architecture',
-    lens: 'ocean', icon: Ship, color: '#0EA5E9', buildingCount: 7, population: 350, activeUsers: 10,
-  },
-  {
-    id: 'arena', name: 'The Arena', description: 'Competitive — stress tests, design battles, challenges',
-    lens: 'sim', icon: Swords, color: '#DC2626', buildingCount: 6, population: 500, activeUsers: 35,
-  },
+// Authored district layout (static config — the named districts of Concordia
+// and which lens each maps to). KEEP this layout. Runtime stats
+// (buildingCount / population / activeUsers) are NOT hardcoded — they default
+// to 0 and are populated from the real `hub` lens-action domain
+// (`district-stats` / `hub-totals`) via the effect below. They stay 0 honestly
+// until real data exists.
+const DISTRICT_LAYOUT: Omit<ConcordiaDistrict, 'buildingCount' | 'population' | 'activeUsers'>[] = [
+  { id: 'exchange', name: 'The Exchange', description: 'Economic hub — marketplace, trading floor, auctions', lens: 'marketplace', icon: Store, color: '#F59E0B' },
+  { id: 'academy', name: 'The Academy', description: 'Education — libraries, lecture halls, research labs', lens: 'education', icon: GraduationCap, color: '#3B82F6' },
+  { id: 'forge', name: 'The Forge', description: 'Manufacturing — factories, workshops, material processing', lens: 'manufacturing', icon: Factory, color: '#EF4444' },
+  { id: 'nexus', name: 'The Nexus', description: 'Governance — policy debates, voting halls, district management', lens: 'government', icon: Landmark, color: '#8B5CF6' },
+  { id: 'commons', name: 'The Commons', description: 'Social space — parks, amphitheaters, event grounds', lens: 'forum', icon: TreePine, color: '#22C55E' },
+  { id: 'observatory', name: 'The Observatory', description: 'Science — telescopes, physics labs, astronomy', lens: 'physics', icon: Search, color: '#06B6D4' },
+  { id: 'grid', name: 'The Grid', description: 'Infrastructure — power plants, water treatment, telecom', lens: 'energy', icon: Zap, color: '#FBBF24' },
+  { id: 'frontier', name: 'The Frontier', description: 'Edge of Concordia — new district founding', lens: 'geology', icon: Mountain, color: '#78716C' },
+  { id: 'docks', name: 'The Docks', description: 'Maritime — shipyards, ports, naval architecture', lens: 'ocean', icon: Ship, color: '#0EA5E9' },
+  { id: 'arena', name: 'The Arena', description: 'Competitive — stress tests, design battles, challenges', lens: 'sim', icon: Swords, color: '#DC2626' },
 ];
+
+// Districts with runtime stats zeroed — honest defaults until the real
+// `district-stats` macro returns data (populated in the effect below).
+const CONCORDIA_DISTRICTS: ConcordiaDistrict[] = DISTRICT_LAYOUT.map((d) => ({
+  ...d, buildingCount: 0, population: 0, activeUsers: 0,
+}));
+
+interface BackendDistrictStats {
+  districtId?: string;
+  buildingCount?: number;
+  population?: number;
+  activeUsers?: number;
+}
+
+interface BackendActivityEvent {
+  id?: string;
+  districtId?: string | null;
+  kind?: string;
+  actor?: string | null;
+  summary?: string;
+  at?: string | null;
+}
 
 interface LiveFeedEvent {
   id: string;
@@ -72,17 +71,6 @@ interface LiveFeedEvent {
   lens: string;
   timestamp: string;
 }
-
-const SEED_FEED: LiveFeedEvent[] = [
-  { id: 'f1', type: 'building', message: '@architect_alex placed "Community Library" in The Academy', district: 'academy', lens: 'education', timestamp: '2m ago' },
-  { id: 'f2', type: 'material', message: 'New material "USB-G Composite" published by @materials_lab', district: 'forge', lens: 'materials', timestamp: '8m ago' },
-  { id: 'f3', type: 'trade', message: '342 citations earned by @engineer_jane this hour', district: 'exchange', lens: 'marketplace', timestamp: '12m ago' },
-  { id: 'f4', type: 'validation', message: 'Seismic retest passed for "Solar Tower" in The Grid', district: 'grid', lens: 'energy', timestamp: '15m ago' },
-  { id: 'f5', type: 'event', message: 'Design Battle: "Best Bridge Under 500kg" starts in 2h', district: 'arena', lens: 'sim', timestamp: '20m ago' },
-  { id: 'f6', type: 'discovery', message: 'Geology survey reveals aquifer beneath The Frontier', district: 'frontier', lens: 'geology', timestamp: '25m ago' },
-  { id: 'f7', type: 'building', message: '@power_mike upgraded Wind Turbine Array in The Grid', district: 'grid', lens: 'energy', timestamp: '30m ago' },
-  { id: 'f8', type: 'event', message: 'Lecture: "Advanced Seismic Design" at The Academy Auditorium', district: 'academy', lens: 'education', timestamp: '45m ago' },
-];
 
 const FEED_TYPE_COLORS: Record<string, string> = {
   building: 'text-cyan-400',
@@ -101,9 +89,72 @@ interface ConcordiaHubProps {
 export default function ConcordiaHub({ onDistrictSelect, onNavigateToLens }: ConcordiaHubProps) {
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
 
-  const totalPop = CONCORDIA_DISTRICTS.reduce((s, d) => s + d.population, 0);
-  const totalBuildings = CONCORDIA_DISTRICTS.reduce((s, d) => s + d.buildingCount, 0);
-  const totalActive = CONCORDIA_DISTRICTS.reduce((s, d) => s + d.activeUsers, 0);
+  // District runtime stats — start from the authored layout (zeroed) and fill
+  // in real counts from the `hub` lens-action domain. Stays 0 honestly when no
+  // source data exists.
+  const [districts, setDistricts] = useState<ConcordiaDistrict[]>(CONCORDIA_DISTRICTS);
+
+  // Live feed starts empty — populated from the real `hub.activity-feed` macro
+  // (recorded hub activity + world_events). Honest empty state below.
+  const [feed, setFeed] = useState<LiveFeedEvent[]>([]);
+
+  // Pull real per-district stats for every authored district on mount.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          DISTRICT_LAYOUT.map((d) => lensRun('hub', 'district-stats', { districtId: d.id })),
+        );
+        if (cancelled) return;
+        setDistricts(
+          DISTRICT_LAYOUT.map((d, i): ConcordiaDistrict => {
+            const stats = (results[i]?.data?.result as BackendDistrictStats) || {};
+            return {
+              ...d,
+              buildingCount: Number(stats.buildingCount) || 0,
+              population: Number(stats.population) || 0,
+              activeUsers: Number(stats.activeUsers) || 0,
+            };
+          }),
+        );
+      } catch {
+        if (!cancelled) setDistricts(CONCORDIA_DISTRICTS);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Pull the real activity feed — scoped to the selected district when one is
+  // chosen, world-wide otherwise. Empty when no source has data.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const input = selectedDistrict ? { districtId: selectedDistrict, limit: 50 } : { limit: 50 };
+        const r = await lensRun('hub', 'activity-feed', input);
+        const rows = (r.data?.result?.events as BackendActivityEvent[]) || [];
+        if (cancelled) return;
+        setFeed(
+          rows.map((e, i): LiveFeedEvent => ({
+            id: e.id || `feed-${i}`,
+            type: (e.kind as LiveFeedEvent['type']) || 'event',
+            message: e.summary || '',
+            district: e.districtId || '',
+            lens: '',
+            timestamp: e.at || '',
+          })),
+        );
+      } catch {
+        if (!cancelled) setFeed([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedDistrict]);
+
+  const totalPop = districts.reduce((s, d) => s + d.population, 0);
+  const totalBuildings = districts.reduce((s, d) => s + d.buildingCount, 0);
+  const totalActive = districts.reduce((s, d) => s + d.activeUsers, 0);
 
   return (
     <div className="space-y-4">
@@ -125,7 +176,7 @@ export default function ConcordiaHub({ onDistrictSelect, onNavigateToLens }: Con
 
       {/* District Grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        {CONCORDIA_DISTRICTS.map(d => {
+        {districts.map(d => {
           const Icon = d.icon;
           const isSelected = selectedDistrict === d.id;
           return (
@@ -155,7 +206,7 @@ export default function ConcordiaHub({ onDistrictSelect, onNavigateToLens }: Con
 
       {/* Selected district detail */}
       {selectedDistrict && (() => {
-        const d = CONCORDIA_DISTRICTS.find(d => d.id === selectedDistrict);
+        const d = districts.find(d => d.id === selectedDistrict);
         if (!d) return null;
         const Icon = d.icon;
         return (
@@ -199,7 +250,10 @@ export default function ConcordiaHub({ onDistrictSelect, onNavigateToLens }: Con
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
         </div>
         <div className="space-y-2 max-h-48 overflow-y-auto">
-          {SEED_FEED.map(event => (
+          {feed.length === 0 && (
+            <p className="text-[10px] text-gray-500 italic py-2">No recent activity.</p>
+          )}
+          {feed.map(event => (
             <div key={event.id} className="flex items-start gap-2 text-[10px]">
               <span className={`mt-0.5 ${FEED_TYPE_COLORS[event.type] || 'text-gray-400'}`}>
                 {event.type === 'building' && '🏗'}

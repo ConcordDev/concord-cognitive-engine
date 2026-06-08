@@ -150,7 +150,7 @@ export default function DomainAssistant({ domain, domainLabel }: DomainAssistant
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-24 right-6 z-40 flex items-center gap-2 px-3 py-2.5 bg-lattice-surface border border-lattice-border text-gray-300 font-medium rounded-full shadow-lg hover:bg-lattice-elevated hover:text-white transition-colors"
+          className="fixed bottom-[14rem] right-6 z-40 flex items-center gap-2 px-3 py-2.5 bg-lattice-surface border border-lattice-border text-gray-300 font-medium rounded-full shadow-lg hover:bg-lattice-elevated hover:text-white transition-colors"
           aria-label={`Open ${domainLabel} assistant`}
         >
           <Bot className="w-5 h-5" />

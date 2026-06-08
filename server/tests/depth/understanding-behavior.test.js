@@ -317,4 +317,76 @@ describe("understanding — note CRUD + revision/diff/graph contracts (exact val
     assert.equal(bad.result.ok, false);
     assert.match(bad.result.error, /note not found/);
   });
+
+  it("diff: explicit from/to revision indices are honored and clamped into range", async () => {
+    const dctx = await depthCtx("depth:understanding-diff-explicit");
+    const created = await lensRun("understanding", "create", {
+      params: { title: "Versioned", body: "v0" },
+    }, dctx);
+    const id = created.result.note.id;
+    // Build revisions: rev0=v0, rev1=v1, rev2=v2.
+    await lensRun("understanding", "edit", { params: { id, body: "v1" } }, dctx);
+    await lensRun("understanding", "edit", { params: { id, body: "v2" } }, dctx);
+
+    // Explicit from=0,to=2 spans the whole history: one line deleted (v0), one added (v2).
+    const span = await lensRun("understanding", "diff", { params: { id, from: 0, to: 2 } }, dctx);
+    assert.equal(span.ok, true);
+    assert.equal(span.result.fromRevision, 0);
+    assert.equal(span.result.toRevision, 2);
+    assert.equal(span.result.removed, 1);
+    assert.equal(span.result.added, 1);
+    assert.ok(span.result.lines.some((l) => l.type === "del" && l.text === "v0"));
+    assert.ok(span.result.lines.some((l) => l.type === "add" && l.text === "v2"));
+
+    // An out-of-range `to` clamps to the last revision index (2), not beyond.
+    const clamped = await lensRun("understanding", "diff", { params: { id, from: 0, to: 99 } }, dctx);
+    assert.equal(clamped.ok, true);
+    assert.equal(clamped.result.toRevision, 2);
+
+    // Missing note rejected.
+    const bad = await lensRun("understanding", "diff", { params: { id: "und_missing" } }, dctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /note not found/);
+  });
+
+  it("export: markdown emits a Related section resolving linked notes by title", async () => {
+    const rctx = await depthCtx("depth:understanding-export-related");
+    const a = await lensRun("understanding", "create", { params: { title: "Source Doc", body: "src" } }, rctx);
+    const b = await lensRun("understanding", "create", { params: { title: "Cited Doc", body: "cited" } }, rctx);
+    await lensRun("understanding", "link", {
+      params: { from: a.result.note.id, to: b.result.note.id, relation: "references" },
+    }, rctx);
+
+    const md = await lensRun("understanding", "export", { params: { id: a.result.note.id, format: "markdown" } }, rctx);
+    assert.equal(md.ok, true);
+    // The Related block names the relation and wiki-links the resolved peer title.
+    assert.ok(md.result.content.includes("## Related"));
+    assert.ok(md.result.content.includes("references: [[Cited Doc]]"));
+
+    // dtu-pack export carries the manual relation in machine.relations.
+    const pack = await lensRun("understanding", "export", { params: { id: a.result.note.id, format: "dtu" } }, rctx);
+    assert.equal(pack.ok, true);
+    assert.ok(pack.result.content.understanding.machine.relations.some(
+      (r) => r.relation === "references" && r.from === a.result.note.id && r.to === b.result.note.id,
+    ));
+  });
+
+  it("backlinks: outbound wiki-links report resolved vs unresolved by title", async () => {
+    const wctx = await depthCtx("depth:understanding-backlinks-outbound");
+    const real = await lensRun("understanding", "create", { params: { title: "Real Page", body: "exists" } }, wctx);
+    // Source references one existing title and one that doesn't exist.
+    const src = await lensRun("understanding", "create", {
+      params: { title: "Index", body: "see [[Real Page]] and [[Ghost Page]]" },
+    }, wctx);
+
+    const r = await lensRun("understanding", "backlinks", { params: { id: src.result.note.id } }, wctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.outboundCount, 2);
+    const resolved = r.result.outbound.find((o) => o.title === "Real Page");
+    assert.equal(resolved.resolved, true);
+    assert.equal(resolved.noteId, real.result.note.id);
+    const ghost = r.result.outbound.find((o) => o.title === "Ghost Page");
+    assert.equal(ghost.resolved, false);
+    assert.equal(ghost.noteId, null);
+  });
 });

@@ -7,9 +7,43 @@
 
 ## 🟢 HANDOFF — start here (next instance reads this first)
 
-**Branch:** `claude/conkay-honest-hologram-handoff-GvghP` (all work below is pushed here)  ·  **Honest floor:** **0.648** (`node scripts/grade-macro-depth.mjs --honest`) — climbing ~+0.003/6-domain wave toward the ~0.73 ceiling (6 waves done; ~12–15 remain).
+**Branch:** `claude/handoff-block-docs-7XVgT` (latest work)  ·  **Honest floor:** **0.688** (`node scripts/grade-macro-depth.mjs --honest`) — plateaued ~+0.001–0.002/wave (21 waves done; high-yield band exhausted; practical ceiling ~0.71–0.72). 100% of macros have shape coverage; ~70% of non-`utility` macros have a behavioral test. The whole sweep surfaced only ~9 real bugs total — a low defect rate; the macro layer mostly works (weight that over the docs' older "wired ≠ working" caution).
 
-**What the latest session did (2026-06-07, continuation):**
+> **Strategic companion doc (read alongside this):** `docs/SCIFI_FEASIBILITY_MAP.md` — a
+> code-grounded audit (2026-06-08) of what's already built vs. frontier. Bottom line: for the
+> software/AI half the roadmap is **reveal + polish + wedge + distribution, not invention**
+> (~10/13 iconic sci-fi software systems already in-substrate). The audit **corrected** two things
+> this plan leans on: engineering **CAS + beam-frame FEA are a real STRENGTH** (the R&D wedge), and
+> external **connectors are scaffold** (only MCP + OAuth-signin are real) → now tracked as **Track C**.
+
+**What the latest session did (2026-06-08, continuation):**
+- **25 concentrated destinations + cross-mounted panels.** `lib/panel-registry.ts` (lazy,
+  addressable-by-id) + `panel-affinity.ts` + `GlobalPanelHost`/`CrossMountedPanels` + a grouped
+  sidebar "Destinations" tier + per-destination `DestinationNav` workspace tabs. All 259 lenses
+  still reachable via hub/sub-lens-tree/extensions/⌘K.
+- **Prod de-demo.** Killed the demo chrome (rival-shape "preview" banner → neutral titles, Depth
+  "Demo" badge suppressed, stale onboarding copy) AND removed fabricated data from **31 world-lens
+  UX panels** (fake federation peers, a `csk_live_…` key, a faked on-chain tx-hash) — then **wired
+  all of them to REAL data**: 15 new/extended STATE-backed backend domains (sensor, digital-twin,
+  standards, notary, service-market, profile, presence, seasonal, cobuild, district, companion, hub,
+  analytics world/global) + VoiceAssistant on the real STT+brain path. Each domain registered +
+  behaviorally tested. 3D world render path untouched (only flat HUD panels changed).
+- **Depth sweep continued: floor → 0.688** (waves 7–21). See the recalibrated framing above.
+- **Strategy:** landed `docs/SCIFI_FEASIBILITY_MAP.md` (code-grounded, three-agent audit —
+  inflated counts replaced with anchor-files + depth verdicts; engineering CAS/FEA confirmed a
+  STRENGTH; connectors confirmed scaffold). Added the **reveal-not-invent reframe** + **Track C**
+  (marquee connector honesty) above. CLAUDE.md handoff refreshed.
+- **Track A — fleet wave 7: floor 0.648 → 0.65.** bridge (CREATE, 38 cases/19 macros) +
+  atlas/sports/studio/worldmodel (EXTEND, ~87 cases). No source bugs this wave; guard clean
+  (3,540 behavioral tests / 139 files).
+- **Track B — Phase 2 foundation shipped (honest FUI binding).** New `conkayHudStore.ts` (zustand)
+  whose ONLY writer is the macro:* socket adapter (the overlay's Phase-0 lifecycle handlers);
+  `ConKayScene` gained `OrbitalRings` that spin IFF a real macro is in flight (ease to a dead stop
+  when idle — motion ⟺ real work) + an honest telemetry chip showing the real returned
+  domain.action · ok · ms. Zero `setInterval`/fake-progress added (audit grep clean). **Bloom +
+  full in-scene telemetry panels deferred** (needs `@react-three/postprocessing`, not installed).
+
+**What the prior session did (2026-06-07, continuation):**
 - **Track B — Phase 0 DONE + Phase 1 DONE.** Phase 0 honest event spine: `/api/lens/run`
   emits real `macro:started/completed` (with `{ok,ms}`) to the caller's `user:<id>` room,
   gated on an opt-in `x-conkay-run-id`; `realtimeEmit` gained `{userId}` targeting; shapes
@@ -81,6 +115,21 @@ The product is **the verified, private compute-agent for R&D** — not a consume
   — all behaviorally tested now. ("R&D" broadly = 259 lenses again = the wedge trap.)
 - **The "weaknesses" are credibility:** refusing to fake the unknown is the most trust-building
   behavior for a scientist. ConKay's honest hologram makes the real, verified work *legible*.
+
+### Strategic reframe: reveal, don't invent (2026-06-08, code-grounded)
+The `docs/SCIFI_FEASIBILITY_MAP.md` audit changes the *shape* of the roadmap, not its honesty rule:
+- **~10/13 iconic sci-fi software systems are already in the substrate** — verified, mostly
+  production-grade. The job for the software/AI half is **surface + polish + wedge + distribution**,
+  not new capability. ConKay is the wedge front door for exactly this.
+- **The R&D wedge is now defensible by code, not aspiration:** `domains/math.js` (real CAS) +
+  `lib/simulation/fea-solver.js` (real direct-stiffness beam-frame FEA) + `materials.js` + `chem.js`.
+  Lead the pitch with "private compute-agent that does the math, runs the FEA, shows its work."
+- **The honest gaps are bucketed:** hardware (suits/robots/AR), full CAD + tetra/nonlinear FEA,
+  real-world prediction (out of scope by design) — and **external connectors are scaffold** (the one
+  software-side gap), which is why **Track C** exists below.
+- **Priority order (from the feasibility map §7):** (1) surface+polish ConKay [Track B] → (2) pick
+  ONE wedge audience + ship the 3-min first-win → (3) build-in-public "here are the receipts" →
+  (4) make the marquee connector real before claiming it [Track C] → (5) hardware frontier, later.
 
 ---
 
@@ -236,6 +285,37 @@ R3F docs (pitfalls/scaling/events); ektogamat `HolographicMaterial`;
 `@react-three/postprocessing` Bloom/Selection/SelectiveBloom; drei (`Html`/`Billboard`/`Line`/
 `Text`/`Instances`); troika-three-text; GSAP R3F exploded-view (DevDojo); `@react-three/a11y`;
 AG-UI events spec + CopilotKit 17-event-types; "benevolent deception"/fake-progress critiques.
+
+---
+
+# Track C — marquee connector honesty (verify-before-pitch → build)
+
+**Why it exists:** the feasibility audit found "external integration ✅" was the one *overstated*
+software claim. Reality today:
+- **MCP — real + bidirectional.** `server/lib/mcp-server.js` exposes ~200 macros to MCP clients;
+  `server/lib/mcp-client.js` calls external MCP servers (SSRF-guarded). Keep pitching this.
+- **OAuth — sign-in/identity only.** `server/lib/oauth-providers.js` + `server/routes/oauth.js`
+  verify Google/Apple JWTs against provider JWKS, then **discard the access/refresh tokens** — no
+  write-back, no ongoing API access.
+- **iCal — read-only pull.** `server/domains/calendar.js` accepts `direction: pull|push|two-way`
+  but only `pull` is implemented; "two-way/push" is label theater, in-memory, no DB persistence.
+- **Gmail/Sheets/Slack/GitHub/Notion — catalog scaffolding.** `server/domains/integrations.js`
+  `connectApp` stores a fake `tok_${random}`; zero real API calls.
+
+**The honest pitch right now:** "real bidirectional MCP + OAuth sign-in; deep connectors are
+on the roadmap." Do **not** claim two-way Gmail/Calendar until the build below lands.
+
+**Build (sequenced after ConKay surface/polish + a wedge audience):**
+1. **Persist OAuth tokens** — encrypt + store Google refresh tokens (migration + a `oauth_tokens`
+   table keyed by `(user_id, provider)`), with refresh rotation. Gate behind explicit consent.
+2. **Google Calendar two-way** — real `googleapis` calendar read + write-back; make
+   `calendar.js` `direction: two-way` actually push. Pin with a contract test (round-trip an event).
+3. **Relabel honestly in the meantime** — surface iCal as "read-only" in the UI until #2 ships;
+   surface scaffold connectors as "coming soon" badges (the personas-lens Z4 pattern), never as
+   "connected."
+
+**Stopping rule:** ONE marquee connector real end-to-end (Calendar) beats five scaffolds.
+Resist re-expanding the catalog before the first connector genuinely round-trips.
 
 ---
 

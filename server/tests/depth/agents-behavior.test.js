@@ -365,6 +365,160 @@ describe("agents — schedule/graph/thread lifecycle + templates + overview (sha
     assert.equal(none.result.budget, null);
   });
 
+  it("listRuns: agentId filter narrows to that agent + reports total of the filtered set", async () => {
+    // Two distinct agents, one run each in this fresh ctx.
+    await lensRun("agents", "executeRun", { params: { agentId: "lr_a", agentName: "A", goal: "g", tools: ["classify"], maxSteps: 1 } }, ctx);
+    await lensRun("agents", "executeRun", { params: { agentId: "lr_b", agentName: "B", goal: "g", tools: ["classify"], maxSteps: 1 } }, ctx);
+    const filtered = await lensRun("agents", "listRuns", { params: { agentId: "lr_a" } }, ctx);
+    assert.equal(filtered.ok, true);
+    assert.ok(filtered.result.runs.every((r) => r.agentId === "lr_a"));
+    assert.equal(filtered.result.total, filtered.result.runs.length);
+    assert.ok(filtered.result.runs.length >= 1);
+    assert.ok(!filtered.result.runs.some((r) => r.agentId === "lr_b"));
+  });
+
+  it("getRunTrace rejects a missing runId and an unknown runId", async () => {
+    const noId = await lensRun("agents", "getRunTrace", { params: {} }, ctx);
+    assert.equal(noId.result.ok, false);
+    assert.match(noId.result.error, /runId required/);
+    const unknown = await lensRun("agents", "getRunTrace", { params: { runId: "run_never" } }, ctx);
+    assert.equal(unknown.result.ok, false);
+    assert.match(unknown.result.error, /run not found/);
+  });
+
+  it("executeRun rejects a missing agentId", async () => {
+    const bad = await lensRun("agents", "executeRun", { params: { goal: "x", tools: ["classify"] } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /agentId required/);
+  });
+
+  it("executeRun: summarize tool converges early (stops at step 3 of a 6-step run)", async () => {
+    // Convergence rule: a summarize step at index >= min(2, maxSteps-1) breaks the loop.
+    const run = await lensRun("agents", "executeRun", {
+      params: { agentId: "conv1", agentName: "Conv", goal: "research", tools: ["dtu_read", "classify", "summarize"], maxSteps: 6 },
+    }, ctx);
+    assert.equal(run.result.run.status, "completed");
+    // Steps: 1 dtu_read, 2 classify, 3 summarize → break. Exactly 3 steps.
+    assert.equal(run.result.run.stepCount, 3);
+    assert.equal(run.result.run.steps[2].tool, "summarize");
+  });
+
+  it("saveGraph rejects a missing name and an empty node set", async () => {
+    const noName = await lensRun("agents", "saveGraph", { params: { nodes: [{ id: "n", label: "N", role: "worker" }] } }, ctx);
+    assert.equal(noName.result.ok, false);
+    assert.match(noName.result.error, /graph name required/);
+    const noNodes = await lensRun("agents", "saveGraph", { params: { name: "Empty", nodes: [] } }, ctx);
+    assert.equal(noNodes.result.ok, false);
+    assert.match(noNodes.result.error, /at least one node/);
+  });
+
+  it("saveGraph drops edges that reference unknown nodes", async () => {
+    const save = await lensRun("agents", "saveGraph", {
+      params: {
+        name: "Pruned",
+        nodes: [{ id: "x", label: "X", role: "orchestrator" }, { id: "y", label: "Y", role: "worker" }],
+        edges: [{ from: "x", to: "y" }, { from: "x", to: "ghost" }, { from: "nope", to: "y" }],
+      },
+    }, ctx);
+    assert.equal(save.ok, true);
+    // Only the x→y edge survives the nodeIds filter.
+    assert.equal(save.result.graph.edges.length, 1);
+    assert.equal(save.result.graph.edges[0].from, "x");
+    assert.equal(save.result.graph.edges[0].to, "y");
+    assert.equal(save.result.graph.edges[0].label, "delegates"); // default label applied
+  });
+
+  it("saveGraph with an existing id updates in place (preserves createdAt, keeps one row)", async () => {
+    const first = await lensRun("agents", "saveGraph", {
+      params: { name: "V1", nodes: [{ id: "n1", label: "One", role: "worker" }], edges: [] },
+    }, ctx);
+    const gid = first.result.graph.id;
+    const createdAt = first.result.graph.createdAt;
+    const before = await lensRun("agents", "listGraphs", {}, ctx);
+    const countBefore = before.result.graphs.filter((g) => g.id === gid).length;
+    assert.equal(countBefore, 1);
+
+    const second = await lensRun("agents", "saveGraph", {
+      params: { id: gid, name: "V2", nodes: [{ id: "n1", label: "One", role: "worker" }, { id: "n2", label: "Two", role: "worker" }], edges: [] },
+    }, ctx);
+    assert.equal(second.result.graph.id, gid);
+    assert.equal(second.result.graph.name, "V2");
+    assert.equal(second.result.graph.createdAt, createdAt); // preserved on update
+    assert.equal(second.result.graph.nodes.length, 2);
+
+    const after = await lensRun("agents", "listGraphs", {}, ctx);
+    assert.equal(after.result.graphs.filter((g) => g.id === gid).length, 1); // still one row
+  });
+
+  it("runGraph rejects an unknown graphId", async () => {
+    const bad = await lensRun("agents", "runGraph", { params: { graphId: "graph_never", goal: "go" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /graph not found/);
+  });
+
+  it("runGraph: a graph with no edges dispatches across all nodes", async () => {
+    const save = await lensRun("agents", "saveGraph", {
+      params: { name: "Flat", nodes: [{ id: "a", label: "A", role: "worker" }, { id: "b", label: "B", role: "worker" }], edges: [] },
+    }, ctx);
+    const run = await lensRun("agents", "runGraph", { params: { graphId: save.result.graph.id, goal: "fan out" } }, ctx);
+    assert.equal(run.ok, true);
+    // No edge targets, but both nodes are workers → workers list = both.
+    assert.equal(run.result.orchestration.workerCount, 2);
+    assert.equal(run.result.orchestration.graphName, "Flat");
+    // Each dispatched worker ran 3 sub-steps.
+    assert.equal(run.result.orchestration.dispatched[0].steps.length, 3);
+  });
+
+  it("fireSchedule rejects a disabled schedule and an unknown id", async () => {
+    const sched = await lensRun("agents", "createSchedule", {
+      params: { agentId: "fs1", agentName: "Off", kind: "interval", spec: "1000", goal: "poll" },
+    }, ctx);
+    const id = sched.result.schedule.id;
+    await lensRun("agents", "toggleSchedule", { params: { id } }, ctx); // enabled → false
+    const disabled = await lensRun("agents", "fireSchedule", { params: { id } }, ctx);
+    assert.equal(disabled.result.ok, false);
+    assert.match(disabled.result.error, /schedule is disabled/);
+
+    const unknown = await lensRun("agents", "fireSchedule", { params: { id: "sched_never" } }, ctx);
+    assert.equal(unknown.result.ok, false);
+    assert.match(unknown.result.error, /schedule not found/);
+  });
+
+  it("postMessage rejects a missing agentId and empty text; getThread rejects missing agentId", async () => {
+    const noAgent = await lensRun("agents", "postMessage", { params: { text: "hi" } }, ctx);
+    assert.equal(noAgent.result.ok, false);
+    assert.match(noAgent.result.error, /agentId required/);
+    const noText = await lensRun("agents", "postMessage", { params: { agentId: "pm1", text: "   " } }, ctx);
+    assert.equal(noText.result.ok, false);
+    assert.match(noText.result.error, /message text required/);
+    const noGet = await lensRun("agents", "getThread", { params: {} }, ctx);
+    assert.equal(noGet.result.ok, false);
+    assert.match(noGet.result.error, /agentId required/);
+  });
+
+  it("resetBudget rejects an agent with no budget; setBudget rejects a missing agentId", async () => {
+    const noBudget = await lensRun("agents", "resetBudget", { params: { agentId: "rb_none" } }, ctx);
+    assert.equal(noBudget.result.ok, false);
+    assert.match(noBudget.result.error, /no budget set for agent/);
+    const noAgent = await lensRun("agents", "setBudget", { params: { tokenLimit: 100 } }, ctx);
+    assert.equal(noAgent.result.ok, false);
+    assert.match(noAgent.result.error, /agentId required/);
+  });
+
+  it("getBudget: exceeded flag flips true once an enforced budget is fully consumed", async () => {
+    // Tiny enforced budget; first step's tokens commit, then a second run halts but
+    // the first run already drove tokensUsed to the limit boundary. Use exact spend.
+    await lensRun("agents", "setBudget", { params: { agentId: "exc1", tokenLimit: 100000, costPer1k: 5, enforce: true } }, ctx);
+    const run = await lensRun("agents", "executeRun", { params: { agentId: "exc1", agentName: "Exc", goal: "g", tools: ["classify"], maxSteps: 2 } }, ctx);
+    const spent = run.result.run.totalTokens;
+    assert.ok(spent > 0);
+    const b = await lensRun("agents", "getBudget", { params: { agentId: "exc1" } }, ctx);
+    // remaining = limit - spent; pctUsed rounds spent/limit*100; estCostUsed = spent/1000*5.
+    assert.equal(b.result.remaining, 100000 - spent);
+    assert.equal(b.result.estCostUsed, Math.round(spent / 1000 * 5 * 100) / 100);
+    assert.equal(b.result.exceeded, false); // not fully consumed
+  });
+
   it("runtimeOverview: aggregates runs/schedules/graphs/budgets/threads for the user", async () => {
     // Seed a couple of artifacts into this fresh ctx so the aggregate is non-trivial.
     await lensRun("agents", "executeRun", { params: { agentId: "ov1", agentName: "Ov", goal: "g", tools: ["classify"], maxSteps: 2 } }, ctx);

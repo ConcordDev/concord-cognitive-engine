@@ -816,3 +816,197 @@ describe("healthcare — telehealth list & status state machine (wave 8 top-up)"
     assert.match(badId.result.error, /visit not found/);
   });
 });
+
+// ────────────────────────────────────────────────────────────────────
+// Wave 9 top-up — UNCOVERED deterministic artifact-data macros + the
+// purely-deterministic branches of the network/PBM/LLM macros that the
+// earlier waves blanket-skipped but which DO have a real, no-egress code
+// path: exportEncounter (structured chart export), soapAutoFill (SOAP
+// template builder), generateSummary (period-filtered roll-up + lab
+// trend math), fhir-export (in-memory FHIR R4 Bundle — no network at
+// all), rx-price-compare (validation + PBM-key-required refusal),
+// symptom-triage (empty-input validation reject, fires before any LLM
+// call). Still skipped (genuine egress/LLM with no deterministic
+// product branch): telehealth-create (WebRTC), providers-search /
+// icd10-search (live HTTP), appointment-charge-copay (Stripe),
+// ai-scribe / ai-chart-search / vision (LLM/LLaVA).
+// ────────────────────────────────────────────────────────────────────
+
+describe("healthcare — encounter/SOAP/summary artifact transforms (wave 9 top-up)", () => {
+  it("exportEncounter normalizes scalar diagnosis/plan into arrays + maps vitals aliases", async () => {
+    const r = await lensRun("healthcare", "exportEncounter", {
+      data: {
+        encounter: {
+          patientName: "Ada Lovelace",
+          date: "2026-05-01",
+          provider: "Dr. Babbage",
+          chiefComplaints: "cough",                 // scalar → array
+          diagnosis: "J06.9",                        // scalar → array
+          plan: "rest",                              // scalar → array
+          vitals: { bloodPressure: "120/80", heartRate: 72, spO2: 98 },
+          notes: "stable",
+        },
+        patientId: "pat-export-1",
+      },
+    });
+    assert.deepEqual(r.result.encounter.chiefComplaints, ["cough"]);
+    assert.deepEqual(r.result.encounter.diagnosis, ["J06.9"]);
+    assert.deepEqual(r.result.encounter.plan, ["rest"]);
+    // alias mapping: bloodPressure→bp, heartRate→hr, spO2→o2sat
+    assert.equal(r.result.encounter.vitals.bp, "120/80");
+    assert.equal(r.result.encounter.vitals.hr, 72);
+    assert.equal(r.result.encounter.vitals.o2sat, 98);
+    assert.equal(r.result.patient.name, "Ada Lovelace");
+    assert.equal(r.result.patient.id, "pat-export-1");
+    assert.equal(r.result.encounter.type, "office-visit"); // default
+  });
+
+  it("exportEncounter defaults type to office-visit + date to today when absent", async () => {
+    const today = new Date().toISOString().split("T")[0];
+    const r = await lensRun("healthcare", "exportEncounter", {
+      data: { encounter: { patientName: "Grace Hopper" } },
+    });
+    assert.equal(r.result.encounter.date, today);
+    assert.deepEqual(r.result.encounter.chiefComplaints, []); // missing → []
+    assert.deepEqual(r.result.encounter.diagnosis, []);
+  });
+
+  it("soapAutoFill builds the four SOAP sections + folds prescriptions into S.medications", async () => {
+    const r = await lensRun("healthcare", "soapAutoFill", {
+      data: {
+        chiefComplaint: "fatigue",
+        symptoms: ["tired", "pale"],
+        prescriptions: [{ drug: "Ferrous sulfate" }, { drug: "Vitamin C" }],
+        vitals: { bloodPressure: "118/76", heartRate: 80 },
+        conditions: ["Iron deficiency anemia", { name: "Fatigue" }],
+        assessment: "Likely iron-deficiency anemia",
+        followUp: "CBC in 4 weeks",
+      },
+    });
+    assert.equal(r.result.subjective.chiefComplaint, "fatigue");
+    assert.deepEqual(r.result.subjective.symptoms, ["tired", "pale"]);
+    // prescriptions[].drug → medications list
+    assert.deepEqual(r.result.subjective.medications, ["Ferrous sulfate", "Vitamin C"]);
+    assert.equal(r.result.objective.vitals.bp, "118/76");
+    assert.equal(r.result.objective.vitals.hr, 80);
+    // conditions normalized: string passthrough + object → .name
+    assert.deepEqual(r.result.assessment.diagnoses, ["Iron deficiency anemia", "Fatigue"]);
+    assert.equal(r.result.assessment.clinicalImpression, "Likely iron-deficiency anemia");
+    assert.equal(r.result.plan.followUp, "CBC in 4 weeks");
+  });
+
+  it("generateSummary trends a rising lab >5% as 'increasing' + flags abnormal vs referenceRange", async () => {
+    const now = Date.now();
+    const recent = (daysAgo) => new Date(now - daysAgo * 86400000).toISOString().split("T")[0];
+    const r = await lensRun("healthcare", "generateSummary", {
+      data: {
+        patientId: "pat-summary-1",
+        encounters: [
+          { date: recent(10), type: "office-visit" },
+          { date: recent(5), type: "office-visit" },
+          { date: recent(200), type: "telehealth" }, // outside 90d window
+        ],
+        labs: [
+          { testName: "A1C", value: "6.0", date: recent(30), unit: "%", referenceRange: { low: "4.0", high: "5.7" } },
+          { testName: "A1C", value: "7.2", date: recent(2), unit: "%", referenceRange: { low: "4.0", high: "5.7" } },
+        ],
+        prescriptions: [{ status: "active" }, { status: "discontinued" }, {}],
+        conditions: ["Type 2 diabetes", { code: "I10" }],
+      },
+      params: { periodDays: 90 },
+    });
+    // 200-days-ago encounter excluded; 2 recent office-visits remain
+    assert.equal(r.result.encounterSummary.total, 2);
+    assert.equal(r.result.encounterSummary.byType["office-visit"], 2);
+    // lab trend: 7.2 vs 6.0 → +20% → 'increasing'; latest above high(5.7) → abnormal
+    const a1c = r.result.labSummary.trends["A1C"];
+    assert.equal(a1c.trend, "increasing");
+    assert.equal(a1c.latestValue, "7.2");
+    assert.equal(a1c.abnormal, true);
+    assert.equal(a1c.sampleCount, 2);
+    assert.equal(r.result.labSummary.abnormalCount, 1);
+    // active meds = explicit active + the no-status default → 2
+    assert.equal(r.result.treatmentSummary.activeMedications, 2);
+    // conditions normalized: string passthrough + object → .code
+    assert.deepEqual(r.result.activeConditions, ["Type 2 diabetes", "I10"]);
+  });
+
+  it("generateSummary marks a flat lab series 'stable' (change within ±5%)", async () => {
+    const now = Date.now();
+    const recent = (daysAgo) => new Date(now - daysAgo * 86400000).toISOString().split("T")[0];
+    const r = await lensRun("healthcare", "generateSummary", {
+      data: {
+        labs: [
+          { testName: "Sodium", value: "140", date: recent(20) },
+          { testName: "Sodium", value: "141", date: recent(2) }, // +0.7% → stable
+        ],
+      },
+    });
+    assert.equal(r.result.labSummary.trends["Sodium"].trend, "stable");
+    assert.equal(r.result.periodDays, 90); // default when no param
+  });
+});
+
+describe("healthcare — FHIR export & PBM/triage refusals (wave 9 top-up)", () => {
+  let ctx, patientId;
+  before(async () => {
+    ctx = await depthCtx("healthcare-w9-fhir");
+    const p = await lensRun("healthcare", "patients-create", { params: { firstName: "Fhir", lastName: "Bundle", dob: "1990-04-04", sex: "F", phone: "555-7000" } }, ctx);
+    patientId = p.result.patient.id;
+  });
+
+  it("fhir-export builds a v4.0.1 Bundle with a Patient + the patient's Condition/Immunization resources", async () => {
+    await lensRun("healthcare", "problems-add", { params: { patientId, name: "Type 2 diabetes", icd10: "E11.9", status: "active" } }, ctx);
+    await lensRun("healthcare", "immunizations-add", { params: { patientId, vaccine: "Influenza", cvx: "140" } }, ctx);
+    const r = await lensRun("healthcare", "fhir-export", { params: { patientId } }, ctx);
+    assert.equal(r.result.fhirVersion, "4.0.1");
+    assert.equal(r.result.bundle.resourceType, "Bundle");
+    assert.equal(r.result.scope, "full-record");
+    const types = r.result.bundle.entry.map((e) => e.resource.resourceType);
+    assert.ok(types.includes("Patient"));
+    assert.ok(types.includes("Condition"));
+    assert.ok(types.includes("Immunization"));
+    // Patient resource gender maps sex F → 'female' + carries the MRN identifier
+    const pat = r.result.bundle.entry.find((e) => e.resource.resourceType === "Patient").resource;
+    assert.equal(pat.gender, "female");
+    assert.equal(pat.identifier[0].system, "urn:concord:mrn");
+    // Condition carries the ICD-10-CM coding
+    const cond = r.result.bundle.entry.find((e) => e.resource.resourceType === "Condition").resource;
+    assert.equal(cond.code.coding[0].code, "E11.9");
+    assert.equal(r.result.resourceCount, r.result.bundle.entry.length);
+  });
+
+  it("fhir-export scope='immunizations' narrows the Bundle to Patient + Immunization only", async () => {
+    const r = await lensRun("healthcare", "fhir-export", { params: { patientId, scope: "immunizations" } }, ctx);
+    assert.equal(r.result.scope, "immunizations");
+    const types = new Set(r.result.bundle.entry.map((e) => e.resource.resourceType));
+    assert.ok(types.has("Patient"));
+    assert.ok(types.has("Immunization"));
+    assert.ok(!types.has("Condition")); // the diabetes Condition is excluded by scope
+  });
+
+  it("fhir-export on an unknown patient is rejected", async () => {
+    const bad = await lensRun("healthcare", "fhir-export", { params: { patientId: "pat-nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /patient not found/);
+  });
+
+  it("rx-price-compare without a drug is rejected; with a drug it refuses (PBM key required)", async () => {
+    const missing = await lensRun("healthcare", "rx-price-compare", { params: { zip: "94016" } }, ctx);
+    assert.equal(missing.result.ok, false);
+    assert.match(missing.result.error, /drug required/);
+    const refused = await lensRun("healthcare", "rx-price-compare", { params: { drug: "Atorvastatin", zip: "94016" } }, ctx);
+    assert.equal(refused.result.ok, false);
+    assert.match(refused.result.error, /requires a real PBM\/pharmacy API/);
+    assert.equal(refused.result.meta.drug, "Atorvastatin");
+    assert.equal(refused.result.meta.zip, "94016");
+  });
+
+  it("symptom-triage rejects an empty request (no regions and no description) before any inference", async () => {
+    // This validation fires regardless of whether an LLM slot is present —
+    // the deterministic guard runs before ctx.llm.chat is ever called.
+    const bad = await lensRun("healthcare", "symptom-triage", { params: { age: 40, sex: "F" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /regions or description required/);
+  });
+});

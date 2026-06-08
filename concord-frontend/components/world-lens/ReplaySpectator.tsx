@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { lensRun } from '@/lib/api/client';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -43,34 +44,24 @@ interface ReplaySpectatorProps {
   onSpeedChange?: (speed: number) => void;
 }
 
-// ── Seed Data ──────────────────────────────────────────────────────
-
-const SEED_REPLAY: ReplayRecording = {
-  id: 'replay-001', worldId: 'concordia', startTime: '2026-03-15T10:00:00Z', endTime: '2026-03-15T10:45:00Z',
-  duration: 2700,
-  events: [
-    { timestamp: 0, type: 'build', actorId: '@architect_alex', description: 'Placed foundation slab at District 3', position: { x: 120, y: 0, z: 80 } },
-    { timestamp: 120, type: 'build', actorId: '@architect_alex', description: 'Added steel columns (4x)', position: { x: 120, y: 3, z: 80 } },
-    { timestamp: 300, type: 'build', actorId: '@architect_alex', description: 'Placed USB-A beams connecting columns', position: { x: 120, y: 6, z: 80 } },
-    { timestamp: 480, type: 'validate', actorId: '@architect_alex', description: 'Ran structural validation — PASSED (94%)', position: { x: 120, y: 6, z: 80 } },
-    { timestamp: 600, type: 'build', actorId: '@architect_alex', description: 'Added second floor slab', position: { x: 120, y: 6, z: 80 } },
-    { timestamp: 900, type: 'build', actorId: '@architect_alex', description: 'Placed roof truss system', position: { x: 120, y: 9, z: 80 } },
-    { timestamp: 1200, type: 'validate', actorId: '@architect_alex', description: 'Full validation suite — ALL PASS', position: { x: 120, y: 9, z: 80 } },
-    { timestamp: 1500, type: 'milestone', actorId: '@architect_alex', description: 'Published "River View Library" to District 3' },
-    { timestamp: 1800, type: 'disaster', actorId: 'system', description: 'Seismic stress test M6.0 — Building survived!' },
-    { timestamp: 2400, type: 'milestone', actorId: '@engineer_jane', description: 'First citation received from @engineer_jane' },
-  ],
-};
+// ── Constants ──────────────────────────────────────────────────────
+// NOTE: There is no world build-replay/recording backend (no `replay` domain
+// or recorded-event-stream macro). The live spectator COUNT is real
+// (`spectator.list_for_world`); the replay timeline itself has no source, so
+// it stays empty until a recording backend exists.
+// TODO: wire the replay recording to backend once a world-replay domain exists.
 
 const SPEED_OPTIONS = [0.5, 1, 2, 4, 8];
+
+const DEFAULT_WORLD_ID = 'concordia-hub';
 
 // ── Component ──────────────────────────────────────────────────────
 
 export default function ReplaySpectator({
   mode = 'replay',
   recording: _recording = null,
-  replay = SEED_REPLAY,
-  spectatorCount = 23,
+  replay = null,
+  spectatorCount: spectatorCountProp,
   onPlay,
   onPause,
   onSeek,
@@ -85,10 +76,29 @@ export default function ReplaySpectator({
   const [isRecording, setIsRecording] = useState(false);
   const [showEventList, setShowEventList] = useState(true);
   const [cameraKeyframes, setCameraKeyframes] = useState<CameraKeyframe[]>([]);
+  // Real live spectator count from the backend (falls back to caller's prop).
+  const [spectatorCount, setSpectatorCount] = useState<number>(spectatorCountProp ?? 0);
   const scrubberRef = useRef<HTMLInputElement>(null);
 
-  const activeReplay = replay || SEED_REPLAY;
-  const duration = activeReplay.duration;
+  useEffect(() => {
+    if (typeof spectatorCountProp === 'number') return; // caller supplied it
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun<{ spectators?: unknown[] }>('spectator', 'list_for_world', { worldId: DEFAULT_WORLD_ID });
+        if (cancelled) return;
+        const list = r.data?.ok ? r.data.result?.spectators : null;
+        setSpectatorCount(Array.isArray(list) ? list.length : 0);
+      } catch {
+        if (!cancelled) setSpectatorCount(0);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [spectatorCountProp]);
+
+  // No replay-recording backend → null means "no replay available".
+  const activeReplay = replay;
+  const duration = activeReplay?.duration ?? 0;
 
   const handlePlayPause = useCallback(() => {
     if (isPlaying) { onPause?.(); } else { onPlay?.(); }
@@ -133,7 +143,7 @@ export default function ReplaySpectator({
     build: '🔨', validate: '✅', place: '📍', destroy: '💥', weather: '🌧', disaster: '🌋', milestone: '⭐',
   };
 
-  const visibleEvents = activeReplay.events.filter(e => e.timestamp <= currentTime);
+  const visibleEvents = (activeReplay?.events ?? []).filter(e => e.timestamp <= currentTime);
 
   return (
     <div className="bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg p-4 space-y-3">
@@ -163,8 +173,13 @@ export default function ReplaySpectator({
         </div>
       )}
 
+      {/* No-replay empty state */}
+      {(currentMode === 'replay' || currentMode === 'timelapse') && !activeReplay && (
+        <div className="py-10 text-center text-xs text-white/40">No replay available yet.</div>
+      )}
+
       {/* Timeline / Scrubber */}
-      {(currentMode === 'replay' || currentMode === 'timelapse') && (
+      {(currentMode === 'replay' || currentMode === 'timelapse') && activeReplay && (
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <button onClick={handlePlayPause} className="text-white hover:text-white/80 text-lg w-8 text-center">
@@ -189,7 +204,7 @@ export default function ReplaySpectator({
 
           {/* Event markers on timeline */}
           <div className="relative h-4 bg-white/5 rounded">
-            {activeReplay.events.map((evt, i) => (
+            {(activeReplay?.events ?? []).map((evt, i) => (
               <div key={i}
                 className="absolute w-1.5 h-full rounded-full cursor-pointer hover:opacity-100 opacity-70"
                 style={{
@@ -212,7 +227,10 @@ export default function ReplaySpectator({
             <h4 className="text-xs font-semibold text-white/70 uppercase">Events</h4>
             <button onClick={() => setShowEventList(false)} className="text-xs text-white/30 hover:text-white/50">Hide</button>
           </div>
-          {(currentMode === 'replay' ? visibleEvents : activeReplay.events).map((evt, i) => (
+          {(currentMode === 'replay' ? visibleEvents : (activeReplay?.events ?? [])).length === 0 && (
+            <p className="text-xs text-white/30">No events yet.</p>
+          )}
+          {(currentMode === 'replay' ? visibleEvents : (activeReplay?.events ?? [])).map((evt, i) => (
             <div key={i} className={`flex items-start gap-2 p-1.5 rounded text-xs ${evt.timestamp <= currentTime ? 'bg-white/5' : 'opacity-30'}`}
               onClick={() => currentMode === 'replay' && handleSeek(evt.timestamp)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <span>{eventTypeIcons[evt.type] || '•'}</span>

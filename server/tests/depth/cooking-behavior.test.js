@@ -246,3 +246,300 @@ describe("cooking — collections, shopping, pantry round-trips (shared ctx)", (
     assert.equal(good.result.servings, 3);
   });
 });
+
+describe("cooking — recipes-list filtering + recipe-history (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("cooking-list-history"); });
+
+  it("recipes-list: returns created recipes, newest first by createdAt", async () => {
+    const a = await lensRun("cooking", "recipes-create", { params: { title: "Alpha", tags: ["vegan"] } }, ctx);
+    const b = await lensRun("cooking", "recipes-create", { params: { title: "Beta", tags: ["meat"] } }, ctx);
+    const list = await lensRun("cooking", "recipes-list", {}, ctx);
+    assert.equal(list.ok, true);
+    const titles = list.result.recipes.map((r) => r.title);
+    assert.ok(titles.includes("Alpha"));
+    assert.ok(titles.includes("Beta"));
+    // Both ids present.
+    const ids = list.result.recipes.map((r) => r.id);
+    assert.ok(ids.includes(a.result.recipe.id));
+    assert.ok(ids.includes(b.result.recipe.id));
+  });
+
+  it("recipes-list: q filter matches title/tags case-insensitively", async () => {
+    await lensRun("cooking", "recipes-create", { params: { title: "Tikka Masala", tags: ["curry", "indian"] } }, ctx);
+    const byTitle = await lensRun("cooking", "recipes-list", { params: { q: "tikka" } }, ctx);
+    assert.ok(byTitle.result.recipes.some((r) => r.title === "Tikka Masala"));
+    const byTag = await lensRun("cooking", "recipes-list", { params: { q: "curry" } }, ctx);
+    assert.ok(byTag.result.recipes.some((r) => r.title === "Tikka Masala"));
+    const miss = await lensRun("cooking", "recipes-list", { params: { q: "zzz-no-match" } }, ctx);
+    assert.equal(miss.result.recipes.length, 0);
+  });
+
+  it("recipes-list: collectionId filter limits to recipes in that collection", async () => {
+    const inIt = await lensRun("cooking", "recipes-create", { params: { title: "InCollection" } }, ctx);
+    const out = await lensRun("cooking", "recipes-create", { params: { title: "OutOfCollection" } }, ctx);
+    const col = await lensRun("cooking", "collections-create", { params: { name: "Filtered" } }, ctx);
+    const collectionId = col.result.collection.id;
+    await lensRun("cooking", "collections-toggle-recipe", { params: { collectionId, recipeId: inIt.result.recipe.id } }, ctx);
+    const filtered = await lensRun("cooking", "recipes-list", { params: { collectionId } }, ctx);
+    const titles = filtered.result.recipes.map((r) => r.title);
+    assert.ok(titles.includes("InCollection"));
+    assert.ok(!titles.includes("OutOfCollection"));
+    assert.equal(filtered.result.recipes.length, 1);
+  });
+
+  it("recipe-history: aggregates ratings + made-log with avg and lastCooked", async () => {
+    const created = await lensRun("cooking", "recipes-create", { params: { title: "Tracked" } }, ctx);
+    const id = created.result.recipe.id;
+    await lensRun("cooking", "recipe-rate", { params: { id, stars: 4 } }, ctx);
+    await lensRun("cooking", "recipe-rate", { params: { id, stars: 2 } }, ctx);
+    await lensRun("cooking", "recipe-log-cooked", { params: { id, date: "2026-05-01" } }, ctx);
+    await lensRun("cooking", "recipe-log-cooked", { params: { id, date: "2026-06-01" } }, ctx);
+    const hist = await lensRun("cooking", "recipe-history", { params: { id } }, ctx);
+    assert.equal(hist.ok, true);
+    assert.equal(hist.result.ratingCount, 2);
+    assert.equal(hist.result.avgRating, 3);          // (4 + 2) / 2
+    assert.equal(hist.result.timesCooked, 2);
+    assert.equal(hist.result.lastCooked, "2026-06-01"); // newest date sorts first
+  });
+
+  it("recipe-history: unknown recipe id is rejected", async () => {
+    const miss = await lensRun("cooking", "recipe-history", { params: { id: "rec_nope" } }, ctx);
+    assert.equal(miss.result.ok, false);
+    assert.match(miss.result.error, /recipe not found/);
+  });
+});
+
+describe("cooking — meal-plan get/clear + shopping generate/toggle/clear (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("cooking-mealplan-shop"); });
+
+  it("meal-plan-set → meal-plan-get: a set entry reads back in range with its recipe", async () => {
+    const recipe = await lensRun("cooking", "recipes-create", {
+      params: { title: "GridDinner", servings: 4, ingredients: [{ name: "pasta", qty: 200, unit: "g" }] },
+    }, ctx);
+    const recipeId = recipe.result.recipe.id;
+    await lensRun("cooking", "meal-plan-set", { params: { date: "2026-07-04", slot: "dinner", recipeId, servings: 4 } }, ctx);
+    const got = await lensRun("cooking", "meal-plan-get", { params: { start: "2026-07-01", end: "2026-07-10" } }, ctx);
+    assert.equal(got.ok, true);
+    const entry = got.result.entries.find((e) => e.date === "2026-07-04" && e.slot === "dinner");
+    assert.ok(entry);
+    assert.equal(entry.recipeId, recipeId);
+    assert.equal(entry.recipe.title, "GridDinner");
+  });
+
+  it("meal-plan-get: entries outside the date window are excluded", async () => {
+    const recipe = await lensRun("cooking", "recipes-create", { params: { title: "FarFuture" } }, ctx);
+    const recipeId = recipe.result.recipe.id;
+    await lensRun("cooking", "meal-plan-set", { params: { date: "2026-12-25", slot: "lunch", recipeId } }, ctx);
+    const got = await lensRun("cooking", "meal-plan-get", { params: { start: "2026-07-01", end: "2026-07-10" } }, ctx);
+    assert.ok(!got.result.entries.some((e) => e.date === "2026-12-25"));
+  });
+
+  it("meal-plan-clear: clears one slot, then a whole day", async () => {
+    const recipe = await lensRun("cooking", "recipes-create", { params: { title: "Clearable" } }, ctx);
+    const recipeId = recipe.result.recipe.id;
+    await lensRun("cooking", "meal-plan-set", { params: { date: "2026-08-01", slot: "breakfast", recipeId } }, ctx);
+    await lensRun("cooking", "meal-plan-set", { params: { date: "2026-08-01", slot: "dinner", recipeId } }, ctx);
+    // Clear just breakfast.
+    await lensRun("cooking", "meal-plan-clear", { params: { date: "2026-08-01", slot: "breakfast" } }, ctx);
+    let got = await lensRun("cooking", "meal-plan-get", { params: { start: "2026-08-01", end: "2026-08-02" } }, ctx);
+    let onDay = got.result.entries.filter((e) => e.date === "2026-08-01");
+    assert.equal(onDay.length, 1);
+    assert.equal(onDay[0].slot, "dinner");
+    // Clear the whole day.
+    await lensRun("cooking", "meal-plan-clear", { params: { date: "2026-08-01" } }, ctx);
+    got = await lensRun("cooking", "meal-plan-get", { params: { start: "2026-08-01", end: "2026-08-02" } }, ctx);
+    assert.equal(got.result.entries.filter((e) => e.date === "2026-08-01").length, 0);
+  });
+
+  it("shopping-list-generate: aggregates planned-recipe ingredients scaled by servings", async () => {
+    // base recipe: 2 cups flour at 4 servings; plan it at 8 servings → factor 2 → 4 cups.
+    const recipe = await lensRun("cooking", "recipes-create", {
+      params: { title: "ShopGen", servings: 4, ingredients: [{ name: "flour", qty: 2, unit: "cups" }] },
+    }, ctx);
+    const recipeId = recipe.result.recipe.id;
+    await lensRun("cooking", "meal-plan-set", { params: { date: "2026-09-01", slot: "dinner", recipeId, servings: 8 } }, ctx);
+    const gen = await lensRun("cooking", "shopping-list-generate", {
+      params: { start: "2026-09-01", end: "2026-09-02" },
+    }, ctx);
+    assert.equal(gen.ok, true);
+    const flour = gen.result.items.find((i) => i.name.toLowerCase() === "flour");
+    assert.ok(flour);
+    assert.equal(flour.qty, 4);                       // 2 cups × (8/4)
+    assert.equal(flour.aisle, "pantry");
+    assert.ok(gen.result.byAisle.pantry.some((i) => i.name.toLowerCase() === "flour"));
+  });
+
+  it("shopping-list-generate: subtractPantry drops items the pantry already covers", async () => {
+    const recipe = await lensRun("cooking", "recipes-create", {
+      params: { title: "PantrySub", servings: 2, ingredients: [{ name: "salt", qty: 1, unit: "tsp" }, { name: "eggplant", qty: 1, unit: "" }] },
+    }, ctx);
+    const recipeId = recipe.result.recipe.id;
+    await lensRun("cooking", "meal-plan-set", { params: { date: "2026-09-05", slot: "dinner", recipeId, servings: 2 } }, ctx);
+    // Pantry "salt" with null qty = "have it" → subtracted.
+    await lensRun("cooking", "pantry-add", { params: { name: "salt" } }, ctx);
+    const gen = await lensRun("cooking", "shopping-list-generate", {
+      params: { start: "2026-09-05", end: "2026-09-06", subtractPantry: true },
+    }, ctx);
+    const names = gen.result.items.map((i) => i.name.toLowerCase());
+    assert.ok(!names.includes("salt"));              // covered by pantry
+    assert.ok(names.includes("eggplant"));           // still needed
+  });
+
+  it("shopping-list-toggle → toggle: flips checked state idempotently round-trip", async () => {
+    const added = await lensRun("cooking", "shopping-list-add", { params: { name: "tomatoes", qty: 3 } }, ctx);
+    const id = added.result.item.id;
+    assert.equal(added.result.item.checked, false);
+    const on = await lensRun("cooking", "shopping-list-toggle", { params: { id } }, ctx);
+    assert.equal(on.result.item.checked, true);
+    const off = await lensRun("cooking", "shopping-list-toggle", { params: { id } }, ctx);
+    assert.equal(off.result.item.checked, false);
+    const miss = await lensRun("cooking", "shopping-list-toggle", { params: { id: "shop_nope" } }, ctx);
+    assert.equal(miss.result.ok, false);
+    assert.match(miss.result.error, /item not found/);
+  });
+
+  it("shopping-list-clear: checkedOnly keeps unchecked; full clear empties the list", async () => {
+    // Fresh user to avoid earlier items polluting counts.
+    const c2 = await depthCtx("cooking-shop-clear");
+    const keep = await lensRun("cooking", "shopping-list-add", { params: { name: "milk" } }, c2);
+    const drop = await lensRun("cooking", "shopping-list-add", { params: { name: "bread" } }, c2);
+    await lensRun("cooking", "shopping-list-toggle", { params: { id: drop.result.item.id } }, c2);
+    await lensRun("cooking", "shopping-list-clear", { params: { checkedOnly: true } }, c2);
+    let list = await lensRun("cooking", "shopping-list-get", {}, c2);
+    assert.equal(list.result.itemCount, 1);
+    assert.equal(list.result.items[0].id, keep.result.item.id);
+    // Full clear.
+    await lensRun("cooking", "shopping-list-clear", {}, c2);
+    list = await lensRun("cooking", "shopping-list-get", {}, c2);
+    assert.equal(list.result.itemCount, 0);
+  });
+});
+
+describe("cooking — pantry delete/suggestions, ai-meal-plan, dashboard, export (isolated ctx)", () => {
+  it("pantry-delete: removes a pantry row; unknown id rejected", async () => {
+    const ctx = await depthCtx("cooking-pantry-del");
+    const added = await lensRun("cooking", "pantry-add", { params: { name: "Cumin" } }, ctx);
+    const id = added.result.item.id;
+    const del = await lensRun("cooking", "pantry-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, true);
+    const list = await lensRun("cooking", "pantry-list", {}, ctx);
+    assert.ok(!list.result.pantry.some((p) => p.id === id));
+    const miss = await lensRun("cooking", "pantry-delete", { params: { id: "pan_nope" } }, ctx);
+    assert.equal(miss.result.ok, false);
+    assert.match(miss.result.error, /pantry item not found/);
+  });
+
+  it("pantry-cook-suggestions: ranks recipes by ingredient coverage, lists missing", async () => {
+    const ctx = await depthCtx("cooking-suggest");
+    // Recipe with 2 ingredients; pantry covers 1 → 50% coverage.
+    await lensRun("cooking", "recipes-create", {
+      params: { title: "HalfStocked", ingredients: [{ name: "rice", qty: 1, unit: "cup" }, { name: "saffron threads" }] },
+    }, ctx);
+    await lensRun("cooking", "pantry-add", { params: { name: "rice" } }, ctx);
+    const sug = await lensRun("cooking", "pantry-cook-suggestions", {}, ctx);
+    assert.equal(sug.ok, true);
+    const rec = sug.result.suggestions.find((s) => s.title === "HalfStocked");
+    assert.ok(rec);
+    assert.equal(rec.haveCount, 1);
+    assert.equal(rec.totalCount, 2);
+    assert.equal(rec.coveragePct, 50);
+    assert.ok(rec.missing.includes("saffron threads"));
+  });
+
+  it("pantry-cook-suggestions: empty pantry returns a prompting message", async () => {
+    const ctx = await depthCtx("cooking-suggest-empty");
+    const sug = await lensRun("cooking", "pantry-cook-suggestions", {}, ctx);
+    assert.equal(sug.ok, true);
+    assert.equal(sug.result.suggestions.length, 0);
+    assert.ok(sug.result.message.includes("Add pantry items"));
+  });
+
+  it("ai-meal-plan: with no recipes is rejected; with recipes fills days×slots", async () => {
+    const ctx = await depthCtx("cooking-ai-plan");
+    const empty = await lensRun("cooking", "ai-meal-plan", { params: { days: 3 } }, ctx);
+    assert.equal(empty.result.ok, false);
+    assert.match(empty.result.error, /add some recipes first/);
+
+    await lensRun("cooking", "recipes-create", { params: { title: "PlanA", servings: 2 } }, ctx);
+    await lensRun("cooking", "recipes-create", { params: { title: "PlanB", servings: 4 } }, ctx);
+    const plan = await lensRun("cooking", "ai-meal-plan", {
+      params: { days: 3, slots: ["dinner"], start: "2026-10-01" },
+    }, ctx);
+    assert.equal(plan.ok, true);
+    assert.equal(plan.result.days, 3);
+    assert.equal(plan.result.assigned.length, 3);     // 3 days × 1 slot
+    assert.equal(plan.result.source, "deterministic");
+    // The assignments actually landed in the meal plan calendar.
+    const got = await lensRun("cooking", "meal-plan-get", { params: { start: "2026-10-01", end: "2026-10-05" } }, ctx);
+    assert.equal(got.result.entries.length, 3);
+  });
+
+  it("ai-meal-plan: invalid slots fall back to ['dinner']", async () => {
+    const ctx = await depthCtx("cooking-ai-plan-slots");
+    await lensRun("cooking", "recipes-create", { params: { title: "Only", servings: 2 } }, ctx);
+    const plan = await lensRun("cooking", "ai-meal-plan", {
+      params: { days: 2, slots: ["brunch", "elevenses"], start: "2026-11-01" },
+    }, ctx);
+    assert.deepEqual(plan.result.slots, ["dinner"]);
+    assert.equal(plan.result.assigned.length, 2);     // 2 days × default dinner slot
+  });
+
+  it("cooking-dashboard-summary: counts reflect created recipes/collections/pantry", async () => {
+    const ctx = await depthCtx("cooking-dash");
+    await lensRun("cooking", "recipes-create", { params: { title: "DashOne" } }, ctx);
+    await lensRun("cooking", "recipes-create", { params: { title: "DashTwo" } }, ctx);
+    await lensRun("cooking", "collections-create", { params: { name: "DashBook" } }, ctx);
+    await lensRun("cooking", "pantry-add", { params: { name: "DashSpice" } }, ctx);
+    await lensRun("cooking", "shopping-list-add", { params: { name: "DashItem" } }, ctx);
+    const dash = await lensRun("cooking", "cooking-dashboard-summary", {}, ctx);
+    assert.equal(dash.ok, true);
+    assert.equal(dash.result.recipeCount, 2);
+    assert.equal(dash.result.collectionCount, 1);
+    assert.equal(dash.result.pantryItems, 1);
+    assert.equal(dash.result.shoppingItems, 1);
+  });
+
+  it("collections-delete: removes a collection; unknown id rejected", async () => {
+    const ctx = await depthCtx("cooking-col-del");
+    const col = await lensRun("cooking", "collections-create", { params: { name: "Doomed" } }, ctx);
+    const id = col.result.collection.id;
+    const del = await lensRun("cooking", "collections-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, true);
+    const list = await lensRun("cooking", "collections-list", {}, ctx);
+    assert.ok(!list.result.collections.some((c) => c.id === id));
+    const miss = await lensRun("cooking", "collections-delete", { params: { id: "col_nope" } }, ctx);
+    assert.equal(miss.result.ok, false);
+    assert.match(miss.result.error, /collection not found/);
+  });
+
+  it("recipe-export-card: produces a text card + printable HTML with title/ingredients/method", async () => {
+    const ctx = await depthCtx("cooking-export");
+    const created = await lensRun("cooking", "recipes-create", {
+      params: {
+        title: "Toast", servings: 1, prepMin: 2, cookMin: 3,
+        ingredients: [{ name: "bread", qty: 2, unit: "slices" }, "butter"],
+        steps: ["Toast bread", "Spread butter"],
+        notes: "Best with sourdough",
+      },
+    }, ctx);
+    const id = created.result.recipe.id;
+    const card = await lensRun("cooking", "recipe-export-card", { params: { id } }, ctx);
+    assert.equal(card.ok, true);
+    assert.equal(card.result.format, "printable-card");
+    assert.ok(card.result.card.includes("TOAST"));            // title upper-cased
+    assert.ok(card.result.card.includes("Serves 1"));
+    assert.ok(card.result.card.includes("2 slices bread"));   // ingredient line
+    assert.ok(card.result.card.includes("1. Toast bread"));   // numbered method
+    assert.ok(card.result.html.includes("<h1>Toast</h1>"));
+    assert.ok(card.result.html.includes("Spread butter"));
+  });
+
+  it("recipe-export-card: unknown recipe id is rejected", async () => {
+    const ctx = await depthCtx("cooking-export-miss");
+    const miss = await lensRun("cooking", "recipe-export-card", { params: { id: "rec_nope" } }, ctx);
+    assert.equal(miss.result.ok, false);
+    assert.match(miss.result.error, /recipe not found/);
+  });
+});
