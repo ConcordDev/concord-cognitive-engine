@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ds } from '@/lib/design-system';
+import { lensRun } from '@/lib/api/client';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -54,23 +55,54 @@ const SEASON_CONFIG: Record<Season, { icon: string; color: string; weather: stri
   winter: { icon: '❄️', color: 'text-blue-300', weather: 'Snow accumulation tests roof loads. Freeze-thaw cycles.' },
 };
 
-// TODO: wire to backend — no generic seasonal-content macro/route currently
-// returns this component's shape. Festivals exist (/api/festivals/active) but
-// are world-scoped (require a worldId) and carry a different shape; monthly
-// challenges + annual competitions have no backing source yet. Defaults are
-// empty so each tab shows an honest empty state instead of fabricated events.
-// Callers may still pass real `events`/`challenges`/`competitions` via props.
+// Wired to the `seasonal` lens-action domain (server/domains/seasonal.js):
+//   - events-list derives REAL content from the Concordia season calendar
+//     (server/lib/seasons.js — 6 seasons × 7-day = 42-day year).
+//   - challenges-list / competitions-list return the user's STATE-backed CRUD.
+// Each tab shows an honest empty state until there's data. Callers may still
+// pass real `events`/`challenges`/`competitions` via props to override.
 
 // ── Component ──────────────────────────────────────────────────────
 
 export default function SeasonalContent({
-  currentSeason = 'spring',
-  events = [],
-  challenges = [],
-  competitions = [],
+  currentSeason: currentSeasonProp = 'spring',
+  events: eventsProp = [],
+  challenges: challengesProp = [],
+  competitions: competitionsProp = [],
   onJoinChallenge,
 }: SeasonalContentProps) {
   const [selectedTab, setSelectedTab] = useState<'events' | 'challenges' | 'competitions'>('events');
+
+  const [events, setEvents] = useState<SeasonalEventData[]>(eventsProp);
+  const [challenges, setChallenges] = useState<MonthlyChallenge[]>(challengesProp);
+  const [competitions, setCompetitions] = useState<AnnualCompetition[]>(competitionsProp);
+  const [currentSeason, setCurrentSeason] = useState<Season>(currentSeasonProp);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [ev, ch, co] = await Promise.all([
+          lensRun('seasonal', 'events-list', {}),
+          lensRun('seasonal', 'challenges-list', {}),
+          lensRun('seasonal', 'competitions-list', {}),
+        ]);
+        if (cancelled) return;
+        const evResult = ev.data?.result as
+          | { events?: SeasonalEventData[]; currentSeason?: Season }
+          | null;
+        if (evResult?.events) setEvents(evResult.events);
+        if (evResult?.currentSeason) setCurrentSeason(evResult.currentSeason);
+        const chList = (ch.data?.result as { challenges?: MonthlyChallenge[] } | null)?.challenges;
+        if (chList) setChallenges(chList);
+        const coList = (co.data?.result as { competitions?: AnnualCompetition[] } | null)?.competitions;
+        if (coList) setCompetitions(coList);
+      } catch {
+        /* keep prop defaults / empty states on failure */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const seasonInfo = SEASON_CONFIG[currentSeason];
   const seasonEvents = useMemo(() => events.filter(e => e.season === currentSeason), [events, currentSeason]);

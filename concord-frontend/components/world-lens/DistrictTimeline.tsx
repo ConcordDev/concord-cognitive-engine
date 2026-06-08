@@ -3,7 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Building2, Users, Zap, Leaf } from 'lucide-react';
 import type { DistrictSnapshot } from '@/lib/world-lens/types';
+import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
+
+interface BackendDistrictSnapshot {
+  at?: string;
+  buildingCount?: number;
+  population?: number;
+  activeUsers?: number;
+}
 
 const panel = ds.panelFloating;
 
@@ -12,15 +20,37 @@ interface DistrictTimelineProps {
 }
 
 export default function DistrictTimeline({ districtId }: DistrictTimelineProps) {
-  // District snapshot history has no backend timeseries surface yet. Start
-  // EMPTY — never seed fabricated growth curves. When a real
-  // district-snapshot history API exists, fetch it here and map → snapshots.
-  // TODO: wire to backend (no /api district-snapshot-history endpoint exists).
+  // Real recorded snapshot history from the `district` lens-action domain.
+  // Empty until snapshots are recorded — never seed a fabricated growth curve.
   const [snapshots, setSnapshots] = useState<DistrictSnapshot[]>([]);
   useEffect(() => {
-    // Placeholder for the real fetch once a backend surface exists.
-    // Intentionally leaves snapshots empty rather than fabricating data.
-    setSnapshots([]);
+    let cancelled = false;
+    if (!districtId) {
+      setSnapshots([]);
+      return;
+    }
+    (async () => {
+      try {
+        const r = await lensRun('district', 'timeline-list', { districtId });
+        const rows = (r.data?.result?.snapshots as BackendDistrictSnapshot[]) || [];
+        if (cancelled) return;
+        setSnapshots(
+          rows.map((s): DistrictSnapshot => ({
+            timestamp: s.at || '',
+            buildingCount: Number(s.buildingCount) || 0,
+            populationCapacity: Number(s.population) || 0,
+            powerCapacity: Number(s.activeUsers) || 0,
+            waterCapacity: 0,
+            environmentalScore: 0,
+          })),
+        );
+      } catch {
+        if (!cancelled) setSnapshots([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [districtId]);
 
   const [selectedWeek, setSelectedWeek] = useState(0);

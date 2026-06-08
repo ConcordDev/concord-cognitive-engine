@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { lensRun } from '@/lib/api/client';
 import {
   Shield, Heart, MessageSquare, UserPlus,
   UserCheck, Eye, Quote, Coins, Globe,
@@ -181,12 +182,12 @@ function ReputationRadar({ scores }: { scores: ReputationScore[] }) {
 /* ── Component ─────────────────────────────────────────────────── */
 
 export default function PlayerProfile({
-  profile = EMPTY_PROFILE,
-  portfolio = [],
-  badges = [],
+  profile: profileProp,
+  portfolio: portfolioProp,
+  badges: badgesProp,
   followers: _followers,
   friends = [],
-  visitorLog = [],
+  visitorLog: visitorLogProp,
   isOwnProfile = false,
   onFollow,
   onMessage,
@@ -194,6 +195,79 @@ export default function PlayerProfile({
   onAddFriend,
 }: PlayerProfileProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'portfolio' | 'badges' | 'friends' | 'visitors'>('overview');
+
+  // Backend-fetched state. A caller-supplied prop always wins (the prop is
+  // passed straight through); otherwise we fetch REAL data from the `profile`
+  // lens-action domain and keep honest empty states until it resolves.
+  const [fetchedProfile, setFetchedProfile] = useState<ProfileData>(EMPTY_PROFILE);
+  const [fetchedPortfolio, setFetchedPortfolio] = useState<DTUPortfolioItem[]>([]);
+  const [fetchedBadges, setFetchedBadges] = useState<Badge[]>([]);
+  const [fetchedVisitors, setFetchedVisitors] = useState<VisitorLogEntry[]>([]);
+
+  useEffect(() => {
+    // Skip the fetch entirely if every surface was supplied via props.
+    if (profileProp && portfolioProp && badgesProp && (visitorLogProp || !isOwnProfile)) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const calls: Promise<unknown>[] = [
+          lensRun('profile', 'profile-get', {}),
+          lensRun('profile', 'reputation-summary', {}),
+          lensRun('profile', 'badges-list', {}),
+          lensRun('profile', 'portfolio-list', {}),
+        ];
+        if (isOwnProfile) calls.push(lensRun('profile', 'visitors-list', {}));
+        const [profRes, repRes, badgeRes, portRes, visRes] = await Promise.all(calls) as Array<{
+          data: { ok: boolean; result: Record<string, unknown> | null };
+        }>;
+        if (cancelled) return;
+
+        // Merge the editable profile + the derived reputation summary into the
+        // rich ProfileData shape this panel renders.
+        if (!profileProp) {
+          const ep = (profRes?.data?.result?.profile ?? {}) as Record<string, unknown>;
+          const rep = (repRes?.data?.result ?? {}) as Record<string, unknown>;
+          setFetchedProfile({
+            id: String(ep.id ?? ''),
+            displayName: String(ep.displayName ?? '') || '—',
+            avatar: ep.avatar ? String(ep.avatar) : undefined,
+            profession: String(ep.profession ?? ''),
+            firmName: ep.firmName ? String(ep.firmName) : undefined,
+            bio: ep.bio ? String(ep.bio) : undefined,
+            totalCitations: Number(rep.totalCitations ?? 0),
+            totalRoyalties: Number(rep.totalRoyalties ?? 0),
+            worldsOwned: Number(rep.worldsOwned ?? 0),
+            followerCount: 0,
+            followingCount: 0,
+            reputation: Array.isArray(rep.reputation) ? (rep.reputation as ReputationScore[]) : [],
+            joinDate: ep.updatedAt ? String(ep.updatedAt).slice(0, 10) : '',
+          });
+        }
+        if (!badgesProp) {
+          const list = (badgeRes?.data?.result?.badges ?? []) as Badge[];
+          setFetchedBadges(list);
+        }
+        if (!portfolioProp) {
+          const list = (portRes?.data?.result?.portfolio ?? []) as DTUPortfolioItem[];
+          setFetchedPortfolio(list);
+        }
+        if (!visitorLogProp && isOwnProfile && visRes) {
+          const list = (visRes?.data?.result?.visitors ?? []) as VisitorLogEntry[];
+          setFetchedVisitors(list);
+        }
+      } catch {
+        // Network/parse failure → keep honest empty states (no fabrication).
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [profileProp, portfolioProp, badgesProp, visitorLogProp, isOwnProfile]);
+
+  // Caller props win; otherwise use the fetched/real data.
+  const profile = profileProp ?? fetchedProfile;
+  const portfolio = portfolioProp ?? fetchedPortfolio;
+  const badges = badgesProp ?? fetchedBadges;
+  const visitorLog = visitorLogProp ?? fetchedVisitors;
+
   const [following, setFollowing] = useState(profile.isFollowing ?? false);
   const [friend, setFriend] = useState(profile.isFriend ?? false);
 

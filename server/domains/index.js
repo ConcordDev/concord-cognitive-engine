@@ -234,8 +234,13 @@ import stakingDomain from './staking.js';
 import systemDomain from './system.js';
 import standardsDomain from './standards.js';
 import registerSensorActions from './sensor.js';
+import registerProfileActions from './profile.js';
+import registerSeasonalActions from './seasonal.js';
+import registerPresenceActions from './presence.js';
 import serviceMarket from './service-market.js';
 import digitalTwin from './digital-twin.js';
+import registerDistrictActions from './district.js';
+import registerCobuildActions from './cobuild.js';
 
 export default [
   healthcare,
@@ -463,6 +468,11 @@ export default [
   systemDomain,
   standardsDomain,
   registerSensorActions,
+  registerProfileActions,
+  registerSeasonalActions,
+  registerPresenceActions,
   serviceMarket,
   digitalTwin,
+  registerDistrictActions,
+  registerCobuildActions,
 ];

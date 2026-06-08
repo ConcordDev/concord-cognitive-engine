@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Paintbrush, Hammer, Eye, MessageSquare,
   AlertTriangle, ThumbsUp, GraduationCap,
   ClipboardList, Layers, Send, Percent,
   UserCheck,
 } from 'lucide-react';
+import { lensRun } from '@/lib/api/client';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -83,13 +84,29 @@ const ANNOTATION_META: Record<AnnotationType, { label: string; color: string; bg
 
 const KANBAN_COLUMNS: TaskStatus[] = ['open', 'claimed', 'in-progress', 'review', 'complete'];
 
-/* ── Honest defaults ────────────────────────────────────────────── */
-// There is NO world-lens backend for live co-build participants, the project
-// kanban, design-review annotations, or the shared workbench. Start EMPTY —
-// never seed fabricated collaborators or tasks. Honest empty-states render
-// below when nothing is provided.
-// TODO: wire participants/projectBoard/activeReview/workbench to backend when
-// a real-time co-build collaboration API exists.
+/* ── Backend wiring ─────────────────────────────────────────────── */
+// Real co-build data comes from the "cobuild" lens-action domain
+// (server/domains/cobuild.js): session-list → participants, task-list →
+// project board, annotations-list → design review. The shared workbench has no
+// backend yet, so it stays prop-driven and guarded (honest empty-state below).
+// Everything starts EMPTY — a user sees nothing until they create a session and
+// add tasks/annotations. No fabricated rows.
+
+// Map backend kanban statuses (todo|doing|done) onto the panel's column model.
+const STATUS_FROM_BACKEND: Record<string, TaskStatus> = {
+  todo: 'open',
+  doing: 'in-progress',
+  done: 'complete',
+};
+
+// Deterministic per-participant cursor color (no fabricated identity — just a
+// stable hue derived from the user id).
+const CURSOR_COLORS = ['#22d3ee', '#f97316', '#a78bfa', '#34d399', '#f472b6', '#facc15'];
+function colorForId(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return CURSOR_COLORS[h % CURSOR_COLORS.length];
+}
 
 const EMPTY_MENTORSHIP: MentorshipState = {
   active: false,
@@ -101,9 +118,9 @@ const EMPTY_MENTORSHIP: MentorshipState = {
 /* ── Component ─────────────────────────────────────────────────── */
 
 export default function CollaborationTools({
-  participants = [],
-  projectBoard = [],
-  activeReview = [],
+  participants: participantsProp,
+  projectBoard: projectBoardProp,
+  activeReview: activeReviewProp,
   mentorship = EMPTY_MENTORSHIP,
   workbench,
   onClaimTask,
@@ -114,6 +131,82 @@ export default function CollaborationTools({
   const [mentorshipActive, setMentorshipActive] = useState(mentorship.active);
   const [annotationDraft, setAnnotationDraft] = useState('');
   const [annotationType, setAnnotationType] = useState<AnnotationType>('suggestion');
+
+  // Live co-build data fetched from the cobuild domain. Props (when provided)
+  // take precedence so callers can still inject; otherwise we render fetched
+  // data, falling back to empty arrays (honest empty-states).
+  const [fetchedParticipants, setFetchedParticipants] = useState<BuildParticipant[]>([]);
+  const [fetchedTasks, setFetchedTasks] = useState<ProjectTask[]>([]);
+  const [fetchedAnnotations, setFetchedAnnotations] = useState<ReviewAnnotation[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // Resolve the user's active co-build session, then load its board.
+        const sessRes = await lensRun('cobuild', 'session-list', {});
+        const sessions = (sessRes.data?.result as { sessions?: Array<{ id: string; participants?: string[] }> } | null)?.sessions ?? [];
+        if (cancelled) return;
+        const active = sessions[0];
+        if (!active) {
+          setFetchedParticipants([]);
+          setFetchedTasks([]);
+          setFetchedAnnotations([]);
+          return;
+        }
+
+        // Participants
+        setFetchedParticipants(
+          (active.participants ?? []).map((uid, i) => ({
+            id: uid,
+            name: uid,
+            cursorColor: colorForId(uid),
+            isBuilding: i === 0,
+          })),
+        );
+
+        // Tasks (kanban board)
+        const taskRes = await lensRun('cobuild', 'task-list', { sessionId: active.id });
+        if (cancelled) return;
+        const rawTasks = (taskRes.data?.result as { tasks?: Array<{ id: string; title: string; description?: string; status: string; assignee?: string | null }> } | null)?.tasks ?? [];
+        setFetchedTasks(
+          rawTasks.map((t) => ({
+            id: t.id,
+            title: t.title,
+            description: t.description ?? '',
+            status: STATUS_FROM_BACKEND[t.status] ?? 'open',
+            claimedBy: t.assignee ?? undefined,
+          })),
+        );
+
+        // Annotations (design review)
+        const annRes = await lensRun('cobuild', 'annotations-list', { sessionId: active.id });
+        if (cancelled) return;
+        const rawAnns = (annRes.data?.result as { annotations?: Array<{ id: string; kind: AnnotationType; content: string; author: string; targetRef?: string | null; createdAt: string }> } | null)?.annotations ?? [];
+        setFetchedAnnotations(
+          rawAnns.map((a) => ({
+            id: a.id,
+            type: (['suggestion', 'issue', 'praise'].includes(a.kind) ? a.kind : 'suggestion') as AnnotationType,
+            author: a.author,
+            content: a.content,
+            memberRef: a.targetRef ?? undefined,
+            timestamp: a.createdAt,
+          })),
+        );
+      } catch {
+        if (!cancelled) {
+          setFetchedParticipants([]);
+          setFetchedTasks([]);
+          setFetchedAnnotations([]);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const participants = participantsProp ?? fetchedParticipants;
+  const projectBoard = projectBoardProp ?? fetchedTasks;
+  const activeReview = activeReviewProp ?? fetchedAnnotations;
 
   const tasksByStatus = (status: TaskStatus) =>
     projectBoard.filter(t => t.status === status);
