@@ -745,6 +745,28 @@ export function createOracleEngine(opts = {}) {
       semantic = [];
     }
 
+    // Qdrant ANN (Item 1): when in-process embeddings came up empty, query the
+    // ANN index over the FULL corpus (its advantage over the 500-candidate pool)
+    // and hydrate from the DTU store. No-op unless VECTOR_DB=qdrant + reachable.
+    if ((!Array.isArray(semantic) || semantic.length === 0)) {
+      try {
+        const qd = await import('./qdrant-client.js').then((m) => m.default).catch(() => null);
+        const emb = await _getEmbeddings();
+        if (qd?.configured?.() && typeof emb?.embed === 'function' && dtuStore?.get) {
+          const qVec = await emb.embed(q);
+          if (qVec) {
+            const res = await qd.search(qVec, 50);
+            if (res?.ok && Array.isArray(res.hits) && res.hits.length) {
+              semantic = res.hits.map((h) => dtuStore.get(h.dtuId)).filter(Boolean);
+              stats.embeddingSearches++;
+            }
+          }
+        }
+      } catch (e) {
+        log('debug', 'retrieve_qdrant_failed', { error: e?.message });
+      }
+    }
+
     // Fallback: tag/term search if semantic came up empty.
     if (!Array.isArray(semantic) || semantic.length === 0) {
       semantic = _tagTermSearch(q, candidates, 24);

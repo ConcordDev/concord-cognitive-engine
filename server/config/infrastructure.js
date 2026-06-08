@@ -482,8 +482,11 @@ const knowledgeGraph = {
 // 9. Semantic Search
 // ---------------------------------------------------------------------------
 const search = {
-  model: 'all-MiniLM-L6-v2',
-  dimensions: 384,
+  // The live embedder is nomic-embed-text @ 768 dims (server/embeddings.js
+  // EMBEDDING_DIMENSION). The prior 384/all-MiniLM values were stale and would
+  // have created a dimension-mismatched Qdrant collection.
+  model: process.env.EMBEDDING_MODEL || 'nomic-embed-text',
+  dimensions: 768,
   index: {
     type: 'hnsw',
     metric: 'cosine',

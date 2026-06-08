@@ -20,6 +20,7 @@
 
 import crypto from "crypto";
 import logger from './logger.js';
+import _qdrant from "./lib/qdrant-client.js";
 
 // ── Configuration ──────────────────────────────────────────────────────────
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "nomic-embed-text";
@@ -353,6 +354,13 @@ export function storeEmbedding(dtuId, vec) {
     } catch {
       // Table may not exist yet — silent
     }
+  }
+
+  // Qdrant ANN index (Item 1) — fire-and-forget, no-op unless VECTOR_DB=qdrant +
+  // reachable. Never blocks the write; the in-process cache above stays the
+  // source of truth + offline fallback.
+  if (_qdrant?.configured?.()) {
+    _qdrant.upsert(dtuId, vec).catch(() => { /* degrade-gracefully */ });
   }
 }
 
