@@ -7,7 +7,7 @@
 
 ## 🟢 HANDOFF — start here (next instance reads this first)
 
-**Branch:** `claude/handoff-block-docs-7XVgT` (latest work)  ·  **Honest floor:** **0.65** (`node scripts/grade-macro-depth.mjs --honest`) — climbing ~+0.003/wave toward the ~0.73 ceiling (7 waves done; ~12–15 remain).
+**Branch:** `claude/handoff-block-docs-7XVgT` (latest work)  ·  **Honest floor:** **0.688** (`node scripts/grade-macro-depth.mjs --honest`) — plateaued ~+0.001–0.002/wave (21 waves done; high-yield band exhausted; practical ceiling ~0.71–0.72). 100% of macros have shape coverage; ~70% of non-`utility` macros have a behavioral test. The whole sweep surfaced only ~9 real bugs total — a low defect rate; the macro layer mostly works (weight that over the docs' older "wired ≠ working" caution).
 
 > **Strategic companion doc (read alongside this):** `docs/SCIFI_FEASIBILITY_MAP.md` — a
 > code-grounded audit (2026-06-08) of what's already built vs. frontier. Bottom line: for the
@@ -17,6 +17,18 @@
 > external **connectors are scaffold** (only MCP + OAuth-signin are real) → now tracked as **Track C**.
 
 **What the latest session did (2026-06-08, continuation):**
+- **25 concentrated destinations + cross-mounted panels.** `lib/panel-registry.ts` (lazy,
+  addressable-by-id) + `panel-affinity.ts` + `GlobalPanelHost`/`CrossMountedPanels` + a grouped
+  sidebar "Destinations" tier + per-destination `DestinationNav` workspace tabs. All 259 lenses
+  still reachable via hub/sub-lens-tree/extensions/⌘K.
+- **Prod de-demo.** Killed the demo chrome (rival-shape "preview" banner → neutral titles, Depth
+  "Demo" badge suppressed, stale onboarding copy) AND removed fabricated data from **31 world-lens
+  UX panels** (fake federation peers, a `csk_live_…` key, a faked on-chain tx-hash) — then **wired
+  all of them to REAL data**: 15 new/extended STATE-backed backend domains (sensor, digital-twin,
+  standards, notary, service-market, profile, presence, seasonal, cobuild, district, companion, hub,
+  analytics world/global) + VoiceAssistant on the real STT+brain path. Each domain registered +
+  behaviorally tested. 3D world render path untouched (only flat HUD panels changed).
+- **Depth sweep continued: floor → 0.688** (waves 7–21). See the recalibrated framing above.
 - **Strategy:** landed `docs/SCIFI_FEASIBILITY_MAP.md` (code-grounded, three-agent audit —
   inflated counts replaced with anchor-files + depth verdicts; engineering CAS/FEA confirmed a
   STRENGTH; connectors confirmed scaffold). Added the **reveal-not-invent reframe** + **Track C**
