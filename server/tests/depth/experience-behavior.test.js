@@ -254,3 +254,147 @@ describe("experience — panel screening + prototype analytics (shared ctx)", ()
     assert.equal(homeFrame.misclicks, 1);
   });
 });
+
+// ── EXTENSION (append-only): previously-uncovered macros ───────────────────
+// listRuns, listSurveys, listPanel, inviteParticipants, createClip, listClips,
+// buildReel, listPrototypes.
+
+describe("experience — list/filter readbacks (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("experience-lists"); });
+
+  it("listRuns: filters runs by testId and counts them", async () => {
+    const t1 = await lensRun("experience", "createTest", { params: { name: "T1", tasks: ["a"] } }, ctx);
+    const t2 = await lensRun("experience", "createTest", { params: { name: "T2", tasks: ["b"] } }, ctx);
+    const id1 = t1.result.test.id, id2 = t2.result.test.id;
+    const t1task = t1.result.test.tasks[0].id;
+    await lensRun("experience", "recordRun", { params: { testId: id1, participant: "P", tasks: [{ taskId: t1task, success: true, durationMs: 100, events: [] }] } }, ctx);
+    await lensRun("experience", "recordRun", { params: { testId: id1, participant: "Q", tasks: [{ taskId: t1task, success: false, durationMs: 200, events: [] }] } }, ctx);
+
+    const onlyT1 = await lensRun("experience", "listRuns", { params: { testId: id1 } }, ctx);
+    assert.equal(onlyT1.result.count, 2);
+    assert.ok(onlyT1.result.runs.every((r) => r.testId === id1));
+
+    const onlyT2 = await lensRun("experience", "listRuns", { params: { testId: id2 } }, ctx);
+    assert.equal(onlyT2.result.count, 0);
+  });
+
+  it("listSurveys: surveys read back with a per-survey responseCount", async () => {
+    const sv = await lensRun("experience", "createSurvey", {
+      params: { name: "Feedback", questions: [{ id: "qa", kind: "text", prompt: "Thoughts?" }] },
+    }, ctx);
+    const sid = sv.result.survey.id;
+    await lensRun("experience", "submitSurveyResponse", { params: { surveyId: sid, answers: { qa: "good" } } }, ctx);
+    await lensRun("experience", "submitSurveyResponse", { params: { surveyId: sid, answers: { qa: "great" } } }, ctx);
+
+    const listed = await lensRun("experience", "listSurveys", {}, ctx);
+    const found = listed.result.surveys.find((s) => s.id === sid);
+    assert.ok(found, "created survey reads back from listSurveys");
+    assert.equal(found.responseCount, 2);
+  });
+
+  it("listPanel: reflects total + available-status counts", async () => {
+    await lensRun("experience", "addParticipant", { params: { name: "Avail One" } }, ctx);
+    await lensRun("experience", "addParticipant", { params: { name: "Avail Two" } }, ctx);
+    const listed = await lensRun("experience", "listPanel", {}, ctx);
+    assert.equal(listed.result.count, 2);
+    assert.equal(listed.result.available, 2); // both default status "available"
+    assert.ok(listed.result.panel.some((p) => p.name === "Avail One"));
+  });
+
+  it("listPrototypes: prototypes read back with interactionCount", async () => {
+    const proto = await lensRun("experience", "createPrototype", {
+      params: { name: "Wizard", embedUrl: "https://figma.com/w", frames: [{ id: "fa", name: "Step 1" }] },
+    }, ctx);
+    const pid = proto.result.prototype.id;
+    await lensRun("experience", "recordInteraction", { params: { prototypeId: pid, frameId: "fa", x: 0.3, y: 0.3 } }, ctx);
+    const listed = await lensRun("experience", "listPrototypes", {}, ctx);
+    const found = listed.result.prototypes.find((p) => p.id === pid);
+    assert.ok(found, "created prototype reads back from listPrototypes");
+    assert.equal(found.interactionCount, 1);
+  });
+});
+
+describe("experience — invitations + highlight clips/reels (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("experience-invite-clips"); });
+
+  it("inviteParticipants: flips status to invited, bumps invitedCount, stamps studyName", async () => {
+    const p1 = await lensRun("experience", "addParticipant", { params: { name: "Invitee" } }, ctx);
+    const pid = p1.result.participant.id;
+    const inv = await lensRun("experience", "inviteParticipants", {
+      params: { participantIds: [pid], studyName: "Beta Test" },
+    }, ctx);
+    assert.equal(inv.result.invited, 1);
+    assert.equal(inv.result.studyName, "Beta Test");
+
+    const panel = await lensRun("experience", "listPanel", {}, ctx);
+    const invited = panel.result.panel.find((p) => p.id === pid);
+    assert.equal(invited.status, "invited");
+    assert.equal(invited.invitedCount, 1);
+    assert.equal(invited.lastInvitedTo, "Beta Test");
+  });
+
+  it("inviteParticipants: an unmatched id list is rejected", async () => {
+    const bad = await lensRun("experience", "inviteParticipants", { params: { participantIds: ["does-not-exist"] } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /no matching participants to invite/);
+  });
+
+  it("createClip: derives durationMs, clamps endMs above startMs, mints a shareUrl", async () => {
+    const clip = await lensRun("experience", "createClip", {
+      params: { runId: "uxr_abc", label: "Aha moment", startMs: 1000, endMs: 4000, sentiment: "positive" },
+    }, ctx);
+    assert.equal(clip.result.clip.durationMs, 3000); // 4000 - 1000
+    assert.equal(clip.result.clip.sentiment, "positive");
+    assert.equal(clip.result.shareUrl, `/share/clip/${clip.result.clip.shareToken}`);
+
+    // endMs below startMs is clamped to startMs + 1
+    const clamped = await lensRun("experience", "createClip", {
+      params: { runId: "uxr_abc", startMs: 5000, endMs: 100 },
+    }, ctx);
+    assert.equal(clamped.result.clip.startMs, 5000);
+    assert.equal(clamped.result.clip.endMs, 5001);
+    assert.equal(clamped.result.clip.durationMs, 1);
+  });
+
+  it("createClip: a missing runId is rejected", async () => {
+    const bad = await lensRun("experience", "createClip", { params: { label: "no run" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /runId required/);
+  });
+
+  it("listClips: filters by runId and tallies sentiment + total duration", async () => {
+    const c1 = await lensRun("experience", "createClip", { params: { runId: "run_X", startMs: 0, endMs: 1000, sentiment: "positive" } }, ctx);
+    const c2 = await lensRun("experience", "createClip", { params: { runId: "run_X", startMs: 0, endMs: 2000, sentiment: "negative" } }, ctx);
+    await lensRun("experience", "createClip", { params: { runId: "run_Y", startMs: 0, endMs: 9000, sentiment: "positive" } }, ctx);
+
+    const onlyX = await lensRun("experience", "listClips", { params: { runId: "run_X" } }, ctx);
+    assert.equal(onlyX.result.count, 2);
+    assert.equal(onlyX.result.bySentiment.positive, 1);
+    assert.equal(onlyX.result.bySentiment.negative, 1);
+    assert.equal(onlyX.result.totalDurationMs, 3000); // 1000 + 2000, run_Y excluded
+    assert.ok(onlyX.result.clips.some((c) => c.id === c1.result.clip.id));
+    assert.ok(onlyX.result.clips.some((c) => c.id === c2.result.clip.id));
+  });
+
+  it("buildReel: orders selected clips, sums duration, mints reel shareUrl", async () => {
+    const a = await lensRun("experience", "createClip", { params: { runId: "reel_run", startMs: 0, endMs: 1500 } }, ctx);
+    const b = await lensRun("experience", "createClip", { params: { runId: "reel_run", startMs: 0, endMs: 2500 } }, ctx);
+    const reel = await lensRun("experience", "buildReel", {
+      params: { name: "Top moments", clipIds: [b.result.clip.id, a.result.clip.id] },
+    }, ctx);
+    assert.equal(reel.result.reel.clipCount, 2);
+    assert.equal(reel.result.reel.totalDurationMs, 4000); // 2500 + 1500
+    // order follows the supplied clipIds (b first)
+    assert.equal(reel.result.reel.clips[0].id, b.result.clip.id);
+    assert.equal(reel.result.reel.clips[1].id, a.result.clip.id);
+    assert.equal(reel.result.shareUrl, `/share/reel/${reel.result.reel.shareToken}`);
+  });
+
+  it("buildReel: no resolvable clipIds is rejected", async () => {
+    const bad = await lensRun("experience", "buildReel", { params: { clipIds: ["missing-1", "missing-2"] } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /no clips selected for reel/);
+  });
+});
