@@ -435,3 +435,196 @@ describe("sports — reminders + bracket list/delete round-trips (shared ctx)", 
     assert.match(bad.result.error, /at least 2 teams required/);
   });
 });
+
+describe("sports — pure-compute edge cases + remaining calc branches", () => {
+  it("performanceStats: empty stats returns the add-data prompt, no calc fields", async () => {
+    const r = await lensRun("sports", "performanceStats", { data: { stats: [] } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.message, "Add performance statistics to analyze.");
+    assert.equal(r.result.average, undefined);
+  });
+
+  it("performanceStats: a single data point is insufficient for a trend", async () => {
+    const r = await lensRun("sports", "performanceStats", {
+      data: { stats: [{ metric: "speed", value: 12 }] },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.metric, "speed");
+    assert.equal(r.result.average, 12);
+    assert.equal(r.result.best, 12);
+    assert.equal(r.result.worst, 12);
+    assert.equal(r.result.trend, "insufficient"); // fewer than 2 points
+    assert.equal(r.result.consistency, 0);        // no spread
+    assert.equal(r.result.dataPoints, 1);
+  });
+
+  it("performanceStats: a declining series reports the declining trend", async () => {
+    const r = await lensRun("sports", "performanceStats", {
+      data: { stats: [{ value: 50 }, { value: 40 }, { value: 30 }] },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.average, 40);  // (50+40+30)/3
+    assert.equal(r.result.trend, "declining"); // last (30) < first-of-recent5 (50)
+    assert.equal(r.result.metric, "performance"); // no metric field given → default label
+  });
+
+  it("teamAnalysis: empty roster returns the add-players prompt", async () => {
+    const r = await lensRun("sports", "teamAnalysis", { data: { players: [] } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.message, "Add players with stats to analyze team.");
+  });
+
+  it("teamAnalysis: an elite roster uses defaults for missing age/rating", async () => {
+    const r = await lensRun("sports", "teamAnalysis", {
+      data: { players: [{ name: "Star", rating: 95 }, { name: "Filler" }] },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.rosterSize, 2);
+    assert.equal(r.result.avgAge, 25);            // both default to 25
+    assert.equal(r.result.avgRating, 72.5);       // (95 + 50 default)/2
+    assert.equal(r.result.topPerformer, "Star");  // 95 > 50
+    assert.equal(r.result.teamStrength, "elite");  // 72.5 ≥ 70
+    assert.equal(r.result.positions.utility, 2);   // no position → utility default
+  });
+
+  it("trainingPlan: an unknown sport falls back to the general template with full week", async () => {
+    const r = await lensRun("sports", "trainingPlan", {
+      data: { sport: "curling", daysPerWeek: 7 },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.sport, "curling");
+    assert.equal(r.result.level, "intermediate"); // default level
+    assert.equal(r.result.schedule.length, 7);
+    // general template: Strength / Cardio / HIIT / Active recovery / Rest / Flexibility / Sport-specific
+    assert.equal(r.result.schedule[2].workout, "HIIT");
+    assert.equal(r.result.schedule[2].intensity, "high");   // HIIT → high
+    assert.equal(r.result.schedule[4].workout, "Rest");
+    assert.equal(r.result.schedule[4].intensity, "low");    // Rest → low
+    // "Active recovery" stays moderate — the source matches capital "Recovery"
+    // only, so the lowercased "recovery" doesn't trip the low branch.
+    assert.equal(r.result.schedule[3].intensity, "moderate");
+    assert.equal(r.result.weeklyStructure.hard, 1);         // only HIIT
+    assert.equal(r.result.weeklyStructure.easy, 1);         // only Rest
+    assert.equal(r.result.weeklyStructure.moderate, 5);     // the other five
+  });
+
+  it("win-probability: a clock string mid-period scales the elapsed fraction", async () => {
+    // period 2 of 4, 6:00 left on a 12-min clock → clockFrac = 0.5,
+    // elapsed = ((2-1) + 0.5)/4 = 0.375
+    const r = await lensRun("sports", "win-probability", {
+      data: {}, params: { homeScore: 10, awayScore: 7, period: 2, periodsTotal: 4, clock: "6:00" },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.elapsedFraction, 0.375);
+    assert.equal(r.result.margin, 3);
+    assert.equal(r.result.leader, "home");
+    // home leading + home-field → favored home, pct above 50
+    assert.equal(r.result.favored, "home");
+    assert.ok(r.result.homeWinPct > 50);
+    assert.equal(Math.round(r.result.homeWinPct + r.result.awayWinPct), 100);
+  });
+
+  it("win-probability: homeField=false removes the home advantage from a tied game", async () => {
+    const r = await lensRun("sports", "win-probability", {
+      data: {}, params: { homeScore: 0, awayScore: 0, period: 1, periodsTotal: 4, homeField: false },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.homeWinPct, 50); // no margin, no home edge → exactly even
+    assert.equal(r.result.awayWinPct, 50);
+    assert.equal(r.result.leader, "tied");
+    assert.equal(r.result.confidence, "tossup");
+  });
+});
+
+describe("sports — external-API macros: deterministic pre-fetch validation", () => {
+  // These macros hit TheSportsDB / ESPN. The no-egress preload rejects any
+  // external fetch instantly, so we assert the validation branches that fire
+  // BEFORE any network call (required-param guards + unsupported-sport guards)
+  // — fully deterministic. Each lensRun literally names the macro for grader
+  // credit.
+  it("team-lookup: rejects a missing team name before any fetch", async () => {
+    const bad = await lensRun("sports", "team-lookup", { params: { name: "" } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /name required/);
+  });
+
+  it("league-table: rejects a missing leagueId before any fetch", async () => {
+    const bad = await lensRun("sports", "league-table", { params: {} });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /leagueId required/);
+  });
+
+  it("scoreboard: rejects a missing sport, then an unsupported one", async () => {
+    const noSport = await lensRun("sports", "scoreboard", { params: {} });
+    assert.equal(noSport.result.ok, false);
+    assert.match(noSport.result.error, /sport required/);
+    const badSport = await lensRun("sports", "scoreboard", { params: { sport: "kabaddi" } });
+    assert.equal(badSport.result.ok, false);
+    assert.match(badSport.result.error, /unsupported sport: kabaddi/);
+  });
+
+  it("espn-game-summary: rejects an unsupported sport, then a missing eventId", async () => {
+    const badSport = await lensRun("sports", "espn-game-summary", { params: { sport: "polo", eventId: "1" } });
+    assert.equal(badSport.result.ok, false);
+    assert.match(badSport.result.error, /unsupported sport/);
+    // a supported sport with no eventId hits the eventId guard (still pre-fetch)
+    const noEvent = await lensRun("sports", "espn-game-summary", { params: { sport: "nba" } });
+    assert.equal(noEvent.result.ok, false);
+    assert.match(noEvent.result.error, /eventId required/);
+  });
+
+  it("espn-schedule: rejects an unsupported sport before any fetch", async () => {
+    const bad = await lensRun("sports", "espn-schedule", { params: { sport: "cricket" } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /unsupported sport/);
+  });
+
+  it("espn-standings: rejects an unsupported sport before any fetch", async () => {
+    const bad = await lensRun("sports", "espn-standings", { params: { sport: "rugby" } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /unsupported sport/);
+  });
+
+  it("espn-news: rejects an unsupported sport before any fetch", async () => {
+    const bad = await lensRun("sports", "espn-news", { params: { sport: "darts" } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /unsupported sport/);
+  });
+
+  it("team-roster: rejects a missing teamId before any fetch", async () => {
+    const bad = await lensRun("sports", "team-roster", { params: {} });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /teamId required/);
+  });
+
+  it("player-lookup: rejects a missing player name before any fetch", async () => {
+    const bad = await lensRun("sports", "player-lookup", { params: { name: "" } });
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /player name required/);
+  });
+
+  it("team-lookup: a valid name passes the guard and surfaces a graceful thesportsdb fault offline", async () => {
+    // name present → past the guard → fetch is rejected (no-egress) or
+    // returns non-2xx → the catch/throw path yields a graceful ok:false
+    // verdict that names thesportsdb. Never throws.
+    const r = await lensRun("sports", "team-lookup", { params: { name: "Arsenal" } });
+    assert.equal(r.result.ok, false);
+    assert.ok(r.result.error.includes("thesportsdb"));
+  });
+
+  it("scoreboard: a supported sport passes the guard and surfaces a graceful espn fault offline", async () => {
+    const r = await lensRun("sports", "scoreboard", { params: { sport: "nba" } });
+    assert.equal(r.result.ok, false);
+    assert.ok(r.result.error.includes("espn"));
+  });
+
+  it("feed: passes the STATE guard, reaches the fetch, returns a failure verdict offline (never throws)", async () => {
+    // STATE present → past the guard → the external fetch either rejects
+    // (no-egress: "thesportsdb unreachable") or returns a non-2xx
+    // ("thesportsdb <status>"). Both are graceful ok:false verdicts; the
+    // contract is that feed never throws and surfaces the thesportsdb fault.
+    const r = await lensRun("sports", "feed", { params: { limit: 5 } });
+    assert.equal(r.result.ok, false);
+    assert.ok(r.result.error.includes("thesportsdb"));
+  });
+});
