@@ -540,6 +540,32 @@ describe("astronomy — telescope GoTo (INDI/ASCOM bridge) round-trip", () => {
     assert.match(noCoords.result.error, /ra and dec/);
   });
 
+  it("goto-mount-set defaults port per protocol; ascom default 11880", async () => {
+    const ctx2 = await depthCtx(`astronomy-goto2-${randomUUID()}`);
+    const ascom = await lensRun("astronomy", "goto-mount-set", {
+      params: { protocol: "ascom", host: "pc.local" },
+    }, ctx2);
+    assert.equal(ascom.ok, true);
+    assert.equal(ascom.result.mount.protocol, "ascom");
+    assert.equal(ascom.result.mount.port, 11880); // ascom default
+    assert.equal(ascom.result.mount.name, "My Mount"); // no name → default
+    assert.equal(ascom.result.mount.host, "pc.local");
+  });
+
+  it("goto-command without a mount returns status 'no-mount' and mountConnected false", async () => {
+    const ctx3 = await depthCtx(`astronomy-goto3-${randomUUID()}`);
+    const cmd = await lensRun("astronomy", "goto-command", {
+      params: { targetName: "Vega", ra: 279.234, dec: 38.784 },
+    }, ctx3);
+    assert.equal(cmd.ok, true);
+    assert.equal(cmd.result.command.status, "no-mount");
+    assert.equal(cmd.result.command.protocol, null);
+    assert.equal(cmd.result.mountConnected, false);
+    assert.equal(cmd.result.command.altAz, null);     // no observer → no alt/az
+    assert.equal(cmd.result.command.belowHorizon, null);
+    assert.equal(cmd.result.command.ra, 279.234);     // round(ra*1000)/1000
+  });
+
   it("goto-command-update transitions status; goto-clear drops completed/cancelled", async () => {
     // Queue two commands (no observer → status 'queued' since a mount is set).
     const a = await lensRun("astronomy", "goto-command", {
@@ -570,5 +596,109 @@ describe("astronomy — telescope GoTo (INDI/ASCOM bridge) round-trip", () => {
     assert.equal(clear.result.removed, completedCount); // removed all completed/cancelled
     const after = await lensRun("astronomy", "goto-queue", {}, ctx);
     assert.ok(!after.result.queue.some((c) => c.status === "completed"));
+  });
+});
+
+describe("astronomy — celestialPosition deterministic formatting + visibility", () => {
+  // altitude/azimuth depend on `new Date()` so they aren't pinned, but the
+  // coordinate echo, observer defaults, and the visible↔altitude consistency
+  // are deterministic invariants we CAN assert.
+  it("echoes RA/Dec with units, names the object, defaults the observer to NYC", async () => {
+    const r = await lensRun("astronomy", "celestialPosition", {
+      data: { rightAscension: 5.5, declination: -8.2, name: "Rigel" },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.object, "Rigel");
+    assert.equal(r.result.ra, "5.5h");
+    assert.equal(r.result.dec, "-8.2°");
+    assert.equal(r.result.observerLocation.lat, 40.7);  // default observer
+    assert.equal(r.result.observerLocation.lon, -74.0);
+    // visible flag is exactly (altitude > 0); bestViewing partitions on altitude.
+    assert.equal(r.result.visible, r.result.altitude > 0);
+    if (r.result.altitude > 30) assert.equal(r.result.bestViewing, "excellent");
+    else if (r.result.altitude > 15) assert.equal(r.result.bestViewing, "good");
+    else if (r.result.altitude > 0) assert.equal(r.result.bestViewing, "low-on-horizon");
+    else assert.equal(r.result.bestViewing, "below-horizon");
+    // azimuth is normalized into [0,360).
+    assert.ok(r.result.azimuth >= 0 && r.result.azimuth < 360);
+  });
+
+  it("an explicit observer is honored over the NYC default", async () => {
+    const r = await lensRun("astronomy", "celestialPosition", {
+      data: { rightAscension: 0, declination: 0, latitude: -33.9, longitude: 151.2 },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.observerLocation.lat, -33.9);
+    assert.equal(r.result.observerLocation.lon, 151.2);
+  });
+});
+
+describe("astronomy — planObservation deterministic difficulty/priority classification", () => {
+  it("with no targets returns a guidance message, not a plan", async () => {
+    const r = await lensRun("astronomy", "planObservation", { data: { targets: [] } });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.message.includes("RA/Dec"));
+  });
+
+  it("classifies difficulty + priority from magnitude (telescope/binoculars/naked-eye)", async () => {
+    const r = await lensRun("astronomy", "planObservation", {
+      data: {
+        targets: [
+          { name: "Faint Quasar", magnitude: 12 },  // >6 → telescope-only
+          { name: "Globular", magnitude: 5 },        // >4 → binoculars
+          { name: "Bright Star", magnitude: 1.2 },   // <=2 → naked-eye, high priority
+        ],
+      },
+    });
+    assert.equal(r.ok, true);
+    const quasar = r.result.targets.find((t) => t.name === "Faint Quasar");
+    const globular = r.result.targets.find((t) => t.name === "Globular");
+    const bright = r.result.targets.find((t) => t.name === "Bright Star");
+    assert.equal(quasar.difficulty, "telescope-only");
+    assert.equal(globular.difficulty, "binoculars");
+    assert.equal(bright.difficulty, "naked-eye");
+    assert.equal(bright.priority, "high");      // mag <= 2
+    assert.equal(globular.priority, "medium");  // mag > 2
+    // bestTargets is exactly the naked-eye subset.
+    assert.equal(r.result.bestTargets.length, 1);
+    assert.equal(r.result.bestTargets[0].name, "Bright Star");
+    // a telescope-only target forces the telescope recommendation.
+    assert.equal(r.result.equipmentNeeded, "Telescope recommended");
+    // moon-driven darkness factor is one of the four deterministic enums.
+    assert.ok(["excellent", "good", "fair", "poor"].includes(r.result.darknessFactor));
+  });
+
+  it("with only naked-eye/binoculars targets, binoculars suffice", async () => {
+    const r = await lensRun("astronomy", "planObservation", {
+      data: { targets: [{ name: "Moon-ish", magnitude: 3 }] },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.equipmentNeeded, "Binoculars sufficient");
+  });
+});
+
+describe("astronomy — network macros: pre-fetch validation branches (no egress)", () => {
+  // These macros hit external APIs; we ONLY exercise the deterministic
+  // validation that returns BEFORE any fetch — never the network path.
+  it("near-earth-objects rejects a malformed startDate before any fetch", async () => {
+    const r = await lensRun("astronomy", "near-earth-objects", {
+      params: { startDate: "not-a-date" },
+    });
+    assert.equal(r.result.ok, false);
+    assert.ok(r.result.error.includes("YYYY-MM-DD"));
+  });
+
+  it("near-earth-objects rejects a malformed endDate before any fetch", async () => {
+    const r = await lensRun("astronomy", "near-earth-objects", {
+      params: { startDate: "2026-01-01", endDate: "2026/01/08" },
+    });
+    assert.equal(r.result.ok, false);
+    assert.ok(r.result.error.includes("YYYY-MM-DD"));
+  });
+
+  it("observing-forecast rejects a missing observer before any fetch", async () => {
+    const r = await lensRun("astronomy", "observing-forecast", { params: { latitude: 40.7 } });
+    assert.equal(r.result.ok, false);
+    assert.ok(r.result.error.includes("latitude and longitude required"));
   });
 });
