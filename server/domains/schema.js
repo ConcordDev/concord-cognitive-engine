@@ -32,7 +32,9 @@ export default function registerSchemaActions(registerLensAction) {
       let actualType = typeof value;
       if (Array.isArray(value)) actualType = "array";
       if (value === null) actualType = "null";
-      if (actualType === "number" && expectedType === "integer") {
+      if (expectedType === "integer" && actualType !== "number") {
+        errors.push({ path, error: "type_mismatch", expected: "integer", got: actualType, value });
+      } else if (actualType === "number" && expectedType === "integer") {
         if (!Number.isInteger(value)) {
           errors.push({ path, error: "type_mismatch", expected: "integer", got: "float", value });
         }

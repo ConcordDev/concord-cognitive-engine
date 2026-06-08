@@ -429,3 +429,155 @@ describe("atlas — recent-searches dedup + cap + offline-area status (wave 14 t
     assert.match(bad.result.error, /bbox invalid/);
   });
 });
+
+describe("atlas — nav-session lifecycle + ai-trip-plan deterministic itinerary (depth fleet top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("atlas-fleet-nav"); });
+
+  // ── nav-status / nav-stop: deterministic, no-network branches ──
+  // (nav-start/nav-update are OSRM-backed and out of scope; these two
+  //  pure-STATE handlers are the empty-session path, fully offline.)
+
+  it("nav-status: with no active session returns a null session, not an error", async () => {
+    const r = await lensRun("atlas", "nav-status", {}, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.session, null);
+  });
+
+  it("nav-stop: with no session is rejected with 'no navigation session'", async () => {
+    const r = await lensRun("atlas", "nav-stop", {}, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /no navigation session/);
+  });
+
+  // ── ai-trip-plan: the validation + deterministic-itinerary path ──
+  // The narration source (deterministic | brain | …) depends on brain
+  // availability, so we only assert the parts computed offline: the
+  // refusal branches and the deterministic place-distribution itinerary.
+
+  it("ai-trip-plan: missing prompt is rejected", async () => {
+    const r = await lensRun("atlas", "ai-trip-plan", { params: { prompt: "   " } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /prompt required/);
+  });
+
+  it("ai-trip-plan: a prompt but zero saved places is rejected (planner needs saved places)", async () => {
+    const r = await lensRun("atlas", "ai-trip-plan", { params: { prompt: "weekend in the city" } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /save some places first/);
+  });
+
+  it("ai-trip-plan: distributes saved places across the requested day count (deterministic itinerary shape)", async () => {
+    // Seed 4 places for this user, then plan a 2-day trip → ceil(4/2)=2 per day, 2 days.
+    for (const p of [
+      { name: "Cafe One", lat: 1, lng: 1, category: "cafe" },
+      { name: "Park Two", lat: 2, lng: 2, category: "park" },
+      { name: "Museum Three", lat: 3, lng: 3, category: "museum" },
+      { name: "Bar Four", lat: 4, lng: 4, category: "bar" },
+    ]) {
+      const saved = await lensRun("atlas", "places-save", { params: p }, ctx);
+      assert.equal(saved.ok, true);
+    }
+    const r = await lensRun("atlas", "ai-trip-plan", { params: { prompt: "relaxed museum day", days: 2 } }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.days, 2);
+    assert.equal(r.result.prompt, "relaxed museum day");
+    // perDay = ceil(4/2) = 2 → exactly two day-buckets, two stops each.
+    assert.equal(r.result.itinerary.length, 2);
+    assert.equal(r.result.itinerary[0].day, 1);
+    assert.equal(r.result.itinerary[1].day, 2);
+    assert.equal(r.result.itinerary[0].stops.length, 2);
+    assert.equal(r.result.itinerary[1].stops.length, 2);
+    // every itinerary stop references one of the 4 saved places by id
+    const allStops = r.result.itinerary.flatMap((d) => d.stops);
+    assert.equal(allStops.length, 4);
+    assert.ok(allStops.every((st) => typeof st.placeId === "string" && st.placeId.length > 0));
+  });
+
+  it("ai-trip-plan: clamps days to the [1,14] range (days=99 → 14, days=0 → 1)", async () => {
+    // user already has 4 saved places from earlier in this shared ctx
+    const hi = await lensRun("atlas", "ai-trip-plan", { params: { prompt: "long tour", days: 99 } }, ctx);
+    assert.equal(hi.ok, true);
+    assert.equal(hi.result.days, 14);
+    // with 4 places and 14 day-slots, perDay=ceil(4/14)=1 → only the
+    // first 4 day-buckets are non-empty (empty buckets are dropped).
+    assert.equal(hi.result.itinerary.length, 4);
+
+    const lo = await lensRun("atlas", "ai-trip-plan", { params: { prompt: "single day", days: 0 } }, ctx);
+    assert.equal(lo.ok, true);
+    assert.equal(lo.result.days, 1); // 0 falls through to the default 1
+    assert.equal(lo.result.itinerary.length, 1);
+    assert.equal(lo.result.itinerary[0].stops.length, 4); // all 4 on the one day
+  });
+});
+
+describe("atlas — uncovered deterministic branches on calc + CRUD macros (depth fleet top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("atlas-fleet-branch"); });
+
+  it("distanceMatrix: fewer than 2 points returns the guidance message, not a matrix", async () => {
+    const r = await lensRun("atlas", "distanceMatrix", { data: { points: [{ name: "Solo", lat: 0, lon: 0 }] } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.stats, null);
+    assert.deepEqual(r.result.matrix, []);
+    assert.match(r.result.message, /at least 2 points/i);
+  });
+
+  it("routeOptimize: fewer than 2 waypoints returns the guidance message + zero distance", async () => {
+    const r = await lensRun("atlas", "routeOptimize", { data: { waypoints: [{ name: "Only", lat: 1, lon: 1 }] } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.totalDistanceKm, 0);
+    assert.deepEqual(r.result.route, []);
+    assert.match(r.result.message, /at least 2 waypoints/i);
+  });
+
+  it("regionStats: no regions returns null summary/rankings with guidance", async () => {
+    const r = await lensRun("atlas", "regionStats", { data: { regions: [] } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.summary, null);
+    assert.equal(r.result.rankings, null);
+    assert.match(r.result.message, /No region data provided/);
+  });
+
+  it("geocode: no places returns count 0 + an empty resolved list + guidance", async () => {
+    const r = await lensRun("atlas", "geocode", { data: { places: [] } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 0);
+    assert.deepEqual(r.result.resolved, []);
+    assert.match(r.result.message, /No places provided/);
+  });
+
+  it("places-save: a blank name is rejected", async () => {
+    const r = await lensRun("atlas", "places-save", { params: { name: "  ", lat: 1, lng: 1 } }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /name required/);
+  });
+
+  it("places-list: filters by a known category, hiding other categories", async () => {
+    await lensRun("atlas", "places-save", { params: { name: "Cup", lat: 1, lng: 1, category: "cafe" } }, ctx);
+    await lensRun("atlas", "places-save", { params: { name: "Bench", lat: 2, lng: 2, category: "park" } }, ctx);
+    const cafes = await lensRun("atlas", "places-list", { params: { category: "cafe" } }, ctx);
+    assert.equal(cafes.ok, true);
+    assert.ok(cafes.result.places.length >= 1);
+    assert.ok(cafes.result.places.every((p) => p.category === "cafe"));
+    assert.ok(!cafes.result.places.some((p) => p.name === "Bench"));
+  });
+
+  it("lists-add-place: a placeId that does not exist is rejected", async () => {
+    const list = await lensRun("atlas", "lists-create", { params: { name: "Empty Target" } }, ctx);
+    const r = await lensRun("atlas", "lists-add-place", {
+      params: { listId: list.result.list.id, placeId: "no-such-place" },
+    }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /place not found/);
+  });
+
+  it("trips-add-stop: an ad-hoc stop missing coords is rejected", async () => {
+    const trip = await lensRun("atlas", "trips-create", { params: { name: "Coordless" } }, ctx);
+    const r = await lensRun("atlas", "trips-add-stop", {
+      params: { tripId: trip.result.trip.id, name: "Mystery" }, // no lat/lng, no placeId
+    }, ctx);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /placeId OR name\+lat\+lng required/);
+  });
+});

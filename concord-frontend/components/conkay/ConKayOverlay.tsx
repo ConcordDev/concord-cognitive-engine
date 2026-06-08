@@ -24,7 +24,15 @@ import { ConKayWorkStatus, type WorkStep } from './ConKayWorkStatus';
 import type { ConKayState } from './conkay-persona';
 import { getLensById } from '@/lib/lens-registry';
 import { lensRun } from '@/lib/api/client';
+import { subscribe, connectSocket } from '@/lib/realtime/socket';
 import MessageRenderer from '@/components/chat/MessageRenderer';
+
+// A correlation id for one macro run. Passed to lensRun → sent as
+// x-conkay-run-id → echoed back on the macro:started/completed events so the
+// HUD can bind a step to the REAL backend call (never a guessed spinner).
+function newRunId(): string {
+  return `ck-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 // The world-tree field is WebGL — load client-only so SSR never touches it.
 const ConKayBackdrop = dynamic(
@@ -66,6 +74,9 @@ export function ConKayOverlay() {
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const spokeRef = useRef<string | null>(null);
+  // The correlation id of the macro run currently in flight. The lifecycle
+  // subscription below only reacts to events tagged with this id.
+  const liveRunRef = useRef<string | null>(null);
 
   const lens = activeLensFromPath(pathname);
   // ConKay should not double up inside the chat lens (which has its own ConKay mode).
@@ -101,6 +112,47 @@ export function ConKayOverlay() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages.length, steps, workStatus]);
 
+  // ── honest event spine ──────────────────────────────────────────────
+  // The ONE rule: every animated beat is a pure function of a REAL backend
+  // event. While ConKay is open we subscribe to the macro lifecycle the server
+  // emits to our user:<id> room and bind a step (keyed by the run's correlation
+  // id) to it: it lights when the backend reports the call *started* and
+  // resolves when it reports *completed* — with the real elapsed ms. No
+  // setInterval, no eased fake percentage. If the socket is offline the step
+  // simply never appears; the await-bound choreography below still tells the
+  // story (also real — the call literally returned).
+  useEffect(() => {
+    if (!open) return;
+    connectSocket();
+    const offStart = subscribe<{ runId?: string; domain?: string; action?: string }>(
+      'macro:started',
+      (d) => {
+        if (!d?.runId || d.runId !== liveRunRef.current) return;
+        const label = `Running ${d.domain ?? '?'}.${d.action ?? '?'} on the backend`;
+        setWorkStatus(`Backend running ${d.domain ?? '?'}.${d.action ?? '?'}…`);
+        setSteps((prev) =>
+          prev.some((s) => s.id === d.runId)
+            ? prev
+            : [...prev, { id: d.runId!, label, state: 'active' as const }],
+        );
+      },
+    );
+    const offDone = subscribe<{ runId?: string; domain?: string; action?: string; ok?: boolean; ms?: number; error?: string }>(
+      'macro:completed',
+      (d) => {
+        if (!d?.runId || d.runId !== liveRunRef.current) return;
+        const failed = d.ok === false;
+        const ms = typeof d.ms === 'number' ? ` in ${d.ms} ms` : '';
+        const label = `${d.domain ?? '?'}.${d.action ?? '?'} ${failed ? 'failed' : 'completed'}${ms}`;
+        setSteps((prev) =>
+          prev.map((s) => (s.id === d.runId ? { ...s, state: failed ? ('error' as const) : ('done' as const), label } : s)),
+        );
+        setWorkStatus(failed ? 'Backend returned an error' : `Completed${ms}`);
+      },
+    );
+    return () => { offStart(); offDone(); };
+  }, [open]);
+
   const append = useCallback((m: OverlayMsg) => setMessages((prev) => [...prev, m]), []);
 
   // Work-step helpers — set the plan, then advance each step's state as ConKay
@@ -111,6 +163,29 @@ export function ConKayOverlay() {
     if (status) setWorkStatus(status);
   }, []);
   const clearWork = useCallback(() => { setTimeout(() => { setSteps([]); setWorkStatus(''); }, 1400); }, []);
+
+  // ── verification climax (Track B / Phase 1) ──────────────────────────
+  // Run a reply's citations through the REAL reason.verify macro and stamp the
+  // verdict onto the message — so the TrustBadge shows the actual verification
+  // result (citations resolve / grounded / unsupported / fabricated_citation),
+  // never a heuristic guess. "Verification IS the product." Rides the honest
+  // event spine (a runId) like any other macro call; degrades silently to the
+  // heuristic badge if the macro is unavailable.
+  const verifyMessage = useCallback(async (msgId: string, claim: string, citationIds: string[]) => {
+    if (!citationIds.length) return;
+    setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: 'pending' } : m)));
+    try {
+      const rid = newRunId();
+      liveRunRef.current = rid;
+      const { data } = await lensRun('reason', 'verify', { claim, citations: citationIds }, rid);
+      const res = data?.result as { verdict?: string } | null;
+      const verdict = res && typeof res === 'object' && res.verdict ? String(res.verdict) : 'unverified';
+      setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: verdict } : m)));
+    } catch {
+      // verification unavailable → drop the pending state, fall back to the heuristic badge
+      setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: undefined } : m)));
+    }
+  }, []);
 
   // Persist a revisitable artifact of what ConKay did — the task + its work +
   // result — as a DTU in the user's locker (fire-and-forget; never blocks the UX).
@@ -184,16 +259,26 @@ export function ConKayOverlay() {
         },
         // Lets a skill delegate to a real deterministic backend engine (e.g. the
         // math CAS) via the unified macro contract instead of LLM-reasoning.
+        // Each delegated call opts into the honest lifecycle so the spine binds
+        // to the REAL backend macro:started/completed for that computation.
         runMacro: async (domain: string, name: string, input: Record<string, unknown>) => {
-          try { const { data } = await lensRun(domain, name, input); return data; }
-          catch { return null; }
+          try {
+            const rid = newRunId();
+            liveRunRef.current = rid;
+            const { data } = await lensRun(domain, name, input, rid);
+            return data;
+          } catch { return null; }
         },
       });
       setStep('gather', 'done', 'Composing the answer');
       setStep('render', 'active');
       const fence = result.viz ? `\n\n\`\`\`conkay-viz\n${JSON.stringify(result.viz)}\n\`\`\`` : '';
-      append({ id: `a-${Date.now()}`, role: 'assistant', content: `${result.spoken}${fence}`, dtuRefs: result.dtuRefs, sources: result.sources, toolCalls: result.toolCalls, brain: 'kay' });
+      const aid = `a-${Date.now()}`;
+      append({ id: aid, role: 'assistant', content: `${result.spoken}${fence}`, dtuRefs: result.dtuRefs, sources: result.sources, toolCalls: result.toolCalls, brain: 'kay' });
       setStep('render', 'done', 'Done');
+      // Phase 1: verify the cited DTUs through the real reason.verify macro.
+      const citeIds = (result.dtuRefs || []).map((d) => d.id).filter(Boolean);
+      if (citeIds.length) verifyMessage(aid, result.spoken, citeIds);
       persistArtifact(`Skill: ${match.skill.label}`, { task: text, skill: match.skill.id, spoken: result.spoken, viz: result.viz ?? null });
       if (result.navigate) { const dest = result.navigate; setTimeout(() => { window.location.href = dest; }, 900); }
     } catch {
@@ -203,13 +288,17 @@ export function ConKayOverlay() {
       setRunning(false);
       clearWork();
     }
-  }, [append, persistArtifact, beginWork, setStep, clearWork]);
+  }, [append, persistArtifact, beginWork, setStep, clearWork, verifyMessage]);
 
   // ── execute a lens macro (shared by explicit "run X" + the NL resolver) ──
   const executeMacro = useCallback(async (domain: string, macro: string, inputObj: Record<string, unknown>, preface?: string) => {
     if (preface) append({ id: `a-${Date.now()}-p`, role: 'assistant', content: preface, brain: 'kay' });
     try {
-      const { data } = await lensRun(domain, macro, inputObj);
+      // Opt into the honest lifecycle: the server will emit macro:started/
+      // completed tagged with this id to our room, lighting the spine step.
+      const rid = newRunId();
+      liveRunRef.current = rid;
+      const { data } = await lensRun(domain, macro, inputObj, rid);
       const ok = !!data?.ok;
       const resultStr = data?.result != null ? JSON.stringify(data.result, null, 2) : (ok ? '(done)' : (data?.error || 'no result'));
       const spoken = ok ? `Done — ran ${macro} on the ${domain} lens.` : `${macro} on ${domain} returned: ${data?.error || 'an error'}.`;

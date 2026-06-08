@@ -7938,7 +7938,7 @@ function emitToWorld(worldId, event, payload) {
   }
 }
 
-function realtimeEmit(event, payload, { sessionId = "", orgId = "", requestId = "" } = {}) {
+function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "", requestId = "" } = {}) {
   // ---- Event Ordering & Correlation (Category 2+5: Concurrency + Observability) ----
   const enrichedPayload = {
     ...payload,
@@ -7995,7 +7995,13 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", requestId = 
 
   // Try Socket.IO first (primary transport)
   if (REALTIME.ready && REALTIME.io) {
-    if (sessionId) {
+    if (userId) {
+      // Scope to the caller's auto-joined `user:<id>` room. Used by the
+      // ConKay honest-event-spine (macro:started/stage/completed) so a
+      // user only sees the lifecycle of THEIR own in-flight macro runs —
+      // never a global broadcast of every lens action platform-wide.
+      REALTIME.io.to(`user:${userId}`).emit(event, enrichedPayload);
+    } else if (sessionId) {
       REALTIME.io.to(`session:${sessionId}`).emit(event, enrichedPayload);
     } else if (orgId) {
       REALTIME.io.to(`org:${orgId}`).emit(event, enrichedPayload);
@@ -33366,6 +33372,9 @@ async function runHeartbeatModule(name, fn) {
 }
 
 let _governorTickRunning = false;
+// Causal-closure per-tick capture — remembers the prior tick's levels so the
+// capture can log real deltas (see the tick tail + lib/causal-closure.js).
+let _causalTickPrev = null;
 async function governorTick(reason="heartbeat") {
   if (_governorTickRunning) {
     // Heartbeat overrun — a prior tick is still in flight. Bump the
@@ -34413,6 +34422,48 @@ async function governorTick(reason="heartbeat") {
         });
       }
     } catch (e) { observe(e, "governor_heartbeat_registry"); }
+
+    // Causal-closure per-tick capture (opt-in, best-effort, never blocks the
+    // tick). When CONCORD_CAUSAL_TICK_LOG is set, append the system's in-basis
+    // aggregate state x_t (real levels + deltas) plus a system-level
+    // integration×differentiation index. Offline, scripts/causal-closure-analyze.mjs
+    // tests whether these aggregates determine the next-tick substrate growth or
+    // are short by a hidden axis (lib/causal-closure.js, grounded in
+    // dtu_008_irreversible_constraint_cones). This is the SYSTEM-LEVEL closure
+    // test — complementary to the COGNITIVE-basis capture in runAwarenessLoop
+    // (which uses the real agent-awareness-index PCI proxy). Synchronous append
+    // (fs already imported) so the tick stays sync; fully guarded.
+    if (process.env.CONCORD_CAUSAL_TICK_LOG) {
+      try {
+        const dtus = STATE.dtus?.size || 0;
+        const entities = STATE.__emergent ? Array.from((STATE.__emergent?.emergents || new Map()).values()).filter((e) => e.active).length : 0;
+        const notifQ = STATE.queues?.notifications?.length || 0;
+        const macroQ = STATE.queues?.macroProposals?.length || 0;
+        const synthQ = STATE.queues?.synthesis?.length || 0;
+        const shadows = STATE.shadowDtus?.size || 0;
+        const prev = _causalTickPrev || { dtus, entities };
+        const dtuDelta = dtus - prev.dtus;
+        const entityDelta = entities - prev.entities;
+        // System activation map (real, monotone load proxies) → integration ×
+        // differentiation, mirroring agent-awareness-index.js over system modules.
+        const c01 = (x) => Math.max(0, Math.min(1, x));
+        const acts = [c01(Math.abs(dtuDelta) / 10), c01(entities / 50), c01(notifQ / 100), c01(macroQ / 50), c01(synthQ / 50), c01(shadows / 1000)];
+        const active = acts.filter((v) => v >= 0.15);
+        const integration = acts.length ? active.length / acts.length : 0;
+        let differentiation = 0;
+        if (active.length >= 2) {
+          const m = active.reduce((s, v) => s + v, 0) / active.length;
+          differentiation = c01(2 * Math.sqrt(active.reduce((s, v) => s + (v - m) * (v - m), 0) / active.length));
+        }
+        const awarenessIndex = c01(integration * differentiation);
+        fs.appendFileSync(process.env.CONCORD_CAUSAL_TICK_LOG, JSON.stringify({
+          tick: STATE.__bgTickCounter || 0,
+          dtus, dtuDelta, entities, entityDelta, notifQ, macroQ, synthQ, shadows,
+          awarenessIndex, integration, differentiation, _t: Date.now(),
+        }) + "\n");
+        _causalTickPrev = { dtus, entities };
+      } catch { /* telemetry must never break a tick */ }
+    }
 
     return { ok:true };
   } catch (e) {
@@ -38595,6 +38646,29 @@ function _unwrapLensEnvelope(r) {
   return r;
 }
 app.post("/api/lens/run", async (req, res) => {
+  // ── ConKay honest event spine (Track B / Phase 0) ──────────────────────
+  // A macro run is a single request→response, so its work is otherwise
+  // invisible mid-flight. When the client opts in by passing a correlation
+  // id (header `x-conkay-run-id` or body `__runId`), we emit a real
+  // lifecycle to the caller's own `user:<id>` room: `macro:started` right
+  // before dispatch and `macro:completed` on every terminal outcome — so a
+  // HUD can animate the *actual* call beginning/finishing, never a guessed
+  // "thinking…". Gated on the runId so the 256-lens platform's normal
+  // traffic emits nothing (zero overhead, no timeline noise). Best-effort:
+  // a lifecycle emit failure never affects the macro response.
+  const _life0 = req.body || {};
+  const _lifeRunId = String(req.get("x-conkay-run-id") || _life0.__runId || "");
+  const _lifeDomain = _life0.domain || null;
+  const _lifeAction = _life0.action || _life0.name || null;
+  const _lifeStartedAt = Date.now();
+  let _lifeUser = "";       // resolved once the ACL passes; "" disables emits
+  let _lifeStarted = false; // ensures completed only fires after a real start
+  const emitMacroLife = (event, extra = {}) => {
+    if (!_lifeRunId || !_lifeUser) return;
+    try {
+      realtimeEmit(event, { runId: _lifeRunId, domain: _lifeDomain, action: _lifeAction, ...extra }, { userId: _lifeUser });
+    } catch { /* lifecycle is decoration; never block the response on it */ }
+  };
   try {
     const body = req.body || {};
     const { domain } = body;
@@ -38615,11 +38689,22 @@ app.post("/api/lens/run", async (req, res) => {
     if (_lensActionForbiddenForAnon(ctx)) {
       return res.status(401).json({ ok: false, error: "authentication required", code: "LENS_AUTH" });
     }
+    // Honest spine: announce the start to the caller's room (real users only —
+    // anon callers have no `user:<id>` room). Fires once, before dispatch.
+    {
+      const _uid = ctx?.actor?.userId;
+      if (_lifeRunId && _uid && _uid !== "anon") {
+        _lifeUser = _uid;
+        _lifeStarted = true;
+        emitMacroLife("macro:started", {});
+      }
+    }
     // Prefer LENS_ACTIONS (legacy lens-action style: registerLensAction(...)).
     const lensHandler = LENS_ACTIONS.get(`${domain}.${action}`);
     if (lensHandler) {
       const virtualArtifact = { id: null, domain, type: "domain_action", data: rest, meta: {} };
       const result = _unwrapLensEnvelope(await lensHandler(ctx, virtualArtifact, rest));
+      emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
       return res.json({ ok: true, result });
     }
     // Fall back to MACROS (canonical macro registry: register(domain, name, ...)).
@@ -38627,6 +38712,7 @@ app.post("/api/lens/run", async (req, res) => {
     // here — the legacy LENS_ACTIONS path can't see them.
     if (MACROS.get(domain)?.get(action)) {
       const result = _unwrapLensEnvelope(await runMacro(domain, action, rest, ctx));
+      emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
       return res.json({ ok: true, result });
     }
     // AI-powered catch-all: route unregistered domain actions to the utility
@@ -38650,6 +38736,7 @@ app.post("/api/lens/run", async (req, res) => {
       // as "the backend is disconnecting / issues". Return 200 {ok:false,reason}
       // so the lens degrades to a clean unavailable state (esp. when the brain is
       // down — the known no-RunPod env condition) without a retry storm.
+      emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: "brain_catchall_timeout" });
       return res.status(200).json({ ok: false, error: "unknown_macro", reason: "brain_catchall_timeout", domain, action, detail: "no registered macro; brain catch-all timed out" });
     } finally {
       clearTimeout(_catchallTimer);
@@ -38657,11 +38744,16 @@ app.post("/api/lens/run", async (req, res) => {
     if (!aiResult?.ok) {
       // Same: brain unavailable (Ollama down) or unregistered macro → honest but
       // non-retryable so it doesn't storm or trip backend-health/"issues".
+      emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: "macro_unavailable" });
       return res.status(200).json({ ok: false, error: "unknown_macro", reason: "macro_unavailable", domain, action, detail: aiResult?.error || "no registered macro; brain unavailable" });
     }
+    emitMacroLife("macro:completed", { ok: true, ms: Date.now() - _lifeStartedAt });
     return res.json({ ok: true, result: { ok: true, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain } });
   } catch (e) {
     const msg = String(e?.message || e);
+    // If we announced a start, always announce a terminus — never leave a HUD
+    // spinning on an error path. `_lifeStarted` guards against a pre-dispatch throw.
+    if (_lifeStarted) emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: msg });
     const status = msg.startsWith("forbidden") ? 403 : 500;
     res.status(status).json({ ok: false, error: msg });
   }

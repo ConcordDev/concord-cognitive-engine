@@ -331,6 +331,188 @@ describe("worldmodel — scenario library (wave 12 top-up)", () => {
   });
 });
 
+describe("worldmodel — uncovered branches top-up (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("worldmodel-uncovered"); });
+
+  it("wm_create_entity: empty name is rejected", async () => {
+    // str("") → "" which is falsy ⇒ rejected. (Note: wm_create_entity does NOT
+    // trim, so a whitespace-only name is accepted — only the truly-empty string
+    // trips the `if (!name)` guard.)
+    const bad = await lensRun("worldmodel", "wm_create_entity", { params: { name: "" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /name required/);
+  });
+
+  it("create_relation_typed: defaults — weight 0.5, type relates_to when omitted", async () => {
+    const a = await lensRun("worldmodel", "wm_create_entity", { params: { name: "DefA", attributes: { value: 1 } } }, ctx);
+    const b = await lensRun("worldmodel", "wm_create_entity", { params: { name: "DefB", attributes: { value: 1 } } }, ctx);
+    const rel = await lensRun("worldmodel", "create_relation_typed", { params: { from: a.result.entity.id, to: b.result.entity.id } }, ctx);
+    assert.equal(rel.result.relation.weight, 0.5); // clamp(undefined,...) → fallback 0.5
+    assert.equal(rel.result.relation.type, "relates_to"); // default type
+  });
+
+  it("create_relation_typed: missing from/to params is rejected before lookup", async () => {
+    const bad = await lensRun("worldmodel", "create_relation_typed", { params: { to: "x" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /from and to required/);
+  });
+
+  it("wm_delete_entity: unknown id is rejected", async () => {
+    const bad = await lensRun("worldmodel", "wm_delete_entity", { params: { id: "ent_nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /entity not found/);
+  });
+
+  it("update_relation: missing id is rejected", async () => {
+    const bad = await lensRun("worldmodel", "update_relation", { params: {} }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /id required/);
+  });
+
+  it("define_entity_type: blank name rejected; boolean kind preserved", async () => {
+    const bad = await lensRun("worldmodel", "define_entity_type", { params: { name: "  " } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /type name required/);
+    const def = await lensRun("worldmodel", "define_entity_type", { params: { name: "Switch", fields: [{ key: "on", kind: "boolean" }] } }, ctx);
+    assert.equal(def.result.schema.fields.find((f) => f.key === "on").kind, "boolean");
+  });
+
+  it("update_entity_attrs: boolean schema field coerces a truthy string to true", async () => {
+    await lensRun("worldmodel", "define_entity_type", { params: { name: "Flagged", fields: [{ key: "active", kind: "boolean" }] } }, ctx);
+    const ent = await lensRun("worldmodel", "wm_create_entity", { params: { name: "F1", type: "Flagged" } }, ctx);
+    const upd = await lensRun("worldmodel", "update_entity_attrs", { params: { id: ent.result.entity.id, attributes: { active: "yes" } } }, ctx);
+    assert.equal(upd.result.coercedAgainstSchema, true);
+    assert.equal(upd.result.entity.attributes.active, true); // Boolean("yes") === true
+  });
+
+  it("update_entity_attrs: no schema → coercedAgainstSchema false, value stringified", async () => {
+    const ent = await lensRun("worldmodel", "wm_create_entity", { params: { name: "Untyped", attributes: { value: 1 } } }, ctx);
+    const upd = await lensRun("worldmodel", "update_entity_attrs", { params: { id: ent.result.entity.id, attributes: { note: 7 } } }, ctx);
+    assert.equal(upd.result.coercedAgainstSchema, false); // type "concept" has no schema
+    assert.equal(upd.result.entity.attributes.note, "7"); // str(7) → "7"
+  });
+
+  it("update_entity_attrs: unknown entity is rejected", async () => {
+    const bad = await lensRun("worldmodel", "update_entity_attrs", { params: { id: "ent_x", attributes: {} } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /entity not found/);
+  });
+
+  it("graph: type filter narrows nodes and drops edges to filtered-out endpoints", async () => {
+    const gCtx = await depthCtx("worldmodel-graph-filter");
+    const reactor = await lensRun("worldmodel", "wm_create_entity", { params: { name: "R", type: "reactor", attributes: { value: 1 } } }, gCtx);
+    const sensor = await lensRun("worldmodel", "wm_create_entity", { params: { name: "S", type: "sensor", attributes: { value: 1 } } }, gCtx);
+    await lensRun("worldmodel", "create_relation_typed", { params: { from: reactor.result.entity.id, to: sensor.result.entity.id } }, gCtx);
+    const g = await lensRun("worldmodel", "graph", { params: { type: "reactor" } }, gCtx);
+    assert.equal(g.result.nodeCount, 1); // only the reactor node survives the filter
+    assert.equal(g.result.edgeCount, 0); // the edge's "to" endpoint is filtered out → dropped
+  });
+
+  it("ingest: set mode overwrites, target-not-found rejected, missing-attr increment starts at 0", async () => {
+    const iCtx = await depthCtx("worldmodel-ingest2");
+    const ent = await lensRun("worldmodel", "wm_create_entity", { params: { name: "Sensor", attributes: { value: 10 } } }, iCtx);
+    const id = ent.result.entity.id;
+    const setE = await lensRun("worldmodel", "ingest", { params: { entityId: id, attribute: "value", mode: "set", value: 3 } }, iCtx);
+    assert.equal(setE.result.event.from, 10);
+    assert.equal(setE.result.event.to, 3); // set overwrites
+    // incrementing a brand-new attribute: prev defaults to 0
+    const incNew = await lensRun("worldmodel", "ingest", { params: { entityId: id, attribute: "fresh", mode: "increment", value: 4 } }, iCtx);
+    assert.equal(incNew.result.event.from, 0);
+    assert.equal(incNew.result.event.to, 4);
+    const bad = await lensRun("worldmodel", "ingest", { params: { entityId: "ent_missing", value: 1 } }, iCtx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /target entity not found/);
+  });
+
+  it("get_sim: unknown id is rejected", async () => {
+    const bad = await lensRun("worldmodel", "get_sim", { params: { id: "sim_nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /simulation not found/);
+  });
+
+  it("restore_snapshot: unknown id is rejected", async () => {
+    const bad = await lensRun("worldmodel", "restore_snapshot", { params: { id: "snap_nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /snapshot not found/);
+  });
+});
+
+describe("worldmodel — relational propagation + comparison depth (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("worldmodel-propagation"); });
+
+  it("run_scenario: a weighted relation propagates a fraction of the source value to the sink", async () => {
+    const a = await lensRun("worldmodel", "wm_create_entity", { params: { name: "Src", attributes: { value: 100 } } }, ctx);
+    const b = await lensRun("worldmodel", "wm_create_entity", { params: { name: "Snk", attributes: { value: 0 } } }, ctx);
+    await lensRun("worldmodel", "create_relation_typed", { params: { from: a.result.entity.id, to: b.result.entity.id, weight: 0.5 } }, ctx);
+    const sim = await lensRun("worldmodel", "run_scenario", { params: { steps: 2, growth: 0 } }, ctx);
+    const aId = a.result.entity.id;
+    const bId = b.result.entity.id;
+    // growth 0: source holds at 100 every step (no incoming edge).
+    // sink pulls source*weight*0.1 = 100*0.5*0.1 = 5 each step.
+    assert.equal(sim.result.trajectory[0][bId], 0);
+    assert.equal(sim.result.trajectory[1][bId], 5);
+    assert.equal(sim.result.trajectory[2][bId], 10);
+    assert.equal(sim.result.trajectory[2][aId], 100);
+  });
+
+  it("run_scenario: growth above the cap is clamped to 0.5", async () => {
+    const cCtx = await depthCtx("worldmodel-growth-clamp");
+    await lensRun("worldmodel", "wm_create_entity", { params: { name: "Fast", attributes: { value: 100 } } }, cCtx);
+    const sim = await lensRun("worldmodel", "run_scenario", { params: { steps: 1, growth: 99 } }, cCtx);
+    // clamp(99,-0.5,0.5) → 0.5 ⇒ 100 * 1.5 = 150
+    assert.equal(sim.result.total, 150);
+  });
+
+  it("compare_scenarios: underperforming counterfactual yields a negative swing + verdict", async () => {
+    const uCtx = await depthCtx("worldmodel-compare-under");
+    await lensRun("worldmodel", "wm_create_entity", { params: { name: "Cmp2", attributes: { value: 100 } } }, uCtx);
+    const cmp = await lensRun("worldmodel", "compare_scenarios", { params: {
+      steps: 1,
+      baseline: { growth: 0.2 },        // 100 → 120
+      counterfactual: { growth: 0 },    // 100 → 100
+    } }, uCtx);
+    assert.equal(cmp.result.totalSwing, -20); // 100 - 120
+    assert.ok(cmp.result.verdict.includes("underperforms"));
+    // delta trajectory at the final step is cf - base = -20 for the single entity
+    const id = Object.keys(cmp.result.counterfactual.finalState)[0];
+    assert.equal(cmp.result.delta[1][id], -20);
+  });
+
+  it("compare_scenarios: rejected when there are no entities", async () => {
+    const eCtx = await depthCtx("worldmodel-compare-empty");
+    const bad = await lensRun("worldmodel", "compare_scenarios", { params: { steps: 3 } }, eCtx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /no entities to simulate/);
+  });
+});
+
+describe("worldmodel — snapshot diff add/remove + missing toId (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("worldmodel-diff2"); });
+
+  it("diff_snapshots: detects an added entity and an added relation between two captures", async () => {
+    const a = await lensRun("worldmodel", "wm_create_entity", { params: { name: "Base", attributes: { value: 1 } } }, ctx);
+    const snapA = await lensRun("worldmodel", "capture_snapshot", { params: { label: "t0" } }, ctx);
+    // grow the model: add an entity + a relation to it
+    const b = await lensRun("worldmodel", "wm_create_entity", { params: { name: "Added", attributes: { value: 2 } } }, ctx);
+    await lensRun("worldmodel", "create_relation_typed", { params: { from: a.result.entity.id, to: b.result.entity.id } }, ctx);
+    const snapB = await lensRun("worldmodel", "capture_snapshot", { params: { label: "t1" } }, ctx);
+    const diff = await lensRun("worldmodel", "diff_snapshots", { params: { fromId: snapA.result.id, toId: snapB.result.id } }, ctx);
+    assert.equal(diff.result.summary.entitiesAdded, 1);
+    assert.equal(diff.result.summary.relationsAdded, 1);
+    assert.ok(diff.result.addedEntities.some((e) => e.id === b.result.entity.id));
+  });
+
+  it("diff_snapshots: missing toId snapshot is rejected", async () => {
+    const snap = await lensRun("worldmodel", "capture_snapshot", { params: { label: "solo" } }, ctx);
+    const bad = await lensRun("worldmodel", "diff_snapshots", { params: { fromId: snap.result.id, toId: "snap_missing" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /toId snapshot not found/);
+  });
+});
+
 describe("worldmodel — aggregate status counters (wave 12 top-up)", () => {
   it("wm_status: counts reflect each substrate after building a model", async () => {
     const ctx = await depthCtx("worldmodel-t12-status");

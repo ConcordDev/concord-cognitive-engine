@@ -320,6 +320,13 @@ interface LensRunSpec {
   name?: string;
   input?: Record<string, unknown>;
   signal?: AbortSignal;
+  /**
+   * Opt into the honest macro lifecycle (ConKay event spine). When set, the
+   * server emits macro:started/completed to the caller's user:<id> room tagged
+   * with this id, so a HUD can correlate the REAL call's begin/finish events.
+   * Omitted by default → the platform's normal traffic emits nothing.
+   */
+  runId?: string;
 }
 
 /**
@@ -346,12 +353,14 @@ export async function lensRun<T = any>(
   domainOrSpec: string | LensRunSpec,
   action?: string,
   input: Record<string, unknown> = {},
+  runId?: string,
 ): Promise<{ data: { ok: boolean; result: T | null; error: string | null } }> {
   try {
     let domain: string;
     let act: string;
     let inp: Record<string, unknown>;
     let signal: AbortSignal | undefined;
+    let rid: string | undefined = runId;
     if (typeof domainOrSpec === 'string') {
       domain = domainOrSpec;
       act = action || '';
@@ -361,11 +370,17 @@ export async function lensRun<T = any>(
       act = domainOrSpec.action || domainOrSpec.name || '';
       inp = domainOrSpec.input || {};
       signal = domainOrSpec.signal;
+      rid = rid || domainOrSpec.runId;
     }
+    // axios config: thread the abort signal and (when opted in) the ConKay
+    // correlation id header so the server scopes its honest lifecycle emits.
+    const config: { signal?: AbortSignal; headers?: Record<string, string> } = {};
+    if (signal) config.signal = signal;
+    if (rid) config.headers = { 'x-conkay-run-id': rid };
     const res = await api.post(
       '/api/lens/run',
       { domain, action: act, input: inp },
-      signal ? { signal } : undefined,
+      Object.keys(config).length ? config : undefined,
     );
     let node: unknown = res?.data;
     let err: string | null = null;

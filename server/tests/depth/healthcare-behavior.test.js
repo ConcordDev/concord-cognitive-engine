@@ -650,3 +650,169 @@ describe("healthcare — claims, proxy, dashboard & AVS (wave 7 top-up)", () => 
     assert.ok(r.result.notes.includes("FHIR R4 Slot"));
   });
 });
+
+// ────────────────────────────────────────────────────────────────────
+// Wave 8 top-up — remaining UNCOVERED deterministic macros not yet
+// reached by waves above: record-get (empty-record default), medications-
+// delete (round-trip + not-found), encounters-list (patient filter +
+// newest-first sort), encounters-save-soap (mutate-while-open + signed
+// lock), smartphrases-list (canonical seed) + smartphrases-delete,
+// coverage-list (patient filter + required-param), telehealth-list +
+// telehealth-update-status (status state machine + validation). Skipped
+// (network/LLM/integration, per the earlier header notes): fhir-export,
+// telehealth-CREATE (WebRTC), providers-search / icd10-search /
+// rx-price-compare (HTTP), appointment-charge-copay (Stripe), ai-scribe /
+// ai-chart-search / soapAutoFill / generateSummary / symptom-triage (LLM).
+// ────────────────────────────────────────────────────────────────────
+
+describe("healthcare — record-get & medication delete (wave 8 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("healthcare-w8-record"); });
+
+  it("record-get on a fresh user returns the empty-record default (no auto-seeded demo data)", async () => {
+    const r = await lensRun("healthcare", "record-get", {}, ctx);
+    assert.equal(r.result.source, "empty");
+    assert.deepEqual(r.result.vitals, []);
+    assert.deepEqual(r.result.allergies, []);
+    assert.deepEqual(r.result.immunizations, []);
+    assert.deepEqual(r.result.conditions, []);
+    assert.ok(r.result.notes.includes("No health record on file"));
+  });
+
+  it("medications-add → medications-delete removes it; re-delete is rejected", async () => {
+    const add = await lensRun("healthcare", "medications-add", { params: { name: "Sertraline", dose: "50mg" } }, ctx);
+    const medId = add.result.medication.id;
+    let list = await lensRun("healthcare", "medications-list", {}, ctx);
+    assert.ok(list.result.medications.some((m) => m.id === medId));
+    const del = await lensRun("healthcare", "medications-delete", { params: { id: medId } }, ctx);
+    assert.equal(del.result.deleted, true);
+    assert.equal(del.result.id, medId);
+    list = await lensRun("healthcare", "medications-list", {}, ctx);
+    assert.ok(!list.result.medications.some((m) => m.id === medId));
+    const again = await lensRun("healthcare", "medications-delete", { params: { id: medId } }, ctx);
+    assert.equal(again.result.ok, false);
+    assert.match(again.result.error, /med not found/);
+  });
+});
+
+describe("healthcare — encounter list/SOAP edits (wave 8 top-up)", () => {
+  let ctx, patientId;
+  before(async () => {
+    ctx = await depthCtx("healthcare-w8-enc");
+    const p = await lensRun("healthcare", "patients-create", { params: { firstName: "Enc", lastName: "Patient" } }, ctx);
+    patientId = p.result.patient.id;
+  });
+
+  it("encounters-list filters by patientId and sorts newest-first by encounteredAt", async () => {
+    const older = await lensRun("healthcare", "encounters-create", { params: { patientId, chiefComplaint: "old", encounteredAt: "2026-01-01T08:00:00Z" } }, ctx);
+    const newer = await lensRun("healthcare", "encounters-create", { params: { patientId, chiefComplaint: "new", encounteredAt: "2026-06-01T08:00:00Z" } }, ctx);
+    // an unrelated patient's encounter must not leak into this patient's filtered list
+    const other = await lensRun("healthcare", "patients-create", { params: { firstName: "Other", lastName: "Body" } }, ctx);
+    await lensRun("healthcare", "encounters-create", { params: { patientId: other.result.patient.id, chiefComplaint: "elsewhere" } }, ctx);
+    const list = await lensRun("healthcare", "encounters-list", { params: { patientId } }, ctx);
+    assert.ok(list.result.encounters.every((e) => e.patientId === patientId));
+    assert.equal(list.result.encounters[0].id, newer.result.encounter.id); // June first (desc sort)
+    assert.ok(list.result.encounters.some((e) => e.id === older.result.encounter.id));
+  });
+
+  it("encounters-save-soap mutates an open note; signing then locks further saves", async () => {
+    const enc = await lensRun("healthcare", "encounters-create", { params: { patientId, chiefComplaint: "headache" } }, ctx);
+    const encId = enc.result.encounter.id;
+    const saved = await lensRun("healthcare", "encounters-save-soap", { params: { id: encId, assessment: "Tension HA", plan: "Hydrate + rest", subjective: "throbbing" } }, ctx);
+    assert.equal(saved.result.encounter.assessment, "Tension HA");
+    assert.equal(saved.result.encounter.plan, "Hydrate + rest");
+    assert.equal(saved.result.encounter.subjective, "throbbing");
+    // now sign the encounter (A+P present); a further save is then rejected
+    const signed = await lensRun("healthcare", "encounters-sign", { params: { id: encId } }, ctx);
+    assert.equal(signed.result.encounter.status, "signed");
+    const blocked = await lensRun("healthcare", "encounters-save-soap", { params: { id: encId, plan: "changed" } }, ctx);
+    assert.equal(blocked.result.ok, false);
+    assert.match(blocked.result.error, /encounter signed; create an amendment/);
+  });
+
+  it("encounters-save-soap on an unknown id is rejected", async () => {
+    const bad = await lensRun("healthcare", "encounters-save-soap", { params: { id: "enc-nope", plan: "x" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /encounter not found/);
+  });
+});
+
+describe("healthcare — SmartPhrase seed/delete & coverage list (wave 8 top-up)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("healthcare-w8-sp"); });
+
+  it("smartphrases-list seeds the canonical Epic dot-phrases on first read, then deletes one", async () => {
+    const list = await lensRun("healthcare", "smartphrases-list", {}, ctx);
+    const ros = list.result.smartPhrases.find((sp) => sp.name === ".ros");
+    assert.ok(ros, ".ros seeded");
+    assert.ok(ros.text.includes("Constitutional"));
+    assert.ok(list.result.smartPhrases.some((sp) => sp.name === ".normalexam"));
+    // delete the seeded .ros, confirm it's gone
+    const del = await lensRun("healthcare", "smartphrases-delete", { params: { id: ros.id } }, ctx);
+    assert.equal(del.result.deleted, true);
+    const after = await lensRun("healthcare", "smartphrases-list", {}, ctx);
+    assert.ok(!after.result.smartPhrases.some((sp) => sp.id === ros.id));
+  });
+
+  it("smartphrases-delete on an unknown id is rejected", async () => {
+    const bad = await lensRun("healthcare", "smartphrases-delete", { params: { id: "sp-nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /SmartPhrase not found/);
+  });
+
+  it("coverage-list filters by patientId; missing patientId is rejected", async () => {
+    const pid = `pat-${randomUUID()}`;
+    await lensRun("healthcare", "coverage-add", { params: { patientId: pid, payer: "Cigna", memberId: "CG1", deductibleUsd: 1000 } }, ctx);
+    await lensRun("healthcare", "coverage-add", { params: { patientId: "pat-other", payer: "Humana", memberId: "HU1" } }, ctx);
+    const list = await lensRun("healthcare", "coverage-list", { params: { patientId: pid } }, ctx);
+    assert.equal(list.result.policies.length, 1);
+    assert.equal(list.result.policies[0].payer, "Cigna");
+    const bad = await lensRun("healthcare", "coverage-list", {}, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /patientId required/);
+  });
+});
+
+describe("healthcare — telehealth list & status state machine (wave 8 top-up)", () => {
+  let ctx, visitId;
+  before(async () => {
+    ctx = await depthCtx("healthcare-w8-tele");
+  });
+
+  it("telehealth-list reflects directly-seeded visits filtered by patientId, newest-first", async () => {
+    // telehealth-create is the WebRTC/network path (skipped); seed the visit
+    // bucket directly so we exercise the deterministic list/status macros only.
+    // First call telehealth-list to trigger ensureBacklogBuckets (creates the
+    // per-user telehealth Map under STATE.healthLens), then seed the bucket.
+    await lensRun("healthcare", "telehealth-list", {}, ctx);
+    const STATE = globalThis._concordSTATE;
+    const uid = ctx.actor.userId;
+    const v1 = { id: `tele_${randomUUID()}`, patientId: "pat-tele-1", status: "scheduled", scheduledAt: "2026-01-01T08:00:00Z" };
+    const v2 = { id: `tele_${randomUUID()}`, patientId: "pat-tele-1", status: "scheduled", scheduledAt: "2026-06-01T08:00:00Z" };
+    const vOther = { id: `tele_${randomUUID()}`, patientId: "pat-tele-2", status: "scheduled", scheduledAt: "2026-03-01T08:00:00Z" };
+    STATE.healthLens.telehealth.set(uid, [v1, v2, vOther]);
+    visitId = v2.id;
+    const list = await lensRun("healthcare", "telehealth-list", { params: { patientId: "pat-tele-1" } }, ctx);
+    assert.equal(list.result.visits.length, 2);
+    assert.ok(list.result.visits.every((v) => v.patientId === "pat-tele-1"));
+    assert.equal(list.result.visits[0].id, v2.id); // June first (desc by scheduledAt)
+  });
+
+  it("telehealth-update-status walks scheduled→in_progress→completed stamping timestamps", async () => {
+    const inProg = await lensRun("healthcare", "telehealth-update-status", { params: { id: visitId, status: "in_progress" } }, ctx);
+    assert.equal(inProg.result.visit.status, "in_progress");
+    assert.ok(inProg.result.visit.startedAt, "startedAt stamped on in_progress");
+    const done = await lensRun("healthcare", "telehealth-update-status", { params: { id: visitId, status: "completed" } }, ctx);
+    assert.equal(done.result.visit.status, "completed");
+    assert.ok(done.result.visit.endedAt, "endedAt stamped on completed");
+  });
+
+  it("telehealth-update-status rejects an invalid status and an unknown visit id", async () => {
+    const badStatus = await lensRun("healthcare", "telehealth-update-status", { params: { id: visitId, status: "teleported" } }, ctx);
+    assert.equal(badStatus.result.ok, false);
+    assert.match(badStatus.result.error, /status must be scheduled \| in_progress \| completed \| cancelled \| no_show/);
+    const badId = await lensRun("healthcare", "telehealth-update-status", { params: { id: "tele-nope", status: "completed" } }, ctx);
+    assert.equal(badId.result.ok, false);
+    assert.match(badId.result.error, /visit not found/);
+  });
+});

@@ -244,3 +244,210 @@ describe("paper — CRUD round-trips + validation (shared ctx)", () => {
     assert.match(bad.result.error, /no group with that share code/);
   });
 });
+
+// New cases added by Track-A depth sweep — deterministic uncovered macros only.
+// SKIPPED (network — no egress here): search (arXiv), summarize (LLM),
+// paper-capture (CrossRef), paper-enrich + paper-check-alerts (Semantic
+// Scholar), feed (CrossRef). paper-alert-read's deterministic not-found branch
+// is exercised below (alert ROWS can only be minted by the network check, so
+// the empty/not-found branches are the honest deterministic coverage).
+describe("paper — uncovered macro round-trips (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("paper-uncovered"); });
+
+  it("library-dashboard: tallies totals, status buckets, collections, withNotes", async () => {
+    const dash = await depthCtx("paper-dash-" + randomUUID());        // isolated user
+    const before = await lensRun("paper", "library-dashboard", {}, dash);
+    assert.equal(before.ok, true);
+    assert.equal(before.result.totalPapers, 0);
+
+    const s1 = await lensRun("paper", "paper-save", { params: { title: `Dash A ${randomUUID()}` } }, dash);
+    const s2 = await lensRun("paper", "paper-save", { params: { title: `Dash B ${randomUUID()}` } }, dash);
+    // s1 → reading; s2 → read + notes
+    await lensRun("paper", "paper-update", { params: { id: s1.result.paper.id, status: "reading" } }, dash);
+    await lensRun("paper", "paper-update", { params: { id: s2.result.paper.id, status: "read", notes: "noted" } }, dash);
+    await lensRun("paper", "collection-create", { params: { name: "Dash Col" } }, dash);
+
+    const after = await lensRun("paper", "library-dashboard", {}, dash);
+    assert.equal(after.result.totalPapers, 2);
+    assert.equal(after.result.toRead, 0);
+    assert.equal(after.result.reading, 1);
+    assert.equal(after.result.read, 1);
+    assert.equal(after.result.collections, 1);
+    assert.equal(after.result.withNotes, 1);    // only s2 carries notes
+  });
+
+  it("paper-delete: removes the paper, then 404s on re-delete and detail", async () => {
+    const save = await lensRun("paper", "paper-save", { params: { title: `Deletable ${randomUUID()}` } }, ctx);
+    const id = save.result.paper.id;
+
+    const del = await lensRun("paper", "paper-delete", { params: { id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, id);
+
+    const detail = await lensRun("paper", "paper-detail", { params: { id } }, ctx);
+    assert.equal(detail.result.ok, false);
+    assert.match(detail.result.error, /paper not found/);
+
+    const again = await lensRun("paper", "paper-delete", { params: { id } }, ctx);
+    assert.equal(again.result.ok, false);
+    assert.match(again.result.error, /paper not found/);
+  });
+
+  it("paper-pdf-attach → paper-pdf-get → paper-pdf-remove: PDF lifecycle + byte estimate", async () => {
+    const save = await lensRun("paper", "paper-save", { params: { title: `PDF Paper ${randomUUID()}` } }, ctx);
+    const paperId = save.result.paper.id;
+
+    const noPdf = await lensRun("paper", "paper-pdf-get", { params: { paperId } }, ctx);
+    assert.equal(noPdf.result.hasPdf, false);
+
+    // base64 of "%PDF-1.4 hello" → "JVBERi0xLjQgaGVsbG8=" (20 chars)
+    const dataUrl = "data:application/pdf;base64,JVBERi0xLjQgaGVsbG8=";
+    const attach = await lensRun("paper", "paper-pdf-attach", { params: { paperId, dataUrl, fileName: "doc.pdf" } }, ctx);
+    assert.equal(attach.ok, true);
+    assert.equal(attach.result.fileName, "doc.pdf");
+    // sizeBytes = round(len * 3 / 4); len of the full data URL string
+    assert.equal(attach.result.sizeBytes, Math.round((dataUrl.length * 3) / 4));
+
+    const get = await lensRun("paper", "paper-pdf-get", { params: { paperId } }, ctx);
+    assert.equal(get.result.hasPdf, true);
+    assert.equal(get.result.dataUrl, dataUrl);
+    assert.equal(get.result.fileName, "doc.pdf");
+
+    const rm = await lensRun("paper", "paper-pdf-remove", { params: { paperId } }, ctx);
+    assert.equal(rm.result.removed, true);
+    const gone = await lensRun("paper", "paper-pdf-get", { params: { paperId } }, ctx);
+    assert.equal(gone.result.hasPdf, false);
+  });
+
+  it("paper-pdf-attach: rejects a non-PDF data URL", async () => {
+    const save = await lensRun("paper", "paper-save", { params: { title: `Bad PDF ${randomUUID()}` } }, ctx);
+    const bad = await lensRun("paper", "paper-pdf-attach", {
+      params: { paperId: save.result.paper.id, dataUrl: "data:image/png;base64,AAAA" },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /data:application\/pdf/);
+  });
+
+  it("paper-annotation-delete: removes one highlight, leaving the rest", async () => {
+    const save = await lensRun("paper", "paper-save", { params: { title: `Annot Del ${randomUUID()}` } }, ctx);
+    const paperId = save.result.paper.id;
+    const a1 = await lensRun("paper", "paper-annotate", { params: { paperId, page: 2, quote: "first quote" } }, ctx);
+    await lensRun("paper", "paper-annotate", { params: { paperId, page: 5, quote: "second quote" } }, ctx);
+
+    const del = await lensRun("paper", "paper-annotation-delete", { params: { paperId, annotationId: a1.result.annotation.id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, a1.result.annotation.id);
+    assert.equal(del.result.remaining, 1);
+
+    const list = await lensRun("paper", "paper-annotations", { params: { paperId } }, ctx);
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.annotations[0].quote, "second quote");
+
+    const missing = await lensRun("paper", "paper-annotation-delete", { params: { paperId, annotationId: "nope" } }, ctx);
+    assert.equal(missing.result.ok, false);
+    assert.match(missing.result.error, /annotation not found/);
+  });
+
+  it("paper-merge-duplicates: keeps the richest record, folds dropped fields, splices the rest", async () => {
+    const merger = await depthCtx("paper-merge-" + randomUUID());
+    // Lean record (no abstract/doi/tags).
+    const lean = await lensRun("paper", "paper-save", { params: { title: `Merge Twin ${randomUUID()}`, refId: "lean-" + randomUUID() } }, merger);
+    // Rich record (doi +2, abstract +2, tags +2 = richness 6 vs lean 0).
+    const rich = await lensRun("paper", "paper-save", {
+      params: { title: `Merge Twin ${randomUUID()}`, refId: "rich-" + randomUUID(), doi: "10.1000/rich", abstract: "real abstract", tags: ["ml", "nlp"] },
+    }, merger);
+
+    const merge = await lensRun("paper", "paper-merge-duplicates", { params: { ids: [lean.result.paper.id, rich.result.paper.id] } }, merger);
+    assert.equal(merge.ok, true);
+    assert.equal(merge.result.kept.id, rich.result.paper.id);   // richest wins
+    assert.equal(merge.result.droppedCount, 1);
+    assert.deepEqual(merge.result.droppedIds, [lean.result.paper.id]);
+
+    // The dropped paper is gone; only the kept one remains.
+    const list = await lensRun("paper", "paper-list", {}, merger);
+    assert.equal(list.result.papers.length, 1);
+    assert.equal(list.result.papers[0].id, rich.result.paper.id);
+  });
+
+  it("paper-merge-duplicates: fewer than 2 ids is rejected", async () => {
+    const bad = await lensRun("paper", "paper-merge-duplicates", { params: { ids: ["only-one"] } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /at least 2 paper ids/);
+  });
+
+  it("group-add-paper → group-papers → group-list: shared library round-trip + dedupe", async () => {
+    const owner = await depthCtx("paper-grp2-owner-" + randomUUID());
+    const grp = await lensRun("paper", "group-create", { params: { name: "Shared Lib" } }, owner);
+    const groupId = grp.result.group.id;
+
+    const save = await lensRun("paper", "paper-save", { params: { title: `Group Paper ${randomUUID()}`, doi: "10.5555/grp" } }, owner);
+    const paperId = save.result.paper.id;
+
+    const add = await lensRun("paper", "group-add-paper", { params: { groupId, paperId } }, owner);
+    assert.equal(add.ok, true);
+    assert.equal(add.result.paperCount, 1);
+    assert.equal(add.result.paper.doi, "10.5555/grp");
+
+    // Re-adding the same DOI is rejected as a duplicate.
+    const dup = await lensRun("paper", "group-add-paper", { params: { groupId, paperId } }, owner);
+    assert.equal(dup.result.ok, false);
+    assert.match(dup.result.error, /already in this group/);
+
+    const papers = await lensRun("paper", "group-papers", { params: { groupId } }, owner);
+    assert.equal(papers.result.papers.length, 1);
+    assert.equal(papers.result.group.paperCount, 1);
+
+    const myGroups = await lensRun("paper", "group-list", {}, owner);
+    const found = myGroups.result.groups.find((g) => g.id === groupId);
+    assert.equal(found.paperCount, 1);
+    assert.equal(found.isOwner, true);
+    assert.equal(found.shareCode, grp.result.group.shareCode);  // owner sees the code
+  });
+
+  it("group-add-paper: a non-member is rejected", async () => {
+    const owner = await depthCtx("paper-grp3-owner-" + randomUUID());
+    const grp = await lensRun("paper", "group-create", { params: { name: "Closed Lib" } }, owner);
+    const stranger = await depthCtx("paper-grp3-stranger-" + randomUUID());
+    const save = await lensRun("paper", "paper-save", { params: { title: `Stranger Paper ${randomUUID()}` } }, stranger);
+    const bad = await lensRun("paper", "group-add-paper", { params: { groupId: grp.result.group.id, paperId: save.result.paper.id } }, stranger);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /not a member of this group/);
+  });
+
+  it("group-remove-paper: drops a shared paper, then 404s on the second remove", async () => {
+    const owner = await depthCtx("paper-grp4-owner-" + randomUUID());
+    const grp = await lensRun("paper", "group-create", { params: { name: "Removable Lib" } }, owner);
+    const groupId = grp.result.group.id;
+    const save = await lensRun("paper", "paper-save", { params: { title: `Removable Paper ${randomUUID()}` } }, owner);
+    const add = await lensRun("paper", "group-add-paper", { params: { groupId, paperId: save.result.paper.id } }, owner);
+    const sharedId = add.result.paper.id;
+
+    const rm = await lensRun("paper", "group-remove-paper", { params: { groupId, paperId: sharedId } }, owner);
+    assert.equal(rm.ok, true);
+    assert.equal(rm.result.removed, sharedId);
+    assert.equal(rm.result.paperCount, 0);
+
+    const again = await lensRun("paper", "group-remove-paper", { params: { groupId, paperId: sharedId } }, owner);
+    assert.equal(again.result.ok, false);
+    assert.match(again.result.error, /paper not in group/);
+  });
+
+  it("paper-alerts-list + paper-alert-read: deterministic empty / not-found branches", async () => {
+    const u = await depthCtx("paper-alerts-" + randomUUID());
+    // No paper-check-alerts (network) run → this user's alert view is empty.
+    const list = await lensRun("paper", "paper-alerts-list", {}, u);
+    assert.equal(list.ok, true);
+    assert.equal(list.result.count, 0);
+    assert.equal(list.result.unread, 0);
+
+    const read = await lensRun("paper", "paper-alert-read", { params: { alertId: "no-such-alert" } }, u);
+    assert.equal(read.result.ok, false);
+    assert.match(read.result.error, /alert not found/);
+
+    // mark-all-read with no alerts is a no-op that still succeeds.
+    const allRead = await lensRun("paper", "paper-alert-read", { params: { all: true } }, u);
+    assert.equal(allRead.ok, true);
+    assert.equal(allRead.result.markedRead, 0);
+  });
+});

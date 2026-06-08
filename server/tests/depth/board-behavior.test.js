@@ -221,3 +221,291 @@ describe("board — CRUD round-trips + validation (shared ctx)", () => {
     assert.match(bad.result.error, /unknown action/);
   });
 });
+
+describe("board — extended CRUD round-trips (uncovered macros, shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("board-crud-ext"); });
+
+  it("column-add appends a column; column-delete removes it AND orphaned cards", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Col Board" } }, ctx)).result.board;
+    const added = await lensRun("board", "column-add", { params: { boardId: board.id, name: "Review" } }, ctx);
+    assert.equal(added.result.column.name, "Review");
+    const colId = added.result.column.id;
+
+    // place a card in the new column, then delete the column → its card is purged
+    const card = (await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: colId, title: "In Review" } }, ctx)).result.card;
+
+    let detail = await lensRun("board", "board-detail", { params: { id: board.id } }, ctx);
+    assert.equal(detail.result.board.columns.length, 4);   // 3 default + Review
+    assert.ok(detail.result.board.cards.some((c) => c.id === card.id));
+
+    const del = await lensRun("board", "column-delete", { params: { boardId: board.id, columnId: colId } }, ctx);
+    assert.equal(del.result.deleted, colId);
+
+    detail = await lensRun("board", "board-detail", { params: { id: board.id } }, ctx);
+    assert.equal(detail.result.board.columns.length, 3);
+    assert.ok(!detail.result.board.cards.some((c) => c.id === card.id)); // orphan purged
+  });
+
+  it("card-update edits fields + appends a checklist item; card-checklist-toggle flips done", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Update Board" } }, ctx)).result.board;
+    const card = (await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: board.columns[0].id, title: "Task" } }, ctx)).result.card;
+
+    const upd = await lensRun("board", "card-update", {
+      params: { boardId: board.id, cardId: card.id, description: "do the thing", addChecklistItem: "subtask one" },
+    }, ctx);
+    assert.equal(upd.result.card.description, "do the thing");
+    assert.equal(upd.result.card.checklist.length, 1);
+    assert.equal(upd.result.card.checklist[0].done, false);
+    const itemId = upd.result.card.checklist[0].id;
+
+    const tog = await lensRun("board", "card-checklist-toggle",
+      { params: { boardId: board.id, cardId: card.id, itemId } }, ctx);
+    assert.equal(tog.result.done, true);
+    // toggling again flips it back
+    const tog2 = await lensRun("board", "card-checklist-toggle",
+      { params: { boardId: board.id, cardId: card.id, itemId } }, ctx);
+    assert.equal(tog2.result.done, false);
+  });
+
+  it("board-dashboard aggregates totals, overdue, and cards-with-checklists", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Dash Board" } }, ctx)).result.board;
+    const col = board.columns[0].id;
+    // overdue card (past dueDate)
+    await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: col, title: "Overdue", dueDate: "2000-01-01" } }, ctx);
+    // card with a checklist item
+    const c2 = (await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: col, title: "Has list" } }, ctx)).result.card;
+    await lensRun("board", "card-update",
+      { params: { boardId: board.id, cardId: c2.id, addChecklistItem: "x" } }, ctx);
+
+    const dash = await lensRun("board", "board-dashboard", {}, ctx);
+    assert.equal(dash.ok, true);
+    // ctx is shared with the column/update tests above, so counts are >= these floors
+    assert.ok(dash.result.boards >= 1);
+    assert.ok(dash.result.overdue >= 1);
+    assert.ok(dash.result.withChecklists >= 1);
+  });
+
+  it("card-comment-add stores a comment + activity; card-comment-delete removes it", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Comment Board" } }, ctx)).result.board;
+    const card = (await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: board.columns[0].id, title: "Discuss" } }, ctx)).result.card;
+
+    const add = await lensRun("board", "card-comment-add",
+      { params: { boardId: board.id, cardId: card.id, text: "looks good" } }, ctx);
+    assert.equal(add.result.commentCount, 1);
+    assert.equal(add.result.comment.text, "looks good");
+    const commentId = add.result.comment.id;
+
+    // activity feed recorded the comment via card-detail
+    const detail = await lensRun("board", "card-detail", { params: { boardId: board.id, cardId: card.id } }, ctx);
+    assert.ok(detail.result.card.activity.some((a) => a.action === "added a comment"));
+
+    const del = await lensRun("board", "card-comment-delete",
+      { params: { boardId: board.id, cardId: card.id, commentId } }, ctx);
+    assert.equal(del.result.commentCount, 0);
+  });
+
+  it("card-comment-add rejects empty text", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Empty Comment" } }, ctx)).result.board;
+    const card = (await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: board.columns[0].id, title: "C" } }, ctx)).result.card;
+    const bad = await lensRun("board", "card-comment-add",
+      { params: { boardId: board.id, cardId: card.id, text: "   " } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /comment text required/);
+  });
+
+  it("card-attachment-add defaults name from URL + kind 'link'; delete decrements count", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Attach Board" } }, ctx)).result.board;
+    const card = (await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: board.columns[0].id, title: "Has file" } }, ctx)).result.card;
+
+    const add = await lensRun("board", "card-attachment-add",
+      { params: { boardId: board.id, cardId: card.id, url: "https://example.com/spec" } }, ctx);
+    assert.equal(add.result.attachmentCount, 1);
+    assert.equal(add.result.attachment.kind, "link");
+    assert.equal(add.result.attachment.name, "https://example.com/spec".slice(0, 60));
+    const attId = add.result.attachment.id;
+
+    const del = await lensRun("board", "card-attachment-delete",
+      { params: { boardId: board.id, cardId: card.id, attachmentId: attId } }, ctx);
+    assert.equal(del.result.attachmentCount, 0);
+  });
+
+  it("card-calendar groups by due date, counts overdue + unscheduled exactly", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Cal Board" } }, ctx)).result.board;
+    const col = board.columns[0].id;
+    await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: col, title: "Past", dueDate: "2000-01-01" } }, ctx);
+    await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: col, title: "Future", dueDate: "2999-12-31" } }, ctx);
+    await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: col, title: "NoDue" } }, ctx);
+
+    const cal = await lensRun("board", "card-calendar", { params: { boardId: board.id } }, ctx);
+    assert.equal(cal.ok, true);
+    assert.equal(cal.result.scheduled, 2);    // two dated cards
+    assert.equal(cal.result.overdue, 1);      // only the year-2000 one is past
+    assert.equal(cal.result.unscheduled, 1);  // 3 total - 2 scheduled
+    assert.ok(cal.result.days.some((d) => d.date === "2000-01-01"));
+  });
+
+  it("card-set-cover sets an image cover then clears it", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Cover Board" } }, ctx)).result.board;
+    const card = (await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: board.columns[0].id, title: "Pretty" } }, ctx)).result.card;
+
+    const set = await lensRun("board", "card-set-cover",
+      { params: { boardId: board.id, cardId: card.id, cover: "https://img/x.png" } }, ctx);
+    assert.equal(set.result.cover.type, "image");
+    assert.equal(set.result.cover.value, "https://img/x.png");
+
+    const clear = await lensRun("board", "card-set-cover",
+      { params: { boardId: board.id, cardId: card.id, cover: "" } }, ctx);
+    assert.equal(clear.result.cover, null);
+  });
+
+  it("automation-list returns added rules; automation-delete removes by id", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Auto List" } }, ctx)).result.board;
+    const rule = (await lensRun("board", "automation-add", {
+      params: { boardId: board.id, trigger: "card-moved-to-column", columnId: board.columns[2].id, action: "clear-due" },
+    }, ctx)).result.rule;
+
+    const list = await lensRun("board", "automation-list", { params: { boardId: board.id } }, ctx);
+    assert.ok(list.result.rules.some((r) => r.id === rule.id));
+
+    const del = await lensRun("board", "automation-delete",
+      { params: { boardId: board.id, ruleId: rule.id } }, ctx);
+    assert.equal(del.result.deleted, rule.id);
+
+    const list2 = await lensRun("board", "automation-list", { params: { boardId: board.id } }, ctx);
+    assert.ok(!list2.result.rules.some((r) => r.id === rule.id));
+  });
+
+  it("collaborator-add upserts role on re-add; collaborator-list + remove round-trip", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Collab Board" } }, ctx)).result.board;
+    const add = await lensRun("board", "collaborator-add",
+      { params: { boardId: board.id, userId: "alice", role: "editor" } }, ctx);
+    assert.equal(add.result.collaborator.role, "editor");
+
+    // re-add same user with a new role → upsert path (updated:true), no duplicate row
+    const upd = await lensRun("board", "collaborator-add",
+      { params: { boardId: board.id, userId: "alice", role: "admin" } }, ctx);
+    assert.equal(upd.result.updated, true);
+    assert.equal(upd.result.collaborator.role, "admin");
+
+    const list = await lensRun("board", "collaborator-list", { params: { boardId: board.id } }, ctx);
+    assert.equal(list.result.collaborators.filter((c) => c.userId === "alice").length, 1);
+
+    const rem = await lensRun("board", "collaborator-remove",
+      { params: { boardId: board.id, userId: "alice" } }, ctx);
+    assert.equal(rem.result.removed, "alice");
+  });
+
+  it("collaborator-add coerces an unknown role to 'viewer'", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Role Coerce" } }, ctx)).result.board;
+    const add = await lensRun("board", "collaborator-add",
+      { params: { boardId: board.id, userId: "bob", role: "superuser" } }, ctx);
+    assert.equal(add.result.collaborator.role, "viewer"); // not in COLLAB_ROLES → default
+  });
+
+  it("custom-field-add + card-set-field enforce select options and number coercion", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Field Board" } }, ctx)).result.board;
+    const sel = (await lensRun("board", "custom-field-add", {
+      params: { boardId: board.id, name: "Priority", type: "select", options: ["lo", "hi"] },
+    }, ctx)).result.field;
+    const num = (await lensRun("board", "custom-field-add", {
+      params: { boardId: board.id, name: "Points", type: "number" },
+    }, ctx)).result.field;
+
+    // a duplicate field name (case-insensitive) is rejected
+    const dup = await lensRun("board", "custom-field-add",
+      { params: { boardId: board.id, name: "priority", type: "text" } }, ctx);
+    assert.equal(dup.result.ok, false);
+    assert.match(dup.result.error, /field already exists/);
+
+    const card = (await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: board.columns[0].id, title: "Estimate" } }, ctx)).result.card;
+
+    // select value outside options is rejected
+    const badSel = await lensRun("board", "card-set-field",
+      { params: { boardId: board.id, cardId: card.id, fieldId: sel.id, value: "mid" } }, ctx);
+    assert.equal(badSel.result.ok, false);
+    assert.match(badSel.result.error, /value not in field options/);
+
+    // valid select value persists
+    const okSel = await lensRun("board", "card-set-field",
+      { params: { boardId: board.id, cardId: card.id, fieldId: sel.id, value: "hi" } }, ctx);
+    assert.equal(okSel.result.customFields[sel.id], "hi");
+
+    // number coercion: non-numeric rejected, numeric stored as Number
+    const badNum = await lensRun("board", "card-set-field",
+      { params: { boardId: board.id, cardId: card.id, fieldId: num.id, value: "abc" } }, ctx);
+    assert.equal(badNum.result.ok, false);
+    assert.match(badNum.result.error, /value must be a number/);
+
+    const okNum = await lensRun("board", "card-set-field",
+      { params: { boardId: board.id, cardId: card.id, fieldId: num.id, value: "5" } }, ctx);
+    assert.equal(okNum.result.customFields[num.id], 5);
+
+    // custom-field-list reflects both fields
+    const fl = await lensRun("board", "custom-field-list", { params: { boardId: board.id } }, ctx);
+    assert.ok(fl.result.fields.some((f) => f.id === sel.id));
+    assert.ok(fl.result.fields.some((f) => f.id === num.id));
+  });
+
+  it("custom-field-delete strips the field value from cards that set it", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Field Del" } }, ctx)).result.board;
+    const fld = (await lensRun("board", "custom-field-add",
+      { params: { boardId: board.id, name: "Note", type: "text" } }, ctx)).result.field;
+    const card = (await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: board.columns[0].id, title: "Noted" } }, ctx)).result.card;
+    await lensRun("board", "card-set-field",
+      { params: { boardId: board.id, cardId: card.id, fieldId: fld.id, value: "hello" } }, ctx);
+
+    const del = await lensRun("board", "custom-field-delete",
+      { params: { boardId: board.id, fieldId: fld.id } }, ctx);
+    assert.equal(del.result.deleted, fld.id);
+
+    const detail = await lensRun("board", "card-detail", { params: { boardId: board.id, cardId: card.id } }, ctx);
+    assert.equal(detail.result.card.customFields[fld.id], undefined); // value stripped
+  });
+
+  it("label-delete strips the label name from every card; board-delete then removes the board", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Label Del" } }, ctx)).result.board;
+    const lbl = (await lensRun("board", "label-create",
+      { params: { boardId: board.id, name: "Blocked", color: "red" } }, ctx)).result.label;
+    const card = (await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: board.columns[0].id, title: "Stuck", labels: ["Blocked"] } }, ctx)).result.card;
+    assert.ok(card.labels.includes("Blocked"));
+
+    const del = await lensRun("board", "label-delete",
+      { params: { boardId: board.id, labelId: lbl.id } }, ctx);
+    assert.equal(del.result.deleted, lbl.id);
+
+    const detail = await lensRun("board", "card-detail", { params: { boardId: board.id, cardId: card.id } }, ctx);
+    assert.ok(!detail.result.card.labels.includes("Blocked")); // stripped from card
+
+    const bdel = await lensRun("board", "board-delete", { params: { id: board.id } }, ctx);
+    assert.equal(bdel.result.deleted, board.id);
+    const gone = await lensRun("board", "board-detail", { params: { id: board.id } }, ctx);
+    assert.equal(gone.result.ok, false);
+    assert.match(gone.result.error, /board not found/);
+  });
+
+  it("card-delete removes a card from the board", async () => {
+    const board = (await lensRun("board", "board-create", { params: { name: "Card Del" } }, ctx)).result.board;
+    const card = (await lensRun("board", "card-create",
+      { params: { boardId: board.id, columnId: board.columns[0].id, title: "Doomed" } }, ctx)).result.card;
+    const del = await lensRun("board", "card-delete",
+      { params: { boardId: board.id, cardId: card.id } }, ctx);
+    assert.equal(del.result.deleted, card.id);
+    const detail = await lensRun("board", "board-detail", { params: { id: board.id } }, ctx);
+    assert.ok(!detail.result.board.cards.some((c) => c.id === card.id));
+  });
+});

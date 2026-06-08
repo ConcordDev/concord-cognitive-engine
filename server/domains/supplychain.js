@@ -299,7 +299,11 @@ export default function registerSupplychainActions(registerLensAction) {
         material_shortage: { lead: 1.4, demand: 1, cost: 1.5 },
       };
       const d = DISRUPTIONS[disruption] || DISRUPTIONS.none;
-      const altLeadTime = Math.max(1, scNum(params?.altLeadTimeDays, 0));
+      // NOTE: no Math.max(1, …) floor here — a 0 default must stay 0 so the
+      // `altLeadTime > 0` gate below skips a phantom alternate source when the
+      // caller supplies none (the floor made every scenario fabricate a magic
+      // 1-day alternate that always won the ranking).
+      const altLeadTime = Math.max(0, scNum(params?.altLeadTimeDays, 0));
       const altUnitCost = Math.max(0, scNum(params?.altUnitCost, 0));
       const evalSource = (lead, cost, label) => {
         const effLead = Math.ceil(lead * d.lead);

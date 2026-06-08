@@ -258,3 +258,250 @@ describe("council — CRUD round-trips + validation (shared ctx)", () => {
     assert.match(bad.result.error, /title required/);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// Coverage extension (no LLM-backed macros in council.js — every macro here
+// is a deterministic heuristic/CRUD handler, so all are tested directly).
+// New distinct macros exercised below: generateMinutes, meeting-update,
+// meeting-delete, agenda-update, agenda-remove, agenda-reorder,
+// attendee-rsvp, attendee-remove, attendee-check-in (default-toggle path),
+// packet-add, packet-remove, action-delete, decision-delete. Plus the
+// divergent-priorities branch of conflictResolution.
+// ─────────────────────────────────────────────────────────────────────────
+describe("council — minutes + conflict divergent branch (pure compute)", () => {
+  it("generateMinutes: maps agenda/decisions/actionItems with defaults applied", async () => {
+    const r = await lensRun("council", "generateMinutes", {
+      data: {
+        title: "Special Session",
+        date: "2026-09-09",
+        attendees: ["Ann", "Ben", "Cy"],
+        agenda: [{ topic: "Roads", status: "deferred" }, "Bridges"],
+        decisions: [{ text: "Fund roads", passed: false }, { text: "Pave Main St" }],
+        actionItems: [{ task: "Hire surveyor", assignee: "Ben", dueDate: "2026-10-01" }, "File permit"],
+      },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.title, "Special Session");
+    assert.equal(r.result.date, "2026-09-09");
+    assert.equal(r.result.attendees, 3);
+    // agenda: numbered, status preserved or defaulted to "discussed"
+    assert.equal(r.result.agendaItems.length, 2);
+    assert.deepEqual(r.result.agendaItems[0], { item: 1, topic: "Roads", status: "deferred" });
+    assert.deepEqual(r.result.agendaItems[1], { item: 2, topic: "Bridges", status: "discussed" });
+    // decisions: explicit passed:false honored, missing passed defaults true
+    assert.equal(r.result.decisions[0].passed, false);
+    assert.equal(r.result.decisions[0].votedBy, "council");
+    assert.equal(r.result.decisions[1].passed, true);
+    // actionItems: object form preserved, string form defaulted
+    assert.deepEqual(r.result.actionItems[0], { task: "Hire surveyor", assignee: "Ben", dueDate: "2026-10-01" });
+    assert.deepEqual(r.result.actionItems[1], { task: "File permit", assignee: "unassigned", dueDate: "TBD" });
+  });
+
+  it("generateMinutes: empty data falls back to default title and current-date shape", async () => {
+    const r = await lensRun("council", "generateMinutes", { data: {} });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.title, "Council Meeting Minutes");
+    assert.equal(r.result.attendees, 0);
+    assert.deepEqual(r.result.agendaItems, []);
+    assert.deepEqual(r.result.decisions, []);
+    assert.equal(r.result.date.length, 10); // ISO date prefix YYYY-MM-DD
+  });
+
+  it("conflictResolution: low-priority majority maps to divergent-priorities path", async () => {
+    const r = await lensRun("council", "conflictResolution", {
+      data: {
+        issue: "Park naming",
+        parties: [
+          { name: "North", priority: "low" },
+          { name: "South", priority: "low" },
+          { name: "Civic", priority: "high" },
+        ],
+      },
+    });
+    assert.equal(r.ok, true);
+    // only 1 high of 3, not > 1.5 -> divergent
+    assert.equal(r.result.commonGround, "divergent-priorities");
+    assert.ok(r.result.suggestedApproach.includes("Structured dialogue"));
+    assert.equal(r.result.parties[0].priority, "low");
+    assert.equal(r.result.steps.length, 5);
+  });
+});
+
+describe("council — meeting/agenda/attendee/packet mutations (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("council-mut"); });
+
+  async function freshMeeting(title) {
+    const m = await lensRun("council", "meeting-create", {
+      params: { title, scheduledAt: "2026-11-01T08:00:00Z", quorumThreshold: 1 },
+    }, ctx);
+    assert.equal(m.ok, true);
+    return m.result.meeting.id;
+  }
+
+  it("meeting-update: patches fields + quorumThreshold, leaves others intact", async () => {
+    const id = await freshMeeting("Pre-update");
+    const upd = await lensRun("council", "meeting-update", {
+      params: { id, title: "Post-update", status: "in_progress", quorumThreshold: 4 },
+    }, ctx);
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.meeting.title, "Post-update");
+    assert.equal(upd.result.meeting.status, "in_progress");
+    assert.equal(upd.result.meeting.quorumThreshold, 4);
+    assert.equal(upd.result.meeting.scheduledAt, "2026-11-01T08:00:00Z"); // untouched
+  });
+
+  it("meeting-update: unknown id is rejected", async () => {
+    const bad = await lensRun("council", "meeting-update", { params: { id: "mtg_nope", title: "x" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /meeting not found/);
+  });
+
+  it("meeting-delete: removes the meeting from the list", async () => {
+    const id = await freshMeeting("To Delete");
+    const del = await lensRun("council", "meeting-delete", { params: { id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, id);
+    const list = await lensRun("council", "meeting-list", {}, ctx);
+    assert.equal(list.result.meetings.some((m) => m.id === id), false);
+  });
+
+  it("agenda-update + agenda-remove: edit then drop reindexes order", async () => {
+    const meetingId = await freshMeeting("Agenda Ops");
+    const a0 = await lensRun("council", "agenda-add", { params: { meetingId, topic: "First", durationMin: 5 } }, ctx);
+    const a1 = await lensRun("council", "agenda-add", { params: { meetingId, topic: "Second" } }, ctx);
+    assert.equal(a1.result.item.order, 1);
+
+    // update item 0: durationMin=0 is falsy so the existing value (5) is kept
+    // (Math.max(1, parseInt(0) || item.durationMin) -> Math.max(1, 5) -> 5),
+    // status whitelisted, notes coerced to string.
+    const upd = await lensRun("council", "agenda-update", {
+      params: { meetingId, itemId: a0.result.item.id, durationMin: 0, status: "discussed", notes: "done" },
+    }, ctx);
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.item.durationMin, 5); // 0 falsy -> falls back to prior 5
+    assert.equal(upd.result.item.status, "discussed");
+    assert.equal(upd.result.item.notes, "done");
+
+    // a negative value parses truthy and is clamped to the floor of 1
+    const clamp = await lensRun("council", "agenda-update", {
+      params: { meetingId, itemId: a0.result.item.id, durationMin: -7 },
+    }, ctx);
+    assert.equal(clamp.result.item.durationMin, 1); // Math.max(1, -7) -> 1
+    // an out-of-whitelist status is ignored (stays "discussed")
+    const badStatus = await lensRun("council", "agenda-update", {
+      params: { meetingId, itemId: a0.result.item.id, status: "bogus" },
+    }, ctx);
+    assert.equal(badStatus.result.item.status, "discussed");
+
+    // remove item 0 -> remaining item reindexed to order 0
+    const rem = await lensRun("council", "agenda-remove", { params: { meetingId, itemId: a0.result.item.id } }, ctx);
+    assert.equal(rem.ok, true);
+    assert.equal(rem.result.meeting.agenda.length, 1);
+    assert.equal(rem.result.meeting.agenda[0].id, a1.result.item.id);
+    assert.equal(rem.result.meeting.agenda[0].order, 0);
+  });
+
+  it("agenda-reorder: full permutation reindexes; length mismatch rejected", async () => {
+    const meetingId = await freshMeeting("Reorder");
+    const x = await lensRun("council", "agenda-add", { params: { meetingId, topic: "X" } }, ctx);
+    const y = await lensRun("council", "agenda-add", { params: { meetingId, topic: "Y" } }, ctx);
+    const z = await lensRun("council", "agenda-add", { params: { meetingId, topic: "Z" } }, ctx);
+
+    const ok = await lensRun("council", "agenda-reorder", {
+      params: { meetingId, order: [z.result.item.id, x.result.item.id, y.result.item.id] },
+    }, ctx);
+    assert.equal(ok.ok, true);
+    assert.deepEqual(ok.result.meeting.agenda.map((a) => a.id), [z.result.item.id, x.result.item.id, y.result.item.id]);
+    assert.deepEqual(ok.result.meeting.agenda.map((a) => a.order), [0, 1, 2]);
+
+    const bad = await lensRun("council", "agenda-reorder", { params: { meetingId, order: [x.result.item.id] } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /order length mismatch/);
+  });
+
+  it("attendee-rsvp: valid value persists; invalid value rejected", async () => {
+    const meetingId = await freshMeeting("RSVP");
+    const at = await lensRun("council", "attendee-add", { params: { meetingId, name: "Dee" } }, ctx);
+    assert.equal(at.result.attendee.rsvp, "no_response");
+
+    const yes = await lensRun("council", "attendee-rsvp", { params: { meetingId, attendeeId: at.result.attendee.id, rsvp: "yes" } }, ctx);
+    assert.equal(yes.ok, true);
+    assert.equal(yes.result.attendee.rsvp, "yes");
+
+    const bad = await lensRun("council", "attendee-rsvp", { params: { meetingId, attendeeId: at.result.attendee.id, rsvp: "perhaps" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /rsvp invalid/);
+  });
+
+  it("attendee-check-in: omitted present flag toggles current state", async () => {
+    const meetingId = await freshMeeting("Toggle");
+    const at = await lensRun("council", "attendee-add", { params: { meetingId, name: "Eve" } }, ctx);
+    assert.equal(at.result.attendee.present, false);
+    const t1 = await lensRun("council", "attendee-check-in", { params: { meetingId, attendeeId: at.result.attendee.id } }, ctx);
+    assert.equal(t1.result.attendee.present, true); // toggled from false
+    const t2 = await lensRun("council", "attendee-check-in", { params: { meetingId, attendeeId: at.result.attendee.id } }, ctx);
+    assert.equal(t2.result.attendee.present, false); // toggled back
+  });
+
+  it("attendee-remove: drops attendee; unknown id rejected", async () => {
+    const meetingId = await freshMeeting("Remove Attendee");
+    const at = await lensRun("council", "attendee-add", { params: { meetingId, name: "Finn" } }, ctx);
+    const rem = await lensRun("council", "attendee-remove", { params: { meetingId, attendeeId: at.result.attendee.id } }, ctx);
+    assert.equal(rem.ok, true);
+    assert.equal(rem.result.meeting.attendees.length, 0);
+    const bad = await lensRun("council", "attendee-remove", { params: { meetingId, attendeeId: "att_nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /attendee not found/);
+  });
+
+  it("packet-add → packet-remove: board-book document round-trip", async () => {
+    const meetingId = await freshMeeting("Packet");
+    const add = await lensRun("council", "packet-add", {
+      params: { meetingId, name: "Budget PDF", url: "doc://budget", kind: "report" },
+    }, ctx);
+    assert.equal(add.ok, true);
+    assert.equal(add.result.document.name, "Budget PDF");
+    assert.equal(add.result.document.kind, "report");
+    assert.equal(add.result.meeting.packet.length, 1);
+
+    const missingName = await lensRun("council", "packet-add", { params: { meetingId, url: "doc://x" } }, ctx);
+    assert.equal(missingName.result.ok, false);
+    assert.match(missingName.result.error, /name required/);
+
+    const rem = await lensRun("council", "packet-remove", { params: { meetingId, documentId: add.result.document.id } }, ctx);
+    assert.equal(rem.ok, true);
+    assert.equal(rem.result.meeting.packet.length, 0);
+  });
+});
+
+describe("council — action + decision deletion (shared ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("council-del"); });
+
+  it("action-delete: removes the action; unknown id rejected", async () => {
+    const src = await lensRun("council", "action-create", { params: { description: "Temp task" } }, ctx);
+    const del = await lensRun("council", "action-delete", { params: { id: src.result.action.id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, src.result.action.id);
+    const list = await lensRun("council", "action-list", {}, ctx);
+    assert.equal(list.result.actions.some((a) => a.id === src.result.action.id), false);
+
+    const bad = await lensRun("council", "action-delete", { params: { id: "act_nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /action not found/);
+  });
+
+  it("decision-delete: removes the archived record; unknown id rejected", async () => {
+    const arch = await lensRun("council", "decision-archive", { params: { title: "Temp decision" } }, ctx);
+    const del = await lensRun("council", "decision-delete", { params: { id: arch.result.decision.id } }, ctx);
+    assert.equal(del.ok, true);
+    assert.equal(del.result.deleted, arch.result.decision.id);
+    const search = await lensRun("council", "decision-search", { params: { query: "Temp decision" } }, ctx);
+    assert.equal(search.result.decisions.some((d) => d.id === arch.result.decision.id), false);
+
+    const bad = await lensRun("council", "decision-delete", { params: { id: "dec_nope" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.match(bad.result.error, /decision not found/);
+  });
+});
