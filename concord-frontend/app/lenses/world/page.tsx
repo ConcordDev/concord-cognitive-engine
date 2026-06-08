@@ -5392,7 +5392,7 @@ export default function WorldLensPage() {
           )}
           {showPanel === 'chat' && (
             <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
-              <ChatSystem />
+              <ChatSystem worldId={activeDistrict?.id || 'concordia-hub'} districtId={activeDistrict?.id || 'plaza'} />
             </div>
           )}
           {showPanel === 'map' && (
@@ -5559,7 +5559,7 @@ export default function WorldLensPage() {
           )}
           {showPanel === 'events' && (
             <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
-              <EventsGatherings />
+              <EventsGatherings worldId={activeDistrict?.id || 'concordia-hub'} />
             </div>
           )}
           {showPanel === 'socialproof' && (

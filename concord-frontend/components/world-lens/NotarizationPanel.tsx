@@ -33,7 +33,12 @@ interface NotarizationRecord {
 }
 
 // ---------------------------------------------------------------------------
-// Seed Data
+// Chain configuration (static scaffolding — block-explorer endpoints, not data)
+//
+// NOTE: There is no backend notarization / on-chain anchoring macro in the
+// platform today. The notarization history below is an honest empty state and
+// the notarize/verify actions are inert until a backend wires up.
+// TODO: wire to backend once a notarization macro exists.
 // ---------------------------------------------------------------------------
 
 const CHAINS: ChainOption[] = [
@@ -63,29 +68,6 @@ const CHAINS: ChainOption[] = [
     estimatedCost: '~$0.001',
     confirmations: 30,
     explorer: 'https://polygonscan.com/tx/',
-  },
-];
-
-const SEED_RECORDS: NotarizationRecord[] = [
-  {
-    id: 'ntx-001',
-    dtuId: 'dtu-arc-tower-7f',
-    chain: 'base',
-    txHash: '0x8a3f1b9e72c4d506e1fa82b3c90d47e6f5a21b8c3d7e9f0a1b2c3d4e5f6a7b8c',
-    blockNumber: 19_482_331,
-    timestamp: '2026-04-04T18:44:12Z',
-    status: 'confirmed',
-    contentHash: 'sha256:9a3f7c2e1d4b8a6f5e0b3d7c2a9f4e1b5c8d2a6f3e7b1c9d4a8f2e6b0c3d7a1e',
-  },
-  {
-    id: 'ntx-002',
-    dtuId: 'dtu-bridge-span-02',
-    chain: 'arbitrum',
-    txHash: '0x1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d',
-    blockNumber: 204_119_887,
-    timestamp: '2026-04-03T10:12:55Z',
-    status: 'confirmed',
-    contentHash: 'sha256:c81d4e2f3a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d',
   },
 ];
 
@@ -130,7 +112,8 @@ export default function NotarizationPanel() {
   const [verifyResult, setVerifyResult] = useState<VerifyResult>('idle');
   const [verifyChain, setVerifyChain] = useState<ChainId>('base');
 
-  const [records] = useState<NotarizationRecord[]>(SEED_RECORDS);
+  // No backend notarization source — honest empty history, never fabricated.
+  const [records] = useState<NotarizationRecord[]>([]);
 
   const chainInfo = useMemo(() => CHAINS.find(c => c.id === selectedChain)!, [selectedChain]);
 
@@ -139,29 +122,12 @@ export default function NotarizationPanel() {
 
   const confirmNotarize = () => {
     setShowConfirmDialog(false);
-    setNotarizeStatus('pending');
     setConfirmationCount(0);
     setCurrentTxHash(null);
-
-    // Simulate pending -> confirming -> confirmed
-    // @fake-data-ok: demo notarization panel shows the UI/state-machine
-    // for blockchain receipts; real submitTx wires up when the chain
-    // integration ships. The hash shape matches eth tx ids for layout.
-    setTimeout(() => {
-      const fakeTx = '0x' + Array.from({ length: 64 }, () =>
-        Math.floor(Math.random() * 16).toString(16),
-      ).join('');
-      setCurrentTxHash(fakeTx);
-      setNotarizeStatus('confirming');
-      setConfirmationCount(1);
-    }, 1200);
-
-    setTimeout(() => setConfirmationCount(4), 2000);
-    setTimeout(() => setConfirmationCount(8), 2800);
-    setTimeout(() => {
-      setConfirmationCount(chainInfo.confirmations);
-      setNotarizeStatus('confirmed');
-    }, 3800);
+    // No backend notarization macro — never fabricate a tx hash / confirmation.
+    // Surface an honest failure until a real on-chain anchoring service wires up.
+    // TODO: wire to backend once a notarization macro exists.
+    setNotarizeStatus('failed');
   };
 
   const resetNotarize = () => {
@@ -172,12 +138,11 @@ export default function NotarizationPanel() {
 
   const runVerification = () => {
     if (!verifyHash.trim()) return;
-    setVerifyResult('checking');
-    setTimeout(() => {
-      // If hash matches any seed record content hash, show verified
-      const found = records.some(r => r.contentHash === verifyHash || r.txHash === verifyHash);
-      setVerifyResult(found ? 'verified' : 'not-found');
-    }, 1500);
+    // No backend on-chain verification — check only against real local records
+    // (currently none). Honest result, never a fabricated "verified".
+    // TODO: wire to backend once a notarization macro exists.
+    const found = records.some(r => r.contentHash === verifyHash || r.txHash === verifyHash);
+    setVerifyResult(found ? 'verified' : 'not-found');
   };
 
   return (
@@ -320,6 +285,27 @@ export default function NotarizationPanel() {
             </button>
           </div>
         )}
+
+        {notarizeStatus === 'failed' && (
+          <div className="p-4 rounded-lg border border-red-500/30 bg-red-900/10 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-red-400 text-lg">&#10007;</span>
+              <span className="text-sm font-semibold text-red-300">
+                Notarization unavailable
+              </span>
+            </div>
+            <p className="text-xs text-white/50">
+              On-chain anchoring is not connected to a backend yet. No transaction
+              was submitted.
+            </p>
+            <button
+              onClick={resetNotarize}
+              className="w-full py-1.5 rounded-lg border border-white/10 text-xs text-white/50 hover:text-white/80 transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Verification Panel */}
@@ -384,6 +370,11 @@ export default function NotarizationPanel() {
           Notarization History
         </h3>
         <div className="space-y-2">
+          {records.length === 0 && (
+            <p className="text-sm text-white/30 py-4 text-center">
+              No notarization records yet.
+            </p>
+          )}
           {records.map(record => {
             const chain = CHAINS.find(c => c.id === record.chain)!;
             return (

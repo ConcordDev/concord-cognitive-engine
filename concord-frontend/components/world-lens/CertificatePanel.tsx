@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { lensRun } from '@/lib/api/client';
 
-// ── Seed Data ──────────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Requirement {
   label: string;
@@ -33,77 +34,69 @@ interface Certificate {
   blockchainTx: string;
 }
 
-const SEED_PATHS: LearningPath[] = [
-  {
-    id: 'path-se-101',
-    name: 'Structural Engineering Fundamentals',
-    domain: 'Engineering',
-    domainColor: '#3b82f6',
-    description:
-      'Master the core principles of structural analysis, load distribution, and failure mode evaluation through hands-on lens explorations.',
-    requirements: [
-      { label: 'Lens Completions', current: 2, target: 3, unit: 'lenses' },
-      { label: 'DTU Contributions', current: 12, target: 15, unit: 'DTUs' },
-      { label: 'Validation Pass Rate', current: 92, target: 80, unit: '%' },
-    ],
-    complete: false,
-    claimed: false,
-  },
-  {
-    id: 'path-ms-201',
-    name: 'Materials Science Specialist',
-    domain: 'Materials',
-    domainColor: '#a855f7',
-    description:
-      'Deep-dive into material properties, composite behaviors, and nano-scale characterization using collaborative validation lenses.',
-    requirements: [
-      { label: 'Lens Completions', current: 2, target: 2, unit: 'lenses' },
-      { label: 'DTU Contributions', current: 14, target: 10, unit: 'DTUs' },
-      { label: 'Peer Citations', current: 87, target: 50, unit: 'citations' },
-    ],
-    complete: true,
-    claimed: false,
-  },
-  {
-    id: 'path-up-301',
-    name: 'Urban Planning Certificate',
-    domain: 'Planning',
-    domainColor: '#f59e0b',
-    description:
-      'Develop expertise in zoning analysis, transit-oriented design, and community-driven urban development through multi-district lens studies.',
-    requirements: [
-      { label: 'Lens Completions', current: 1, target: 4, unit: 'lenses' },
-      { label: 'DTU Contributions', current: 5, target: 20, unit: 'DTUs' },
-    ],
-    complete: false,
-    claimed: false,
-  },
-];
+// ── Backend wire shapes (education.paths-list / education.certificates-list) ─────
 
-const SEED_CERTIFICATES: Certificate[] = [
-  {
-    id: 'cert-ms-201-001',
-    pathId: 'path-ms-201',
-    pathName: 'Materials Science Specialist',
-    holder: '@engineer_dutch',
-    issuedDate: '2026-03-28',
-    metrics: { dtus: 14, citations: 87, passRate: 94 },
-    verificationHash: '0x7a3f…e91b',
-    blockchainTx: '0xabc123…def456',
-  },
-];
+interface PathsListResult {
+  paths?: Array<{
+    id?: string;
+    title?: string;
+    description?: string;
+    steps?: Array<{
+      courseTitle?: string;
+      totalLessons?: number;
+      completedLessons?: number;
+    }>;
+    totalSteps?: number;
+    completedSteps?: number;
+    progressPct?: number;
+    complete?: boolean;
+  }>;
+}
 
-const VERIFICATION_DB: Record<
-  string,
-  { holder: string; pathName: string; issuedDate: string; metrics: { dtus: number; citations: number; passRate: number } }
-> = {
-  '0x7a3fe91b': {
-    holder: '@engineer_dutch',
-    pathName: 'Materials Science Specialist',
-    issuedDate: '2026-03-28',
-    metrics: { dtus: 14, citations: 87, passRate: 94 },
-  },
-};
+interface CertificatesListResult {
+  certificates?: Array<{
+    id?: string;
+    courseId?: string;
+    courseTitle?: string;
+    issuedAt?: string;
+    institution?: string;
+    instructor?: string;
+    verificationCode?: string;
+  }>;
+}
+
+const DOMAIN_COLOR = '#3b82f6';
+
+function mapPath(p: NonNullable<PathsListResult['paths']>[number]): LearningPath {
+  const totalSteps = p.totalSteps ?? p.steps?.length ?? 0;
+  const completedSteps = p.completedSteps ?? 0;
+  return {
+    id: String(p.id ?? ''),
+    name: String(p.title ?? 'Untitled path'),
+    domain: 'Learning',
+    domainColor: DOMAIN_COLOR,
+    description: String(p.description ?? ''),
+    // Map real per-step progress into the requirements checklist shape.
+    requirements: [
+      { label: 'Course Completions', current: completedSteps, target: totalSteps, unit: 'courses' },
+    ],
+    complete: Boolean(p.complete),
+    claimed: false,
+  };
+}
+
+function mapCertificate(c: NonNullable<CertificatesListResult['certificates']>[number]): Certificate {
+  return {
+    id: String(c.id ?? ''),
+    pathId: String(c.courseId ?? ''),
+    pathName: String(c.courseTitle ?? 'Certificate'),
+    holder: String(c.instructor ?? c.institution ?? ''),
+    issuedDate: c.issuedAt ? String(c.issuedAt).slice(0, 10) : '',
+    metrics: { dtus: 0, citations: 0, passRate: 0 },
+    verificationHash: String(c.verificationCode ?? ''),
+    blockchainTx: '',
+  };
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
 
@@ -231,6 +224,7 @@ function PathCard({
 }
 
 function CertificateCard({ cert }: { cert: Certificate }) {
+  const hasMetrics = cert.metrics.dtus > 0 || cert.metrics.citations > 0 || cert.metrics.passRate > 0;
   return (
     <div
       className="relative rounded-xl p-[1px] overflow-hidden"
@@ -249,57 +243,67 @@ function CertificateCard({ cert }: { cert: Certificate }) {
         </div>
 
         {/* Holder */}
-        <div className="text-sm text-white/60">
-          Holder:{' '}
-          <span className="text-cyan-300 font-mono">{cert.holder}</span>
-        </div>
+        {cert.holder && (
+          <div className="text-sm text-white/60">
+            Holder:{' '}
+            <span className="text-cyan-300 font-mono">{cert.holder}</span>
+          </div>
+        )}
 
         {/* Issued date */}
-        <div className="text-sm text-white/60">
-          Issued: <span className="text-white/80">{cert.issuedDate}</span>
-        </div>
-
-        {/* Metrics */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-center">
-            <div className="text-xl font-bold text-cyan-300">{cert.metrics.dtus}</div>
-            <div className="text-xs text-white/40 mt-0.5">DTUs</div>
+        {cert.issuedDate && (
+          <div className="text-sm text-white/60">
+            Issued: <span className="text-white/80">{cert.issuedDate}</span>
           </div>
-          <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-center">
-            <div className="text-xl font-bold text-purple-300">{cert.metrics.citations}</div>
-            <div className="text-xs text-white/40 mt-0.5">Citations</div>
-          </div>
-          <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-center">
-            <div className="text-xl font-bold text-emerald-300">{cert.metrics.passRate}%</div>
-            <div className="text-xs text-white/40 mt-0.5">Pass Rate</div>
-          </div>
-        </div>
+        )}
 
-        {/* Verification URL */}
-        <div className="text-xs text-white/40 font-mono break-all">
-          Verification: {cert.verificationHash}
-        </div>
+        {/* Metrics (only when the backend supplies real metrics) */}
+        {hasMetrics && (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-center">
+              <div className="text-xl font-bold text-cyan-300">{cert.metrics.dtus}</div>
+              <div className="text-xs text-white/40 mt-0.5">DTUs</div>
+            </div>
+            <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-center">
+              <div className="text-xl font-bold text-purple-300">{cert.metrics.citations}</div>
+              <div className="text-xs text-white/40 mt-0.5">Citations</div>
+            </div>
+            <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-center">
+              <div className="text-xl font-bold text-emerald-300">{cert.metrics.passRate}%</div>
+              <div className="text-xs text-white/40 mt-0.5">Pass Rate</div>
+            </div>
+          </div>
+        )}
 
-        {/* Blockchain badge */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
-          <svg
-            className="w-4 h-4 text-indigo-400 flex-shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
-          </svg>
-          <span className="text-xs text-indigo-300">
-            Notarized on-chain &mdash;{' '}
-            <span className="font-mono text-indigo-400">{cert.blockchainTx}</span>
-          </span>
-        </div>
+        {/* Verification code */}
+        {cert.verificationHash && (
+          <div className="text-xs text-white/40 font-mono break-all">
+            Verification: {cert.verificationHash}
+          </div>
+        )}
+
+        {/* Blockchain badge (only when a real on-chain tx exists) */}
+        {cert.blockchainTx && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+            <svg
+              className="w-4 h-4 text-indigo-400 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M13 10V3L4 14h7v7l9-11h-7z"
+              />
+            </svg>
+            <span className="text-xs text-indigo-300">
+              Notarized on-chain &mdash;{' '}
+              <span className="font-mono text-indigo-400">{cert.blockchainTx}</span>
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -311,8 +315,34 @@ type TabId = 'paths' | 'certificates' | 'verify';
 
 export default function CertificatePanel() {
   const [activeTab, setActiveTab] = useState<TabId>('paths');
-  const [paths, setPaths] = useState<LearningPath[]>(SEED_PATHS);
-  const [certificates, setCertificates] = useState<Certificate[]>(SEED_CERTIFICATES);
+  const [paths, setPaths] = useState<LearningPath[]>([]);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // ── Load real learning paths + certificates ────────────────────────
+  const loadEducation = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [pathsRes, certsRes] = await Promise.all([
+        lensRun<PathsListResult>('education', 'paths-list', {}),
+        lensRun<CertificatesListResult>('education', 'certificates-list', {}),
+      ]);
+      const realPaths = pathsRes.data.ok ? pathsRes.data.result?.paths ?? [] : [];
+      setPaths(realPaths.map(mapPath));
+      const realCerts = certsRes.data.ok ? certsRes.data.result?.certificates ?? [] : [];
+      setCertificates(realCerts.map(mapCertificate));
+    } catch {
+      // Honest empty state — never fabricate.
+      setPaths([]);
+      setCertificates([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadEducation();
+  }, [loadEducation]);
 
   // Verify tab state
   const [verifyHash, setVerifyHash] = useState('');
@@ -328,37 +358,35 @@ export default function CertificatePanel() {
     [certificates],
   );
 
-  const handleClaim = (pathId: string) => {
+  const handleClaim = async (pathId: string) => {
     const path = paths.find((p) => p.id === pathId);
     if (!path || !path.complete) return;
-
-    const newCert: Certificate = {
-      id: `cert-${pathId}-${Date.now()}`,
-      pathId,
-      pathName: path.name,
-      holder: '@engineer_dutch',
-      issuedDate: new Date().toISOString().slice(0, 10),
-      metrics: {
-        dtus: path.requirements.find((r) => r.label.includes('DTU'))?.current ?? 0,
-        citations: path.requirements.find((r) => r.label.includes('Citation'))?.current ?? 0,
-        passRate: path.requirements.find((r) => r.label.includes('Pass'))?.current ?? 0,
-      },
-      verificationHash: `0x${Math.random().toString(16).slice(2, 6)}...${Math.random().toString(16).slice(2, 6)}`,
-      blockchainTx: `0x${Math.random().toString(16).slice(2, 8)}...${Math.random().toString(16).slice(2, 8)}`,
-    };
-
-    setCertificates((prev) => [...prev, newCert]);
-    setPaths((prev) =>
-      prev.map((p) => (p.id === pathId ? { ...p, claimed: true } : p)),
-    );
+    // Issue a real certificate via the education domain, then re-read state.
+    try {
+      await lensRun('education', 'certificates-issue', { courseId: pathId });
+    } catch {
+      /* refetch surfaces success/failure honestly */
+    }
+    await loadEducation();
     setActiveTab('certificates');
   };
 
   const handleVerify = () => {
+    // Verify against the real loaded certificates by verification code.
+    // No dedicated verify-by-hash macro exists; this checks the user's own
+    // issued certificates rather than fabricating a verification database.
     const normalized = verifyHash.trim().toLowerCase().replace(/\u2026/g, '');
-    const match = VERIFICATION_DB[normalized];
+    const match = certificates.find(
+      (c) => c.verificationHash.toLowerCase().replace(/\u2026/g, '') === normalized,
+    );
     if (match) {
-      setVerifyResult({ found: true, ...match });
+      setVerifyResult({
+        found: true,
+        holder: match.holder,
+        pathName: match.pathName,
+        issuedDate: match.issuedDate,
+        metrics: match.metrics,
+      });
     } else {
       setVerifyResult({ found: false });
     }
@@ -396,6 +424,16 @@ export default function CertificatePanel() {
         {/* ── Learning Paths ────────────────────────────────────────────── */}
         {activeTab === 'paths' && (
           <div className="space-y-4">
+            {loading ? (
+              <p className="text-sm text-white/30 py-12 text-center">Loading learning paths…</p>
+            ) : displayPaths.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="text-4xl mb-3 opacity-30">&#128218;</div>
+                <p className="text-white/40 text-sm">
+                  No learning paths yet. Create one to start earning credentials.
+                </p>
+              </div>
+            ) : null}
             {displayPaths.map((path) => (
               <PathCard key={path.id} path={path} onClaim={handleClaim} />
             ))}

@@ -2,6 +2,13 @@
 
 import React, { useState, useMemo } from 'react';
 
+// NOTE: There is no IoT/sensor domain on the backend (no `sensor`, `device`,
+// or `iot` macro exists). The closest real substrate is the embodied
+// `environment` signal layer, but it does not model registered devices,
+// anomaly alerts, or API keys. Rather than fabricate readings, this panel
+// starts empty and shows honest empty states.
+// TODO: wire to backend once a sensor/device-registry domain exists.
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -48,105 +55,8 @@ interface NewDeviceForm {
 }
 
 // ---------------------------------------------------------------------------
-// Seed Data
-// ---------------------------------------------------------------------------
-
-const SEED_DEVICES: SensorDevice[] = [
-  {
-    id: 'dev-ws-alpha',
-    name: 'Weather Station Alpha',
-    type: 'Environmental',
-    typeIcon: '🌤',
-    status: 'online',
-    location: 'District-7 Rooftop',
-    linkedDtu: 'dtu-dist-7-env',
-    lastReadingTime: '2026-04-05T14:32:08Z',
-    anomalyCount: 0,
-    readings: [
-      { label: 'Temperature', value: 22.4, unit: '°C', min: -20, max: 50 },
-      { label: 'Humidity', value: 61, unit: '%', min: 0, max: 100 },
-      { label: 'Wind Speed', value: 14.2, unit: 'km/h', min: 0, max: 150 },
-    ],
-    history: [18, 19, 20, 21, 22, 23, 23, 22, 22, 21, 22, 22],
-  },
-  {
-    id: 'dev-struct-b7',
-    name: 'Structural Monitor B7',
-    type: 'Structural',
-    typeIcon: '🏗',
-    status: 'warning',
-    location: 'Bridge Span 02 — Pier 4',
-    linkedDtu: 'dtu-bridge-span-02',
-    lastReadingTime: '2026-04-05T14:31:55Z',
-    anomalyCount: 3,
-    readings: [
-      { label: 'Strain', value: 342, unit: 'με', min: 0, max: 1000 },
-      { label: 'Vibration', value: 2.8, unit: 'mm/s', min: 0, max: 10 },
-      { label: 'Displacement', value: 1.4, unit: 'mm', min: 0, max: 5 },
-    ],
-    history: [280, 290, 310, 325, 340, 355, 350, 342, 338, 330, 340, 342],
-  },
-  {
-    id: 'dev-energy-g3',
-    name: 'Energy Meter Grid-3',
-    type: 'Energy',
-    typeIcon: '⚡',
-    status: 'online',
-    location: 'Substation North',
-    linkedDtu: 'dtu-grid-north-3',
-    lastReadingTime: '2026-04-05T14:32:01Z',
-    anomalyCount: 1,
-    readings: [
-      { label: 'Voltage', value: 237.8, unit: 'V', min: 200, max: 260 },
-      { label: 'Current', value: 42.1, unit: 'A', min: 0, max: 100 },
-      { label: 'Power', value: 10.02, unit: 'kW', min: 0, max: 25 },
-    ],
-    history: [9.4, 9.8, 10.1, 10.3, 10.5, 10.2, 10.0, 9.9, 10.0, 10.1, 10.0, 10.0],
-  },
-  {
-    id: 'dev-water-w12',
-    name: 'Water Flow Sensor W-12',
-    type: 'Hydraulic',
-    typeIcon: '💧',
-    status: 'offline',
-    location: 'Pipeline Junction W-12',
-    linkedDtu: 'dtu-pipe-west-12',
-    lastReadingTime: '2026-04-05T11:04:22Z',
-    anomalyCount: 5,
-    readings: [
-      { label: 'Flow Rate', value: 0, unit: 'L/min', min: 0, max: 500 },
-      { label: 'Pressure', value: 0, unit: 'bar', min: 0, max: 10 },
-    ],
-    history: [220, 215, 210, 200, 180, 140, 90, 40, 10, 0, 0, 0],
-  },
-];
-
-const SEED_ANOMALIES: AnomalyAlert[] = [
-  {
-    id: 'ano-001',
-    deviceId: 'dev-struct-b7',
-    deviceName: 'Structural Monitor B7',
-    severity: 'critical',
-    message:
-      'Strain reading exceeded threshold of 330 με for 12 consecutive minutes. Possible structural fatigue at Pier 4.',
-    timestamp: '2026-04-05T13:48:10Z',
-    acknowledged: false,
-  },
-  {
-    id: 'ano-002',
-    deviceId: 'dev-water-w12',
-    deviceName: 'Water Flow Sensor W-12',
-    severity: 'warning',
-    message:
-      'Device went offline at 11:04. Last pressure reading dropped from 3.2 bar to 0 bar in under 60 seconds — possible pipe burst or valve closure.',
-    timestamp: '2026-04-05T11:04:22Z',
-    acknowledged: true,
-  },
-];
 
 const DEVICE_TYPES = ['Environmental', 'Structural', 'Energy', 'Hydraulic', 'Acoustic', 'Gas'];
-
-const API_KEY = 'csk_live_9f3a7b2e1d4c8a6f5e0b3d7c2a9f4e1b';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -221,8 +131,9 @@ function Badge({ children, color }: { children: React.ReactNode; color: string }
 // ---------------------------------------------------------------------------
 
 export default function SensorDashboard() {
-  const [devices] = useState<SensorDevice[]>(SEED_DEVICES);
-  const [anomalies, setAnomalies] = useState<AnomalyAlert[]>(SEED_ANOMALIES);
+  // EMPTY by design — no sensor backend exists. See file header TODO.
+  const [devices] = useState<SensorDevice[]>([]);
+  const [anomalies, setAnomalies] = useState<AnomalyAlert[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newDevice, setNewDevice] = useState<NewDeviceForm>({
@@ -231,7 +142,6 @@ export default function SensorDashboard() {
     location: '',
     linkedDtu: '',
   });
-  const [apiKeyRevealed, setApiKeyRevealed] = useState(false);
   const [filterStatus, setFilterStatus] = useState<DeviceStatus | 'all'>('all');
 
   const filteredDevices = useMemo(
@@ -246,8 +156,6 @@ export default function SensorDashboard() {
 
   const acknowledgeAnomaly = (id: string) =>
     setAnomalies(prev => prev.map(a => (a.id === id ? { ...a, acknowledged: true } : a)));
-
-  const maskedKey = API_KEY.slice(0, 9) + '•'.repeat(API_KEY.length - 13) + API_KEY.slice(-4);
 
   return (
     <div className={`${panel} p-5 space-y-5 text-white max-w-3xl`}>
@@ -272,6 +180,11 @@ export default function SensorDashboard() {
       </div>
 
       {/* Device Grid */}
+      {filteredDevices.length === 0 && (
+        <div className="py-12 text-center text-sm text-white/40 border border-dashed border-white/10 rounded-lg">
+          No sensor devices yet.
+        </div>
+      )}
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {filteredDevices.map(device => (
           <button
@@ -377,6 +290,9 @@ export default function SensorDashboard() {
         <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40">
           Anomaly Alerts
         </h3>
+        {anomalies.length === 0 && (
+          <p className="text-xs text-white/30">No anomalies yet.</p>
+        )}
         {anomalies.map(a => (
           <div
             key={a.id}
@@ -471,24 +387,6 @@ export default function SensorDashboard() {
             </button>
           </div>
         )}
-      </section>
-
-      {/* API Key */}
-      <section className="p-3 rounded-lg bg-white/5 border border-white/10 space-y-1">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-white/40">
-          Sensor API Key
-        </h4>
-        <div className="flex items-center gap-2">
-          <code className="flex-1 text-xs font-mono text-white/60 bg-black/40 rounded px-2 py-1 break-all">
-            {apiKeyRevealed ? API_KEY : maskedKey}
-          </code>
-          <button
-            onClick={() => setApiKeyRevealed(!apiKeyRevealed)}
-            className="text-[10px] px-2 py-1 rounded border border-white/10 text-white/40 hover:text-white/70 transition-colors whitespace-nowrap"
-          >
-            {apiKeyRevealed ? 'Hide' : 'Reveal'}
-          </button>
-        </div>
       </section>
     </div>
   );

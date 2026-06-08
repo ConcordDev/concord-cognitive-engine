@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ds } from '@/lib/design-system';
+import { lensRun } from '@/lib/api/client';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -48,40 +49,7 @@ interface AnalyticsDashboardProps {
   onTimeRangeChange?: (range: TimeRange) => void;
 }
 
-// ── Seed Data ──────────────────────────────────────────────────────
-
-const SEED_PERSONAL: PersonalStats = {
-  totalCitations: 487, totalRoyalties: 34.72,
-  mostCitedDTU: { name: 'USB-A Reinforced Beam', citations: 47 },
-  mostUsedMaterial: { name: 'USB Composite A', uses: 89 },
-  reputationByDomain: { structural: 340, materials: 120, infrastructure: 85, energy: 45, architecture: 200, mentorship: 30, governance: 15, exploration: 60 },
-  buildCount: 28, playtime: 147, loginStreak: 12,
-};
-
-const SEED_WORLD: WorldStats = {
-  worldId: 'concordia', population: 2400, buildingCount: 47, infraCoverage: 72,
-  envScore: 68, economicActivity: 14500, visitorCount: 890,
-  timeseries: [
-    { date: '2025-10-01', visitors: 12, buildings: 2 },
-    { date: '2025-10-15', visitors: 45, buildings: 8 },
-    { date: '2025-11-01', visitors: 120, buildings: 23 },
-    { date: '2025-11-15', visitors: 230, buildings: 47 },
-  ],
-};
-
-const SEED_GLOBAL: GlobalStats = {
-  activeDistricts: 10, totalBuildings: 1250, totalCitations: 45000, activeUsers: 890, totalWorlds: 67,
-  trendingComponents: [
-    { name: 'USB-B I-Beam 30cm', creator: '@struct_team', citationsThisWeek: 89 },
-    { name: 'Solar Mount v3', creator: '@green_firm', citationsThisWeek: 67 },
-    { name: 'Concrete Foundation Slab', creator: '@builder_bob', citationsThisWeek: 52 },
-  ],
-  topCreators: [
-    { userId: 'u1', name: '@engineer_jane', citations: 2100, rank: 1 },
-    { userId: 'u2', name: '@architect_alex', citations: 1800, rank: 2 },
-    { userId: 'u3', name: '@materials_lab', citations: 1200, rank: 3 },
-  ],
-};
+// ── Constants ──────────────────────────────────────────────────────
 
 const REPUTATION_DOMAINS = ['structural', 'materials', 'infrastructure', 'energy', 'architecture', 'mentorship', 'governance', 'exploration'];
 const DOMAIN_COLORS: Record<string, string> = {
@@ -91,18 +59,71 @@ const DOMAIN_COLORS: Record<string, string> = {
 
 // ── Component ──────────────────────────────────────────────────────
 
+interface AnalyticsDashboardResult {
+  totalEvents?: number;
+  uniqueUsers?: number;
+  eventsToday?: number;
+  savedFunnels?: number;
+  savedDashboards?: number;
+  savedAlerts?: number;
+  behavioralCohorts?: number;
+  eventTypes?: number;
+}
+
 export default function AnalyticsDashboard({
-  personalStats = SEED_PERSONAL,
-  worldStats = SEED_WORLD,
-  globalStats = SEED_GLOBAL,
+  personalStats: personalProp,
+  worldStats: worldProp,
+  globalStats: globalProp,
   timeRange = '30d',
   onTimeRangeChange,
 }: AnalyticsDashboardProps) {
   const [tab, setTab] = useState<DashboardTab>('personal');
   const [range, setRange] = useState<TimeRange>(timeRange);
 
+  // Real data — null means "not loaded / no data" → honest empty states.
+  // `analytics.analytics-dashboard` is the only backing macro; it returns
+  // event-tracking aggregates, not the structural build/world/global stats
+  // this panel was seeded with. We surface what genuinely maps and empty-state
+  // the rest rather than fabricate.
+  const [personalStats, setPersonalStats] = useState<PersonalStats | null>(personalProp ?? null);
+  // TODO: wire to backend — no macro exposes per-world build/visitor/economic
+  // analytics or platform-wide trending/top-creator stats yet. Honest empty
+  // state until those macros exist; caller may still pass real props.
+  const [worldStats] = useState<WorldStats | null>(worldProp ?? null);
+  const [globalStats] = useState<GlobalStats | null>(globalProp ?? null);
+
+  useEffect(() => {
+    if (personalProp) return; // caller supplied real stats — don't override
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun<AnalyticsDashboardResult>('analytics', 'analytics-dashboard', {});
+        if (cancelled) return;
+        const d = r.data?.result;
+        if (!r.data?.ok || !d) { setPersonalStats(null); return; }
+        // Map only the fields the macro genuinely provides. Unmapped fields
+        // (reputationByDomain, most-cited DTU/material, royalties, builds…)
+        // have no backend source, so they stay empty/zero — never invented.
+        setPersonalStats({
+          totalCitations: d.totalEvents ?? 0,
+          totalRoyalties: 0,
+          mostCitedDTU: { name: '', citations: 0 },
+          mostUsedMaterial: { name: '', uses: 0 },
+          reputationByDomain: {},
+          buildCount: d.savedDashboards ?? 0,
+          playtime: 0,
+          loginStreak: d.eventsToday ?? 0,
+        });
+      } catch {
+        if (!cancelled) setPersonalStats(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [personalProp]);
+
   const maxReputation = useMemo(() => {
-    return Math.max(...Object.values(personalStats.reputationByDomain), 1);
+    const vals = personalStats ? Object.values(personalStats.reputationByDomain) : [];
+    return Math.max(...vals, 1);
   }, [personalStats]);
 
   const handleRangeChange = (r: TimeRange) => {
@@ -131,7 +152,10 @@ export default function AnalyticsDashboard({
       </div>
 
       {/* Personal Tab */}
-      {tab === 'personal' && (
+      {tab === 'personal' && !personalStats && (
+        <div className="py-12 text-center text-sm text-white/40">No personal analytics yet.</div>
+      )}
+      {tab === 'personal' && personalStats && (
         <div className="space-y-4">
           {/* Big numbers */}
           <div className="grid grid-cols-3 gap-3">
@@ -185,15 +209,17 @@ export default function AnalyticsDashboard({
 
           {/* Meta stats */}
           <div className="flex items-center justify-between text-xs text-white/40 pt-2 border-t border-white/10">
-            <span>{personalStats.buildCount} builds</span>
+            <span>{personalStats.buildCount} saved dashboards</span>
             <span>{personalStats.playtime}h playtime</span>
-            <span>Top 5% structural engineers</span>
           </div>
         </div>
       )}
 
       {/* World Tab */}
-      {tab === 'world' && (
+      {tab === 'world' && !worldStats && (
+        <div className="py-12 text-center text-sm text-white/40">No world analytics yet.</div>
+      )}
+      {tab === 'world' && worldStats && (
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <div className="text-center p-3 bg-white/5 rounded-lg">
@@ -254,7 +280,10 @@ export default function AnalyticsDashboard({
       )}
 
       {/* Global Tab */}
-      {tab === 'global' && (
+      {tab === 'global' && !globalStats && (
+        <div className="py-12 text-center text-sm text-white/40">No global analytics yet.</div>
+      )}
+      {tab === 'global' && globalStats && (
         <div className="space-y-4">
           {/* Platform stats */}
           <div className="grid grid-cols-4 gap-2">

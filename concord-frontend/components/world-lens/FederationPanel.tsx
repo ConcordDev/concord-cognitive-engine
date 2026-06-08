@@ -1,7 +1,7 @@
-// @env-config-ok: seed federation peer demo data
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { lensRun } from '@/lib/api/client';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -38,51 +38,45 @@ interface SearchResult {
   snippet: string;
 }
 
-// ── Seed Data ──────────────────────────────────────────────────────────────────
+// ── Backend wire shapes (federation.peers / federation.activity) ────────────────
 
-const SEED_INSTANCES: FederatedInstance[] = [
-  {
-    id: 'inst-mit',
-    name: 'MIT Engineering Lab',
-    url: 'https://concord.mit.edu/federation/v1',
-    status: 'active',
-    capabilities: ['structural', 'materials', 'computation'],
-    lastSync: '2h ago',
-    dtuCount: 1247,
-  },
-  {
-    id: 'inst-tokyo',
-    name: 'Tokyo Institute of Technology',
-    url: 'https://titech-concord.ac.jp/api/fed',
-    status: 'active',
-    capabilities: ['robotics', 'materials', 'nano'],
-    lastSync: '1d ago',
-    dtuCount: 892,
-  },
-  {
-    id: 'inst-berlin',
-    name: 'Berlin Hackerspace',
-    url: 'https://berlin-hack.space/concord',
-    status: 'pending',
-    capabilities: ['fabrication', 'electronics'],
-    lastSync: null,
-    dtuCount: 0,
-  },
-];
+interface PeersResult {
+  configured?: Array<{ id?: string; url?: string; hasToken?: boolean }>;
+  trustGraph?: Array<{
+    id?: string;
+    domain?: string;
+    url?: string;
+    status?: string;
+    policy?: string;
+    capabilities?: string[];
+    last_sync?: string | number | null;
+    lastSync?: string | number | null;
+    dtu_count?: number;
+    dtuCount?: number;
+  }>;
+}
 
-const SEED_SYNC_LOG: SyncLogEntry[] = [
-  { id: 'sl-1', instanceId: 'inst-mit', instanceName: 'MIT Engineering Lab', direction: 'push', dtuCount: 23, status: 'success', timestamp: '2026-04-05 09:12' },
-  { id: 'sl-2', instanceId: 'inst-mit', instanceName: 'MIT Engineering Lab', direction: 'pull', dtuCount: 41, status: 'success', timestamp: '2026-04-05 09:12' },
-  { id: 'sl-3', instanceId: 'inst-tokyo', instanceName: 'Tokyo Institute of Technology', direction: 'pull', dtuCount: 18, status: 'success', timestamp: '2026-04-04 14:30' },
-  { id: 'sl-4', instanceId: 'inst-tokyo', instanceName: 'Tokyo Institute of Technology', direction: 'push', dtuCount: 7, status: 'failed', timestamp: '2026-04-04 14:30' },
-  { id: 'sl-5', instanceId: 'inst-berlin', instanceName: 'Berlin Hackerspace', direction: 'push', dtuCount: 0, status: 'failed', timestamp: '2026-04-03 22:00' },
-];
+interface ActivityResult {
+  items?: Array<{
+    id?: string;
+    summary?: string;
+    sourcePeer?: string;
+    createdAt?: string | number;
+  }>;
+}
 
-const SEED_SEARCH_RESULTS: SearchResult[] = [
-  { id: 'sr-1', title: 'Composite Beam Load Analysis', instanceName: 'MIT Engineering Lab', instanceId: 'inst-mit', snippet: 'Finite element analysis of carbon-fiber reinforced composite I-beams under cyclic loading...' },
-  { id: 'sr-2', title: 'Graphene Lattice Characterization', instanceName: 'Tokyo Institute of Technology', instanceId: 'inst-tokyo', snippet: 'High-resolution TEM imaging data for single-layer graphene oxide specimens...' },
-  { id: 'sr-3', title: 'Steel Fatigue Testing Results', instanceName: 'MIT Engineering Lab', instanceId: 'inst-mit', snippet: 'S-N curve datasets for ASTM A572 Grade 50 structural steel under variable amplitude loading...' },
-];
+function normalizeStatus(raw?: string): InstanceStatus {
+  if (raw === 'active' || raw === 'allow') return 'active';
+  if (raw === 'suspended' || raw === 'block') return 'suspended';
+  return 'pending';
+}
+
+function formatTimestamp(ts?: string | number | null): string | null {
+  if (ts === null || ts === undefined || ts === '') return null;
+  const d = new Date(typeof ts === 'number' ? ts : String(ts));
+  if (Number.isNaN(d.getTime())) return String(ts);
+  return d.toISOString().replace('T', ' ').slice(0, 16);
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
 
@@ -161,8 +155,9 @@ function InstanceCard({
 // ── Main Component ──────────────────────────────────────────────────────────────
 
 export default function FederationPanel() {
-  const [instances, setInstances] = useState<FederatedInstance[]>(SEED_INSTANCES);
-  const [syncLog, setSyncLog] = useState<SyncLogEntry[]>(SEED_SYNC_LOG);
+  const [instances, setInstances] = useState<FederatedInstance[]>([]);
+  const [syncLog, setSyncLog] = useState<SyncLogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Register form
   const [regName, setRegName] = useState('');
@@ -178,6 +173,71 @@ export default function FederationPanel() {
   // Cross-instance search
   const [searchQuery, setSearchQuery] = useState('');
 
+  // ── Load real federation peers + activity ──────────────────────────
+  const loadFederation = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [peersRes, activityRes] = await Promise.all([
+        lensRun<PeersResult>('federation', 'peers', {}),
+        lensRun<ActivityResult>('federation', 'activity', {}),
+      ]);
+
+      const peers = peersRes.data.ok ? peersRes.data.result : null;
+      const mappedInstances: FederatedInstance[] = [];
+
+      // trustGraph carries the richest per-peer record
+      for (const p of peers?.trustGraph ?? []) {
+        mappedInstances.push({
+          id: String(p.id ?? p.domain ?? p.url ?? `peer-${mappedInstances.length}`),
+          name: String(p.domain ?? p.url ?? p.id ?? 'Unknown peer'),
+          url: String(p.url ?? p.domain ?? ''),
+          status: normalizeStatus(p.status ?? p.policy),
+          capabilities: Array.isArray(p.capabilities) ? p.capabilities : [],
+          lastSync: formatTimestamp(p.last_sync ?? p.lastSync ?? null),
+          dtuCount: Number(p.dtu_count ?? p.dtuCount ?? 0),
+        });
+      }
+      // configured peers not already present in the trust graph
+      const seen = new Set(mappedInstances.map((i) => i.url || i.id));
+      for (const c of peers?.configured ?? []) {
+        const key = c.url ?? c.id ?? '';
+        if (key && seen.has(key)) continue;
+        mappedInstances.push({
+          id: String(c.id ?? c.url ?? `peer-${mappedInstances.length}`),
+          name: String(c.url ?? c.id ?? 'Configured peer'),
+          url: String(c.url ?? ''),
+          status: 'pending',
+          capabilities: [],
+          lastSync: null,
+          dtuCount: 0,
+        });
+      }
+      setInstances(mappedInstances);
+
+      const activity = activityRes.data.ok ? activityRes.data.result : null;
+      const mappedLog: SyncLogEntry[] = (activity?.items ?? []).map((it, idx) => ({
+        id: String(it.id ?? `act-${idx}`),
+        instanceId: String(it.sourcePeer ?? ''),
+        instanceName: String(it.sourcePeer ?? 'unknown peer'),
+        direction: 'pull',
+        dtuCount: 1,
+        status: 'success',
+        timestamp: formatTimestamp(it.createdAt ?? null) ?? '',
+      }));
+      setSyncLog(mappedLog);
+    } catch {
+      // Honest empty state — never fabricate.
+      setInstances([]);
+      setSyncLog([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFederation();
+  }, [loadFederation]);
+
   // Stats
   const stats = useMemo(() => {
     const totalInstances = instances.length;
@@ -188,54 +248,38 @@ export default function FederationPanel() {
     return { totalInstances, totalDTUs, lastGlobal };
   }, [instances, syncLog]);
 
-  // Search results
-  const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
-    return SEED_SEARCH_RESULTS.filter(
-      (r) =>
-        r.title.toLowerCase().includes(q) ||
-        r.snippet.toLowerCase().includes(q) ||
-        r.instanceName.toLowerCase().includes(q),
-    );
-  }, [searchQuery]);
+  // Cross-instance federated search has no backend macro yet — honest empty.
+  // TODO: wire to backend (no federation cross-instance search macro exists).
+  const searchResults: SearchResult[] = [];
 
-  const handleSync = (instanceId: string) => {
+  const handleSync = async (instanceId: string) => {
     const inst = instances.find((i) => i.id === instanceId);
     if (!inst) return;
-    const entry: SyncLogEntry = {
-      id: `sl-${Date.now()}`,
-      instanceId,
-      instanceName: inst.name,
-      direction: 'pull',
-      dtuCount: Math.floor(Math.random() * 30) + 1,
-      status: 'success',
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 16),
-    };
-    setSyncLog((prev) => [entry, ...prev]);
-    setInstances((prev) =>
-      prev.map((i) =>
-        i.id === instanceId ? { ...i, lastSync: 'just now', dtuCount: i.dtuCount + entry.dtuCount } : i,
-      ),
-    );
+    // Pull the relay for this peer, then re-read real federation state.
+    try {
+      await lensRun('federation', 'pollRelay', { domain: inst.url || inst.name });
+    } catch {
+      /* relay poll best-effort; refetch surfaces the real result */
+    }
+    await loadFederation();
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!regName.trim() || !regUrl.trim()) return;
-    const newInst: FederatedInstance = {
-      id: `inst-${Date.now()}`,
-      name: regName.trim(),
-      url: regUrl.trim(),
-      status: 'pending',
-      capabilities: [],
-      lastSync: null,
-      dtuCount: 0,
-    };
-    setInstances((prev) => [...prev, newInst]);
+    try {
+      await lensRun('federation', 'setPeerPolicy', {
+        domain: regUrl.trim(),
+        policy: 'pending',
+        reason: regName.trim(),
+      });
+    } catch {
+      /* refetch surfaces success/failure honestly */
+    }
     setRegName('');
     setRegUrl('');
     setRegKey('');
     setRegEmail('');
+    await loadFederation();
   };
 
   const intervalOptions: AutoSyncInterval[] = ['15m', '30m', '1h', '6h', '24h'];
@@ -270,9 +314,17 @@ export default function FederationPanel() {
             Federated Instances
           </h3>
           <div className="space-y-3">
-            {instances.map((inst) => (
-              <InstanceCard key={inst.id} instance={inst} onSync={handleSync} />
-            ))}
+            {loading ? (
+              <p className="text-sm text-white/30 py-6 text-center">Loading federated instances…</p>
+            ) : instances.length === 0 ? (
+              <p className="text-sm text-white/30 py-6 text-center">
+                No federated instances. Register a peer below to connect.
+              </p>
+            ) : (
+              instances.map((inst) => (
+                <InstanceCard key={inst.id} instance={inst} onSync={handleSync} />
+              ))
+            )}
           </div>
         </section>
 
@@ -389,6 +441,13 @@ export default function FederationPanel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
+                {syncLog.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-6 text-center text-white/30">
+                      No federated activity yet.
+                    </td>
+                  </tr>
+                )}
                 {syncLog.slice(0, 8).map((entry) => (
                   <tr key={entry.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="px-4 py-2.5 text-white/60 font-mono">

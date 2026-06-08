@@ -44,79 +44,10 @@ interface DigitalTwin {
   assessments: Assessment[];
 }
 
-// ── Seed data ──────────────────────────────────────────────────────────────────
-
-const SEED_TWINS: DigitalTwin[] = [
-  {
-    id: 'twin-001',
-    name: 'Riverside Library Twin',
-    sourceDTU: 'DTU-BLD-RIVERSIDE-LIB-7f3a',
-    healthScore: 94,
-    status: 'active',
-    lastAssessment: '2026-04-05T08:32:00Z',
-    sensors: [
-      { id: 's1', name: 'Roof Deflection', type: 'displacement', member: 'Roof Truss A', value: 2.1, unit: 'mm', predicted: 2.0, status: 'normal' },
-      { id: 's2', name: 'Column Load', type: 'force', member: 'Column C1', value: 890, unit: 'kN', predicted: 920, status: 'normal' },
-      { id: 's3', name: 'Foundation Settlement', type: 'displacement', member: 'Footing F1', value: 0.3, unit: 'mm', predicted: 0.2, status: 'normal' },
-      { id: 's4', name: 'Ambient Vibration', type: 'acceleration', member: 'Floor 2 Slab', value: 0.02, unit: 'g', predicted: 0.02, status: 'normal' },
-    ],
-    anomalies: [],
-    assessments: [
-      { id: 'a1', timestamp: '2026-04-05T08:32:00Z', healthScore: 94, deviation: 1.2, notes: 'All readings nominal' },
-      { id: 'a2', timestamp: '2026-04-04T08:30:00Z', healthScore: 95, deviation: 0.8, notes: 'Slight increase in roof deflection' },
-      { id: 'a3', timestamp: '2026-04-03T08:31:00Z', healthScore: 95, deviation: 0.9, notes: 'Routine assessment' },
-    ],
-  },
-  {
-    id: 'twin-002',
-    name: 'Main St Bridge Twin',
-    sourceDTU: 'DTU-BRG-MAINST-4e2b',
-    healthScore: 78,
-    status: 'degraded',
-    lastAssessment: '2026-04-05T09:15:00Z',
-    sensors: [
-      { id: 's5', name: 'Deck Deflection', type: 'displacement', member: 'Span 1 Midpoint', value: 18.5, unit: 'mm', predicted: 12.0, status: 'warning' },
-      { id: 's6', name: 'Cable Tension A', type: 'force', member: 'Stay Cable A1', value: 4200, unit: 'kN', predicted: 4500, status: 'normal' },
-      { id: 's7', name: 'Cable Tension B', type: 'force', member: 'Stay Cable B1', value: 4100, unit: 'kN', predicted: 4400, status: 'normal' },
-      { id: 's8', name: 'Pier Tilt', type: 'angle', member: 'Pier P1', value: 0.08, unit: 'deg', predicted: 0.02, status: 'critical' },
-      { id: 's9', name: 'Vibration Freq', type: 'frequency', member: 'Deck Global', value: 1.8, unit: 'Hz', predicted: 2.1, status: 'warning' },
-      { id: 's10', name: 'Temperature', type: 'temperature', member: 'Deck Surface', value: 22.3, unit: 'C', predicted: 22.0, status: 'normal' },
-    ],
-    anomalies: [
-      {
-        id: 'an1',
-        severity: 'high',
-        title: 'Excessive pier tilt detected',
-        description: 'Pier P1 tilt reading (0.08 deg) exceeds threshold of 0.05 deg. Possible foundation movement or scour.',
-        detectedAt: '2026-04-05T06:42:00Z',
-        recommendation: 'Schedule immediate underwater inspection of pier P1 foundation. Restrict heavy vehicle traffic to single lane.',
-      },
-    ],
-    assessments: [
-      { id: 'a4', timestamp: '2026-04-05T09:15:00Z', healthScore: 78, deviation: 8.4, notes: 'Pier tilt anomaly detected' },
-      { id: 'a5', timestamp: '2026-04-04T09:10:00Z', healthScore: 82, deviation: 5.1, notes: 'Deck deflection increasing' },
-      { id: 'a6', timestamp: '2026-04-03T09:12:00Z', healthScore: 86, deviation: 3.2, notes: 'Routine assessment' },
-      { id: 'a7', timestamp: '2026-04-02T09:11:00Z', healthScore: 91, deviation: 1.4, notes: 'All nominal' },
-    ],
-  },
-  {
-    id: 'twin-003',
-    name: 'District 7 Tower Twin',
-    sourceDTU: 'DTU-BLD-D7TOWER-9c1f',
-    healthScore: 100,
-    status: 'active',
-    lastAssessment: '2026-04-05T07:00:00Z',
-    sensors: [
-      { id: 's11', name: 'Top Floor Sway', type: 'displacement', member: 'Floor 30 Core', value: 4.2, unit: 'mm', predicted: 4.5, status: 'normal' },
-      { id: 's12', name: 'Base Shear', type: 'force', member: 'Shear Wall SW1', value: 3200, unit: 'kN', predicted: 3100, status: 'normal' },
-    ],
-    anomalies: [],
-    assessments: [
-      { id: 'a8', timestamp: '2026-04-05T07:00:00Z', healthScore: 100, deviation: 0.3, notes: 'Perfect health' },
-      { id: 'a9', timestamp: '2026-04-04T07:00:00Z', healthScore: 100, deviation: 0.2, notes: 'All systems nominal' },
-    ],
-  },
-];
+// NOTE: There is no digital-twin domain on the backend (no `digital-twin`,
+// `twin`, or structural-health-monitoring macro exists). Rather than fabricate
+// twins, sensors, anomalies, and assessment history, this panel starts empty.
+// TODO: wire to backend once a digital-twin / structural-health domain exists.
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -161,7 +92,8 @@ function formatTime(iso: string): string {
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function DigitalTwinDashboard() {
-  const [twins] = useState<DigitalTwin[]>(SEED_TWINS);
+  // EMPTY by design — no digital-twin backend exists. See file header TODO.
+  const [twins] = useState<DigitalTwin[]>([]);
   const [selectedTwinId, setSelectedTwinId] = useState<string | null>(null);
   const [view, setView] = useState<'grid' | 'detail' | 'create'>('grid');
   const [createForm, setCreateForm] = useState({
@@ -232,6 +164,12 @@ export default function DigitalTwinDashboard() {
           + Create Twin
         </button>
       </div>
+
+      {twins.length === 0 && (
+        <div className="py-16 text-center text-sm text-white/40 border border-dashed border-white/10 rounded-xl">
+          No digital twins yet.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {twins.map((twin) => (
@@ -453,9 +391,7 @@ export default function DigitalTwinDashboard() {
             className="w-full px-3 py-2 text-xs bg-white/5 border border-white/10 rounded-lg outline-none focus:border-cyan-500/50"
           >
             <option value="">Select a DTU...</option>
-            <option value="DTU-BLD-CIVIC-001">DTU-BLD-CIVIC-001 (Civic Center)</option>
-            <option value="DTU-BRG-HARBOR-002">DTU-BRG-HARBOR-002 (Harbor Bridge)</option>
-            <option value="DTU-BLD-SCHOOL-003">DTU-BLD-SCHOOL-003 (District 4 School)</option>
+            {/* TODO: populate from a real building/DTU list macro */}
           </select>
         </div>
 

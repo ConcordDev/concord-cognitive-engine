@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { lensRun } from '@/lib/api/client';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -29,19 +30,6 @@ interface Bookmark {
   description: string;
 }
 
-interface ForensicStep {
-  timestamp: string;
-  event: string;
-  detail: string;
-}
-
-interface ForensicReport {
-  dtuId: string;
-  title: string;
-  conclusion: string;
-  steps: ForensicStep[];
-}
-
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
 const EVENT_TYPE_META: Record<EventType, { label: string; icon: string; color: string }> = {
@@ -54,87 +42,21 @@ const EVENT_TYPE_META: Record<EventType, { label: string; icon: string; color: s
   weather_change: { label: 'Weather Change', icon: '☁', color: 'text-sky-400' },
 };
 
-const SEED_EVENTS: TimelineEvent[] = [
-  { id: 'e01', timestamp: '2026-04-04T00:15:00Z', type: 'weather_change', description: 'Weather shifted to clear skies', actor: 'System' },
-  { id: 'e02', timestamp: '2026-04-04T02:30:00Z', type: 'player_join', description: 'Player "ArchMaster" joined District 7', actor: 'ArchMaster' },
-  { id: 'e03', timestamp: '2026-04-04T03:45:00Z', type: 'building_placed', description: 'Residential tower placed at (142, 87)', actor: 'ArchMaster' },
-  { id: 'e04', timestamp: '2026-04-04T04:10:00Z', type: 'validation_run', description: 'Structural validation passed for residential tower', actor: 'System' },
-  { id: 'e05', timestamp: '2026-04-04T06:00:00Z', type: 'building_placed', description: 'Main Street Bridge foundation started', actor: 'BridgeBuilder99' },
-  { id: 'e06', timestamp: '2026-04-04T07:20:00Z', type: 'citation', description: 'Citation issued: ACI 318-19 referenced for column design', actor: 'System' },
-  { id: 'e07', timestamp: '2026-04-04T08:45:00Z', type: 'building_modified', description: 'Bridge material changed from SteelA992 to SteelA36', actor: 'BridgeBuilder99' },
-  { id: 'e08', timestamp: '2026-04-04T09:30:00Z', type: 'validation_run', description: 'Bridge validation: 1 warning (deflection near limit)', actor: 'System' },
-  { id: 'e09', timestamp: '2026-04-04T11:00:00Z', type: 'player_join', description: 'Player "CityPlanner" joined District 3', actor: 'CityPlanner' },
-  { id: 'e10', timestamp: '2026-04-04T12:15:00Z', type: 'building_placed', description: 'Park pavilion placed in District 3', actor: 'CityPlanner' },
-  { id: 'e11', timestamp: '2026-04-04T14:00:00Z', type: 'weather_change', description: 'Rain began, wind speed 25 km/h', actor: 'System' },
-  { id: 'e12', timestamp: '2026-04-04T15:30:00Z', type: 'disaster', description: 'Earthquake magnitude 5.2 struck District 7', actor: 'System' },
-  { id: 'e13', timestamp: '2026-04-04T15:32:00Z', type: 'validation_run', description: 'Emergency re-validation: Bridge safety factor dropped to 1.1', actor: 'System' },
-  { id: 'e14', timestamp: '2026-04-04T16:45:00Z', type: 'building_modified', description: 'Emergency reinforcement added to bridge pier P1', actor: 'BridgeBuilder99' },
-  { id: 'e15', timestamp: '2026-04-04T18:00:00Z', type: 'validation_run', description: 'Post-reinforcement validation: all structures passed', actor: 'System' },
-];
-
-const SEED_BOOKMARKS: Bookmark[] = [
-  {
-    id: 'bk1',
-    name: 'Bridge Construction Timelapse',
-    startTime: '2026-04-04T06:00:00Z',
-    endTime: '2026-04-04T09:30:00Z',
-    description: 'Main Street Bridge from foundation to first validation.',
-  },
-  {
-    id: 'bk2',
-    name: 'Earthquake Response',
-    startTime: '2026-04-04T15:30:00Z',
-    endTime: '2026-04-04T18:00:00Z',
-    description: 'Earthquake event through emergency repair and re-validation.',
-  },
-];
-
-const SEED_FORENSIC_REPORT: ForensicReport = {
-  dtuId: 'DTU-BRG-MAINST-4e2b',
-  title: 'Bridge Safety Factor Degradation - Root Cause Analysis',
-  conclusion:
-    'The safety factor drop was caused by a material substitution (SteelA992 to SteelA36) combined with seismic loading. The lower yield strength steel could not maintain adequate safety margins under earthquake conditions.',
-  steps: [
-    {
-      timestamp: '2026-04-04T06:00:00Z',
-      event: 'Bridge foundation placed',
-      detail: 'Original design specified SteelA992 (yield 345 MPa). Foundation and pier geometry set.',
-    },
-    {
-      timestamp: '2026-04-04T07:20:00Z',
-      event: 'Material substitution',
-      detail: 'BridgeBuilder99 changed bridge material from SteelA992 to SteelA36 (yield 250 MPa). 27% reduction in yield strength.',
-    },
-    {
-      timestamp: '2026-04-04T08:45:00Z',
-      event: 'Validation warning issued',
-      detail: 'System flagged deflection near allowable limit. Safety factor reduced from 2.8 to 2.1. Warning was acknowledged but not resolved.',
-    },
-    {
-      timestamp: '2026-04-04T15:30:00Z',
-      event: 'Seismic event',
-      detail: 'Magnitude 5.2 earthquake applied lateral loads exceeding static design assumptions. Combined with weaker steel, safety factor dropped to 1.1.',
-    },
-    {
-      timestamp: '2026-04-04T16:45:00Z',
-      event: 'Emergency reinforcement',
-      detail: 'Pier P1 reinforced with additional plates. Safety factor restored to 1.8. Permanent monitoring recommended.',
-    },
-  ],
-};
+// Map a backend event_timeline channel onto one of the panel's event types so
+// the timeline dots + filters stay meaningful. Unknown channels fall back to a
+// neutral type — we never invent a category that wasn't in the data.
+function channelToType(channel: string): EventType {
+  const c = (channel || '').toLowerCase();
+  if (c.includes('weather')) return 'weather_change';
+  if (c.includes('join') || c.includes('presence') || c.includes('player')) return 'player_join';
+  if (c.includes('citation') || c.includes('royalt')) return 'citation';
+  if (c.includes('valid')) return 'validation_run';
+  if (c.includes('disaster') || c.includes('crisis') || c.includes('hazard') || c.includes('war')) return 'disaster';
+  if (c.includes('build') && (c.includes('place') || c.includes('spawn') || c.includes('claim'))) return 'building_placed';
+  return 'building_modified';
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-
-function formatTimestamp(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-}
 
 function formatShortTime(iso: string): string {
   const d = new Date(iso);
@@ -150,9 +72,23 @@ function timeToPercent(iso: string, start: string, end: string): number {
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
+interface EventTimelineRow {
+  id?: string | number;
+  channel?: string;
+  actor_id?: string;
+  actor_kind?: string;
+  created_at?: number;
+  payload_json?: string;
+}
+interface EventTimelineRecentResult {
+  rows?: EventTimelineRow[];
+}
+
 export default function ReplayForensics() {
-  const [events] = useState<TimelineEvent[]>(SEED_EVENTS);
-  const [bookmarks, setBookmarks] = useState<Bookmark[]>(SEED_BOOKMARKS);
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
+  // Bookmarks live only in this session — there is no bookmark persistence
+  // macro. They start empty and the user can create their own.
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [playheadPercent, setPlayheadPercent] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -166,8 +102,8 @@ export default function ReplayForensics() {
     disaster: true,
     weather_change: true,
   });
-  const [forensicDtuId, setForensicDtuId] = useState('DTU-BRG-MAINST-4e2b');
-  const [showForensicReport, setShowForensicReport] = useState(true);
+  const [forensicDtuId, setForensicDtuId] = useState('');
+  const [showForensicReport, setShowForensicReport] = useState(false);
   const [newBookmark, setNewBookmark] = useState({
     name: '',
     startTime: '06:00',
@@ -181,13 +117,61 @@ export default function ReplayForensics() {
     resolution: '1080p',
   });
 
-  const timelineStart = '2026-04-04T00:00:00Z';
-  const timelineEnd = '2026-04-04T23:59:59Z';
+  // Fetch real events from the event_timeline substrate.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun<EventTimelineRecentResult>('event_timeline', 'recent', { limit: 200 });
+        if (cancelled) return;
+        const rows = r.data?.ok ? r.data.result?.rows : null;
+        if (!Array.isArray(rows)) { setEvents([]); return; }
+        const mapped: TimelineEvent[] = rows.map((row, i) => {
+          let description = row.channel || 'event';
+          const payload = (() => { try { return row.payload_json ? JSON.parse(row.payload_json) : null; } catch { return null; } })();
+          if (payload && typeof payload === 'object') {
+            const p = payload as Record<string, unknown>;
+            const summary = p.message || p.description || p.summary || p.title;
+            if (typeof summary === 'string' && summary) description = summary;
+          }
+          return {
+            id: String(row.id ?? `evt-${i}`),
+            // created_at is unix seconds in the substrate; normalise to ISO.
+            timestamp: new Date((Number(row.created_at) || 0) * 1000).toISOString(),
+            type: channelToType(row.channel || ''),
+            description,
+            actor: row.actor_id || row.actor_kind || 'system',
+          };
+        });
+        setEvents(mapped);
+      } catch {
+        if (!cancelled) setEvents([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const filteredEvents = useMemo(
     () => events.filter((e) => filters[e.type]),
     [events, filters]
   );
+
+  // Derive the scrubber window from the real event span (fall back to a 1-day
+  // window when there are no events so the empty timeline still renders).
+  const { timelineStart, timelineEnd } = useMemo(() => {
+    if (events.length === 0) {
+      const now = new Date();
+      const start = new Date(now.getTime() - 24 * 3600 * 1000);
+      return { timelineStart: start.toISOString(), timelineEnd: now.toISOString() };
+    }
+    const times = events.map((e) => new Date(e.timestamp).getTime()).filter((t) => Number.isFinite(t) && t > 0);
+    const min = Math.min(...times);
+    const max = Math.max(...times);
+    return {
+      timelineStart: new Date(min).toISOString(),
+      timelineEnd: new Date(max === min ? max + 3600 * 1000 : max).toISOString(),
+    };
+  }, [events]);
 
   const speeds = [0.5, 1, 2, 5, 10];
 
@@ -372,6 +356,9 @@ export default function ReplayForensics() {
             </div>
 
             {/* Event list */}
+            {filteredEvents.length === 0 && (
+              <div className="py-10 text-center text-xs text-white/40">No events yet.</div>
+            )}
             <div className="space-y-1">
               {filteredEvents.map((ev) => {
                 const meta = EVENT_TYPE_META[ev.type];
@@ -401,6 +388,9 @@ export default function ReplayForensics() {
         {/* Bookmarks tab */}
         {activeTab === 'bookmarks' && (
           <div className="p-4 space-y-4">
+            {bookmarks.length === 0 && (
+              <p className="text-xs text-white/40">No bookmarks yet.</p>
+            )}
             <div className="space-y-2">
               {bookmarks.map((bk) => (
                 <div
@@ -457,13 +447,14 @@ export default function ReplayForensics() {
               <button
                 onClick={() => {
                   if (newBookmark.name) {
+                    const today = new Date().toISOString().slice(0, 10);
                     setBookmarks((prev) => [
                       ...prev,
                       {
                         id: `bk-${Date.now()}`,
                         name: newBookmark.name,
-                        startTime: `2026-04-04T${newBookmark.startTime}:00Z`,
-                        endTime: `2026-04-04T${newBookmark.endTime}:00Z`,
+                        startTime: `${today}T${newBookmark.startTime}:00Z`,
+                        endTime: `${today}T${newBookmark.endTime}:00Z`,
                         description: newBookmark.description,
                       },
                     ]);
@@ -497,58 +488,9 @@ export default function ReplayForensics() {
               </button>
             </div>
 
-            {/* Forensic report */}
-            {showForensicReport && forensicDtuId === SEED_FORENSIC_REPORT.dtuId && (
-              <div className="space-y-4">
-                <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.03]">
-                  <h4 className="text-xs font-semibold text-amber-400 mb-1">
-                    {SEED_FORENSIC_REPORT.title}
-                  </h4>
-                  <p className="text-[10px] text-white/30 font-mono mb-3">
-                    {SEED_FORENSIC_REPORT.dtuId}
-                  </p>
-
-                  {/* Trace steps */}
-                  <div className="relative pl-6 space-y-4">
-                    {/* Vertical line */}
-                    <div className="absolute left-2 top-2 bottom-2 w-px bg-amber-500/20" />
-
-                    {SEED_FORENSIC_REPORT.steps.map((step, i) => (
-                      <div key={i} className="relative">
-                        {/* Dot */}
-                        <div
-                          className={`absolute -left-4 top-1 w-3 h-3 rounded-full border-2 border-black ${
-                            i === SEED_FORENSIC_REPORT.steps.length - 1
-                              ? 'bg-emerald-400'
-                              : i === 1
-                              ? 'bg-red-400'
-                              : 'bg-amber-400'
-                          }`}
-                        />
-
-                        <div className="text-[10px] text-white/20 font-mono mb-0.5">
-                          {formatTimestamp(step.timestamp)}
-                        </div>
-                        <div className="text-xs font-medium text-white/80 mb-0.5">
-                          {step.event}
-                        </div>
-                        <div className="text-[11px] text-white/40">{step.detail}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Conclusion */}
-                <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/[0.03]">
-                  <h4 className="text-xs font-semibold text-red-400 mb-2">Root Cause Conclusion</h4>
-                  <p className="text-[11px] text-white/50 leading-relaxed">
-                    {SEED_FORENSIC_REPORT.conclusion}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {showForensicReport && forensicDtuId !== SEED_FORENSIC_REPORT.dtuId && forensicDtuId && (
+            {/* Forensic report — no backend root-cause-trace macro exists yet,
+                so a trace always reports "no data". TODO: wire to backend. */}
+            {showForensicReport && forensicDtuId && (
               <div className="p-6 text-center text-white/20 text-xs">
                 No forensic data found for DTU: {forensicDtuId}
               </div>
@@ -641,7 +583,7 @@ export default function ReplayForensics() {
                 </div>
                 <div className="flex justify-between mb-1">
                   <span>Events in range:</span>
-                  <span className="text-white/50">{SEED_EVENTS.length}</span>
+                  <span className="text-white/50">{events.length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Estimated file size:</span>
