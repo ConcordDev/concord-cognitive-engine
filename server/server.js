@@ -10880,6 +10880,10 @@ async function runMacro(domain, name, input, ctx) {
     pharmacy: new Set(["live_label_lookup", "live_adverse_events", "live_recalls"]),
     cooking: new Set(["live_food_search", "live_breweries"]),
     food: new Set(["live_food_search", "live_breweries"]),
+    // Machine-translation lens — the language catalog is a static read so the
+    // UI dropdown loads unauthenticated. translate/detect/batch hit the LLM and
+    // self-scope, so they stay behind the auth gate (NOT listed here).
+    translation: new Set(["languages"]),
     art: new Set(["live_met_search"]),
     gallery: new Set(["live_met_search"]),
     // arXiv wire-up — one macro per domain pre-filtered to that arXiv category.
