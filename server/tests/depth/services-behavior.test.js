@@ -264,3 +264,254 @@ describe("services — CRUD round-trips + validation (shared owner ctx)", () => 
     assert.match(bad.result.error, /valid time/);
   });
 });
+
+describe("services — calc contracts (extended)", () => {
+  it("scheduleOptimize: sorts by time and sums positive gaps between appointments", async () => {
+    const r = await lensRun("services", "scheduleOptimize", {
+      data: {
+        appointments: [
+          // intentionally out of order; endTime drives the gap to the next start
+          { client: "B", serviceType: "Color", time: "2026-06-10T11:00:00Z", endTime: "2026-06-10T12:00:00Z" },
+          { client: "A", serviceType: "Cut", time: "2026-06-10T09:00:00Z", endTime: "2026-06-10T10:00:00Z" },
+        ],
+      },
+    });
+    assert.equal(r.ok, true);
+    // sorted ascending by time → A (09:00) then B (11:00)
+    assert.equal(r.result.optimizedOrder[0].client, "A");
+    assert.equal(r.result.optimizedOrder[1].client, "B");
+    // A ends 10:00, B starts 11:00 → 60-minute gap
+    assert.equal(r.result.totalGapMinutes, 60);
+    assert.equal(r.result.gaps[0].gapMinutes, 60);
+    assert.equal(r.result.gaps[0].before, "B");
+  });
+
+  it("scheduleOptimize: back-to-back appointments (no gap) report zero total gap", async () => {
+    const r = await lensRun("services", "scheduleOptimize", {
+      data: {
+        appointments: [
+          { client: "A", time: "2026-06-10T09:00:00Z", endTime: "2026-06-10T10:00:00Z" },
+          { client: "B", time: "2026-06-10T10:00:00Z", endTime: "2026-06-10T11:00:00Z" },
+        ],
+      },
+    });
+    assert.equal(r.result.totalGapMinutes, 0);
+    assert.equal(r.result.gaps.length, 0);
+  });
+
+  it("reminderGenerate: only appointments inside the look-ahead window produce reminders", async () => {
+    const inWindow = new Date(Date.now() + 6 * 3600 * 1000).toISOString();
+    const farOut = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
+    const past = new Date(Date.now() - 3600 * 1000).toISOString();
+    const r = await lensRun("services", "reminderGenerate", {
+      data: {
+        appointments: [
+          { client: "Soon", serviceType: "Cut", date: inWindow, provider: "Sam" },
+          { client: "Later", serviceType: "Color", date: farOut },
+          { client: "Past", serviceType: "Shave", date: past },
+        ],
+      },
+      params: { hoursAhead: 24 },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 1);
+    assert.equal(r.result.reminders[0].client, "Soon");
+    assert.ok(r.result.reminders[0].message.includes("Cut"));
+  });
+
+  it("revenueByProvider: aggregates paid/completed revenue per provider within the period", async () => {
+    const recent = new Date(Date.now() - 5 * 86400000).toISOString();
+    const r = await lensRun("services", "revenueByProvider", {
+      data: {
+        appointments: [
+          { provider: "Ava", price: 100, status: "completed", date: recent },
+          { provider: "Ava", price: 50, status: "paid", date: recent },
+          { provider: "Ben", price: 200, status: "completed", date: recent },
+          { provider: "Ben", price: 999, status: "booked", date: recent }, // not completed/paid
+        ],
+      },
+      params: { period: 30 },
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.totalRevenue, 350); // 100 + 50 + 200
+    // sorted by revenue desc → Ben (200) leads Ava (150)
+    assert.equal(r.result.summary[0].provider, "Ben");
+    assert.equal(r.result.summary[0].revenue, 200);
+    assert.equal(r.result.summary.find((p) => p.provider === "Ava").appointments, 2);
+  });
+});
+
+describe("services — CRUD round-trips (extended, shared owner ctx)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("services-crud-ext"); });
+
+  it("bookingGridMove relocates a booking to a new time and reads back", async () => {
+    const add = await lensRun("services", "bookingGridCreate", {
+      params: { client: "Mo", service: "Cut", staff: "Eli", date: "2026-08-01", time: "09:00", duration: 30 },
+    }, ctx);
+    const id = add.result.booking.id;
+    const moved = await lensRun("services", "bookingGridMove", {
+      params: { id, time: "14:00", duration: 45 },
+    }, ctx);
+    assert.equal(moved.ok, true);
+    assert.equal(moved.result.booking.time, "14:00");
+    assert.equal(moved.result.booking.startMin, 840); // 14*60
+    assert.equal(moved.result.booking.duration, 45);
+  });
+
+  it("bookingGridMove: moving onto another booking's slot is rejected as a conflict", async () => {
+    await lensRun("services", "bookingGridCreate", {
+      params: { client: "First", service: "Cut", staff: "Fox", date: "2026-08-02", time: "09:00", duration: 60 },
+    }, ctx);
+    const second = await lensRun("services", "bookingGridCreate", {
+      params: { client: "Second", service: "Cut", staff: "Fox", date: "2026-08-02", time: "11:00", duration: 60 },
+    }, ctx);
+    const clash = await lensRun("services", "bookingGridMove", {
+      params: { id: second.result.booking.id, time: "09:30" },
+    }, ctx);
+    assert.equal(clash.result.ok, false);
+    assert.ok(clash.result.error.includes("conflict"));
+  });
+
+  it("bookingGridMove: a missing booking id is rejected", async () => {
+    const bad = await lensRun("services", "bookingGridMove", { params: { id: "nope", time: "10:00" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("not found"));
+  });
+
+  it("selfBookSlots generates open 30-min slots and excludes ones clashing with bookings", async () => {
+    // book 09:00-10:00 for Gia on the date → 09:00 and 09:30 starts are blocked
+    await lensRun("services", "bookingGridCreate", {
+      params: { client: "Walk", service: "Cut", staff: "Gia", date: "2026-08-05", time: "09:00", duration: 60 },
+    }, ctx);
+    const slots = await lensRun("services", "selfBookSlots", {
+      params: { date: "2026-08-05", duration: 30, open: "09:00", close: "11:00", staff: ["Gia"] },
+    }, ctx);
+    assert.equal(slots.ok, true);
+    const times = slots.result.slots.map((s) => s.time);
+    assert.ok(!times.includes("09:00")); // blocked by the booking
+    assert.ok(!times.includes("09:30")); // booking runs until 10:00
+    assert.ok(times.includes("10:00"));  // free
+    assert.ok(times.includes("10:30"));  // free (ends 11:00)
+  });
+
+  it("selfBookConfirm books a slot and auto-queues a reminder; missing client is rejected", async () => {
+    const ok = await lensRun("services", "selfBookConfirm", {
+      params: { client: "Hana", service: "Facial", staff: "Ivy", date: "2026-08-06", time: "13:00", duration: 30, email: "hana@ex.com" },
+    }, ctx);
+    assert.equal(ok.ok, true);
+    assert.equal(ok.result.booking.source, "self-booking");
+    assert.equal(ok.result.confirmation, ok.result.booking.id);
+
+    // the auto-queued reminder should appear in the reminder list
+    const reminders = await lensRun("services", "reminderList", {}, ctx);
+    assert.ok(reminders.result.reminders.some((r) => r.bookingId === ok.result.booking.id && r.channel === "email"));
+
+    const bad = await lensRun("services", "selfBookConfirm", {
+      params: { service: "Facial", staff: "Ivy", date: "2026-08-06", time: "15:00" },
+    }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("client"));
+  });
+
+  it("paymentList aggregates gross/tips/byMethod over captured payments only", async () => {
+    const pctx = await depthCtx("services-paylist");
+    await lensRun("services", "paymentCapture", {
+      params: { client: "P1", subtotal: 100, tip: 20, method: "card", cardLast4: "1111" },
+    }, pctx);
+    await lensRun("services", "paymentCapture", {
+      params: { client: "P2", subtotal: 50, tip: 5, method: "cash" },
+    }, pctx);
+    // a declined payment must NOT count toward gross/tips
+    await lensRun("services", "paymentCapture", {
+      params: { client: "P3", subtotal: 999, tip: 99, method: "card", cardLast4: "0000" },
+    }, pctx);
+    const list = await lensRun("services", "paymentList", {}, pctx);
+    assert.equal(list.ok, true);
+    assert.equal(list.result.gross, 175);  // (100+20) + (50+5), declined excluded
+    assert.equal(list.result.tips, 25);    // 20 + 5
+    assert.equal(list.result.byMethod.card, 120);
+    assert.equal(list.result.byMethod.cash, 55);
+  });
+
+  it("shiftUpdate changes status and recomputes hours; shiftList sums scheduled hours by staff", async () => {
+    const sctx = await depthCtx("services-shifts");
+    const sh = await lensRun("services", "shiftCreate", {
+      params: { staff: "Kai", date: "2026-08-10", start: "09:00", end: "17:00" },
+    }, sctx);
+    assert.equal(sh.result.shift.hours, 8); // (1020-540)/6/10
+
+    const upd = await lensRun("services", "shiftUpdate", {
+      params: { id: sh.result.shift.id, end: "13:00" },
+    }, sctx);
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.shift.hours, 4); // (780-540)/6/10
+
+    const list = await lensRun("services", "shiftList", { params: { date: "2026-08-10" } }, sctx);
+    assert.equal(list.result.hoursByStaff.Kai, 4);
+
+    // a vacation shift drops out of the scheduled-hours sum
+    await lensRun("services", "shiftUpdate", { params: { id: sh.result.shift.id, status: "vacation" } }, sctx);
+    const list2 = await lensRun("services", "shiftList", { params: { date: "2026-08-10" } }, sctx);
+    assert.equal(list2.result.hoursByStaff.Kai, undefined);
+  });
+
+  it("shiftUpdate: a missing shift id is rejected", async () => {
+    const bad = await lensRun("services", "shiftUpdate", { params: { id: "ghost", status: "off" } }, ctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("not found"));
+  });
+
+  it("clientProfileList returns upserted profiles sorted by name", async () => {
+    const lctx = await depthCtx("services-profiles");
+    await lensRun("services", "clientProfileUpsert", { params: { client: "Zara" } }, lctx);
+    await lensRun("services", "clientProfileUpsert", { params: { client: "Aaron" } }, lctx);
+    const list = await lensRun("services", "clientProfileList", {}, lctx);
+    assert.equal(list.ok, true);
+    assert.equal(list.result.count, 2);
+    assert.equal(list.result.profiles[0].name, "Aaron"); // alphabetical
+    assert.equal(list.result.profiles[1].name, "Zara");
+  });
+
+  it("waitlistAdd → waitlistList: entries sort high-priority first", async () => {
+    const wctx = await depthCtx("services-waitlist");
+    await lensRun("services", "waitlistAdd", { params: { client: "Normal", service: "Cut", priority: "normal" } }, wctx);
+    await lensRun("services", "waitlistAdd", { params: { client: "Urgent", service: "Cut", priority: "high" } }, wctx);
+    const list = await lensRun("services", "waitlistList", {}, wctx);
+    assert.equal(list.ok, true);
+    assert.equal(list.result.count, 2);
+    assert.equal(list.result.waitlist[0].client, "Urgent"); // high priority first
+    assert.equal(list.result.counts.waiting, 2);
+  });
+
+  it("waitlistPromote books a waiting entry into a free slot and flips status to booked", async () => {
+    const wctx = await depthCtx("services-wl-promote");
+    const add = await lensRun("services", "waitlistAdd", { params: { client: "Liv", service: "Color" } }, wctx);
+    const promote = await lensRun("services", "waitlistPromote", {
+      params: { id: add.result.entry.id, date: "2026-09-01", time: "10:00", staff: "Max", duration: 30 },
+    }, wctx);
+    assert.equal(promote.ok, true);
+    assert.equal(promote.result.booking.client, "Liv");
+    assert.equal(promote.result.booking.source, "waitlist");
+    assert.equal(promote.result.entry.status, "booked");
+
+    // a second promote of the same (now-booked) entry is rejected
+    const again = await lensRun("services", "waitlistPromote", {
+      params: { id: add.result.entry.id, date: "2026-09-01", time: "12:00" },
+    }, wctx);
+    assert.equal(again.result.ok, false);
+    assert.ok(again.result.error.includes("already booked"));
+  });
+
+  it("waitlistRemove marks an entry removed; a missing id is rejected", async () => {
+    const wctx = await depthCtx("services-wl-remove");
+    const add = await lensRun("services", "waitlistAdd", { params: { client: "Nash" } }, wctx);
+    const rm = await lensRun("services", "waitlistRemove", { params: { id: add.result.entry.id } }, wctx);
+    assert.equal(rm.ok, true);
+    assert.equal(rm.result.entry.status, "removed");
+
+    const bad = await lensRun("services", "waitlistRemove", { params: { id: "missing" } }, wctx);
+    assert.equal(bad.result.ok, false);
+    assert.ok(bad.result.error.includes("not found"));
+  });
+});
