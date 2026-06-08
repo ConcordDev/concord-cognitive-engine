@@ -359,12 +359,24 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     } catch { /* harvest optional */ }
   }
 
+  // Item 2 — long-term action memory recall ("last time you did X" grounding,
+  // across sessions/restarts). Best-effort; relevance × recency.
+  let actionRecallBlock = "";
+  if (opts.actionMemory !== false && db && userId) {
+    try {
+      const { getRecentActions } = await import("./agent-action-log.js");
+      const { block } = await getRecentActions(db, { userId, query: message, limit: 3 });
+      if (block) actionRecallBlock = `\n\n${block}`;
+    } catch { /* action memory optional */ }
+  }
+
   const messages = [
-    { role: "system", content: TASK_PROMPTS.agentMode({ toolSchemaBlock: TOOL_SCHEMA_BLOCK, shadowContextBlock }) },
+    { role: "system", content: TASK_PROMPTS.agentMode({ toolSchemaBlock: TOOL_SCHEMA_BLOCK, shadowContextBlock: shadowContextBlock + actionRecallBlock }) },
     ...history,
     { role: "user", content: message },
   ];
 
+  const brain = opts.brainChat || brainChat; // injectable seam (tests)
   const allToolCalls = [];
   const allArtifacts = [];
   let lastProvider = "concord_default";
@@ -375,7 +387,7 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   for (let turn = 0; turn < maxTurns; turn++) {
     turnsTaken++;
     const _turnStart = Date.now();
-    const r = await brainChat({
+    const r = await brain({
       db, userId,
       slot: opts.slot || "conscious",
       messages,
@@ -419,6 +431,15 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       results.push(result);
       allToolCalls.push(result);
       if (result.artifact) allArtifacts.push(result.artifact);
+      // Item 2 — record into long-term memory (fire-and-forget; never blocks).
+      if (db && userId) {
+        import("./agent-action-log.js").then(({ recordAction }) => recordAction(db, {
+          userId, sessionId: opts.sessionId || null,
+          action: `tool:${call.tool}`, input: call.params ?? call.args ?? null,
+          output: result.result ?? result.text ?? result.answer ?? result.error ?? null,
+          tool: call.tool, outcome: result.ok ? "ok" : "error",
+        })).catch(() => {});
+      }
     }
 
     // Append the brain's intermediate text + tool results to the message
