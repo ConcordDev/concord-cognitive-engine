@@ -1,6 +1,12 @@
 // server/domains/calendar.js
 // Domain actions for calendar: conflict detection, availability analysis,
 // recurring event expansion, time zone conversion, schedule optimization.
+//
+// Track C — real two-way sync: the `accounts-push-event` macro writes back to
+// Google Calendar via the SSRF-guarded connector client (honoring the account's
+// pull/push/two-way direction). The legacy ICS pull (`accounts-sync`) stays.
+
+import { writeGoogleCalendarEvent } from "../lib/connector-client.js";
 
 export default function registerCalendarActions(registerLensAction) {
   registerLensAction("calendar", "detectConflicts", (ctx, artifact, _params) => {
@@ -987,6 +993,35 @@ export default function registerCalendarActions(registerLensAction) {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureBacklogMaps(s);
     return { ok: true, result: { accounts: listCal(s.connectedAccounts, aidCal(ctx)) } };
+  });
+
+  // Track C — push an event back to the provider (real two-way sync). Honors the
+  // account's direction (pull accounts refuse) and only supports providers with a
+  // real connector client (Google today). Returns honest reasons; when no OAuth
+  // credential is stored the connector client replies no_token/connector_not_configured.
+  registerLensAction("calendar", "accounts-push-event", async (ctx, _a, params = {}) => {
+    try {
+      const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      ensureBacklogMaps(s);
+      const userId = aidCal(ctx);
+      const acct = listCal(s.connectedAccounts, userId).find((a) => a.id === String(params.accountId || ""));
+      if (!acct) return { ok: false, error: "account not found" };
+      if (!["push", "two-way"].includes(acct.direction)) {
+        return { ok: false, reason: "direction_pull_no_push", direction: acct.direction };
+      }
+      if (acct.provider !== "google") {
+        return { ok: false, reason: "push_unsupported_provider", provider: acct.provider };
+      }
+      const event = params.event || {};
+      if (!event.title && !event.summary) return { ok: false, error: "event.title required" };
+      const res = await writeGoogleCalendarEvent(ctx.db, userId, event);
+      if (!res.ok) return { ok: false, reason: res.reason || "push_failed", detail: res };
+      acct.lastSyncAt = isoCal();
+      saveCal();
+      return { ok: true, result: { pushed: true, providerEventId: res.data?.id || null } };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
   });
 
   registerLensAction("calendar", "accounts-disconnect", (ctx, _a, params = {}) => {
