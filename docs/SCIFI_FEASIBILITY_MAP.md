@@ -46,7 +46,7 @@ Legend: ✅ feasible now (substrate built) · 🟡 foundation present, depth var
 | 3 | **Foundation psychohistory** | Math-predict large populations | Concordia + forward-sim | ✅ in-sim / ⛔ real-world | `lib/embodied/forward-sim.js` + `emergent/forward-sim-cycle.js`. **Scope is 100% sandbox** (quest/NPC/faction state-drift only). Do **not** claim real-world forecasting. |
 | 4 | **Snow Crash Librarian** | Daemon navigating a vast cross-reference web | ConKay + citation graph | ✅ | `lib/reason-verify.js` (deterministic citation floor + council judge) + DTU citation graph. ~21 files; production-grade. |
 | 5 | **Person of Interest "The Machine"** | Aligned, private, nudge-not-control AI | refusal-field + value-drift flagging + salience-gated outreach | ✅ (ethos, built) | `lib/refusal-field.js`, `personal-beat-scheduler` + `initiative-cycle` heartbeats (verified wired), local Ollama. The autonomous-but-constrained "Machine" framing holds. |
-| 6 | **Iron Man holographic workshop** | Gesture-design hardware in 3D | compute-grounded CAS/FEA + 3D HUD | 🔶 (CAS/FEA **real**) | **Corrected: NOT a gap.** `domains/engineering.js` (944 LOC, 11 macros incl. `runFea`) + `lib/simulation/fea-solver.js` = genuine direct-stiffness FEA (3D frames, 6 DOF/node, real material library, member stress/utilization). `domains/math.js` (1,552 LOC) = real CAS. **Frontier = tetra/nonlinear FEA + AR display only.** |
+| 6 | **Iron Man holographic workshop** | Gesture-design hardware in 3D | compute-grounded CAS/FEA + 3D HUD | 🔶 (CAS/FEA **real**) | **Corrected: NOT a gap.** `domains/engineering.js` (944 LOC, **18 macros** incl. `runFEA`) + `lib/simulation/fea-solver.js` (~380 LOC) = genuine direct-stiffness FEA (3D frames, 6 DOF/node, 11-entry material library, member stress/utilization). `domains/math.js` (1,552 LOC) = real CAS. **Frontier = tetra/nonlinear FEA + AR display only.** |
 | 7 | **Dune Mentat + Other Memory** | Human-computer analysis + ancestral memory | compute-grounded CAS + DTU lineage/NPC inheritance | ✅ | CAS verify (above) + `lib/npc-legacy.js` inheritance/legacy system. |
 | 8 | **2001 — HAL 9000 (anti-pattern)** | The AI you must NOT build | causal-closure + Grounded + local + kill-switch | ✅ ethos / ✅ **built** | **Corrected: built, not "designed."** `lib/causal-closure.js` (~280 LOC) + `tests/causal-closure.test.js` (16/16), bridged to `agent-awareness-index.js`. Anti-HAL props present (local, Grounded, kill-switch). |
 | 9 | **The Matrix Construct ("I know kung fu")** | Instant skill loading | recipe/skill/glyph instantiation | ✅ | `lib/skill-evolution.js`, `lib/glyph-spells.js` (base-6 algebra), `craftTool`, `skill-forge.js`. ~71 files; production-grade with behavioral tests. |
@@ -62,15 +62,25 @@ and AR display are the software-side frontier; real-world prediction (row 3) is 
 
 ## 2. Market Demand (2026) → Concord
 
-| What people are asking for | Concord | Status (verified) |
+> **Web-researched evidence + competitive landscape + sizing live in
+> [`docs/MARKET_DEMAND_MAP.md`](MARKET_DEMAND_MAP.md)** (5-angle deep-research fan-out, 2026-06-08,
+> every claim source-cited). This table is the summary; that doc is the receipts. The "Code" column
+> is the in-repo capability (verified §1/§3 anchors); the "Market signal" column is the *external*
+> demand verdict from that research, with the load-bearing source noted.
+
+| What people are asking for | Concord (code) | Market signal (web-verified — see companion) |
 |---|---|---|
-| **Verifiable AI** — cites sources, refuses when unsure ("the winning pattern") | `reason.verify` / Grounded badge / compute-grounded routing | ✅ production-grade (deterministic citation floor + council judge) |
-| **Proactive / background** — "the line between a chatbot and an assistant" | `initiative-cycle` / `personal-beat-scheduler` | ✅ wired to heartbeats |
-| **Private / local / no-harvest** | local Ollama + consent gates + `personal_dtus_never_leak` | ✅ |
-| **Controllable, trustworthy memory** | DTU substrate + scope/consent privacy gates | ✅ |
-| **Agentic — does real tasks** | ~9,600 macros (478 domains) | ✅ |
-| **Owned / no-subscription** | free + local + take-rate model | ✅ |
+| **Verifiable AI** — cites sources, refuses when unsure | `reason.verify` (deterministic citation floor + council judge) / Grounded badge / compute-grounded routing | **🟢 strongest *revealed* pull.** Perplexity ~$18–20B val on cited answers; Google/MS shipping citations as default; trust *fell* as use rose (only 46% trust AI). **Lead with this.** |
+| **Proactive / agentic** — does real multi-step tasks | `initiative-cycle` / `personal-beat-scheduler` + ~9,600 macros (478 domains) | **🟡 loudest demand, weakest delivery.** Gartner: agentic in 33% of apps by 2028 — *but* best agents finish ~30–35% of multi-step tasks and >40% of agentic projects are forecast cancelled by 2027. **A *verified* agent is the answer to that backlash.** |
+| **Private / local / no-harvest** | local Ollama 5-brain + consent gates + `personal_dtus_never_leak` | **🔵 real but niche.** On-prem >50% of 2025 enterprise LLM spend; Ollama ~174k stars — but ChatGPT's ~800–900M users dwarf local by 2–3 orders. **Enterprise/R&D wedge, not a mainstream claim.** |
+| **Controllable, trustworthy memory** | DTU substrate (674 tables, ~1.5M-DTU cap) + scope/consent gates | **🟢 real + monetizing.** Notion ~$500M ARR, >50% AI-attributed; ChatGPT shipped controllable memory. |
+| **Owned / no-subscription** | free + local + take-rate + creator economy | **⚪→🔵 grievance > behavior.** 41–47% subscription fatigue + 81% enterprise lock-in concern, but subs still growing fast; strongest in enterprise/regulated. |
 | **External integration** (connect your stack) | **bidirectional MCP** + Google/Apple OAuth **sign-in** | 🟡 **partial — see §3.** MCP is real; OAuth is identity-only; Gmail/Calendar/Slack/etc. connectors are **scaffold, not real two-way sync.** |
+
+**The white space (from the companion's landscape):** every incumbent owns exactly *one* vector
+(Perplexity=grounded, ChatGPT=general, Copilot=enterprise, Ollama=privacy, Notion=PKM). No one ships
+the *intersection*. Concord's defensible claim is the combination × depth — never any single checkbox
+(this restates Honesty Caveat #2 below with market evidence behind it).
 
 ---
 
@@ -166,10 +176,14 @@ sci-fi software capabilities already sit in the repo. That changes the roadmap s
 ---
 
 ## Cross-references
+- **Market-demand half** (web-researched evidence, competitive landscape, sizing, wedge segments):
+  [`docs/MARKET_DEMAND_MAP.md`](MARKET_DEMAND_MAP.md).
 - Master continuation plan + tracks: `docs/CONKAY_HONEST_HOLOGRAM_PLAN.md`.
 - Depth fleet (Track A) status + resume loop: `docs/DEPTH_FLEET_PLAN.md`.
 - Causal-closure substrate: `docs/CAUSAL_CLOSURE_EXPERIMENT.md` + `server/lib/causal-closure.js`.
 
 *This document rates capability against source code as of 2026-06-08. Ratings reflect substrate
 presence, not product polish. Counts were replaced with anchor-files + depth verdicts after a
-three-agent verification pass. Where a claim could not be confirmed from code, it is marked "verify."*
+three-agent verification pass (re-spot-checked 2026-06-08: all seven load-bearing anchors still hold).
+The Market-Demand half (§2) is now backed by a web-research pass with cited sources — see the
+companion `MARKET_DEMAND_MAP.md`. Where a claim could not be confirmed from code, it is marked "verify."*
