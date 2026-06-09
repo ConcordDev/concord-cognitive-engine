@@ -68,16 +68,19 @@ export const runAgingCycle = safeRun("aging-cycle", async (state) => {
   const r = advanceAging(db, day);
   if (!r.ok) return r;
 
-  // Fire onNpcDeath for each due NPC.
+  // Fire onNpcDeath for each due NPC. Hoist the dynamic import + per-NPC
+  // statements out of the loop (was re-importing + re-preparing per death).
   let killed = 0, failed = 0;
+  const { onNpcDeath } = await import("../lib/npc-legacy.js");
+  const selDecStmt = db.prepare(`SELECT id, faction, archetype, npc_type, state FROM world_npcs WHERE id = ?`);
+  const markDeadStmt = db.prepare(`UPDATE world_npcs SET is_dead = 1 WHERE id = ?`);
   for (const due of r.dueForDeath || []) {
     try {
-      const { onNpcDeath } = await import("../lib/npc-legacy.js");
-      const dec = db.prepare(`SELECT id, faction, archetype, npc_type, state FROM world_npcs WHERE id = ?`).get(due.npcId);
+      const dec = selDecStmt.get(due.npcId);
       if (dec) {
         dec.name = npcNameFromRow(dec); // world_npcs has no `name` column — derive from state
         // Mark dead.
-        db.prepare(`UPDATE world_npcs SET is_dead = 1 WHERE id = ?`).run(due.npcId);
+        markDeadStmt.run(due.npcId);
         onNpcDeath(db, dec, { cause: "natural", killerId: null });
         killed++;
       }

@@ -49,6 +49,18 @@ function getNemesisRowsForWorld(db, worldId, userId, originX, originZ, radius) {
       })
     : rows;
 
+  // Hoist the per-NPC lookups out of the loop — prepared once, reused per row
+  // (was an N+1 re-preparing three statements per nearby NPC on this HUD path).
+  const stressStmt = db.prepare(`SELECT stress, updated_at, coping_trait FROM npc_stress WHERE npc_id = ?`);
+  const schemeStmt = db.prepare(`
+          SELECT id, kind, phase FROM npc_schemes
+          WHERE plotter_kind = 'npc' AND plotter_id = ?
+            AND target_kind = 'player' AND target_id = ?
+            AND resolved_at IS NULL
+          ORDER BY id DESC LIMIT 1
+        `);
+  const nameStmt = db.prepare(`SELECT name FROM authored_npcs WHERE id = ?`);
+
   const out = [];
   for (const r of inRange) {
     let asym = null;
@@ -59,7 +71,7 @@ function getNemesisRowsForWorld(db, worldId, userId, originX, originZ, radius) {
     // for HUD parity with other readouts.
     let stress = null;
     try {
-      const s = db.prepare(`SELECT stress, updated_at, coping_trait FROM npc_stress WHERE npc_id = ?`).get(r.npcId);
+      const s = stressStmt.get(r.npcId);
       if (s) {
         stress = {
           level: Math.round((s.stress ?? 0) / 10),
@@ -75,13 +87,7 @@ function getNemesisRowsForWorld(db, worldId, userId, originX, originZ, radius) {
     let scheme = null;
     if (userId) {
       try {
-        const sc = db.prepare(`
-          SELECT id, kind, phase FROM npc_schemes
-          WHERE plotter_kind = 'npc' AND plotter_id = ?
-            AND target_kind = 'player' AND target_id = ?
-            AND resolved_at IS NULL
-          ORDER BY id DESC LIMIT 1
-        `).get(r.npcId, userId);
+        const sc = schemeStmt.get(r.npcId, userId);
         if (sc) scheme = { id: sc.id, kind: sc.kind, stage: sc.phase };
       } catch { /* schemes may be absent */ }
     }
@@ -89,7 +95,7 @@ function getNemesisRowsForWorld(db, worldId, userId, originX, originZ, radius) {
     // Lookup name (best-effort)
     let name = r.npcId;
     try {
-      const n = db.prepare(`SELECT name FROM authored_npcs WHERE id = ?`).get(r.npcId);
+      const n = nameStmt.get(r.npcId);
       if (n?.name) name = n.name;
     } catch { /* absent */ }
 
