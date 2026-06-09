@@ -306,7 +306,7 @@ function DiscoverTab() {
             <Globe className="w-3.5 h-3.5 text-amber-400" />
             <h4 className="text-sm font-bold text-zinc-100">{open.channel.title}</h4>
             <span className="text-[10px] text-zinc-400">by {open.ownerId}</span>
-            <button onClick={() => setOpen(null)} className="ml-auto text-zinc-400 hover:text-zinc-200">
+            <button aria-label="Open" onClick={() => setOpen(null)} className="ml-auto text-zinc-400 hover:text-zinc-200">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>

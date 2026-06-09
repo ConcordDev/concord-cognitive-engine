@@ -344,7 +344,7 @@ function RegistryPanel({
           <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border border-cyan-500/20 bg-zinc-950 p-4" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="mb-3 flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">{history.name} — version history</h4>
-              <button onClick={() => setHistory(null)} className="text-zinc-400 hover:text-zinc-200"><X className="h-4 w-4" /></button>
+              <button aria-label="Close" onClick={() => setHistory(null)} className="text-zinc-400 hover:text-zinc-200"><X className="h-4 w-4" /></button>
             </div>
             <div className="space-y-2">
               {[...history.versions].reverse().map((v) => (
@@ -472,7 +472,7 @@ function VisualEditor({
                   <input type="checkbox" checked={f.required} onChange={(e) => update(idx, { required: e.target.checked })} />
                   req
                 </label>
-                <button onClick={() => removeField(idx)} className="text-zinc-600 hover:text-red-400"><X className="h-3.5 w-3.5" /></button>
+                <button aria-label="Remove" onClick={() => removeField(idx)} className="text-zinc-600 hover:text-red-400"><X className="h-3.5 w-3.5" /></button>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 {f.type === 'string' && (

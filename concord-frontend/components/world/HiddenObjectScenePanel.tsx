@@ -98,7 +98,7 @@ export function HiddenObjectScenePanel() {
               </div>
             )}
           </div>
-          <button onClick={close} className="rounded p-1 text-zinc-400 hover:bg-zinc-800"><X size={14} /></button>
+          <button aria-label="Close" onClick={close} className="rounded p-1 text-zinc-400 hover:bg-zinc-800"><X size={14} /></button>
         </header>
 
         <div className="relative">

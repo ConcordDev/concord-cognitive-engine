@@ -88,7 +88,7 @@ export function FxRackPanel() {
               <div key={u.id} className="p-2 rounded border border-violet-500/20 bg-violet-500/[0.04]">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[11px] font-semibold text-violet-200 uppercase">{u.type}</span>
-                  <button onClick={() => setDraft((p) => p.filter((x) => x.id !== u.id))} className="ml-auto text-rose-400"><X className="w-3 h-3" /></button>
+                  <button aria-label="Close" onClick={() => setDraft((p) => p.filter((x) => x.id !== u.id))} className="ml-auto text-rose-400"><X className="w-3 h-3" /></button>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {Object.entries(schema[u.type] || {}).filter(([, r]) => Array.isArray(r)).map(([key, range]) => {

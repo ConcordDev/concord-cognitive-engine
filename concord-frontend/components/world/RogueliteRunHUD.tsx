@@ -120,7 +120,7 @@ export function RogueliteUnlockShop() {
             <ShoppingCart size={14} />
             Soul vault — {balance.toFixed(0)} souls
           </h2>
-          <button onClick={() => setOpen(false)} className="rounded p-1 text-zinc-400 hover:bg-zinc-800"><X size={12} /></button>
+          <button aria-label="Open" onClick={() => setOpen(false)} className="rounded p-1 text-zinc-400 hover:bg-zinc-800"><X size={12} /></button>
         </header>
         {flash && <div className="mb-2 rounded bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-200">{flash}</div>}
         <ul className="space-y-2">

@@ -108,7 +108,7 @@ function FramesTab({ boardId }: { boardId: string }) {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-[10px] uppercase tracking-wider text-sky-300">Presentation · slide {presentIdx + 1}/{slides.length}</span>
-          <button onClick={() => setSlides(null)} className="text-gray-400 hover:text-white"><X className="w-3.5 h-3.5" /></button>
+          <button aria-label="Close" onClick={() => setSlides(null)} className="text-gray-400 hover:text-white"><X className="w-3.5 h-3.5" /></button>
         </div>
         <div className="rounded border border-sky-500/30 bg-sky-500/[0.05] p-3">
           <div className="font-semibold text-sky-100 text-sm">{s.title}</div>

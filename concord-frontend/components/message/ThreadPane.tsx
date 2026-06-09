@@ -50,7 +50,7 @@ export function ThreadPane({
       <header className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
         <MessageSquare className="w-3.5 h-3.5 text-violet-400" />
         <span className="text-xs font-semibold text-gray-200 flex-1">Thread</span>
-        <button onClick={onClose} className="text-gray-400 hover:text-white"><X className="w-3.5 h-3.5" /></button>
+        <button aria-label="Close" onClick={onClose} className="text-gray-400 hover:text-white"><X className="w-3.5 h-3.5" /></button>
       </header>
       {root && (
         <div className="px-3 py-2 border-b border-white/10 bg-violet-500/[0.04]">

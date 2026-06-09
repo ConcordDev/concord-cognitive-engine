@@ -273,7 +273,7 @@ export function MusicRadioPanel({ onChange }: { onChange: () => void }) {
           ] as const).map(([key, label]) => (
             <label key={key} className="flex items-center justify-between text-[11px] text-zinc-300 py-1">
               <span>{label}</span>
-              <button type="button" onClick={() => updateSetting({ [key]: !settings[key] })}
+              <button aria-label="Edit" type="button" onClick={() => updateSetting({ [key]: !settings[key] })}
                 className={cn('w-9 h-5 rounded-full transition-colors relative',
                   settings[key] ? 'bg-emerald-600' : 'bg-zinc-700')}>
                 <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all',

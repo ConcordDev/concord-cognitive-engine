@@ -146,7 +146,7 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
                   className={cn('p-1 rounded', p.flag === 'pick' ? 'bg-emerald-700/30 text-emerald-300' : 'text-zinc-600 hover:text-emerald-400')}>
                   <Check className="w-3.5 h-3.5" />
                 </button>
-                <button type="button" onClick={() => flag(p, 'reject')}
+                <button aria-label="Close" type="button" onClick={() => flag(p, 'reject')}
                   className={cn('p-1 rounded', p.flag === 'reject' ? 'bg-rose-700/30 text-rose-300' : 'text-zinc-600 hover:text-rose-400')}>
                   <X className="w-3.5 h-3.5" />
                 </button>

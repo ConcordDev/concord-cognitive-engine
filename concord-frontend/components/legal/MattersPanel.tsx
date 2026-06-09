@@ -170,7 +170,7 @@ export function MattersPanel() {
           <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
             <Briefcase className="w-4 h-4 text-amber-400" />
             <span className="text-sm font-semibold text-gray-200 flex-1 truncate">{detail.matter.name}</span>
-            <button onClick={() => { setActiveId(null); setDetail(null); }} className="p-1 rounded hover:bg-white/[0.05] text-gray-400"><X className="w-3.5 h-3.5" /></button>
+            <button aria-label="Close" onClick={() => { setActiveId(null); setDetail(null); }} className="p-1 rounded hover:bg-white/[0.05] text-gray-400"><X className="w-3.5 h-3.5" /></button>
           </header>
           <div className="p-4 space-y-3">
             <div className="grid grid-cols-4 gap-2 text-center">

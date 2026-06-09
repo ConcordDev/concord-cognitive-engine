@@ -42,7 +42,7 @@ export function JobDetailDrawer({
             <h2 className="text-lg font-bold text-white">{job.name}</h2>
             <p className="font-mono text-[11px] text-zinc-400">{job.id}</p>
           </div>
-          <button onClick={onClose} className="rounded p-1 text-zinc-400 hover:bg-white/10">
+          <button aria-label="Close" onClick={onClose} className="rounded p-1 text-zinc-400 hover:bg-white/10">
             <X className="h-5 w-5" />
           </button>
         </div>

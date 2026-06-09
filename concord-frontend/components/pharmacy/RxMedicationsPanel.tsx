@@ -162,7 +162,7 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
                         {adh?.pct != null ? ` · ${adh.pct}% adherence` : ''}
                       </p>
                     </div>
-                    <button type="button" onClick={() => archive(m.id)} className="text-zinc-600 hover:text-zinc-400">
+                    <button aria-label="Archive" type="button" onClick={() => archive(m.id)} className="text-zinc-600 hover:text-zinc-400">
                       <Archive className="w-3.5 h-3.5" />
                     </button>
                   </div>

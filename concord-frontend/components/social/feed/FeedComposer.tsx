@@ -110,7 +110,7 @@ export function FeedComposer({ username, quotePost, onClearQuote, onPosted }: Fe
           <div className="flex items-center gap-1.5 text-zinc-400">
             <Quote className="w-3 h-3" />
             <span className="font-medium text-zinc-300">@{quotePost.username}</span>
-            <button type="button" onClick={onClearQuote} className="ml-auto text-zinc-400 hover:text-zinc-300">
+            <button aria-label="Clear" type="button" onClick={onClearQuote} className="ml-auto text-zinc-400 hover:text-zinc-300">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>

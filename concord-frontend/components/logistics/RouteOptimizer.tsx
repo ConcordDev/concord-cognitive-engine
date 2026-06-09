@@ -68,7 +68,7 @@ export function RouteOptimizer() {
                 <span className="text-[10px] text-gray-400 w-4 tabular-nums">{i + 1}.</span>
                 <input value={s} onChange={e => updateStop(i, e.target.value)} placeholder={i === 0 ? 'Origin' : i === stops.length - 1 ? 'Final destination' : 'Stop address'} className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                 {stops.length > 2 && (
-                  <button onClick={() => removeStop(i)} className="p-1 text-gray-400 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
+                  <button aria-label="Remove" onClick={() => removeStop(i)} className="p-1 text-gray-400 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
                 )}
               </div>
             ))}

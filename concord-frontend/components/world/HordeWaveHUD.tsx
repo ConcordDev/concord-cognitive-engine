@@ -105,7 +105,7 @@ export function HordeWaveHUD() {
           <div className="w-full max-w-lg rounded-xl border border-amber-500/40 bg-zinc-950/95 p-4 shadow-2xl">
             <header className="mb-3 flex items-center justify-between border-b border-amber-500/20 pb-2">
               <h2 className="text-sm font-semibold text-amber-200">Wave {horde.wave_reached} cleared — pick an upgrade</h2>
-              <button onClick={() => setChoices([])} className="rounded p-1 text-zinc-400 hover:bg-zinc-800"><X size={12} /></button>
+              <button aria-label="Close" onClick={() => setChoices([])} className="rounded p-1 text-zinc-400 hover:bg-zinc-800"><X size={12} /></button>
             </header>
             <div className="grid grid-cols-3 gap-2">
               {choices.map((u) => (

@@ -78,7 +78,7 @@ export function ApprovalWorkflow({ contractId, onChange }: { contractId: string;
             {reviewers.map((r) => (
               <span key={r} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-400/15 text-indigo-300 inline-flex items-center gap-1">
                 {r}
-                <button onClick={() => setReviewers(reviewers.filter((x) => x !== r))}><X className="w-2.5 h-2.5" /></button>
+                <button aria-label="Close" onClick={() => setReviewers(reviewers.filter((x) => x !== r))}><X className="w-2.5 h-2.5" /></button>
               </span>
             ))}
           </div>
@@ -111,7 +111,7 @@ export function ApprovalWorkflow({ contractId, onChange }: { contractId: string;
                     className="p-1 rounded bg-neon-green/15 text-neon-green hover:bg-neon-green/25 disabled:opacity-50">
                     <Check className="w-3 h-3" />
                   </button>
-                  <button onClick={() => decide(ap.id, 'rejected')} disabled={busy}
+                  <button aria-label="Close" onClick={() => decide(ap.id, 'rejected')} disabled={busy}
                     className="p-1 rounded bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 disabled:opacity-50">
                     <X className="w-3 h-3" />
                   </button>

@@ -183,7 +183,7 @@ export function HorrorRoleHUDs() {
               <button onClick={submitEvidence} className="flex-1 rounded bg-amber-500/30 px-1.5 py-0.5 text-[10px] text-amber-100 hover:bg-amber-500/50">
                 Submit
               </button>
-              <button onClick={() => setEvidenceForm(false)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-700">
+              <button aria-label="Close" onClick={() => setEvidenceForm(false)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-700">
                 <X size={9} />
               </button>
             </div>
