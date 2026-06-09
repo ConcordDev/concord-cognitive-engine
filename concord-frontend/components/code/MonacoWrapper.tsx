@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useCallback, useRef } from 'react';
 import type { OnMount, OnChange } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
+import { registerConcordDsl } from '@/lib/dsl/concord-dsl-lang';
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -127,6 +128,8 @@ export default function MonacoWrapper({
     editorRef.current = editor;
     monaco.editor.defineTheme('concord-dark', CONCORD_DARK_THEME);
     monaco.editor.setTheme('concord-dark');
+    // Register the Concord DSL language (highlighting + keyword/macro completions).
+    try { registerConcordDsl(monaco as unknown as Parameters<typeof registerConcordDsl>[0]); } catch { /* non-fatal */ }
     editor.focus();
     onEditorReady?.(editor);
     if (onSelectionChange) {
