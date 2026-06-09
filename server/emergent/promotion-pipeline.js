@@ -11,6 +11,7 @@
 import crypto from "crypto";
 import logger from '../logger.js';
 import { LruMap, LruSet } from "../lib/lru-map.js";
+import { screenLocalSync } from "../lib/content-safety/index.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -145,6 +146,11 @@ export function requestPromotion(itemId, itemType, requesterId) {
     if (!checkRequirement(req, item)) unmet.push(req);
   }
   if (unmet.length > 0) return { ok: false, error: "Unmet requirements", unmet };
+
+  // #3 — content-safety gate at the scope flip (sync local screen, stricter at
+  // higher reach). Blocks policy-violating content from promoting.
+  const screen = screenLocalSync(item.title || item.name || item.description || "", { targetScope: stageConfig.next });
+  if (!screen.allowed) return { ok: false, error: "blocked_by_moderation", reason: screen.reason, flags: screen.flags };
 
   // Create proposal
   const proposal = {

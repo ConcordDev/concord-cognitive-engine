@@ -44,6 +44,12 @@ import {
   MAX_FILE_SIZES,
 } from "../lib/media-dtu.js";
 import { storeArtifact, retrieveArtifact, isSupportedType } from "../lib/artifact-store.js";
+import { screenForPublish, screenLocalSync } from "../lib/content-safety/index.js";
+
+// A content-classifier / CSAM provider is configured → run the full async screen.
+function _mediaProviderConfigured() {
+  return !!(process.env.CONCORD_MODERATION_API_KEY || process.env.OPENAI_API_KEY || process.env.CONCORD_CSAM_PROVIDER);
+}
 
 /**
  * Create the media routes router.
@@ -182,6 +188,32 @@ export default function createMediaRouter({ STATE }) {
     const resolvedMediaType = mediaType || (mimeType ? detectMediaType(mimeType) : null);
     if (!resolvedMediaType) {
       throw new ValidationError("mediaType or mimeType is required");
+    }
+
+    // #3 — content-safety screen before persisting. Sync local text checks always
+    // run; the async classifier + CSAM hash-match run only when an external
+    // provider is configured (no network/await in the default path).
+    {
+      const screenScope = privacy === "private" ? "personal" : "marketplace";
+      const screenText = [title, description].filter(Boolean).join(" — ");
+      const local = screenLocalSync(screenText, { targetScope: screenScope });
+      if (!local.allowed) {
+        return res.status(403).json({ ok: false, error: "content_blocked", reason: local.reason, flags: local.flags });
+      }
+      if (_mediaProviderConfigured()) {
+        const screen = await screenForPublish(
+          { text: screenText },
+          {
+            targetScope: screenScope,
+            contentType: resolvedMediaType,
+            mediaBuffer: data && typeof data === "string" ? Buffer.from(data, "base64") : null,
+            userId: authorId,
+          },
+        );
+        if (!screen.allowed) {
+          return res.status(403).json({ ok: false, error: "content_blocked", reason: screen.reason, flags: screen.flags });
+        }
+      }
     }
 
     // Persist the actual bytes via the content-addressed artifact-store
