@@ -1183,7 +1183,7 @@ function ToggleRow({ label, sub, checked, onChange }: { label: string; sub: stri
         <p className="text-sm text-gray-100">{label}</p>
         <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>
       </div>
-      <button
+      <button aria-label="Toggle"
         type="button"
         role="switch"
         aria-checked={checked}

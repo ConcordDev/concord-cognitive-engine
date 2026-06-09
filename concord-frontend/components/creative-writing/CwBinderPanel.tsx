@@ -323,7 +323,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
           <div className="flex items-center gap-2">
             <BookOpen className="w-3.5 h-3.5 text-amber-400" />
             <span className="text-xs font-semibold text-zinc-200 flex-1">Reference</span>
-            <button type="button" onClick={() => setRefOpen(false)} className="text-zinc-600 hover:text-zinc-300">
+            <button aria-label="Close" type="button" onClick={() => setRefOpen(false)} className="text-zinc-600 hover:text-zinc-300">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>

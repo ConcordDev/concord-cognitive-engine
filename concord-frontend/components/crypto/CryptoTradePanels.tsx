@@ -123,7 +123,7 @@ export function TradePanel() {
                 {o.status}{o.status === 'filled' && o.fillPriceUsd ? ` @ ${fmtUsd(o.fillPriceUsd)}` : ''}
               </span>
               {o.status === 'open' && (
-                <button type="button" onClick={() => cancel(o.id)} className="text-gray-400 hover:text-rose-300">
+                <button aria-label="Cancel order" type="button" onClick={() => cancel(o.id)} className="text-gray-400 hover:text-rose-300">
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}

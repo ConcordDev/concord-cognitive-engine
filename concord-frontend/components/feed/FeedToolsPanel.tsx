@@ -345,7 +345,7 @@ function ThreadsTool() {
         {replyTo && (
           <div className="mb-1.5 flex items-center gap-2 text-[11px] text-neon-cyan">
             Replying in thread
-            <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-white">
+            <button aria-label="Cancel reply" onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-white">
               <X className="w-3 h-3" />
             </button>
           </div>
@@ -508,7 +508,7 @@ function ListsTool() {
                       className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-gray-300"
                     >
                       @{m}
-                      <button
+                      <button aria-label="Remove member"
                         onClick={() => updateMembers(l.id, m, 'remove')}
                         className="text-gray-400 hover:text-red-400"
                       >
@@ -772,7 +772,7 @@ function SavedTool() {
           placeholder="New bookmark folder"
           className="flex-1 rounded border border-lattice-border bg-lattice-surface px-2 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-neon-cyan"
         />
-        <button
+        <button aria-label="Create folder"
           onClick={createFolder}
           disabled={!folderName.trim()}
           className="rounded-full bg-neon-cyan px-3 py-1 text-xs font-bold text-black hover:bg-neon-cyan/90 disabled:opacity-40"
@@ -1093,7 +1093,7 @@ function ControlsTool() {
                     className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-gray-300"
                   >
                     {w}
-                    <button
+                    <button aria-label="Remove muted word"
                       onClick={() => muteWord('remove', w)}
                       className="text-gray-400 hover:text-red-400"
                     >
@@ -1134,7 +1134,7 @@ function ControlsTool() {
                     className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] text-red-300"
                   >
                     @{u}
-                    <button
+                    <button aria-label="Unblock user"
                       onClick={() => block('remove', u)}
                       className="text-red-400/70 hover:text-red-400"
                     >

@@ -360,7 +360,7 @@ export function RecipeBoxSection() {
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-[#0d1117]">
               <ChefHat className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">{editRecipe._new ? 'New recipe' : 'Edit recipe'}</span>
-              <button onClick={() => setEditRecipe(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+              <button aria-label="Close" onClick={() => setEditRecipe(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
             </header>
             <div className="p-4 space-y-2">
               <input value={editRecipe.title || ''} onChange={e => setEditRecipe({ ...editRecipe, title: e.target.value })} placeholder="Recipe title *" className="w-full px-2 py-1.5 text-sm bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -405,7 +405,7 @@ export function RecipeBoxSection() {
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
               <Scaling className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">Scale: {scaleFor.recipe.title}</span>
-              <button onClick={() => setScaleFor(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+              <button aria-label="Close" onClick={() => setScaleFor(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
             </header>
             <div className="p-4 space-y-2">
               <div className="flex items-center gap-2">

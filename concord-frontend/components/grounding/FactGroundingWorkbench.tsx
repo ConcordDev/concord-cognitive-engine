@@ -384,7 +384,7 @@ export function FactGroundingWorkbench() {
                     className="w-40 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-cyan-400/40"
                   />
                   {evidence.length > 1 && (
-                    <button
+                    <button aria-label="Remove evidence"
                       type="button"
                       onClick={() => setEvidence((arr) => arr.filter((_, j) => j !== i))}
                       className="rounded bg-zinc-800 px-1.5 text-zinc-400 hover:text-red-400"

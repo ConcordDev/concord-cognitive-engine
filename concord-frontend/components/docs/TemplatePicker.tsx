@@ -51,7 +51,7 @@ export function TemplatePicker({ onClose, onApplied }: {
         onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold text-zinc-100">New page from template</h3>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-200"><X className="w-4 h-4" /></button>
+          <button aria-label="Close" onClick={onClose} className="text-zinc-400 hover:text-zinc-200"><X className="w-4 h-4" /></button>
         </div>
         {loading ? (
           <div className="flex items-center justify-center py-6 text-zinc-400">

@@ -359,7 +359,7 @@ export function GCalSection() {
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
               <CalIcon className="w-4 h-4 text-blue-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">{editEvent._new ? 'New event' : 'Edit event'}</span>
-              <button onClick={() => setEditEvent(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+              <button aria-label="Close" onClick={() => setEditEvent(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
             </header>
             <div className="p-4 space-y-2">
               <input value={editEvent.title || ''} onChange={e => setEditEvent({ ...editEvent, title: e.target.value })} placeholder="Title *" className="w-full px-2 py-1.5 text-sm bg-lattice-deep border border-lattice-border rounded text-white" />

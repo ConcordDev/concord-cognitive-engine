@@ -65,7 +65,7 @@ export function EventMediaManager({
               <a href={m.url} target="_blank" rel="noopener noreferrer"
                 className="flex-1 truncate text-amber-400 hover:underline">{m.caption || m.url}</a>
               {m.credit && <span className="text-zinc-600 truncate max-w-[80px]">{m.credit}</span>}
-              <button onClick={() => remove(m.id)} className="text-rose-400 hover:text-rose-300">
+              <button aria-label="Remove media" onClick={() => remove(m.id)} className="text-rose-400 hover:text-rose-300">
                 <X className="w-3 h-3" />
               </button>
             </li>

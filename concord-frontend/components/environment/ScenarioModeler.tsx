@@ -249,7 +249,7 @@ export function ScenarioModeler() {
                     placeholder="start"
                     className="w-20 px-2 py-1 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white"
                   />
-                  <button
+                  <button aria-label="Remove"
                     onClick={() => setAdHoc((prev) => prev.filter((_, j) => j !== i))}
                     className="p-1 text-rose-400 hover:text-rose-300"
                   >

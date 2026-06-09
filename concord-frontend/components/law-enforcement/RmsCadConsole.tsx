@@ -658,7 +658,7 @@ function CrimeMapTab() {
             <Field label="Cell radius (km)" value={radius} onChange={(e) => setRadius(e.target.value)} type="number" step="0.1" />
             <Field label="Threshold (count)" value={threshold} onChange={(e) => setThreshold(e.target.value)} type="number" />
           </div>
-          <Btn busy={busy === 'scan'} onClick={async () => { setBusy('scan'); await refresh(radius, threshold); setBusy(null); }}>
+          <Btn busy={busy === 'scan'} onClick={async () => { setBusy('scan'); try { await refresh(radius, threshold); } finally { setBusy(null); } }}>
             <ShieldAlert className="w-3.5 h-3.5" /> Re-scan
           </Btn>
           <div className="text-[11px] text-zinc-400">

@@ -247,7 +247,7 @@ export function SpacesPanel({
           <div className="flex items-center gap-2 mb-2">
             <FolderOpen className="w-3.5 h-3.5 text-violet-400" />
             <span className="text-[12px] font-semibold text-violet-200">{openSpace.name}</span>
-            <button
+            <button aria-label="Close"
               type="button"
               onClick={() => setOpenSpace(null)}
               className="ml-auto text-zinc-600 hover:text-zinc-300"
@@ -268,7 +268,7 @@ export function SpacesPanel({
                     <span className="text-[11px] font-semibold text-violet-300 flex-1 min-w-0 truncate">
                       {a.query}
                     </span>
-                    <button
+                    <button aria-label="Remove answer"
                       type="button"
                       onClick={() => removeAnswer(openSpace.id, a.id)}
                       className="text-zinc-600 hover:text-red-400"

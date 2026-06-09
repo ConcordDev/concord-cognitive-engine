@@ -66,7 +66,7 @@ function FieldControl({
       );
     case 'bool':
       return (
-        <button
+        <button aria-label="Toggle"
           id={id}
           type="button"
           role="switch"

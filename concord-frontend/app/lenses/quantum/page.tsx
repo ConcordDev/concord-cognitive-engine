@@ -279,7 +279,7 @@ export default function QuantumLensPage() {
         {error && (
           <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-300">
             <span>{error}</span>
-            <button onClick={() => setError(null)}><X className="w-4 h-4" /></button>
+            <button aria-label="Dismiss" onClick={() => setError(null)}><X className="w-4 h-4" /></button>
           </div>
         )}
 
@@ -476,7 +476,7 @@ export default function QuantumLensPage() {
               <h2 className="font-semibold flex items-center gap-2">
                 <Zap className="w-4 h-4 text-neon-purple" /> Circuit Analysis
               </h2>
-              <button onClick={() => setAnalysis(null)}><X className="w-4 h-4 text-gray-400" /></button>
+              <button aria-label="Close" onClick={() => setAnalysis(null)}><X className="w-4 h-4 text-gray-400" /></button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               {[

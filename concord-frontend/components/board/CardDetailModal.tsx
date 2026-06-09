@@ -514,7 +514,7 @@ export function CardDetailModal({
                       placeholder="https://..."
                       className="flex-1 px-2 py-1.5 text-xs rounded-md bg-white/5 border border-white/10 text-gray-300 placeholder-gray-600 focus:outline-none focus:border-purple-500/40"
                     />
-                    <button
+                    <button aria-label="Add attachment"
                       onClick={addAttachment}
                       disabled={!attUrl.trim() || busy === 'attach'}
                       className="px-2.5 py-1.5 text-xs rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 disabled:opacity-40"

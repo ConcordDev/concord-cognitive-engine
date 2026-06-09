@@ -448,7 +448,7 @@ export function CanvasBuilder() {
                         <span className="flex items-center gap-1 truncate">
                           {def?.icon} {String(w.props.title || w.props.label || def?.label || w.type)}
                         </span>
-                        <button onClick={(e) => { e.stopPropagation(); removeWidget(w.id); }}
+                        <button aria-label="Remove widget" onClick={(e) => { e.stopPropagation(); removeWidget(w.id); }}
                           className="text-gray-600 hover:text-red-400">
                           <X className="w-3 h-3" />
                         </button>
@@ -473,7 +473,7 @@ export function CanvasBuilder() {
                 <p className="text-xs uppercase tracking-wider text-gray-400 flex items-center gap-1">
                   <Eye className="w-3.5 h-3.5" /> Live Preview
                 </p>
-                <button onClick={() => setPreview(null)} className="text-gray-600 hover:text-white">
+                <button aria-label="Close preview" onClick={() => setPreview(null)} className="text-gray-600 hover:text-white">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -676,7 +676,7 @@ export function CanvasBuilder() {
                 <span className="truncate">{String(p.icon)} {String(p.navLabel)}
                   <span className="text-gray-600"> /{String(p.slug)}</span>
                 </span>
-                <button onClick={() => unpublishCanvas(String(p.canvasId))}
+                <button aria-label="Unpublish canvas" onClick={() => unpublishCanvas(String(p.canvasId))}
                   className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400">
                   <X className="w-3 h-3" />
                 </button>

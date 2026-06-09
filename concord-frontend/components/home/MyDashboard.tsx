@@ -299,7 +299,7 @@ function Customize({ prefs, isVisible, toggle, setClassic, reset, onClose }:
     <div className="absolute right-0 top-10 z-30 w-64 rounded-2xl border border-lattice-border bg-lattice-surface p-3 shadow-2xl">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-[12px] font-semibold text-zinc-200">Customize dashboard</span>
-        <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300"><X className="h-3.5 w-3.5" /></button>
+        <button aria-label="Close" onClick={onClose} className="text-zinc-500 hover:text-zinc-300"><X className="h-3.5 w-3.5" /></button>
       </div>
       <div className="space-y-1">
         {DASHBOARD_WIDGETS.map((w) => (

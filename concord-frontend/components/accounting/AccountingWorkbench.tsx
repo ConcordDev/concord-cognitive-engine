@@ -863,7 +863,7 @@ function AgingTab() {
         <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs text-cyan-200">Send Stripe payment link</span>
-            <button type="button" onClick={() => setLinkPrompt(null)} className="text-zinc-400 hover:text-zinc-300">
+            <button type="button" aria-label="Close" onClick={() => setLinkPrompt(null)} className="text-zinc-400 hover:text-zinc-300">
               <X className="w-3 h-3" />
             </button>
           </div>

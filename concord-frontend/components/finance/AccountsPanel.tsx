@@ -144,7 +144,7 @@ export function AccountsPanel() {
                       <span className="inline-flex items-center gap-1">
                         <input type="number" value={editing.value} onChange={e => setEditing({ id: a.id, value: e.target.value })} className="w-24 px-1.5 py-0.5 text-xs bg-lattice-deep border border-cyan-500/40 rounded text-white" autoFocus />
                         <button aria-label="Confirm" onClick={() => saveBalance(a.id)} className="text-emerald-300"><Check className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => setEditing(null)} className="text-gray-400"><X className="w-3.5 h-3.5" /></button>
+                        <button aria-label="Cancel edit" onClick={() => setEditing(null)} className="text-gray-400"><X className="w-3.5 h-3.5" /></button>
                       </span>
                     ) : (
                       <button onClick={() => setEditing({ id: a.id, value: String(a.balance) })} className={cn('font-mono text-sm tabular-nums hover:underline', a.balance >= 0 ? 'text-white' : 'text-rose-300')}>

@@ -117,7 +117,7 @@ export function UsdaFoodSearch({ domain = 'cooking', className, onSelect }: Usda
           {foods.map((f) => (
             <li key={f.fdcId}>
               {onSelect ? (
-                <button
+                <button aria-label="Select food"
                   type="button"
                   onClick={() => onSelect(f)}
                   className="w-full text-left px-3 py-2 text-xs hover:bg-zinc-900/60 transition-colors"

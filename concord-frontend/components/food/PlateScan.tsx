@@ -75,7 +75,7 @@ export function PlateScan({ onLog }: PlateScanProps) {
         <Camera className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Plate scan</span>
         <span className="ml-auto text-[10px] text-gray-400">LLaVA vision</span>
-        {imageDataUrl && <button onClick={reset} className="p-1 text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>}
+        {imageDataUrl && <button aria-label="Reset" onClick={reset} className="p-1 text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>}
       </header>
       <div className="p-4">
         {!imageDataUrl ? (

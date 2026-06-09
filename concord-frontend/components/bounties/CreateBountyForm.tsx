@@ -67,7 +67,7 @@ export function CreateBountyForm({ onCreated }: { onCreated: (b: PlatformBounty)
     <div className="rounded-xl border border-amber-700/40 bg-zinc-900/80 p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-amber-200">New bounty</h3>
-        <button onClick={() => { setOpen(false); reset(); }} className="text-zinc-400 hover:text-zinc-200">
+        <button aria-label="Close" onClick={() => { setOpen(false); reset(); }} className="text-zinc-400 hover:text-zinc-200">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -158,7 +158,7 @@ export function CreateBountyForm({ onCreated }: { onCreated: (b: PlatformBounty)
                   className="w-20 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
                 {milestones.length > 1 && (
-                  <button onClick={() => setMilestones((ms) => ms.filter((_, j) => j !== i))} className="text-zinc-600 hover:text-red-400">
+                  <button aria-label="Remove milestone" onClick={() => setMilestones((ms) => ms.filter((_, j) => j !== i))} className="text-zinc-600 hover:text-red-400">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}

@@ -64,7 +64,7 @@ export function LiveFlightsPanel() {
                 <span className="ml-auto text-[10px] text-gray-400">
                   {w.lastPosition ? `${w.lastPosition.lat.toFixed(2)},${w.lastPosition.lng.toFixed(2)} @ ${w.lastPosition.altitudeFt}ft` : 'awaiting position feed'}
                 </span>
-                <button onClick={() => unwatch(w.ident)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><X className="w-3 h-3" /></button>
+                <button aria-label="Unwatch flight" onClick={() => unwatch(w.ident)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><X className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>
