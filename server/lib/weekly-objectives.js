@@ -108,14 +108,17 @@ export function recordObjectiveProgress(db, userId, kind, amount = 1, nowMs = Da
     WHERE user_id = ? AND week_key = ? AND kind = ? AND completed_at IS NULL
   `).all(userId, weekKey, kind);
   const completed = [];
+  // Hoist the two prepared statements out of the loop (was a per-row re-prepare).
+  const stmtComplete = db.prepare(`UPDATE weekly_objectives SET progress = ?, completed_at = ? WHERE id = ?`);
+  const stmtProgress = db.prepare(`UPDATE weekly_objectives SET progress = ? WHERE id = ?`);
   const tx = db.transaction(() => {
     for (const r of rows) {
       const next = Math.min(r.target, r.progress + Math.max(0, amount));
       if (next >= r.target) {
-        db.prepare(`UPDATE weekly_objectives SET progress = ?, completed_at = ? WHERE id = ?`).run(next, now, r.id);
+        stmtComplete.run(next, now, r.id);
         completed.push(r.id);
       } else {
-        db.prepare(`UPDATE weekly_objectives SET progress = ? WHERE id = ?`).run(next, r.id);
+        stmtProgress.run(next, r.id);
       }
     }
   });

@@ -100,17 +100,26 @@ export function sweepProtectionFailures(db, worldId, now = Math.floor(Date.now()
         AND secession_eligible = 0
     `).all(worldId, PROTECTION_WINDOW_S, now);
   } catch { return { ok: true, failures: 0 }; }
+  // Hoist the per-vassal citizen lookup out of the loop (constant SQL); the
+  // citizen list genuinely varies per vassal so the SELECT still runs per row.
+  const selCitizens = db.prepare(`SELECT id FROM world_npcs WHERE world_id = ? AND settlement_id = ? AND COALESCE(is_dead,0)=0 LIMIT 5`);
+  const eligibleIds = [];
   for (const e of failed) {
     // The vassal's citizens hold a grievance against the liege.
     let citizens = [];
-    try { citizens = db.prepare(`SELECT id FROM world_npcs WHERE world_id = ? AND settlement_id = ? AND COALESCE(is_dead,0)=0 LIMIT 5`).all(worldId, e.vassal_id).map((r) => r.id); } catch { citizens = []; }
+    try { citizens = selCitizens.all(worldId, e.vassal_id).map((r) => r.id); } catch { citizens = []; }
     if (citizens.length) {
       seedTyrannyGrievances(db, worldId, { tyrantKind: e.liege_kind === "realm" ? "faction" : "ruler", tyrantId: e.liege_id, aggrieved: citizens, severity: 5, narrative: `they took our tribute and let the raiders through.` });
     } else {
       // No mapped citizens — still record one grievance edge so accountability is queryable.
       recordAuthorityGrievance(db, `vassal:${e.vassal_id}`, { targetKind: "faction", targetId: e.liege_id, eventKind: "authored_tyranny", severity: 5, narrative: `protection failed.` });
     }
-    try { db.prepare(`UPDATE vassalage SET secession_eligible = 1 WHERE id = ?`).run(e.id); } catch { /* noop */ }
+    eligibleIds.push(e.id);
+  }
+  // Batch the secession-eligibility flip into one UPDATE (was a per-row N+1).
+  if (eligibleIds.length) {
+    const ph = eligibleIds.map(() => "?").join(",");
+    try { db.prepare(`UPDATE vassalage SET secession_eligible = 1 WHERE id IN (${ph})`).run(...eligibleIds); } catch { /* noop */ }
   }
   return { ok: true, failures: failed.length };
 }
