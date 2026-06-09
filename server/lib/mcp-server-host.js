@@ -19,6 +19,29 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
+import { makeActorActionCap } from "./agent-guardrails.js";
+
+// Per-caller rate cap for MCP tool calls (the endpoint was previously unbounded).
+// Keyed by authed userId, else session id, else a shared anon bucket. Override via
+// CONCORD_MCP_RATE (calls/min).
+const _mcpCap = makeActorActionCap({ perActorPerMin: Number(process.env.CONCORD_MCP_RATE) || 60 });
+
+/**
+ * Gate one MCP tool call: write/personal tools require an authenticated actor;
+ * every call is rate-limited per caller. Pure + exported so it's unit-testable.
+ * @returns {{ allow: boolean, error?: string }}
+ */
+export function mcpCallGuard(tool, extra, cap = _mcpCap) {
+  if (tool?.requiresAuth && !extra?.authInfo?.actor) {
+    return { allow: false, error: "authentication_required: connect with an authorized Concord token to use this tool" };
+  }
+  const callerId = extra?.authInfo?.actor?.userId || extra?.sessionId || "mcp:anon";
+  if (!cap.tryConsume(callerId)) {
+    return { allow: false, error: "rate_limited: too many MCP calls — slow down" };
+  }
+  return { allow: true };
+}
+
 
 // Allowlist of Concord macros to expose as MCP tools. Each entry
 // names the (domain, macro) and a human-readable wrapping. We
@@ -61,6 +84,27 @@ const EXPOSED_TOOLS = [
     domain: "cross_world_effectiveness", macro: "explain",
     inputSchema: { domain: z.string(), worldId: z.string(), level: z.number().optional() },
   },
+  // B2 — the verified-compute wedge: the differentiators that make Concord worth
+  // an agent reaching for it. Read-only + deterministic → safe for anonymous use.
+  {
+    name: "concord.verify",
+    description: "Verify a claim against its cited DTUs — a deterministic citation-resolution floor (catches fabricated citations) plus a multi-brain council judge. Returns a grounded/unsupported verdict with evidence. The 'substrate that verifies'.",
+    domain: "reason", macro: "verify",
+    inputSchema: { claim: z.string().describe("The claim to verify"), citations: z.array(z.string()).optional().describe("DTU ids that back the claim") },
+  },
+  {
+    name: "concord.math",
+    description: "Exact symbolic computation (CAS): simplify, differentiate, or integrate an expression. Deterministic — compute, don't guess.",
+    domain: "math", macro: "symbolicCompute",
+    inputSchema: { expression: z.string().describe("e.g. 'x^2 + 2*x + 1'"), operation: z.string().optional().describe("simplify | differentiate | integrate"), variable: z.string().optional().describe("default 'x'") },
+  },
+  {
+    name: "concord.dtu.create",
+    description: "Mint a DTU (Discrete Thought Unit) into Concord's substrate. Requires an authenticated Concord token.",
+    domain: "dtu", macro: "create",
+    inputSchema: { title: z.string(), body: z.string().optional(), tags: z.array(z.string()).optional() },
+    requiresAuth: true,
+  },
 ];
 
 let _activeMcpServer = null;
@@ -85,6 +129,11 @@ export function buildMcpServer({ runMacro, ctxFor }) {
       },
       async (args, extra) => {
         try {
+          // B1 — gate: write/personal tools need auth; every call is rate-limited.
+          const guard = mcpCallGuard(t, extra);
+          if (!guard.allow) {
+            return { content: [{ type: "text", text: guard.error }], isError: true };
+          }
           const ctx = typeof ctxFor === "function" ? ctxFor(extra) : { db: null, actor: null };
           const result = await runMacro(t.domain, t.macro, args || {}, ctx);
           const text = JSON.stringify(result, null, 2).slice(0, 16_000);
@@ -153,7 +202,33 @@ export function mountMcpServer({ app, runMacro, ctxFor, authMW }) {
     app.delete("/mcp", handler);
   }
 
+  // B3 — discovery + auth metadata (no auth required; these are public).
+  // Tool catalogue for directory listings / human inspection.
+  app.get("/mcp/tools", (_req, res) => res.json({ server: "concord-cognitive-engine", tools: listExposedTools() }));
+  // RFC 9728 Protected Resource Metadata — tells MCP clients where to obtain a
+  // token for the auth-required tools (write/personal). Anonymous read tools work
+  // without it.
+  app.get("/.well-known/oauth-protected-resource", (req, res) => {
+    res.json(protectedResourceMetadata(`${req.protocol}://${req.get("host")}`));
+  });
+
   return { ok: true, exposedToolCount: EXPOSED_TOOLS.length };
+}
+
+/**
+ * RFC 9728 Protected Resource Metadata document. Points MCP clients at Concord's
+ * OAuth authorization server for the tools that require auth.
+ */
+export function protectedResourceMetadata(baseUrl) {
+  const origin = String(baseUrl || process.env.CONCORD_PUBLIC_URL || "").replace(/\/$/, "");
+  const authServer = process.env.CONCORD_OAUTH_ISSUER || origin;
+  return {
+    resource: `${origin}/mcp`,
+    authorization_servers: [authServer],
+    bearer_methods_supported: ["header"],
+    resource_documentation: `${origin}/mcp/tools`,
+    scopes_supported: ["concord:read", "concord:write"],
+  };
 }
 
 export function listExposedTools() {
