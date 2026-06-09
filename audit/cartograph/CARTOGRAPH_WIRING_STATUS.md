@@ -2,23 +2,34 @@
 
 _Source for the `Current Wiring Status` section in CLAUDE.md. Human merges; cartographer never auto-rewrites CLAUDE.md._
 
-Generated 2026-05-14T19:49:30.357Z.
+Generated 2026-06-09T02:16:46.505Z.
 
 ## Heartbeat-registered modules
 
 - `refusal-field-sweep` (frequency 1)
+- `factory-cycle` (frequency 1)
+- `horror-dread-cycle` (frequency 2)
 - `war-skirmish-cycle` (frequency 2)
 - `combat-recovery-cycle` (frequency 2)
 - `signal-propagation-cycle` (frequency 3)
 - `creature-flock-cycle` (frequency 4)
+- `water-flow-cycle` (frequency 4)
+- `brawl-queue-cycle` (frequency 4)
+- `event-reminder-sweep` (frequency 4)
+- `auction-settler` (frequency 4)
+- `festival-trigger-cycle` (frequency 4)
 - `scheduled-posts` (frequency 4)
 - `affect-tick` (frequency 4)
 - `social-npc-bridge` (frequency 5)
 - `eco-expiry-sweep` (frequency 5)
+- `disease-tick-cycle` (frequency 5)
 - `npc-routine-cycle` (frequency 5)
+- `world-zone-hazard-cycle` (frequency 5)
 - `environment-sensor` (frequency 5)
 - `environment-sense` (frequency 5)
 - `underwater-threat-cycle` (frequency 6)
+- `affect-trace-cycle` (frequency 8)
+- `scheme-overhear-cycle` (frequency 8)
 - `npc-vs-npc-combat` (frequency 8)
 - `npc-perception-snapshot` (frequency 8)
 - `npc-economy-cycle` (frequency 8)
@@ -27,45 +38,75 @@ Generated 2026-05-14T19:49:30.357Z.
 - `corpse-cleanup` (frequency 10)
 - `agent-marathon-cycle` (frequency 12)
 - `kingdom-decree-cycle` (frequency 16)
+- `world-boss-cycle` (frequency 16)
 - `metrics-decay` (frequency 20)
+- `world-migration-cycle` (frequency 20)
 - `presence-stale-sweep` (frequency 20)
 - `mount-behavior-cycle` (frequency 20)
+- `capture-cycle` (frequency 20)
 - `repair-cycle` (frequency 20)
 - `brain-outcome-resolver` (frequency 20)
+- `farm-growth-cycle` (frequency 24)
 - `fauna-spawner` (frequency 30)
+- `chronicle-weave` (frequency 30)
 - `npc-scheme-cycle` (frequency 30)
+- `federation-outbox-pump` (frequency 30)
+- `population-migration-cycle` (frequency 30)
+- `pay-cycle` (frequency 40)
+- `nemesis-cycle` (frequency 40)
 - `understanding-evolve` (frequency 40)
+- `initiative-cycle` (frequency 40)
+- `movement-recruitment-cycle` (frequency 50)
+- `governance-cycle` (frequency 60)
 - `mount-care-cycle` (frequency 60)
+- `plague-watch` (frequency 60)
+- `lfg-expiry-sweep` (frequency 60)
+- `faction-rep-cache-refresh` (frequency 60)
 - `lattice-drift-scan` (frequency 60)
 - `personal-beat-scheduler` (frequency 60)
 - `npc-travel-cycle` (frequency 60)
+- `ambient-chat-sweep` (frequency 60)
+- `announcement-broadcaster` (frequency 60)
+- `world-population-cycle` (frequency 60)
 - `brain-daily-refresh` (frequency 60)
 - `qualia-persist` (frequency 60)
+- `news-compose-cycle` (frequency 60)
 - `cross-world-scheme-cycle` (frequency 60)
+- `vacancy-recruit-cycle` (frequency 80)
 - `embodied-dream-cycle` (frequency 80)
 - `npc-skill-evolve-cycle` (frequency 80)
 - `npc-ambition-cycle` (frequency 80)
 - `forward-sim-cycle` (frequency 100)
+- `agent-drift-watch` (frequency 100)
+- `dtu-lens-routing-sweep` (frequency 120)
 - `lattice-federation-poll` (frequency 120)
 - `culture-drift-pass` (frequency 120)
+- `tessera-parity` (frequency 120)
+- `mercy-fund` (frequency 120)
 - `lattice-quest-cycle` (frequency 180)
 - `faction-strategy-cycle` (frequency 200)
+- `economy-anomaly-cycle` (frequency 240)
+- `world-markers-cleanup` (frequency 240)
 - `lattice-breakthrough-pass` (frequency 240)
 - `npc-marketplace-cycle` (frequency 240)
 - `procgen-settlement-cycle` (frequency 240)
 - `ecology-quest-cycle` (frequency 240)
 - `land-claims-cycle` (frequency 240)
+- `hook-decay-sweep` (frequency 240)
 - `player-signs-cleanup` (frequency 240)
 - `foundry-preview-cleanup` (frequency 240)
 - `cross-world-economy-cycle` (frequency 240)
 - `reflex-architectural-drift` (frequency 360)
 - `procedural-npc-spawner` (frequency 360)
+- `draft-gc-cycle` (frequency 480)
+- `mail-expiry-sweep` (frequency 480)
 - `forgetting-health-check` (frequency 480)
 - `reflex-scaling-pressure` (frequency 480)
 - `season-cycle` (frequency 480)
 - `aging-cycle` (frequency 480)
 - `council-session-cycle` (frequency 480)
 - `reflex-unsafe-expansion` (frequency 720)
+- `world-health-monitor` (frequency 960)
 - `reflex-dependency-entropy` (frequency 1440)
 - `code-substrate-refresh` (frequency 1440)
 - `ration-floor-cycle` (frequency 1440)
@@ -90,11 +131,11 @@ Generated 2026-05-14T19:49:30.357Z.
 - `history` — 11 macros
 - `cri` — 11 macros
 - `shield` — 11 macros
+- `chat` — 10 macros
 - `quest` — 10 macros
 - `dtu` — 10 macros
 - `mesh` — 10 macros
 - `hlm` — 9 macros
-- `chat` — 9 macros
 - `research` — 9 macros
 - `apps` — 9 macros
 - `atlas` — 9 macros
@@ -122,8 +163,10 @@ Generated 2026-05-14T19:49:30.357Z.
 - `promotion` — 6 macros
 - `cortex` — 6 macros
 - `agent` — 6 macros
+- `forecast` — 6 macros
 - `reflection` — 5 macros
 - `hlr` — 5 macros
+- `personas` — 5 macros
 - `schema` — 5 macros
 - `autotag` — 5 macros
 - `collab` — 5 macros
@@ -150,7 +193,6 @@ Generated 2026-05-14T19:49:30.357Z.
 - `wrapper` — 3 macros
 - `layer` — 3 macros
 - `anon` — 3 macros
-- `jobs` — 3 macros
 - `market` — 3 macros
 - `paper` — 3 macros
 - `resonance` — 3 macros
@@ -175,11 +217,11 @@ Generated 2026-05-14T19:49:30.357Z.
 - `therapy` — 3 macros
 - `entity` — 2 macros
 - `multimodal` — 2 macros
-- `tools` — 2 macros
 - `cognition` — 2 macros
 - `style` — 2 macros
 - `quality` — 2 macros
 - `settings` — 2 macros
+- `jobs` — 2 macros
 - `crawl` — 2 macros
 - `source` — 2 macros
 - `global` — 2 macros
@@ -196,8 +238,9 @@ Generated 2026-05-14T19:49:30.357Z.
 - `npc_autobiography` — 2 macros
 - `compression_art` — 2 macros
 - `goddess` — 2 macros
-- `forecast` — 2 macros
 - `sub_world` — 2 macros
+- `tools` — 1 macros
+- `music` — 1 macros
 - `foundation` — 1 macros
 - `ask` — 1 macros
 - `swarm` — 1 macros
@@ -239,12 +282,12 @@ Generated 2026-05-14T19:49:30.357Z.
 
 ## Frontend lens count
 
-- 232 directories under `concord-frontend/app/lenses/`
+- 260 directories under `concord-frontend/app/lenses/`
 
 ## Orphan / Dormant inventory
 
 - Orphan modules: 0
 - Dormant modules: 0
-- Dead tables: 22
-- Headless backends: 25
-- Orphan lenses: 3
+- Dead tables: 28
+- Headless backends: 26
+- Orphan lenses: 2
