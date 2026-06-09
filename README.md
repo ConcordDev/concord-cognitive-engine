@@ -6,7 +6,7 @@
 
 **over 2 million+ lines of code. One developer.**
 
-**Live at [concord-os.org](https://concord-os.org)**
+**Live at [concord-os.org](https://concord-os.org)**-currently server is down, will be back up when I clock out
 
 -----
 
