@@ -109,11 +109,23 @@ The ConKay-as-builder + safety + distribution stack, all tested + dark-by-defaul
   8414 metadata, `server/mcp-server.json` for the official registry.
 - **Publish boundary:** content-safety gate (`screenForPublish`) at promotion/post/
   upload — local checks always on, classifier + CSAM auto-engage when keyed.
+- **Marquee connectors made real (2026-06-09):** Gmail + Google Calendar are now
+  real two-way. Send/push were already real; this arc added the read side —
+  `connector-client.js` Gmail read (`readGmailMessages`/`readGmailMessage` full
+  MIME parse, `modifyGmailMessage`, `listGmailLabels`) + Calendar pull
+  (`readGoogleCalendarEvents`), `domains/gmail.js`
+  `list/get/modify/trash/labels`, `domains/calendar.js#accounts-pull-events` —
+  all on the SSRF-guarded `connectorFetch` chokepoint (encrypted per-user tokens,
+  auto refresh). Frontend: a polished **GmailSection** inbox client in the
+  message lens + a **Sync Google** overlay in the calendar lens. Tests:
+  `connector-read-paths` (11) + `connector-oauth*` (23). Live use needs only a
+  Google OAuth client (operational — `docs/CONNECTORS_GO_LIVE.md`).
 
 ## 7. Honest maturity (TRL-style)
 
 Core engine ~7 · builder spine ~6 · safety ~6 · distribution wedge ~5 · connectors
-~4. **Code-complete and prod-config-correct, sitting at the deploy line.** The
+**~6** (Gmail + Google Calendar real two-way as of 2026-06-09; other connectors
+still to wire). **Code-complete and prod-config-correct, sitting at the deploy line.** The
 remaining gate is operational (secrets, a public URL, provider accounts), not
 engineering — see `.env.example` go-live section. The flag posture is
 production-correct: secrets hard-required where loss = compromise, dangerous modes

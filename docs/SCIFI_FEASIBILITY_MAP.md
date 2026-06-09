@@ -21,11 +21,16 @@
 
 - **~10 of 13 iconic sci-fi software systems are feasible *now*** — the substrate exists and is
   mostly production-grade (verified, not estimated).
-- **Most top market-demand vectors are implemented** — with one honest exception: external
-  *connectors* (Gmail/Calendar/Slack/…) are **scaffold**, not real two-way sync. MCP + OAuth-signin
-  are the real integration surface.
+- **Most top market-demand vectors are implemented** — including the marquee external connectors:
+  **Gmail + Google Calendar are now real two-way** (send/push were already real; the read side —
+  Gmail inbox list/get/modify/labels + Calendar pull — shipped 2026-06-09 with a polished inbox
+  client UI, all on the SSRF-guarded `connectorFetch` chokepoint). The only remaining gate is
+  operational (a Google OAuth client + consent-screen verification), not engineering. MCP +
+  OAuth-signin remain real integration surfaces alongside.
 - **Genuine gaps live in one bucket: hardware / physics / real-world** (robots, suits, AR display,
-  tetra/nonlinear FEA, real-world prediction) **plus the connector-depth gap above.**
+  tetra/nonlinear FEA, real-world prediction). The connector-depth gap that used to sit here is
+  **closed in code** — Slack/Sheets/GitHub/Notion are the next connectors to wire (the token core +
+  egress chokepoint are connector-agnostic), but Gmail/Calendar — the marquee pair — are done.
 - **Two audit surprises:** (a) **engineering CAD/FEA is a real STRENGTH, not a gap** — there is a
   genuine direct-stiffness FEA solver + a real CAS; (b) the **causal-closure analyzer is BUILT**
   (not "designed"). Both are corrections to the earlier draft.
@@ -101,7 +106,7 @@ Legends conception, not current canon.
 | **Private / local / no-harvest** | local Ollama 5-brain + consent gates + `personal_dtus_never_leak` | **🔵 real but niche.** On-prem >50% of 2025 enterprise LLM spend; Ollama ~174k stars — but ChatGPT's ~800–900M users dwarf local by 2–3 orders. **Enterprise/R&D wedge, not a mainstream claim.** |
 | **Controllable, trustworthy memory** | DTU substrate (674 tables, ~1.5M-DTU cap) + scope/consent gates | **🟢 real + monetizing.** Notion ~$500M ARR, >50% AI-attributed; ChatGPT shipped controllable memory. |
 | **Owned / no-subscription** | free + local + take-rate + creator economy | **⚪→🔵 grievance > behavior.** 41–47% subscription fatigue + 81% enterprise lock-in concern, but subs still growing fast; strongest in enterprise/regulated. |
-| **External integration** (connect your stack) | **bidirectional MCP** + Google/Apple OAuth **sign-in** | 🟡 **partial — see §3.** MCP is real; OAuth is identity-only; Gmail/Calendar/Slack/etc. connectors are **scaffold, not real two-way sync.** |
+| **External integration** (connect your stack) | **bidirectional MCP** + Google/Apple OAuth **sign-in** + **real Gmail/Calendar connectors** | 🟢 **mostly real — see §3.** MCP is real; Gmail + Google Calendar are real two-way (send/push + read/inbox/pull) with a polished client; Slack/Sheets/GitHub/Notion are the next to wire (connector-agnostic core). Live use needs a Google OAuth client (operational, not code). |
 
 **The white space (from the companion's landscape):** every incumbent owns exactly *one* vector
 (Perplexity=grounded, ChatGPT=general, Copilot=enterprise, Ollama=privacy, Notion=PKM). No one ships
@@ -112,20 +117,29 @@ the *intersection*. Concord's defensible claim is the combination × depth — n
 
 ## 3. The Honest Gap List (what's genuinely NOT there)
 
-Real gaps = hardware / physics / real-world **+ connector depth**:
+Real gaps = hardware / physics / real-world. **(The connector-depth gap that used to lead this list
+is closed for the marquee pair — see below.)**
 
-- **External connectors (Gmail/Calendar/Sheets/Slack/GitHub/Notion)** — **foundation now built;
-  live sync needs secrets.** The token core is real: `migration 331 connector_oauth_tokens` +
-  `lib/connector-tokens.js` persist access/refresh tokens **encrypted at rest (AES-256-GCM)** with
-  refresh-rotation and **`invalid_grant`→re-consent** handling; `lib/connector-client.js` is an
-  SSRF-guarded outbound client (Bearer + 401 forced-refresh retry) with a Google Calendar write
-  helper; `domains/calendar.js#accounts-push-event` is a direction-gated two-way write;
-  `integrations.connectApp` no longer fabricates a token. Hardened to the OAuth security BCP
-  ([RFC 6819 §5.1.4.1.3](https://datatracker.ietf.org/doc/html/rfc6819),
+- **External connectors — Gmail + Google Calendar are now REAL two-way** (2026-06-09). The whole
+  path is code-complete and tested: `migration 331 connector_oauth_tokens` + `lib/connector-tokens.js`
+  persist access/refresh tokens **encrypted at rest (AES-256-GCM)** with refresh-rotation and
+  **`invalid_grant`→re-consent**; `lib/connector-client.js` is the SSRF-guarded egress chokepoint
+  (Bearer + 401 forced-refresh retry) with **write** helpers (`writeGmailMessage`,
+  `writeGoogleCalendarEvent`) AND **read** helpers (`readGmailMessages`/`readGmailMessage` with full
+  MIME-tree parsing, `modifyGmailMessage`, `listGmailLabels`, `readGoogleCalendarEvents`).
+  `domains/gmail.js` exposes `send/list/get/modify/trash/labels/connect`; `domains/calendar.js` adds
+  `accounts-pull-events` (real Google pull). Frontend: a polished **GmailSection** inbox client
+  (label chips, search, star/archive/trash, compose, sanitized HTML render) in the message lens +
+  a **Sync Google** overlay in the calendar lens. Hardened to the OAuth security BCP
+  ([RFC 6819](https://datatracker.ietf.org/doc/html/rfc6819),
   [RFC 9700](https://datatracker.ietf.org/doc/rfc9700/),
   [OWASP SSRF](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html)).
-  **Still required for *live* Gmail/Calendar:** real `GOOGLE_CLIENT_ID/SECRET` + the
-  connector-authorize callback (the documented wiring point). MCP remains the other real surface.
+  Tests: `connector-read-paths.test.js` (11) + `connector-oauth*.test.js` (23). **Still required for
+  *live* use:** a real `GOOGLE_CLIENT_ID/SECRET` + consent-screen verification (Gmail restricted
+  scope ⇒ annual CASA) — operational, not code; see `docs/CONNECTORS_GO_LIVE.md`.
+- **Remaining connectors (Slack/Sheets/GitHub/Notion)** — not yet wired, but the token core +
+  `connectorFetch` chokepoint are connector-agnostic, so each is a thin egress-helper + domain-macro
+  add (the Gmail/Calendar build is the template). MCP remains the other real integration surface.
 - **Machine translation** — ✅ **shipped** (was a gap): `domains/translation.js` (translate/detect/
   batch/languages) through the local LLM, lens at `/lenses/translation`, 16 tests. No external API.
 - **Physical robots & exo-suits** — hardware; not built. (Where ConKay-as-R&D-partner aims.)
@@ -148,7 +162,7 @@ Real gaps = hardware / physics / real-world **+ connector depth**:
 | Claim in earlier draft | Verified reality | Direction |
 |---|---|---|
 | Engineering CAD/FEA "thin ~13 files, incidental" | Real direct-stiffness FEA + CAS + materials + chem | ⬆ understated → **strength** |
-| External integration "✅ all implemented" | MCP real; OAuth sign-in only; connectors scaffold; no two-way Gmail/Calendar | ⬇ **overstated** |
+| External integration "✅ all implemented" | MCP real; OAuth sign-in real; **Gmail + Calendar now real two-way** (2026-06-09); Slack/Sheets/GitHub/Notion still to wire | 🟢 **corrected — marquee pair done** (was overstated, now substantially true) |
 | Translation "✅ ~28 files" | **0 files — does not exist** (i18n UI only) | ⬇ **false** |
 | causal-closure "designed, not built" | **Built**: `causal-closure.js` + 16/16 tests, wired | ⬆ stale → **built** |
 | Vision/LLaVA "94 files" | 4 files (real router, lightly used) | ⬇ inflated 23.5× |
@@ -165,8 +179,9 @@ Real gaps = hardware / physics / real-world **+ connector depth**:
    never any single checkbox.
 3. **Cite paths, not counts.** File counts drift and inflate; this map cites anchor files + a depth
    verdict so any claim is one `grep` from being checked. Keep it that way.
-4. **Verify-before-pitch (now resolved here):** connector depth = scaffold; CAS/FEA = real beam-frame
-   (not full CAD); translation = not built. Pitch accordingly.
+4. **Verify-before-pitch (now resolved here):** Gmail/Calendar connectors = **real two-way** (other
+   connectors still to wire); CAS/FEA = real beam-frame (not full CAD); translation = **shipped**.
+   Pitch accordingly.
 
 ---
 
@@ -204,8 +219,9 @@ sci-fi software capabilities already sit in the repo. That changes the roadmap s
 2. **Pick ONE wedge audience** and ship the 3-minute first-win (the funnel is instrumented).
 3. **Distribution / build-in-public** — the honest "it's all real, here are the receipts" narrative
    is the unfair channel (now that the receipts are corrected).
-4. **Make the marquee connector real** (Gmail/Calendar two-way) before claiming it — tracked as
-   "Track C" in `docs/CONKAY_HONEST_HOLOGRAM_PLAN.md`.
+4. ✅ **DONE — the marquee connector is real** (Gmail + Google Calendar two-way, 2026-06-09). Next
+   connector work is Slack/Sheets/GitHub/Notion (thin adds on the connector-agnostic core) — no
+   longer a blocker on "claiming external integration."
 5. **Hardware frontier (later):** smallest verified actuator loop with ConKay doing the math,
    validated in sim, then metal.
 
