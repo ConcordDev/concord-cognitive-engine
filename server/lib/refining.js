@@ -73,13 +73,15 @@ export function refine(db, userId, worldId, fromItemId, { buildingId = null } = 
       const slots = db.prepare(
         "SELECT id, quantity FROM player_inventory WHERE user_id = ? AND item_id = ? ORDER BY acquired_at ASC"
       ).all(userId, fromItemId);
+      const delSlot = db.prepare("DELETE FROM player_inventory WHERE id = ?");
+      const decSlot = db.prepare("UPDATE player_inventory SET quantity = quantity - ? WHERE id = ?");
       for (const slot of slots) {
         if (remaining <= 0) break;
         if (slot.quantity <= remaining) {
-          db.prepare("DELETE FROM player_inventory WHERE id = ?").run(slot.id);
+          delSlot.run(slot.id);
           remaining -= slot.quantity;
         } else {
-          db.prepare("UPDATE player_inventory SET quantity = quantity - ? WHERE id = ?").run(remaining, slot.id);
+          decSlot.run(remaining, slot.id);
           remaining = 0;
         }
       }

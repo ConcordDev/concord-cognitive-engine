@@ -348,12 +348,13 @@ export function distributeRoyalties(db, { contentId, transactionAmount, sourceTx
       `SELECT name FROM pragma_table_info('dtus') WHERE name = 'world_id'`,
     ).get();
     if (colCheck) {
-      const cRow = db.prepare(`SELECT world_id FROM dtus WHERE id = ?`).get(contentId);
+      const selWorldId = db.prepare(`SELECT world_id FROM dtus WHERE id = ?`);
+      const cRow = selWorldId.get(contentId);
       childWorldId = cRow?.world_id ?? null;
       for (const p of payouts) {
         const pid = p.contentId;
         if (!ancestorWorldIds.has(pid)) {
-          const aRow = db.prepare(`SELECT world_id FROM dtus WHERE id = ?`).get(pid);
+          const aRow = selWorldId.get(pid);
           ancestorWorldIds.set(pid, aRow?.world_id ?? null);
         }
       }

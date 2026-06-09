@@ -48,11 +48,12 @@ export function closeSession(db, sessionId) {
   if (!db || !sessionId) return { ok: false, reason: "missing_inputs" };
   const petitions = listPetitions(db, sessionId);
   let approved = 0, rejected = 0, tabled = 0;
+  const setResolution = db.prepare(`UPDATE council_petitions SET resolution = ? WHERE id = ?`);
   for (const p of petitions) {
     if (p.resolution) continue;  // already resolved
     const tally = tallyVotes(db, p.id);
     const resolution = tally.resolution;
-    db.prepare(`UPDATE council_petitions SET resolution = ? WHERE id = ?`).run(resolution, p.id);
+    setResolution.run(resolution, p.id);
     if (resolution === "approved") approved++;
     else if (resolution === "rejected") rejected++;
     else tabled++;

@@ -189,14 +189,28 @@ function _autoRunNpcs(db, sessionId) {
     const seed = sess.seed;
     let allowance = SEAT_COUNT; // safety bound
 
+    // Hoisted constant-SQL statements reused across the bounded NPC-turn loop.
+    const selSeat = db.prepare(`SELECT * FROM mahjong_seats WHERE session_id = ? AND seat_index = ?`);
+    const selDrawCount = db.prepare(`SELECT COUNT(*) AS n FROM mahjong_actions_log WHERE session_id = ? AND action_kind = 'draw'`);
+    const endExhausted = db.prepare(`UPDATE mahjong_sessions SET ended_at = ?, end_reason = 'exhausted', wall_remaining = 0 WHERE id = ?`);
+    const setSeatHand = db.prepare(`UPDATE mahjong_seats SET hand_json = ? WHERE session_id = ? AND seat_index = ?`);
+    const setWallRem = db.prepare(`UPDATE mahjong_sessions SET wall_remaining = ? WHERE id = ?`);
+    const endTsumo = db.prepare(`UPDATE mahjong_sessions SET ended_at = ?, end_reason = 'tsumo', winner_seat = ? WHERE id = ?`);
+    const setSeatTsumo = db.prepare(`UPDATE mahjong_seats SET tsumo_at = ? WHERE session_id = ? AND seat_index = ?`);
+    const selAllDiscards = db.prepare(`SELECT discards_json FROM mahjong_seats WHERE session_id = ?`);
+    const setSeatHandDiscards = db.prepare(`
+        UPDATE mahjong_seats SET hand_json = ?, discards_json = ?
+        WHERE session_id = ? AND seat_index = ?
+      `);
+
     while (turnSeat !== PLAYER_SEAT && allowance > 0 && wallRem > 0) {
       allowance--;
-      const seat = db.prepare(`SELECT * FROM mahjong_seats WHERE session_id = ? AND seat_index = ?`).get(sessionId, turnSeat);
+      const seat = selSeat.get(sessionId, turnSeat);
 
       // Reconstruct wall position. Simplification: we re-derive the
       // wall draw position from the actions log (count of all "draw"
       // entries). drawIdx grows monotonically.
-      const drawCount = db.prepare(`SELECT COUNT(*) AS n FROM mahjong_actions_log WHERE session_id = ? AND action_kind = 'draw'`).get(sessionId).n;
+      const drawCount = selDrawCount.get(sessionId).n;
       const wallState = newWall(seed);
       const dealt = dealInitialHands(wallState.wall);
       const nextDrawIdx = dealt.drawIdx + drawCount - 1; // -1 because dealer's first draw is already counted in initial deal
@@ -208,8 +222,7 @@ function _autoRunNpcs(db, sessionId) {
       const draw = drawNext(wallState.wall, trueDrawIdx);
       if (!draw.tile) {
         // Wall exhausted.
-        db.prepare(`UPDATE mahjong_sessions SET ended_at = ?, end_reason = 'exhausted', wall_remaining = 0 WHERE id = ?`)
-          .run(Math.floor(Date.now() / 1000), sessionId);
+        endExhausted.run(Math.floor(Date.now() / 1000), sessionId);
         _log(db, sessionId, turnSeat, "wall_exhausted", {});
         return { ok: true, ended: true, endReason: "exhausted" };
       }
@@ -217,35 +230,29 @@ function _autoRunNpcs(db, sessionId) {
       // NPC draws.
       const hand = JSON.parse(seat.hand_json);
       const newHand = sortTiles([...hand, draw.tile]);
-      db.prepare(`UPDATE mahjong_seats SET hand_json = ? WHERE session_id = ? AND seat_index = ?`)
-        .run(JSON.stringify(newHand), sessionId, turnSeat);
+      setSeatHand.run(JSON.stringify(newHand), sessionId, turnSeat);
       wallRem = wallState.wall.length - draw.drawIdx;
-      db.prepare(`UPDATE mahjong_sessions SET wall_remaining = ? WHERE id = ?`).run(wallRem, sessionId);
+      setWallRem.run(wallRem, sessionId);
       _log(db, sessionId, turnSeat, "draw", { tile: draw.tile });
 
       // NPC tsumo check.
       if (isWinningHand(newHand)) {
         const now = Math.floor(Date.now() / 1000);
-        db.prepare(`UPDATE mahjong_sessions SET ended_at = ?, end_reason = 'tsumo', winner_seat = ? WHERE id = ?`)
-          .run(now, turnSeat, sessionId);
-        db.prepare(`UPDATE mahjong_seats SET tsumo_at = ? WHERE session_id = ? AND seat_index = ?`)
-          .run(now, sessionId, turnSeat);
+        endTsumo.run(now, turnSeat, sessionId);
+        setSeatTsumo.run(now, sessionId, turnSeat);
         _log(db, sessionId, turnSeat, "tsumo", { hand: newHand });
         return { ok: true, ended: true, endReason: "tsumo", winnerSeat: turnSeat };
       }
 
       // NPC discard.
-      const allDiscardsArr = db.prepare(`SELECT discards_json FROM mahjong_seats WHERE session_id = ?`).all(sessionId)
+      const allDiscardsArr = selAllDiscards.all(sessionId)
         .map((r) => JSON.parse(r.discards_json));
       const discardIdx = discardByStyle(seat.style || "tempai", newHand, { allDiscards: allDiscardsArr });
       const discardTile = newHand[discardIdx];
       const remainingHand = sortTiles(newHand.filter((_, i) => i !== discardIdx));
       const discards = JSON.parse(seat.discards_json);
       discards.push(discardTile);
-      db.prepare(`
-        UPDATE mahjong_seats SET hand_json = ?, discards_json = ?
-        WHERE session_id = ? AND seat_index = ?
-      `).run(JSON.stringify(remainingHand), JSON.stringify(discards), sessionId, turnSeat);
+      setSeatHandDiscards.run(JSON.stringify(remainingHand), JSON.stringify(discards), sessionId, turnSeat);
       _log(db, sessionId, turnSeat, "discard", { tile: discardTile });
 
       turnSeat = (turnSeat + 1) % SEAT_COUNT;

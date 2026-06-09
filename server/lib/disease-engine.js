@@ -126,6 +126,7 @@ export function tickDiseases(db, userId, opts = {}) {
       WHERE user_id = ? AND recovered_at IS NULL
     `).all(userId);
 
+    const setSeverity = db.prepare(`UPDATE player_diseases SET severity = ? WHERE id = ?`);
     for (const row of active) {
       const disease = _catalogCache.get(row.disease_id);
       if (!disease) continue;
@@ -148,7 +149,7 @@ export function tickDiseases(db, userId, opts = {}) {
         newSev = 1.0;
       }
 
-      db.prepare(`UPDATE player_diseases SET severity = ? WHERE id = ?`).run(newSev, row.id);
+      setSeverity.run(newSev, row.id);
       ticked++;
     }
   } catch (err) {

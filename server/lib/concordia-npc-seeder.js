@@ -112,45 +112,51 @@ export async function seedConcordiaNpcSubstrate(db, { currentConcordiaDay = 0 } 
   const npcs = getAllAuthoredNPCs();
   let ancestryN = 0, physiqueN = 0, cultureN = 0, ageN = 0, errors = 0;
 
+  // Hoisted constant-SQL statements reused across the bounded NPC seed loop.
+  const upsertAncestry = db.prepare(`
+        INSERT INTO npc_ancestry (npc_id, primary_bloodline, dilution)
+        VALUES (?, ?, ?)
+        ON CONFLICT(npc_id) DO UPDATE SET primary_bloodline = excluded.primary_bloodline, dilution = excluded.dilution
+      `);
+  const upsertPhysique = db.prepare(`
+        INSERT INTO actor_physique (actor_kind, actor_id, mass_kg, height_m, body_type)
+        VALUES ('npc', ?, ?, ?, ?)
+        ON CONFLICT(actor_kind, actor_id) DO UPDATE SET mass_kg = excluded.mass_kg, height_m = excluded.height_m, body_type = excluded.body_type
+      `);
+  const upsertCulture = db.prepare(`
+        INSERT INTO actor_culture (actor_kind, actor_id, culture_id, faith_id)
+        VALUES ('npc', ?, ?, ?)
+        ON CONFLICT(actor_kind, actor_id) DO UPDATE SET culture_id = excluded.culture_id, faith_id = excluded.faith_id
+      `);
+  const selAge = db.prepare(`SELECT 1 FROM npc_ages WHERE npc_id = ?`);
+
   for (const npc of npcs) {
     if (!npc?.id) continue;
     // Ancestry
     try {
       const bl = bloodlineFor(npc);
       const dil = dilutionFor(npc.id);
-      db.prepare(`
-        INSERT INTO npc_ancestry (npc_id, primary_bloodline, dilution)
-        VALUES (?, ?, ?)
-        ON CONFLICT(npc_id) DO UPDATE SET primary_bloodline = excluded.primary_bloodline, dilution = excluded.dilution
-      `).run(npc.id, bl, dil);
+      upsertAncestry.run(npc.id, bl, dil);
       ancestryN++;
     } catch { errors++; }
 
     // Physique
     try {
       const p = physiqueFor(npc);
-      db.prepare(`
-        INSERT INTO actor_physique (actor_kind, actor_id, mass_kg, height_m, body_type)
-        VALUES ('npc', ?, ?, ?, ?)
-        ON CONFLICT(actor_kind, actor_id) DO UPDATE SET mass_kg = excluded.mass_kg, height_m = excluded.height_m, body_type = excluded.body_type
-      `).run(npc.id, p.mass_kg, p.height_m, p.body_type);
+      upsertPhysique.run(npc.id, p.mass_kg, p.height_m, p.body_type);
       physiqueN++;
     } catch { errors++; }
 
     // Culture
     try {
       const c = cultureFor(npc);
-      db.prepare(`
-        INSERT INTO actor_culture (actor_kind, actor_id, culture_id, faith_id)
-        VALUES ('npc', ?, ?, ?)
-        ON CONFLICT(actor_kind, actor_id) DO UPDATE SET culture_id = excluded.culture_id, faith_id = excluded.faith_id
-      `).run(npc.id, c.culture_id, c.faith_id || null);
+      upsertCulture.run(npc.id, c.culture_id, c.faith_id || null);
       cultureN++;
     } catch { errors++; }
 
     // Age (only if not already aged).
     try {
-      const exists = db.prepare(`SELECT 1 FROM npc_ages WHERE npc_id = ?`).get(npc.id);
+      const exists = selAge.get(npc.id);
       if (!exists) {
         const birth = birthDayFor(npc, npc.archetype, currentConcordiaDay);
         const { setBirth } = await import("./aging-engine.js");

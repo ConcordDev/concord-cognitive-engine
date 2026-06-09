@@ -110,10 +110,11 @@ export function offerRescuesForCrises(db, { worldId = "sere", nowS = Math.floor(
   let realms = [];
   try { realms = db.prepare("SELECT id FROM realms WHERE world_id=? AND treasury < ?").all(worldId, CRISIS_TREASURY); }
   catch { return { ok: true, offered: [] }; } // realms table absent
+  const selCollateral = db.prepare("SELECT id FROM world_buildings WHERE world_id=? AND owner_type='realm' AND owner_id=? LIMIT 1");
   for (const realm of realms) {
     // collateral = a building owned by the realm's faction, if any
     let collateral = null;
-    try { collateral = db.prepare("SELECT id FROM world_buildings WHERE world_id=? AND owner_type='realm' AND owner_id=? LIMIT 1").get(worldId, realm.id)?.id || null; } catch { /* ok */ }
+    try { collateral = selCollateral.get(worldId, realm.id)?.id || null; } catch { /* ok */ }
     const r = offerRescue(db, { worldId, realmId: realm.id, collateralBuildingId: collateral, nowS });
     if (r.ok) offered.push({ realmId: realm.id, loanId: r.loanId });
   }

@@ -97,6 +97,10 @@ export async function drainOutbox(db, { limit = 25 } = {}) {
   `).all(now - 30, limit); // 30s minimum gap between attempts on the same row
 
   const results = [];
+  const markInFlight = db.prepare(`UPDATE federation_outbox SET status = 'in_flight', last_attempted_at = ? WHERE id = ?`);
+  const markDelivered = db.prepare(`UPDATE federation_outbox SET status = 'delivered', attempts = ?, last_error = NULL WHERE id = ?`);
+  const markAbandoned = db.prepare(`UPDATE federation_outbox SET status = 'abandoned', attempts = ?, last_error = ? WHERE id = ?`);
+  const markFailed = db.prepare(`UPDATE federation_outbox SET status = 'failed', attempts = ?, last_error = ? WHERE id = ?`);
   for (const row of rows) {
     // Skip rows whose backoff window hasn't elapsed.
     if (row.attempts > 0 && row.last_attempted_at) {
@@ -107,7 +111,7 @@ export async function drainOutbox(db, { limit = 25 } = {}) {
       }
     }
 
-    db.prepare(`UPDATE federation_outbox SET status = 'in_flight', last_attempted_at = ? WHERE id = ?`).run(now, row.id);
+    markInFlight.run(now, row.id);
 
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
@@ -151,16 +155,13 @@ export async function drainOutbox(db, { limit = 25 } = {}) {
 
     const newAttempts = row.attempts + 1;
     if (httpOk) {
-      db.prepare(`UPDATE federation_outbox SET status = 'delivered', attempts = ?, last_error = NULL WHERE id = ?`)
-        .run(newAttempts, row.id);
+      markDelivered.run(newAttempts, row.id);
       results.push({ id: row.id, ok: true, status: 'delivered', httpStatus });
     } else if (newAttempts >= MAX_ATTEMPTS) {
-      db.prepare(`UPDATE federation_outbox SET status = 'abandoned', attempts = ?, last_error = ? WHERE id = ?`)
-        .run(newAttempts, errMsg, row.id);
+      markAbandoned.run(newAttempts, errMsg, row.id);
       results.push({ id: row.id, ok: false, status: 'abandoned', reason: errMsg });
     } else {
-      db.prepare(`UPDATE federation_outbox SET status = 'failed', attempts = ?, last_error = ? WHERE id = ?`)
-        .run(newAttempts, errMsg, row.id);
+      markFailed.run(newAttempts, errMsg, row.id);
       results.push({ id: row.id, ok: false, status: 'failed', reason: errMsg, attempts: newAttempts });
     }
   }

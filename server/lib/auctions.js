@@ -467,10 +467,11 @@ export function sweepExpiredBuyOrders(db) {
     `).all(now);
 
     let refunded = 0;
+    const markExpired = db.prepare(`UPDATE auction_buy_orders SET status = 'expired' WHERE id = ?`);
     for (const o of expired) {
       const unfilled = o.quantity_wanted - o.quantity_filled;
       const refund = Math.round(o.unit_price_cc * unfilled * 100) / 100;
-      db.prepare(`UPDATE auction_buy_orders SET status = 'expired' WHERE id = ?`).run(o.id);
+      markExpired.run(o.id);
       if (refund > 0) {
         _walletCredit(db, o.buyer_user_id, refund, `buy_order_expired_refund:${o.id}`);
         refunded += refund;
