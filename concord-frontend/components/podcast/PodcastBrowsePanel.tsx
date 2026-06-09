@@ -154,7 +154,7 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
                   <p className="text-[10px] text-zinc-400">{fmt(e.durationSec)} · {e.publishDate}{e.played ? ' · played' : ''}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button type="button" onClick={() => queueEp(e.id)}
+                  <button aria-label="Add to queue" type="button" onClick={() => queueEp(e.id)}
                     className={cn('p-1 rounded', e.inQueue ? 'text-violet-400' : 'text-zinc-600 hover:text-violet-400')}>
                     <ListPlus className="w-3.5 h-3.5" />
                   </button>

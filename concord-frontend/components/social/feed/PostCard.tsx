@@ -274,6 +274,7 @@ export function PostCard({ post, username, onChanged, onQuote, onOpenHashtag, on
         </button>
         <button
           type="button"
+          aria-label="Quote post"
           onClick={() => onQuote(post)}
           className="flex items-center gap-1 text-xs hover:text-indigo-300"
         >
