@@ -1,8 +1,8 @@
 {
-  "version": 8,
-  "generatedAt": "2026-06-09T04:30:00.000Z",
-  "maxTotal": 160,
-  "rationale": "Budget v8 — recalibrated to the new ACTUAL floor (144) after the 2026-06-09 honest-clean pass: real bugs fixed (companion feed, command-injection, 29 N+1 loops) + 4 detectors sharpened conservatively (env-config-drift public-API-host allowlist 299→9, a11y 481+38 fixed, fake-data domain-term allowlist, resource-leak bounded-SQL exemption — each verified to still fire on real cases via their own contract tests). The v7 maxTotal=1131 was ~8x stale. The budget gate (total > maxTotal*1.05 ≈ 168) now fails a real spike; the ratchet separately fails ANY new high/critical. Remaining are genuine debt: ~20 perf_sync_fs (need async refactor), 13 dead-event-listener (documented imperative consumers a static detector can't see), 9 placeholder URLs, 8 multiline a11y buttons.",
+  "version": 9,
+  "generatedAt": "2026-06-09T12:40:00.000Z",
+  "maxTotal": 135,
+  "rationale": "Budget v9 — recalibrated to the post-Bucket-2 floor (122) after the 2026-06-09 perf + honesty pass. Fixed: large-blob artifact writes moved off the event loop (perf_sync_fs cleared in art/studio/whiteboard/photo-gallery + artifact-store storeArtifact), 3 genuine N+1 loops batched/hoisted (world-tenancy, vassalage, weekly-objectives), DawShell dead Loop/M/S/R buttons made disabled-until-wired + 8 icon-only a11y buttons labeled, /api/mail/send rate-limited, repair-surgeon high cmd_injection_template_interpolation sink eliminated by switching the eslint-autofix exec to execFileSync (no shell). Remaining are documented residual, NOT new debt: ~15 init/boot-time perf_sync_fs (run once at startup, not on a request path), 3 out-of-scope N+1 (dreams/nemesis/royalty-cascade), 13 dead-event-listener (imperative consumers a static detector can't see), 9 placeholder URLs, 1 documented validated-shell repair-surgeon medium. The budget gate (total > maxTotal*1.05 ≈ 142) fails a real spike; the ratchet separately fails ANY new high/critical.",
   "perDetector": {
     "stale-code": 5,
     "maintenance-gates": 5,
@@ -13,7 +13,7 @@
     "dtu-lineage": 5,
     "heartbeat-monitor": 5,
     "secret-leak": 5,
-    "performance-hotspot": 30,
+    "performance-hotspot": 25,
     "historical-trend": 5,
     "predictive-growth": 5,
     "architectural-hub": 5,
@@ -27,12 +27,12 @@
     "frontend-ghost-click": 12,
     "dead-event-listener": 15,
     "ux-broken-link": 5,
-    "ux-a11y-button-no-label": 15,
+    "ux-a11y-button-no-label": 5,
     "ux-loading-state-missing": 5,
     "ux-form-error-display": 5,
     "ux-route-empty-render": 6,
     "ux-modal-no-escape": 5,
-    "command-injection": 8,
+    "command-injection": 5,
     "authz-coverage": 5
   }
 }

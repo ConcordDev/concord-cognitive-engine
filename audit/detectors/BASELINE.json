@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-06-09T04:25:57.246Z",
+  "generatedAt": "2026-06-09T12:37:49.378Z",
   "totals": {
     "critical": 0,
-    "high": 31,
-    "medium": 62,
+    "high": 18,
+    "medium": 53,
     "low": 21,
     "info": 30,
-    "total": 144
+    "total": 122
   },
   "detectorCount": 30,
   "fingerprints": {
@@ -115,14 +115,6 @@
       "location": "server/domains/appearance.js:31",
       "message": "Module-level Map / Set with no eviction path (architectural review)"
     },
-    "ff683c6ac5bd538f": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/domains/art.js:863",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
     "71c5932a625b623e": {
       "detector": "performance-hotspot",
       "id": "perf_unbounded_cache_growth",
@@ -146,30 +138,6 @@
       "kind": "static",
       "location": "server/domains/racing.js:5",
       "message": "Module-level Map / Set with no eviction path (architectural review)"
-    },
-    "b8edd1de960726c9": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/domains/studio.js:1615",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
-    "ab9fcdd42f2e4f6f": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/domains/whiteboard.js:1686",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
-    "ac907308bf1ac3cf": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/domains/whiteboard.js:1687",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
     },
     "e04a231b12f23b98": {
       "detector": "performance-hotspot",
@@ -331,14 +299,6 @@
       "location": "server/lib/foundry-publisher.js:128",
       "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
     },
-    "fc7fa34959eb9e2d": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/photo-gallery.js:31",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
     "323d812ba10a95cf": {
       "detector": "performance-hotspot",
       "id": "perf_sync_fs_in_handler",
@@ -354,22 +314,6 @@
       "kind": "static",
       "location": "server/lib/route-inventory.js:98",
       "message": "Module-level Map / Set with no eviction path (architectural review)"
-    },
-    "5bad2df0e3aef0ba": {
-      "detector": "performance-hotspot",
-      "id": "perf_uncaught_sql_loop",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/vassalage.js:103",
-      "message": "Likely N+1 — db.prepare(...).get/all inside a for/while loop"
-    },
-    "c3ebd263fb633ab3": {
-      "detector": "performance-hotspot",
-      "id": "perf_uncaught_sql_loop",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/weekly-objectives.js:112",
-      "message": "Likely N+1 — db.prepare(...).get/all inside a for/while loop"
     },
     "0de935552c1d896d": {
       "detector": "performance-hotspot",
@@ -401,14 +345,6 @@
       "severity": "high",
       "kind": "static",
       "location": "server/lib/world-snapshot.js:69",
-      "message": "Likely N+1 — db.prepare(...).get/all inside a for/while loop"
-    },
-    "4eeee1e52282b9b9": {
-      "detector": "performance-hotspot",
-      "id": "perf_uncaught_sql_loop",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/world-tenancy.js:143",
       "message": "Likely N+1 — db.prepare(...).get/all inside a for/while loop"
     },
     "9c41a8e4d5c0c975": {
@@ -787,14 +723,6 @@
       "location": "concord-frontend/components/space/VisiblePassPredictor.tsx:81",
       "message": "Magic timeout 10000ms — consider env-driven"
     },
-    "39dedc14ebfab445": {
-      "detector": "http-error",
-      "id": "expensive_route_without_rate_limit",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/server.js:51773",
-      "message": "Route does email send without a per-route rate-limiter middleware — global limiter alone won't stop a low-rate abuse pattern from running up cost."
-    },
     "54a4e092c1c86795": {
       "detector": "frontend-ghost-click",
       "id": "click_handler_no_error_path",
@@ -842,38 +770,6 @@
       "kind": "static",
       "location": "concord-frontend/components/entity/KnowledgeGraphWorkbench.tsx:736",
       "message": "Async onClick issues a request without try/catch or .catch() — a server error is silently swallowed; the button looks dead."
-    },
-    "c1493515c712e072": {
-      "detector": "frontend-ghost-click",
-      "id": "button_without_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "concord-frontend/components/studio/DawShell.tsx:85",
-      "message": "<button> has no onClick, no type=\"submit\"/\"reset\", no spread, no disabled — clicking does nothing."
-    },
-    "83e60bca9d7dd8a5": {
-      "detector": "frontend-ghost-click",
-      "id": "button_without_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "concord-frontend/components/studio/DawShell.tsx:111",
-      "message": "<button> has no onClick, no type=\"submit\"/\"reset\", no spread, no disabled — clicking does nothing."
-    },
-    "2b9c3a84b017fd93": {
-      "detector": "frontend-ghost-click",
-      "id": "button_without_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "concord-frontend/components/studio/DawShell.tsx:112",
-      "message": "<button> has no onClick, no type=\"submit\"/\"reset\", no spread, no disabled — clicking does nothing."
-    },
-    "977a9a1c906f033b": {
-      "detector": "frontend-ghost-click",
-      "id": "button_without_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "concord-frontend/components/studio/DawShell.tsx:113",
-      "message": "<button> has no onClick, no type=\"submit\"/\"reset\", no spread, no disabled — clicking does nothing."
     },
     "f126c7fc84fc13b1": {
       "detector": "dead-event-listener",
@@ -979,70 +875,6 @@
       "location": "concord-frontend/hooks/useWorldTravel.ts:122",
       "message": "CustomEvent 'concordia:active-world-changed' is dispatched but no addEventListener / useEventListener subscribes to it — the dispatch is a no-op (ghost event)."
     },
-    "e4d0a420d3a7abd3": {
-      "detector": "ux-a11y-button-no-label",
-      "id": "a11y_button_no_label",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/legal/IntakeFormsPanel.tsx:243",
-      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
-    },
-    "8cb03a3f1c737527": {
-      "detector": "ux-a11y-button-no-label",
-      "id": "a11y_button_no_label",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/physics/PhysicsLab.tsx:1022",
-      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
-    },
-    "e71c78cdbd9eca8e": {
-      "detector": "ux-a11y-button-no-label",
-      "id": "a11y_button_no_label",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/podcast/PodcastBrowsePanel.tsx:157",
-      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
-    },
-    "6676341bcd37f18e": {
-      "detector": "ux-a11y-button-no-label",
-      "id": "a11y_button_no_label",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/realestate/ListingPhotoGallery.tsx:150",
-      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
-    },
-    "bd17609c11886926": {
-      "detector": "ux-a11y-button-no-label",
-      "id": "a11y_button_no_label",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/research/LiteratureReviewPanel.tsx:327",
-      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
-    },
-    "28447c43800494f5": {
-      "detector": "ux-a11y-button-no-label",
-      "id": "a11y_button_no_label",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/social/feed/PostCard.tsx:275",
-      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
-    },
-    "973397dd278515d4": {
-      "detector": "ux-a11y-button-no-label",
-      "id": "a11y_button_no_label",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/sports/LeagueStandings.tsx:140",
-      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
-    },
-    "3766c06d2f4386f2": {
-      "detector": "ux-a11y-button-no-label",
-      "id": "a11y_button_no_label",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/studio/DawShell.tsx:81",
-      "message": "Icon-only <button> has no aria-label / aria-labelledby / title / visible text — opaque to screen readers and keyboard users."
-    },
     "a9bee2449e1296aa": {
       "detector": "ux-route-empty-render",
       "id": "route_empty_render",
@@ -1129,23 +961,15 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 28 child_process-importing file(s) of 7334; flagged 2"
+      "message": "Scanned 28 child_process-importing file(s) of 7334; flagged 1"
     },
-    "7332f14985c98dd3": {
+    "161565490a9c5dd9": {
       "detector": "command-injection",
       "id": "cmd_injection_variable_command",
       "severity": "medium",
       "kind": "static",
-      "location": "scripts/repair-surgeon.js:107",
+      "location": "scripts/repair-surgeon.js:113",
       "message": "execSync() runs a shell on a non-literal command (variable_command) — shell-injection sink"
-    },
-    "cf1b575d14d0948a": {
-      "detector": "command-injection",
-      "id": "cmd_injection_template_interpolation",
-      "severity": "high",
-      "kind": "static",
-      "location": "scripts/repair-surgeon.js:140",
-      "message": "execSync() runs a shell on a non-literal command (template_interpolation) — shell-injection sink"
     },
     "4baf9918ecae7d2c": {
       "detector": "authz-coverage",
