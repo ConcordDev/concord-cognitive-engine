@@ -69,7 +69,7 @@ function bootDb() {
 }
 
 describe("Phase BA-BE — belonging sprint end-to-end", () => {
-  it("walks the full journey without exception", () => {
+  it("walks the full journey without exception", async () => {
     const db = bootDb();
     db.prepare(`INSERT INTO users (id, appearance_json) VALUES (?, ?)`).run("u1", JSON.stringify({ slots: {} }));
 
@@ -156,7 +156,7 @@ describe("Phase BA-BE — belonging sprint end-to-end", () => {
 
     // ── BE1 — photo save + share + appear in world feed ──────────────
     const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII=";
-    const photo = savePhoto(db, "u1", { worldId: "tunya", dataUrl: tinyPng, caption: "Decorated my cottage." });
+    const photo = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: tinyPng, caption: "Decorated my cottage." });
     assert.equal(photo.ok, true);
     sharePhoto(db, photo.id);
     const feed = listPublicPhotosInWorld(db, "tunya");
