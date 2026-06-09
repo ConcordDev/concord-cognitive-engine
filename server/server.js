@@ -51770,7 +51770,7 @@ app.get("/api/achievements/recent", (req, res) => {
 // Distinct from social.js#sendMessage (in-memory instant DM): survives
 // logout, supports DTU + CC attachments + COD. 30-day TTL with sweep.
 
-app.post("/api/mail/send", requireAuth(), asyncHandler(async (req, res) => {
+app.post("/api/mail/send", requireAuth(), perEndpointRateLimit("write.mail"), asyncHandler(async (req, res) => {
   const { sendMail } = await import("./lib/player-mail.js");
   const fromUserId = req.user?.id || req.user?.userId;
   const r = sendMail(db, { ...req.body, fromUserId });

@@ -19,7 +19,7 @@
  */
 
 import fs from "fs";
-import { execSync } from "child_process";
+import { execSync, execFileSync } from "child_process";
 import {
   matchErrorPattern,
   addToRepairMemory,
@@ -104,6 +104,12 @@ function _fixCmd(name, match, projectRoot) {
 function executeFixCommand(cmd, fixName) {
   try {
     console.log(`  Executing: ${cmd.slice(0, 200)}`);
+    // `cmd` is a fixed shell pipeline built by _fixCmd() from a closed map of
+    // hardcoded templates; the only interpolated values are captures already
+    // run through safePkg/safePort/safePath (null = rejected before reaching
+    // here). A shell is required because the commands use &&/||/cd/rm, so this
+    // stays execSync — the injection surface is closed upstream at the
+    // validators, not at this call. (Dev/CI repair tool, not a request path.)
     execSync(cmd, { stdio: "pipe", timeout: 120000 });
     console.log(`  ✓ Fix "${fixName}" applied successfully`);
     return true;
@@ -136,8 +142,12 @@ function runEslintAutofix(buildOutput, rootDir) {
     const files = Array.from(fileSet);
     console.log(`  ESLint autofix: ${files.length} file(s) to fix`);
     try {
-      const fileArgs = files.map(f => `"${f}"`).join(" ");
-      execSync(`cd "${rootDir}/concord-frontend" && npx eslint --fix ${fileArgs}`, {
+      // No shell: execFileSync with an arg array passes each (already
+      // safePath-validated) file as a literal argv entry, so there is no
+      // interpolation sink here at all — defense by construction, not by
+      // escaping. cwd replaces the old `cd && …` shell prefix.
+      execFileSync("npx", ["eslint", "--fix", ...files], {
+        cwd: `${rootDir}/concord-frontend`,
         stdio: "pipe",
         timeout: 120000,
       });
