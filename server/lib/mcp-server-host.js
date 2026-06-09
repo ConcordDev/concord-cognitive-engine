@@ -20,11 +20,19 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { makeActorActionCap } from "./agent-guardrails.js";
+import { validateMcpToken, authServerMetadata, exchangeCode, issueAuthCode } from "./mcp-oauth.js";
 
 // Per-caller rate cap for MCP tool calls (the endpoint was previously unbounded).
 // Keyed by authed userId, else session id, else a shared anon bucket. Override via
 // CONCORD_MCP_RATE (calls/min).
 const _mcpCap = makeActorActionCap({ perActorPerMin: Number(process.env.CONCORD_MCP_RATE) || 60 });
+
+// sessionId → authenticated actor (populated by the Express handler from the
+// Bearer token; read by the tool handler). Cleared on transport close.
+const _mcpActors = new Map();
+export function resolveMcpActor(extra) {
+  return (extra?.sessionId && _mcpActors.get(extra.sessionId)) || extra?.authInfo?.actor || null;
+}
 
 /**
  * Gate one MCP tool call: write/personal tools require an authenticated actor;
@@ -129,12 +137,16 @@ export function buildMcpServer({ runMacro, ctxFor }) {
       },
       async (args, extra) => {
         try {
+          // Resolve the OAuth actor (from the Bearer token, by session) so
+          // write/personal tools and per-user rate limits see the real user.
+          const actor = resolveMcpActor(extra);
+          const authedExtra = { ...extra, authInfo: { ...(extra?.authInfo || {}), actor } };
           // B1 — gate: write/personal tools need auth; every call is rate-limited.
-          const guard = mcpCallGuard(t, extra);
+          const guard = mcpCallGuard(t, authedExtra);
           if (!guard.allow) {
             return { content: [{ type: "text", text: guard.error }], isError: true };
           }
-          const ctx = typeof ctxFor === "function" ? ctxFor(extra) : { db: null, actor: null };
+          const ctx = typeof ctxFor === "function" ? ctxFor(authedExtra) : { db: null, actor };
           const result = await runMacro(t.domain, t.macro, args || {}, ctx);
           const text = JSON.stringify(result, null, 2).slice(0, 16_000);
           return {
@@ -174,13 +186,17 @@ export function mountMcpServer({ app, runMacro, ctxFor, authMW }) {
       // let an unauthorized client hijack another user's MCP transport.
       // Use cryptographic randomness instead of Math.random (CodeQL gate).
       const sessionId = req.headers["mcp-session-id"] || `s_${Date.now()}_${randomBytes(12).toString("hex")}`;
+      // OAuth: validate the Bearer token (if any) and bind the actor to this
+      // session so the tool handler can authorize write/personal tools.
+      const auth = validateMcpToken(req.headers.authorization);
+      if (auth) _mcpActors.set(sessionId, auth.actor);
       let transport = _activeTransports.get(sessionId);
       if (!transport) {
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => sessionId,
         });
         _activeTransports.set(sessionId, transport);
-        transport.onclose = () => _activeTransports.delete(sessionId);
+        transport.onclose = () => { _activeTransports.delete(sessionId); _mcpActors.delete(sessionId); };
         await server.connect(transport);
       }
       await transport.handleRequest(req, res, req.body);
@@ -210,6 +226,42 @@ export function mountMcpServer({ app, runMacro, ctxFor, authMW }) {
   // without it.
   app.get("/.well-known/oauth-protected-resource", (req, res) => {
     res.json(protectedResourceMetadata(`${req.protocol}://${req.get("host")}`));
+  });
+
+  // ── OAuth 2.1 authorization server (PKCE) for the auth-required tools ──
+  // RFC 8414 metadata.
+  app.get("/.well-known/oauth-authorization-server", (req, res) => {
+    res.json(authServerMetadata(`${req.protocol}://${req.get("host")}`));
+  });
+  // Authorization endpoint — reuses Concord's web session (authMW) to identify the
+  // user, then issues a PKCE-bound authorization code.
+  const authGate = typeof authMW === "function" ? authMW : (_req, _res, next) => next();
+  app.get("/mcp/authorize", authGate, (req, res) => {
+    const userId = req.user?.id || req.actor?.userId || req.ctx?.actor?.userId;
+    if (!userId) return res.status(401).json({ error: "login_required", message: "Sign in to Concord, then retry authorization." });
+    const { redirect_uri, code_challenge, code_challenge_method, scope, state, client_id } = req.query;
+    if (!code_challenge) return res.status(400).json({ error: "invalid_request", message: "code_challenge required (PKCE)" });
+    if (code_challenge_method && String(code_challenge_method).toUpperCase() !== "S256") {
+      return res.status(400).json({ error: "invalid_request", message: "only S256 code_challenge_method is supported" });
+    }
+    const code = issueAuthCode({ userId, clientId: client_id, redirectUri: redirect_uri, codeChallenge: String(code_challenge), scope: String(scope || "concord:read") });
+    if (!redirect_uri) return res.json({ code }); // out-of-band
+    try {
+      const u = new URL(String(redirect_uri));
+      u.searchParams.set("code", code);
+      if (state) u.searchParams.set("state", String(state));
+      return res.redirect(u.toString());
+    } catch {
+      return res.status(400).json({ error: "invalid_redirect_uri" });
+    }
+  });
+  // Token endpoint — exchanges the code + PKCE verifier for a Bearer token.
+  app.post("/mcp/token", (req, res) => {
+    const { grant_type, code, code_verifier, redirect_uri } = req.body || {};
+    if (grant_type !== "authorization_code") return res.status(400).json({ error: "unsupported_grant_type" });
+    const r = exchangeCode({ code, codeVerifier: code_verifier, redirectUri: redirect_uri });
+    if (!r.ok) return res.status(400).json({ error: r.error });
+    return res.json({ access_token: r.access_token, token_type: r.token_type, expires_in: r.expires_in, scope: r.scope });
   });
 
   return { ok: true, exposedToolCount: EXPOSED_TOOLS.length };
