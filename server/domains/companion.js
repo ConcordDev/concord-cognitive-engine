@@ -75,7 +75,7 @@ export default function registerCompanionActions(registerLensAction) {
     if (!db || !tableExists(db, "dtus")) return [];
     const cap = Math.min(Math.max(Number(limit) || 25, 1), 200);
     const run = (ownerCol) => db.prepare(`
-      SELECT d.id AS id, d.title AS title, d.kind AS kind, d.created_at AS createdAt
+      SELECT d.id AS id, d.title AS title, d.type AS kind, d.created_at AS createdAt
       FROM dtus d
       WHERE d.${ownerCol} = ?
       ORDER BY d.created_at DESC
