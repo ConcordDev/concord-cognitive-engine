@@ -1049,7 +1049,7 @@ export default function registerCalendarActions(registerLensAction) {
   registerLensAction("calendar", "accounts-pull-events", async (ctx, _a, params = {}) => {
     try {
       const userId = aidCal(ctx);
-      if (!userId || userId === "anon") return { ok: false, reason: "no_user" };
+      if (!userId || userId === "anon") return { ok: false, reason: "no_user", error: "no_user" };
       if (!ctx?.db) return { ok: false, error: "db unavailable" };
       // If an accountId is given, require it to be a google account; otherwise
       // pull the user's primary google calendar directly.
@@ -1057,7 +1057,7 @@ export default function registerCalendarActions(registerLensAction) {
         const s = getCalState();
         const acct = s ? listCal(s.connectedAccounts, userId).find((a) => a.id === String(params.accountId)) : null;
         if (!acct) return { ok: false, error: "account not found" };
-        if (acct.provider !== "google") return { ok: false, reason: "pull_unsupported_provider", provider: acct.provider };
+        if (acct.provider !== "google") return { ok: false, reason: "pull_unsupported_provider", error: "pull_unsupported_provider", provider: acct.provider };
       }
       const res = await readGoogleCalendarEvents(ctx.db, userId, {
         calendarId: params.calendarId || "primary",
@@ -1066,7 +1066,9 @@ export default function registerCalendarActions(registerLensAction) {
         maxResults: params.maxResults,
         q: params.q,
       });
-      if (!res.ok) return { ok: false, reason: res.reason || "pull_failed", detail: res };
+      // Mirror the connector reason into `error` so the calendar UI can detect
+      // the not-connected state (lensRun surfaces `error`, not `reason`).
+      if (!res.ok) return { ok: false, reason: res.reason || "pull_failed", error: res.reason || "pull_failed", detail: res };
       return { ok: true, result: { events: res.events, nextPageToken: res.nextPageToken, source: "google" } };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };

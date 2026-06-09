@@ -22,10 +22,17 @@ const GMAIL_ENABLED = process.env.CONCORD_GMAIL_ENABLED !== "0";
 
 export default function registerGmailActions(registerLensAction) {
   const uid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  // Mirror the connector reason into `error` too: the frontend lensRun()
+  // normalizer surfaces `error` (not `reason`), so the inbox UI can switch on
+  // "no_token"/"connector_not_configured" to show the Connect-Gmail state.
+  const fail = (res, fallback) => {
+    const reason = res?.reason || fallback;
+    return { ok: false, reason, error: reason, detail: res };
+  };
   const guard = (ctx) => {
-    if (!GMAIL_ENABLED) return { ok: false, reason: "gmail_disabled" };
+    if (!GMAIL_ENABLED) return { ok: false, reason: "gmail_disabled", error: "gmail_disabled" };
     const userId = uid(ctx);
-    if (!userId || userId === "anon") return { ok: false, reason: "no_user" };
+    if (!userId || userId === "anon") return { ok: false, reason: "no_user", error: "no_user" };
     if (!ctx?.db) return { ok: false, error: "db unavailable" };
     return null;
   };
@@ -36,7 +43,7 @@ export default function registerGmailActions(registerLensAction) {
       const mail = params.mail || params;
       if (!mail.to) return { ok: false, error: "mail.to required" };
       const res = await writeGmailMessage(ctx.db, uid(ctx), mail);
-      if (!res.ok) return { ok: false, reason: res.reason || "send_failed", detail: res };
+      if (!res.ok) return fail(res, "send_failed");
       return { ok: true, result: { sent: true, providerMessageId: res.data?.id || null, threadId: res.data?.threadId || null } };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
@@ -54,7 +61,7 @@ export default function registerGmailActions(registerLensAction) {
         maxResults: params.maxResults,
         pageToken: params.pageToken,
       });
-      if (!res.ok) return { ok: false, reason: res.reason || "list_failed", detail: res };
+      if (!res.ok) return fail(res, "list_failed");
       return { ok: true, result: { messages: res.messages, nextPageToken: res.nextPageToken, resultSizeEstimate: res.resultSizeEstimate } };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
@@ -68,7 +75,7 @@ export default function registerGmailActions(registerLensAction) {
     if (!messageId) return { ok: false, error: "messageId required" };
     try {
       const res = await readGmailMessage(ctx.db, uid(ctx), messageId, { format: "full" });
-      if (!res.ok) return { ok: false, reason: res.reason || "get_failed", detail: res };
+      if (!res.ok) return fail(res, "get_failed");
       return { ok: true, result: { message: res.message } };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
@@ -92,7 +99,7 @@ export default function registerGmailActions(registerLensAction) {
     if (!mods) return { ok: false, error: `unknown action: ${params.action}` };
     try {
       const res = await modifyGmailMessage(ctx.db, uid(ctx), messageId, mods);
-      if (!res.ok) return { ok: false, reason: res.reason || "modify_failed", detail: res };
+      if (!res.ok) return fail(res, "modify_failed");
       return { ok: true, result: { messageId, labelIds: res.data?.labelIds || [] } };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
@@ -106,7 +113,7 @@ export default function registerGmailActions(registerLensAction) {
     if (!messageId) return { ok: false, error: "messageId required" };
     try {
       const res = await trashGmailMessage(ctx.db, uid(ctx), messageId);
-      if (!res.ok) return { ok: false, reason: res.reason || "trash_failed", detail: res };
+      if (!res.ok) return fail(res, "trash_failed");
       return { ok: true, result: { messageId, trashed: true } };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
@@ -118,7 +125,7 @@ export default function registerGmailActions(registerLensAction) {
     const bad = guard(ctx); if (bad) return bad;
     try {
       const res = await listGmailLabels(ctx.db, uid(ctx));
-      if (!res.ok) return { ok: false, reason: res.reason || "labels_failed", detail: res };
+      if (!res.ok) return fail(res, "labels_failed");
       return { ok: true, result: { labels: res.labels } };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };

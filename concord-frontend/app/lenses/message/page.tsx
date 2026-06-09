@@ -35,6 +35,7 @@ import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts'
 import { Loader2, Send } from 'lucide-react';
 import MessageWorkbench from '@/components/message/MessageWorkbench';
 import { SlackSection } from '@/components/message/SlackSection';
+import { GmailSection } from '@/components/message/GmailSection';
 
 interface Conversation {
   id: string;
@@ -236,7 +237,8 @@ export default function MessageLensPage() {
       <FirstRunTour lensId="message" />
       <ManifestActionBar />
       <DepthBadge lensId="message" size="sm" className="ml-2" />
-      <div className="px-4 mt-3">
+      <div className="px-4 mt-3 space-y-3">
+        <GmailSection />
         <SlackSection />
       </div>
       <div className="h-[calc(100vh-6rem)]">

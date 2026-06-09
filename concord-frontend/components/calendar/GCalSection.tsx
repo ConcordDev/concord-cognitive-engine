@@ -53,6 +53,9 @@ export function GCalSection() {
   const [showTasks, setShowTasks] = useState(true);
   const [proposals, setProposals] = useState<Proposal[] | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
+  // Real Google Calendar overlay (pulled via the connector — read-only).
+  const [googleEvents, setGoogleEvents] = useState<CalEvent[]>([]);
+  const [googleState, setGoogleState] = useState<'idle' | 'syncing' | 'connected' | 'disconnected'>('idle');
 
   const visibleCalIds = useMemo(() => calendars.filter(c => c.visible).map(c => c.id), [calendars]);
   const calById = useMemo(() => new Map(calendars.map(c => [c.id, c])), [calendars]);
@@ -173,8 +176,48 @@ export function GCalSection() {
     } catch (err) { console.error('[GCal] commitProposal', err); }
   }
 
-  // Visible events filtered by calendar toggles
-  const shownEvents = useMemo(() => events.filter(e => visibleCalIds.includes(e.calendarId)), [events, visibleCalIds]);
+  // Pull real events from the user's Google Calendar via the connector. Overlays
+  // them as a read-only "Google" calendar. Honest disconnected state on no_token.
+  const NOT_CONNECTED_CAL = useMemo(() => new Set(['no_token', 'connector_not_configured', 'pull_failed']), []);
+  async function syncGoogle() {
+    setGoogleState('syncing');
+    try {
+      const mStart = startOfMonth(cursor);
+      const timeMin = new Date(mStart.getFullYear(), mStart.getMonth() - 1, 1).toISOString();
+      const timeMax = new Date(mStart.getFullYear(), mStart.getMonth() + 2, 1).toISOString();
+      const r = await lensRun({ domain: 'calendar', action: 'accounts-pull-events', input: { timeMin, timeMax, maxResults: 250 } });
+      if (r.data?.ok) {
+        const gev = (r.data.result?.events || []) as Array<{ id: string; summary: string; start: string; end: string; allDay: boolean; location?: string; description?: string }>;
+        const mapped: CalEvent[] = gev.filter(e => e.start).map(e => ({
+          id: 'g_' + e.id, number: '', calendarId: 'google', title: e.summary || '(untitled)',
+          description: e.description || '', location: e.location || '', start: e.start, end: e.end || e.start,
+          allDay: e.allDay, recurrence: null, occurrenceStart: e.start, occurrenceEnd: e.end || e.start, conferenceLink: '',
+        }));
+        setGoogleEvents(mapped);
+        setGoogleState('connected');
+        setCalendars(prev => prev.some(c => c.id === 'google')
+          ? prev
+          : [...prev, { id: 'google', number: 'G', name: 'Google', color: '#ea4335', visible: true, isDefault: false }]);
+      } else if (NOT_CONNECTED_CAL.has(r.data?.error || '')) {
+        setGoogleState('disconnected');
+      } else {
+        setGoogleState('idle');
+      }
+    } catch { setGoogleState('idle'); }
+  }
+  async function connectGoogle() {
+    try {
+      const r = await lensRun({ domain: 'calendar', action: 'accounts-connect-google', input: { redirect: window.location.pathname } });
+      const url = r.data?.result?.authorizeUrl as string | undefined;
+      if (url) window.location.href = url;
+    } catch { /* best-effort */ }
+  }
+
+  // Visible events filtered by calendar toggles (local + real Google overlay)
+  const shownEvents = useMemo(
+    () => [...events, ...googleEvents].filter(e => visibleCalIds.includes(e.calendarId)),
+    [events, googleEvents, visibleCalIds],
+  );
 
   function eventsForDay(d: Date) {
     return shownEvents
@@ -303,6 +346,17 @@ export function GCalSection() {
           <button aria-label="Next" onClick={() => shiftCursor(1)} className="p-1 text-gray-400 hover:text-white"><ChevronRight className="w-4 h-4" /></button>
           <span className="text-sm font-semibold text-gray-200">{headerLabel}</span>
           {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-400" />}
+          {googleState === 'disconnected' ? (
+            <button onClick={connectGoogle} className="ml-2 px-2.5 py-1 text-xs rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10 inline-flex items-center gap-1">
+              <CalIcon className="w-3 h-3" /> Connect Google
+            </button>
+          ) : (
+            <button onClick={syncGoogle} disabled={googleState === 'syncing'} className={cn('ml-2 px-2.5 py-1 text-xs rounded border inline-flex items-center gap-1 disabled:opacity-50',
+              googleState === 'connected' ? 'border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10' : 'border-white/15 text-gray-300 hover:bg-white/[0.05]')}>
+              {googleState === 'syncing' ? <Loader2 className="w-3 h-3 animate-spin" /> : <CalIcon className="w-3 h-3" />}
+              {googleState === 'connected' ? `Google · ${googleEvents.length}` : 'Sync Google'}
+            </button>
+          )}
           <div className="ml-auto flex items-center gap-1">
             {(['month', 'week', 'day'] as View[]).map(v => (
               <button key={v} onClick={() => setView(v)} className={cn('px-2.5 py-1 text-xs rounded', view === v ? 'bg-blue-500/15 text-blue-300 border border-blue-500/30' : 'text-gray-400 border border-transparent hover:text-white')}>
