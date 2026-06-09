@@ -25317,7 +25317,7 @@ registerHeartbeat("initiative-cycle", {
   handler: () => runInitiativeCycle({ db: STATE?.db || globalThis._concordDB, io: STATE?.io || globalThis.__concordIO }),
 });
 
-import { mountMcpServer } from "./lib/mcp-server-host.js";
+import { mountMcpServer, unreachableTools } from "./lib/mcp-server-host.js";
 // Mount deferred to after LENS_ACTIONS declaration — see ~line 36545 (Sprint 18.5 TDZ fix).
 
 // Phase 6a — Forge → Marketplace. Mint Forge-generated apps as DTUs +
@@ -38604,13 +38604,30 @@ try {
   structuredLog("warn", "chat_agent_stream_mount_failed", { error: String(streamErr?.message || streamErr) });
 }
 
+// MCP tools address (domain, macro) pairs that may live in EITHER registry:
+// most exposed tools are canonical macros (MACROS, reachable by runMacro), but
+// some — e.g. the math CAS (`math.symbolicCompute`) — are registerLensAction
+// handlers (LENS_ACTIONS) that runMacro alone CANNOT see, so calling them via
+// the MCP host threw "macro not found" (concord.math was silently dead). Mirror
+// the /api/lens/run dispatch (prefer LENS_ACTIONS, then MACROS) so every exposed
+// tool is actually reachable. Returns the raw { ok, ... } envelope (the MCP host
+// reads result.ok) — no unwrap, to keep the shape identical for both paths.
+async function runMcpTool(domain, name, input, ctx) {
+  const lensHandler = LENS_ACTIONS.get(`${domain}.${name}`);
+  if (lensHandler) {
+    const virtualArtifact = { id: null, domain, type: "domain_action", data: input || {}, meta: {} };
+    return await lensHandler(ctx, virtualArtifact, input || {});
+  }
+  return await runMacro(domain, name, input || {}, ctx);
+}
+
 // Sprint 18.5 follow-up — same TDZ story. mountMcpServer needs `app` + `STATE`
-// + `runMacro`. Old position at ~line 23681 was TDZ on `app` and silently
+// + a tool runner. Old position at ~line 23681 was TDZ on `app` and silently
 // disabled the /mcp endpoint (Claude Desktop / Cursor / any MCP client).
 try {
   mountMcpServer({
     app,
-    runMacro,
+    runMacro: runMcpTool,
     ctxFor: (extra) => ({
       db: STATE?.db || globalThis._concordDB,
       actor: extra?.authInfo?.actor || null,
@@ -38618,6 +38635,14 @@ try {
     }),
   });
   structuredLog("info", "mcp_server_mounted", { endpoint: "/mcp", message: "Concord exposed as MCP server. Connect via any MCP client (Claude Desktop, Cursor, etc.)." });
+  // Reachability self-check: every advertised tool must resolve to a real macro
+  // OR lens-action, or it dies with "macro not found" on first call (the
+  // concord.math regression). Surface it loudly at boot instead.
+  try {
+    const _canResolve = (domain, name) => LENS_ACTIONS.has(`${domain}.${name}`) || !!(MACROS.get(domain)?.get(name));
+    const _deadTools = unreachableTools(_canResolve);
+    if (_deadTools.length) structuredLog("warn", "mcp_tools_unreachable", { tools: _deadTools, hint: "tool (domain,macro) not in MACROS or LENS_ACTIONS — it will throw on call" });
+  } catch { /* never block boot on the self-check */ }
 } catch (mcpErr) {
   structuredLog("warn", "mcp_server_mount_failed", { error: String(mcpErr?.message || mcpErr) });
 }

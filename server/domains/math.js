@@ -1039,7 +1039,11 @@ export default function registerMathActions(registerLensAction) {
   registerLensAction("math", "symbolicCompute", (ctx, artifact, params) => {
     try {
       const p = { ...(artifact && artifact.data), ...params };
-      const op = p.operation || "simplify";
+      // Accept common aliases so callers (incl. the MCP concord.math tool, whose
+      // schema advertises "differentiate | integrate") hit the right branch.
+      const OP_ALIASES = { differentiate: "derivative", diff: "derivative", derive: "derivative", integrate: "integral", integration: "integral", antiderivative: "integral" };
+      const rawOp = String(p.operation || "simplify").toLowerCase();
+      const op = OP_ALIASES[rawOp] || rawOp;
       const exprStr = String(p.expression || "").trim();
       const variable = String(p.variable || "x").trim() || "x";
       if (!exprStr) return { ok: false, error: "No expression provided." };

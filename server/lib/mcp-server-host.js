@@ -168,6 +168,21 @@ export function buildMcpServer({ runMacro, ctxFor }) {
 }
 
 /**
+ * Return the names of EXPOSED_TOOLS whose (domain, macro) the supplied predicate
+ * can't resolve. The mount site calls this at boot so an advertised-but-dead tool
+ * (e.g. a registerLensAction handler unreachable by a macro-only runner — the
+ * concord.math regression) surfaces as a startup warning instead of a silent
+ * "macro not found" at first call.
+ *
+ * @param {(domain: string, macro: string) => boolean} canResolve
+ * @returns {string[]} unreachable tool names
+ */
+export function unreachableTools(canResolve) {
+  if (typeof canResolve !== "function") return [];
+  return EXPOSED_TOOLS.filter((t) => !canResolve(t.domain, t.macro)).map((t) => t.name);
+}
+
+/**
  * Mount the MCP server onto an existing Express app at /mcp.
  * Caller is responsible for applying auth middleware before this.
  *
