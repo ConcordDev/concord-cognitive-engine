@@ -37,12 +37,12 @@ function freshDb() {
 // 1×1 PNG (transparent), base64-encoded.
 const TINY_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII=";
 
-describe("Phase BE1 — photo gallery", () => {
+describe("Phase BE1 — photo gallery", async () => {
   let db;
   beforeEach(() => { db = freshDb(); });
 
-  it("savePhoto writes blob + row", () => {
-    const r = savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG, caption: "hi" });
+  it("savePhoto writes blob + row", async () => {
+    const r = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG, caption: "hi" });
     assert.equal(r.ok, true);
     assert.ok(fs.existsSync(r.blobPath));
     const list = listMyPhotos(db, "u1");
@@ -50,14 +50,14 @@ describe("Phase BE1 — photo gallery", () => {
     assert.equal(list[0].caption, "hi");
   });
 
-  it("rejects invalid data URL", () => {
-    const r = savePhoto(db, "u1", { dataUrl: "not-a-data-url" });
+  it("rejects invalid data URL", async () => {
+    const r = await savePhoto(db, "u1", { dataUrl: "not-a-data-url" });
     assert.equal(r.ok, false);
     assert.equal(r.error, "invalid_data_url");
   });
 
-  it("private hides from public feed; sharePhoto flips to public + mints DTU", () => {
-    const r = savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG, visibility: "private" });
+  it("private hides from public feed; sharePhoto flips to public + mints DTU", async () => {
+    const r = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG, visibility: "private" });
     assert.equal(listPublicPhotosInWorld(db, "tunya").length, 0);
     const s = sharePhoto(db, r.id);
     assert.equal(s.ok, true);
@@ -68,15 +68,15 @@ describe("Phase BE1 — photo gallery", () => {
     assert.equal(dtu.creator_id, "u1");
   });
 
-  it("share is idempotent (re-share returns alreadyShared:true)", () => {
-    const r = savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
+  it("share is idempotent (re-share returns alreadyShared:true)", async () => {
+    const r = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
     sharePhoto(db, r.id);
     const second = sharePhoto(db, r.id);
     assert.equal(second.alreadyShared, true);
   });
 
-  it("deletePhoto removes row + blob; non-owner rejected", () => {
-    const r = savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
+  it("deletePhoto removes row + blob; non-owner rejected", async () => {
+    const r = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
     const otherAttempt = deletePhoto(db, "u2", r.id);
     assert.equal(otherAttempt.ok, false);
     assert.equal(otherAttempt.error, "not_owner");
@@ -87,10 +87,10 @@ describe("Phase BE1 — photo gallery", () => {
     assert.equal(listMyPhotos(db, "u1").length, 0);
   });
 
-  it("listPublicPhotosInWorld is scoped to world", () => {
-    const a = savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
+  it("listPublicPhotosInWorld is scoped to world", async () => {
+    const a = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
     sharePhoto(db, a.id);
-    const b = savePhoto(db, "u1", { worldId: "cyber", dataUrl: TINY_PNG });
+    const b = await savePhoto(db, "u1", { worldId: "cyber", dataUrl: TINY_PNG });
     sharePhoto(db, b.id);
     assert.equal(listPublicPhotosInWorld(db, "tunya").length, 1);
     assert.equal(listPublicPhotosInWorld(db, "cyber").length, 1);

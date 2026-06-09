@@ -8,6 +8,7 @@
 // faction match. Marketplace canon picks winners.
 
 import fs from "node:fs";
+import * as fsp from "node:fs/promises";
 import path from "node:path";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { registerAsset } from "../lib/evo-asset/registry.js";
@@ -1633,7 +1634,7 @@ export default function registerWhiteboardActions(registerLensAction) {
   //      built-in procedural decor. Marketplace canon picks winners.
   //
   // Auth required. Idempotent on (source, sourceId).
-  registerLensAction("whiteboard", "publish-as-blueprint", (ctx, _a, params = {}) => {
+  registerLensAction("whiteboard", "publish-as-blueprint", async (ctx, _a, params = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, error: "db unavailable" };
     const userId = wbActor(ctx);
@@ -1682,9 +1683,10 @@ export default function registerWhiteboardActions(registerLensAction) {
     const svgPath  = path.join(dir, svgName);
 
     try {
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(jsonPath, jsonBuf);
-      if (svgBuf) fs.writeFileSync(svgPath, svgBuf);
+      // Async fs — blueprint JSON + ≤5 MB SVG writes must not block the event loop.
+      await fsp.mkdir(dir, { recursive: true });
+      await fsp.writeFile(jsonPath, jsonBuf);
+      if (svgBuf) await fsp.writeFile(svgPath, svgBuf);
     } catch (err) {
       return { ok: false, error: `failed to write blueprint files: ${err?.message || err}` };
     }
@@ -1701,8 +1703,8 @@ export default function registerWhiteboardActions(registerLensAction) {
         qualityLevel: 1,
       });
     } catch (err) {
-      try { fs.unlinkSync(jsonPath); } catch { /* idempotent */ }
-      if (svgBuf) { try { fs.unlinkSync(svgPath); } catch { /* idempotent */ } }
+      await fsp.unlink(jsonPath).catch(() => { /* idempotent */ });
+      if (svgBuf) await fsp.unlink(svgPath).catch(() => { /* idempotent */ });
       return { ok: false, error: `failed to register blueprint: ${err?.message || err}` };
     }
 

@@ -9,6 +9,7 @@
 // the 3-tier resolution order.
 
 import fs from "fs";
+import * as fsp from "node:fs/promises";
 import path from "path";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { registerAsset } from "../lib/evo-asset/registry.js";
@@ -819,7 +820,7 @@ export default function registerArtActions(registerLensAction) {
   //
   // Auth: requires ctx.actor.userId so the asset has a creator. Anon
   // submissions are rejected.
-  registerLensAction("art", "publish-as-texture", (ctx, _a, params = {}) => {
+  registerLensAction("art", "publish-as-texture", async (ctx, _a, params = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, error: "db unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId;
@@ -859,8 +860,9 @@ export default function registerArtActions(registerLensAction) {
     const filePath = path.join(dirPath, fileName);
 
     try {
-      fs.mkdirSync(dirPath, { recursive: true });
-      fs.writeFileSync(filePath, decoded.buf);
+      // Async fs — a ≤20 MB texture write must not block the event loop.
+      await fsp.mkdir(dirPath, { recursive: true });
+      await fsp.writeFile(filePath, decoded.buf);
     } catch (err) {
       return { ok: false, error: `failed to write asset file: ${err?.message || err}` };
     }
@@ -878,7 +880,7 @@ export default function registerArtActions(registerLensAction) {
       });
     } catch (err) {
       // Roll back the file write so we don't leave orphans
-      try { fs.unlinkSync(filePath); } catch { /* idempotent */ }
+      await fsp.unlink(filePath).catch(() => { /* idempotent */ });
       return { ok: false, error: `failed to register asset: ${err?.message || err}` };
     }
 

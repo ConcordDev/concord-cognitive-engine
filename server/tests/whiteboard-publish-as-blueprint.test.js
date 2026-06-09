@@ -76,54 +76,54 @@ function seedBoard(ctx, boardId, elements = []) {
   });
 }
 
-describe("whiteboard.publish-as-blueprint", () => {
-  it("rejects anonymous publishers", () => {
+describe("whiteboard.publish-as-blueprint", async () => {
+  it("rejects anonymous publishers", async () => {
     seedBoard({ actor: { userId: "anon" }, userId: "anon" }, "b1", []);
-    const r = call("publish-as-blueprint", { db, actor: { userId: "anon" }, userId: "anon" }, {
+    const r = await call("publish-as-blueprint", { db, actor: { userId: "anon" }, userId: "anon" }, {
       archetype: "tavern", boardId: "b1",
     });
     assert.equal(r.ok, false);
     assert.match(r.error, /auth/i);
   });
 
-  it("rejects unknown archetype", () => {
+  it("rejects unknown archetype", async () => {
     seedBoard(ctxAlice(), "b2", []);
-    const r = call("publish-as-blueprint", ctxAlice(), {
+    const r = await call("publish-as-blueprint", ctxAlice(), {
       archetype: "spaceship", boardId: "b2",
     });
     assert.equal(r.ok, false);
     assert.match(r.error, /archetype/);
   });
 
-  it("rejects missing boardId", () => {
-    const r = call("publish-as-blueprint", ctxAlice(), { archetype: "tavern" });
+  it("rejects missing boardId", async () => {
+    const r = await call("publish-as-blueprint", ctxAlice(), { archetype: "tavern" });
     assert.equal(r.ok, false);
     assert.match(r.error, /boardId/);
   });
 
-  it("rejects non-existent board", () => {
-    const r = call("publish-as-blueprint", ctxAlice(), {
+  it("rejects non-existent board", async () => {
+    const r = await call("publish-as-blueprint", ctxAlice(), {
       archetype: "tavern", boardId: "nonexistent_id",
     });
     assert.equal(r.ok, false);
     assert.match(r.error, /board not found/i);
   });
 
-  it("rejects when db is unavailable", () => {
+  it("rejects when db is unavailable", async () => {
     seedBoard(ctxAlice(), "b3", []);
-    const r = call("publish-as-blueprint", { actor: { userId: "user_alice" }, userId: "user_alice" }, {
+    const r = await call("publish-as-blueprint", { actor: { userId: "user_alice" }, userId: "user_alice" }, {
       archetype: "tavern", boardId: "b3",
     });
     assert.equal(r.ok, false);
     assert.match(r.error, /db/i);
   });
 
-  it("writes the blueprint JSON to disk + inserts an evo_assets row", () => {
+  it("writes the blueprint JSON to disk + inserts an evo_assets row", async () => {
     seedBoard(ctxAlice(), "b4", [
       { kind: "sticky", x: 10, y: 20, width: 50, height: 50, fillColor: "#fef3c7", text: "fireplace" },
       { kind: "rect",   x: 100, y: 200, w: 60, h: 40, fillColor: "#9ca3af" },
     ]);
-    const r = call("publish-as-blueprint", ctxAlice(), {
+    const r = await call("publish-as-blueprint", ctxAlice(), {
       archetype: "tavern", boardId: "b4",
     });
     assert.equal(r.ok, true);
@@ -147,9 +147,9 @@ describe("whiteboard.publish-as-blueprint", () => {
     assert.equal(blueprint.decor[1].kind, "rect");
   });
 
-  it("optionally accepts an SVG raster preview alongside JSON", () => {
+  it("optionally accepts an SVG raster preview alongside JSON", async () => {
     seedBoard(ctxAlice(), "b5", []);
-    const r = call("publish-as-blueprint", ctxAlice(), {
+    const r = await call("publish-as-blueprint", ctxAlice(), {
       archetype: "archive",
       boardId: "b5",
       snapshotFormat: "svg-raster",
@@ -159,10 +159,10 @@ describe("whiteboard.publish-as-blueprint", () => {
     assert.equal(r.result.previewIncluded, true);
   });
 
-  it("is idempotent on republish — same sourceId returns existing assetId", () => {
+  it("is idempotent on republish — same sourceId returns existing assetId", async () => {
     seedBoard(ctxAlice(), "b6", []);
-    const r1 = call("publish-as-blueprint", ctxAlice(), { archetype: "forge", boardId: "b6" });
-    const r2 = call("publish-as-blueprint", ctxAlice(), { archetype: "forge", boardId: "b6" });
+    const r1 = await call("publish-as-blueprint", ctxAlice(), { archetype: "forge", boardId: "b6" });
+    const r2 = await call("publish-as-blueprint", ctxAlice(), { archetype: "forge", boardId: "b6" });
     assert.equal(r1.ok, true);
     assert.equal(r2.ok, true);
     assert.equal(r1.result.assetId, r2.result.assetId);
@@ -170,11 +170,11 @@ describe("whiteboard.publish-as-blueprint", () => {
     assert.equal(r2.result.created, false);
   });
 
-  it("each of the 5 archetypes publishes successfully", () => {
+  it("each of the 5 archetypes publishes successfully", async () => {
     const types = ["tavern", "archive", "forge", "market", "tower"];
     for (const t of types) {
       seedBoard(ctxAlice(), `b_${t}`, []);
-      const r = call("publish-as-blueprint", ctxAlice(), { archetype: t, boardId: `b_${t}` });
+      const r = await call("publish-as-blueprint", ctxAlice(), { archetype: t, boardId: `b_${t}` });
       assert.equal(r.ok, true, `${t} should publish`);
     }
     const count = db.prepare("SELECT COUNT(*) AS n FROM evo_assets WHERE kind = 'blueprint'").get().n;
@@ -182,29 +182,29 @@ describe("whiteboard.publish-as-blueprint", () => {
   });
 });
 
-describe("whiteboard.published-blueprint-coverage", () => {
-  it("returns null for every archetype when nothing is published", () => {
-    const r = call("published-blueprint-coverage", ctxAlice(), {});
+describe("whiteboard.published-blueprint-coverage", async () => {
+  it("returns null for every archetype when nothing is published", async () => {
+    const r = await call("published-blueprint-coverage", ctxAlice(), {});
     assert.equal(r.ok, true);
     for (const a of ["tavern", "archive", "forge", "market", "tower"]) {
       assert.equal(r.result.archetypes[a], null);
     }
   });
 
-  it("returns asset info for archetypes the player has published", () => {
+  it("returns asset info for archetypes the player has published", async () => {
     seedBoard(ctxAlice(), "b7", []);
     seedBoard(ctxAlice(), "b8", []);
-    call("publish-as-blueprint", ctxAlice(), { archetype: "tavern", boardId: "b7" });
-    call("publish-as-blueprint", ctxAlice(), { archetype: "forge", boardId: "b8" });
-    const r = call("published-blueprint-coverage", ctxAlice(), {});
+    await call("publish-as-blueprint", ctxAlice(), { archetype: "tavern", boardId: "b7" });
+    await call("publish-as-blueprint", ctxAlice(), { archetype: "forge", boardId: "b8" });
+    const r = await call("published-blueprint-coverage", ctxAlice(), {});
     assert.equal(r.ok, true);
     assert.ok(r.result.archetypes.tavern?.assetId);
     assert.equal(r.result.archetypes.archive, null);
     assert.ok(r.result.archetypes.forge?.assetId);
   });
 
-  it("rejects anonymous", () => {
-    const r = call("published-blueprint-coverage", { db, actor: { userId: "anon" }, userId: "anon" }, {});
+  it("rejects anonymous", async () => {
+    const r = await call("published-blueprint-coverage", { db, actor: { userId: "anon" }, userId: "anon" }, {});
     assert.equal(r.ok, false);
   });
 });

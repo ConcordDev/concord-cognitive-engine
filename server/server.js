@@ -51504,7 +51504,7 @@ app.get("/api/mentors/:npcId", asyncHandler(async (req, res) => {
 app.post("/api/photos/save", requireAuth(), asyncHandler(async (req, res) => {
   const { savePhoto } = await import("./lib/photo-gallery.js");
   const userId = req.user?.id || req.user?.userId;
-  res.json(savePhoto(db, userId, req.body || {}));
+  res.json(await savePhoto(db, userId, req.body || {}));
 }));
 
 app.post("/api/photos/:photoId/share", requireAuth(), asyncHandler(async (req, res) => {

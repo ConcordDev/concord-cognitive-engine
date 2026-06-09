@@ -9,6 +9,7 @@
 
 import crypto from "node:crypto";
 import fs from "node:fs";
+import * as fsp from "node:fs/promises";
 import path from "node:path";
 
 const ADAPTIVE_REGIONS = new Set([
@@ -1566,7 +1567,7 @@ export default function registerStudioActions(registerLensAction) {
   //
   // Future enhancement: a draft_version_id column on dtus lets users
   // iterate without publishing. v1 ships as full-publish-each-time.
-  registerLensAction("studio", "publish-as-adaptive-music", (ctx, _a, params = {}) => {
+  registerLensAction("studio", "publish-as-adaptive-music", async (ctx, _a, params = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, error: "db unavailable" };
     const userId = studioActor(ctx);
@@ -1610,9 +1611,10 @@ export default function registerStudioActions(registerLensAction) {
     if (!inline) {
       const dir = path.join(STUDIO_LENS_ROOT, region, intensity);
       try {
-        fs.mkdirSync(dir, { recursive: true });
+        // Async fs — a ≤20 MB audio write must not block the event loop.
+        await fsp.mkdir(dir, { recursive: true });
         storagePath = path.join(dir, fileName);
-        fs.writeFileSync(storagePath, decoded.buf);
+        await fsp.writeFile(storagePath, decoded.buf);
       } catch (err) {
         return { ok: false, error: `failed to write reference stem: ${err?.message || err}` };
       }
@@ -1664,7 +1666,7 @@ export default function registerStudioActions(registerLensAction) {
       );
     } catch (err) {
       if (storagePath) {
-        try { fs.unlinkSync(storagePath); } catch { /* idempotent */ }
+        await fsp.unlink(storagePath).catch(() => { /* idempotent */ });
       }
       return { ok: false, error: `failed to register adaptive-music DTU: ${err?.message || err}` };
     }
