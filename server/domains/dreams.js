@@ -471,14 +471,22 @@ export default function registerDreamsMacros(register) {
           FROM dreams WHERE user_id = ? ORDER BY composed_at DESC LIMIT 365
       `).all(userId);
       const tagMap = tagsForUser(userId);
+      // Batch-resolve dream DTU titles in one query (was an N+1 per dream row).
+      const dtuTitleById = new Map();
+      const dtuIds = [...new Set(rows.map((r) => r.dream_dtu_id).filter(Boolean))];
+      if (dtuIds.length) {
+        try {
+          const placeholders = dtuIds.map(() => "?").join(",");
+          const titleRows = db.prepare(
+            `SELECT id, title FROM dtus WHERE id IN (${placeholders})`
+          ).all(...dtuIds);
+          for (const tr of titleRows) dtuTitleById.set(tr.id, tr);
+        } catch { /* dtus absent */ }
+      }
       const byDay = new Map();
       for (const row of rows) {
         const day = new Date(Number(row.composed_at) * 1000).toISOString().slice(0, 10);
-        let dtu = null;
-        try {
-          const r = db.prepare(`SELECT id, title FROM dtus WHERE id = ?`).get(row.dream_dtu_id);
-          if (r) dtu = r;
-        } catch { /* dtu absent */ }
+        const dtu = dtuTitleById.get(row.dream_dtu_id) || null;
         if (!byDay.has(day)) byDay.set(day, []);
         byDay.get(day).push({
           id: row.id,
