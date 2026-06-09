@@ -121,7 +121,7 @@ export function MarketingContentPanel({ onChange }: { onChange: () => void }) {
                       → {STATUS_FLOW[c.status]}
                     </button>
                   )}
-                  <button type="button" onClick={() => delContent(c.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delContent(c.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -162,7 +162,7 @@ export function MarketingContentPanel({ onChange }: { onChange: () => void }) {
                         <Trophy className="w-3 h-3" />{t.winner === 'a' ? t.variantA.label : t.variantB.label} +{t.liftPct}%
                       </span>
                     )}
-                    <button type="button" onClick={() => delTest(t.id)} className="text-zinc-600 hover:text-rose-400">
+                    <button aria-label="Delete" type="button" onClick={() => delTest(t.id)} className="text-zinc-600 hover:text-rose-400">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>

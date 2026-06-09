@@ -26,15 +26,18 @@
  */
 
 import { parentPort } from "node:worker_threads";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { runPipeline, ensurePipelineState } from "../emergent/autogen-pipeline.js";
 
 // ── CPU Pinning (when CONCORD_WORKER_CORES is set) ─────────────────────────────
 // The startup script sets this so the cognitive worker stays on its dedicated core.
+// Although operator-set (not user input), validate the CPU-list shape and use
+// execFileSync with an arg array — no shell — so this can never be an injection
+// sink (closes the command-injection detector finding).
 const workerCores = process.env.CONCORD_WORKER_CORES;
-if (workerCores) {
+if (workerCores && /^[0-9]+([,-][0-9]+)*$/.test(workerCores)) {
   try {
-    execSync(`taskset -p -c ${workerCores} ${process.pid}`, { stdio: "ignore" });
+    execFileSync("taskset", ["-p", "-c", workerCores, String(process.pid)], { stdio: "ignore" });
   } catch {
     // taskset not available (e.g. macOS) — no-op, OS scheduler handles it
   }

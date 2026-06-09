@@ -116,7 +116,7 @@ export function ThreadComposer() {
                   <p className="text-[11px] font-semibold text-zinc-100 truncate">{d.title}</p>
                   <p className="text-[9px] text-zinc-400">{d.postCount} posts · {d.status}</p>
                 </button>
-                <button onClick={() => del(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => del(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

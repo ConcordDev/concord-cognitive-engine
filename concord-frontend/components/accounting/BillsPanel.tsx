@@ -170,7 +170,7 @@ export function BillsPanel() {
                     ) : (
                       <span className="text-[10px] text-emerald-400 inline-flex items-center gap-0.5"><CheckCircle className="w-3 h-3" />Paid</span>
                     )}
-                    <button onClick={() => remove(b.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300">
+                    <button aria-label="Delete" onClick={() => remove(b.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </li>

@@ -114,7 +114,7 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
                         <Users className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                         <span className="flex-1 text-xs text-zinc-200 truncate">{c.collaboratorId}</span>
                         <span className="text-[10px] text-zinc-400 uppercase">{c.role}</span>
-                        <button type="button" onClick={() => unshare(c.collaboratorId)}
+                        <button aria-label="Delete" type="button" onClick={() => unshare(c.collaboratorId)}
                           className="text-zinc-600 hover:text-rose-400 shrink-0">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

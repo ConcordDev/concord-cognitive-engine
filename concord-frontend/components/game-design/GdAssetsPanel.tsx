@@ -183,7 +183,7 @@ export function GdAssetsPanel({ gameId, onChange }: { gameId: string; onChange: 
                     <span className="text-sm font-semibold text-zinc-100 truncate">{a.name}</span>
                     <span className="text-[10px] uppercase text-lime-400">{a.kind}</span>
                     <div className="flex-1" />
-                    <button type="button" onClick={() => delAsset(a.id)} className="text-zinc-600 hover:text-rose-400">
+                    <button aria-label="Delete" type="button" onClick={() => delAsset(a.id)} className="text-zinc-600 hover:text-rose-400">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>

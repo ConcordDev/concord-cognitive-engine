@@ -112,7 +112,7 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
                     <span className="text-sm font-semibold text-zinc-100">{al.name}</span>
                     <span className="text-[11px] text-zinc-400">{al.photoCount} photos</span>
                   </button>
-                  <button type="button" onClick={() => delAlbum(al.id)} className="px-3 text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delAlbum(al.id)} className="px-3 text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

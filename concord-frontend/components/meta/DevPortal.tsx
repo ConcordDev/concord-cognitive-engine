@@ -348,7 +348,7 @@ function ServiceCatalogPanel() {
             <option key={k} value={k}>{k}</option>
           ))}
         </select>
-        <button onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
+        <button aria-label="Refresh" onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>
@@ -414,7 +414,7 @@ function ServiceCatalogPanel() {
                       </p>
                     </div>
                   </div>
-                  <button
+                  <button aria-label="Delete"
                     onClick={() => remove(svc.id)}
                     className="shrink-0 rounded p-1.5 text-zinc-600 hover:bg-rose-500/10 hover:text-rose-400"
                   >
@@ -490,7 +490,7 @@ function DependencyGraphPanel() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-zinc-400">Dependency network over the service catalog.</p>
-        <button onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
+        <button aria-label="Refresh" onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>
@@ -646,7 +646,7 @@ function MetricsDashboardPanel() {
           <option value={21600000}>Last 6 hours</option>
           <option value={86400000}>Last 24 hours</option>
         </select>
-        <button onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
+        <button aria-label="Refresh" onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
           <RefreshCw className="h-4 w-4" />
         </button>
         {data && <span className="text-xs text-zinc-400">{data.totalSamples} samples total</span>}
@@ -724,7 +724,7 @@ function HealthRollupPanel() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-zinc-400">Green / yellow / red roll-up per subsystem kind. Worst child wins.</p>
-        <button onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
+        <button aria-label="Refresh" onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>
@@ -1118,7 +1118,7 @@ function AlertSurfacePanel() {
           />
           Show resolved
         </label>
-        <button onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
+        <button aria-label="Refresh" onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>
@@ -1265,7 +1265,7 @@ function MacroExplorerPanel() {
             </option>
           ))}
         </select>
-        <button onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
+        <button aria-label="Refresh" onClick={load} className="rounded-md border border-zinc-700 p-2 text-zinc-400 hover:text-white">
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>

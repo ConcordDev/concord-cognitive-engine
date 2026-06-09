@@ -101,7 +101,7 @@ export function CampaignManager() {
                   </div>
                 )}
               </button>
-              <button onClick={() => delCampaign(c.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => delCampaign(c.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
             {active === c.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800">

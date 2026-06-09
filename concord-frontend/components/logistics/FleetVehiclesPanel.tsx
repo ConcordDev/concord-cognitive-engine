@@ -101,7 +101,7 @@ export function FleetVehiclesPanel() {
                       {STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                     </select>
                   </td>
-                  <td><button onClick={() => remove(v.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button></td>
+                  <td><button aria-label="Delete" onClick={() => remove(v.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button></td>
                 </tr>
               ))}
             </tbody>

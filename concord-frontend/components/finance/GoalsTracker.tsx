@@ -108,7 +108,7 @@ export function GoalsTracker() {
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="text-sm text-white font-medium flex-1 truncate">{g.name}</span>
                   <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{g.category}</span>
-                  <button onClick={() => remove(g.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button aria-label="Delete" onClick={() => remove(g.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
                 <div className="flex items-baseline gap-2 mb-1.5 text-xs">
                   <span className="font-mono tabular-nums text-cyan-300">${g.saved.toFixed(0)}</span>

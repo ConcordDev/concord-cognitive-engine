@@ -150,7 +150,7 @@ export function TimelineBuilder() {
           onKeyDown={(e) => { if (e.key === 'Enter') void createTimeline(); }}
           placeholder="New timeline"
           className="w-32 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-200" />
-        <button onClick={createTimeline} className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white">
+        <button aria-label="Add" onClick={createTimeline} className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white">
           <Plus className="w-3.5 h-3.5" />
         </button>
       </div>

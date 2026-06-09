@@ -103,7 +103,7 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
                 <span className="text-xs text-zinc-100 flex-1">{l.name}
                   {l.address && <span className="text-zinc-400"> · {l.address}</span>}</span>
                 {l.contact && <span className="text-[10px] text-zinc-400">{l.contact}</span>}
-                <button type="button" onClick={() => lensRun('film-studios', 'location-delete', { id: l.id }).then(refresh)}
+                <button aria-label="Delete" type="button" onClick={() => lensRun('film-studios', 'location-delete', { id: l.id }).then(refresh)}
                   className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
@@ -134,7 +134,7 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
                 </button>
                 <span className="text-xs text-zinc-100 flex-1">{t.title}</span>
                 <span className="text-[10px] text-zinc-400">{t.department}{t.dueDate && ` · ${t.dueDate}`}</span>
-                <button type="button" onClick={() => lensRun('film-studios', 'task-delete', { id: t.id }).then(refresh)}
+                <button aria-label="Delete" type="button" onClick={() => lensRun('film-studios', 'task-delete', { id: t.id }).then(refresh)}
                   className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
@@ -149,9 +149,9 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
             <CalendarDays className="w-3.5 h-3.5 text-fuchsia-400" /> Production calendar
           </h3>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => shiftMonth(-1)} className="text-zinc-400 hover:text-zinc-200"><ChevronLeft className="w-4 h-4" /></button>
+            <button aria-label="Previous" type="button" onClick={() => shiftMonth(-1)} className="text-zinc-400 hover:text-zinc-200"><ChevronLeft className="w-4 h-4" /></button>
             <span className="text-[11px] text-zinc-300">{MONTHS[month - 1]} {year}</span>
-            <button type="button" onClick={() => shiftMonth(1)} className="text-zinc-400 hover:text-zinc-200"><ChevronRight className="w-4 h-4" /></button>
+            <button aria-label="Next" type="button" onClick={() => shiftMonth(1)} className="text-zinc-400 hover:text-zinc-200"><ChevronRight className="w-4 h-4" /></button>
           </div>
         </div>
         <div className="grid grid-cols-7 gap-1">

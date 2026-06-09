@@ -104,7 +104,7 @@ export function MaterialPriceList() {
                   />
                 </div>
                 <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-center text-[9px] text-zinc-400">{m.category}</span>
-                <button type="button" onClick={() => removeMaterial.mutate(m.id)} className="text-zinc-600 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+                <button aria-label="Delete" type="button" onClick={() => removeMaterial.mutate(m.id)} className="text-zinc-600 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
               </div>
             );
           })}

@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { X, Send, Mic, MicOff, Sparkles, Volume2, VolumeX } from 'lucide-react';
+import { X, Send, Mic, MicOff, Sparkles, Volume2, VolumeX, Box } from 'lucide-react';
 import { ConKayMessage, type ConKayReplyFields } from './ConKayViz';
 import { useConKayVoice } from './useConKayVoice';
 import { matchConKaySkill, type ConKaySkill } from './conkay-skills';
@@ -38,6 +38,13 @@ function newRunId(): string {
 // The world-tree field is WebGL — load client-only so SSR never touches it.
 const ConKayBackdrop = dynamic(
   () => import('./ConKayBackdrop').then((m) => m.ConKayBackdrop),
+  { ssr: false },
+);
+
+// Phase 3 — exploded view of a REAL artifact (loaded via the ar.render macro).
+// Lazy + client-only: the Three.js + gsap inspector only loads when summoned.
+const ConKayArtifactExploded = dynamic(
+  () => import('./ConKayArtifactExploded').then((m) => m.ConKayArtifactExploded),
   { ssr: false },
 );
 
@@ -121,6 +128,7 @@ function ConKayTelemetryPanel() {
 export function ConKayOverlay() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [inspecting, setInspecting] = useState(false);
   const [messages, setMessages] = useState<OverlayMsg[]>([]);
   const [input, setInput] = useState('');
   const [running, setRunning] = useState(false);
@@ -515,6 +523,11 @@ export function ConKayOverlay() {
       <ConKayBackdrop state={conkayState} listening={voice.listening} muted={muted} className="pointer-events-none absolute inset-0 -z-10" />
       <div className="absolute inset-0 -z-10 bg-black/55 backdrop-blur-sm" aria-hidden onClick={() => setOpen(false)} />
 
+      {/* Phase 3 — exploded view of a real artifact (over the backdrop, interactive) */}
+      {inspecting && (
+        <ConKayArtifactExploded className="absolute inset-0 z-0" />
+      )}
+
       {/* header */}
       <div className="flex items-center gap-3 px-5 py-3 text-cyan-100">
         <Sparkles className="h-5 w-5 text-cyan-300" />
@@ -532,6 +545,10 @@ export function ConKayOverlay() {
         </span>
         <ConKayTelemetryChip />
         <div className="ml-auto flex items-center gap-1.5">
+          <button onClick={() => setInspecting((x) => !x)} title={inspecting ? 'Close inspector' : 'Inspect an AR artifact (exploded view)'} aria-label="Inspect artifact"
+            className={`rounded-lg p-2 hover:bg-cyan-400/10 ${inspecting ? 'text-cyan-100 bg-cyan-400/15' : 'text-cyan-200'}`}>
+            <Box className="h-4 w-4" />
+          </button>
           <button onClick={() => setMuted((x) => !x)} title={muted ? 'Unmute' : 'Mute'} aria-label={muted ? 'Unmute' : 'Mute'}
             className="rounded-lg p-2 text-cyan-200 hover:bg-cyan-400/10">
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}

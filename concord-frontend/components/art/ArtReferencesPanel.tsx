@@ -83,7 +83,7 @@ export function ArtReferencesPanel() {
                 <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
                   <ImageIcon className="w-3.5 h-3.5 text-violet-400" /> {b.name}
                 </h3>
-                <button type="button" onClick={() => delBoard(b.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => delBoard(b.id)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -106,7 +106,7 @@ export function ArtReferencesPanel() {
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={r.imageUrl} alt={r.note || 'reference'}
                         className="w-full aspect-square object-cover rounded-lg border border-zinc-700" />
-                      <button type="button" onClick={() => removeRef(b.id, r.id)}
+                      <button aria-label="Delete" type="button" onClick={() => removeRef(b.id, r.id)}
                         className="absolute top-1 right-1 bg-black/60 text-zinc-200 hover:text-rose-300 rounded p-0.5 opacity-0 group-hover:opacity-100">
                         <Trash2 className="w-3 h-3" />
                       </button>

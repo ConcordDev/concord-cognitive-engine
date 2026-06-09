@@ -76,7 +76,7 @@ export function AcPayrollPanel() {
                     onChange={(ev) => setRun({ ...run, hours: { ...run.hours, [e.id]: ev.target.value } })}
                     className="w-14 bg-black/40 border border-white/10 rounded px-1 py-0.5 text-[11px]" />
                 )}
-                <button type="button" onClick={() => lensRun({ domain: 'accounting', action: 'employee-delete', input: { id: e.id } }).then(refresh)}
+                <button aria-label="Delete" type="button" onClick={() => lensRun({ domain: 'accounting', action: 'employee-delete', input: { id: e.id } }).then(refresh)}
                   className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}

@@ -26,6 +26,16 @@ export function runMovementRecruitmentCycle({ db } = {}) {
   } catch { return { ok: true, worlds: 0 }; }
 
   let seeded = 0, recruited = 0, acted = 0, suppressed = 0;
+  // Hoist the per-movement statements (constant SQL) out of the world×movement
+  // loops — prepared once, reused per movement (was an N+1 re-preparing each pass).
+  const candidatesStmt = db.prepare(`
+            SELECT DISTINCT g.npc_id, n.faction, n.archetype FROM npc_grudges g
+            JOIN world_npcs n ON n.id = g.npc_id
+            WHERE g.resolved_at IS NULL AND n.world_id = ? AND g.target_kind = ? AND g.target_id = ?
+              AND g.npc_id NOT IN (SELECT member_id FROM movement_members WHERE movement_id = ? AND member_kind='npc' AND left_at IS NULL)
+            LIMIT ?
+          `);
+  const founderFactionStmt = db.prepare(`SELECT faction FROM world_npcs WHERE id = ?`);
   for (const w of worlds) {
     try {
       const s = seedMovementFromGrievance(db, w);
@@ -37,13 +47,7 @@ export function runMovementRecruitmentCycle({ db } = {}) {
         try {
           // Phase 12 — pull a wider pool with faction/archetype so the ideology
           // attractor can pick the ideologically-closest first.
-          candidates = db.prepare(`
-            SELECT DISTINCT g.npc_id, n.faction, n.archetype FROM npc_grudges g
-            JOIN world_npcs n ON n.id = g.npc_id
-            WHERE g.resolved_at IS NULL AND n.world_id = ? AND g.target_kind = ? AND g.target_id = ?
-              AND g.npc_id NOT IN (SELECT member_id FROM movement_members WHERE movement_id = ? AND member_kind='npc' AND left_at IS NULL)
-            LIMIT ?
-          `).all(w, m.target_kind, m.target_id, m.id, MAX_RECRUIT_PER_PASS * 3);
+          candidates = candidatesStmt.all(w, m.target_kind, m.target_id, m.id, MAX_RECRUIT_PER_PASS * 3);
         } catch { candidates = []; }
         // Recruit along SHARED position: rank by ideological proximity to the
         // founder, then take the closest few. Falls back to grievance order when
@@ -52,7 +56,7 @@ export function runMovementRecruitmentCycle({ db } = {}) {
         try {
           // The founder's position = its faction's professed vector.
           let founderFaction = null;
-          try { founderFaction = db.prepare(`SELECT faction FROM world_npcs WHERE id = ?`).get(m.founded_by_id)?.faction || null; } catch { founderFaction = null; }
+          try { founderFaction = founderFactionStmt.get(m.founded_by_id)?.faction || null; } catch { founderFaction = null; }
           const founderPos = founderFaction ? positionFor(db, w, founderFaction) : positionFor(db, w, m.target_id);
           const ranked = recruitAlongPosition(db, w, founderPos, candidates.map((c) => ({ id: c.npc_id, faction: c.faction, archetype: c.archetype })));
           ordered = ranked.map((r) => r.id);

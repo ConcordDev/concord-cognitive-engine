@@ -131,7 +131,7 @@ export function GdLoopsPanel({ gameId, onChange }: { gameId: string; onChange: (
                       net {a.netDelta > 0 ? '+' : ''}{a.netDelta}
                     </span>
                   )}
-                  <button type="button" onClick={() => delLoop(loop.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delLoop(loop.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -148,7 +148,7 @@ export function GdLoopsPanel({ gameId, onChange }: { gameId: string; onChange: (
                         <span className={cn('font-mono', s.delta > 0 ? 'text-emerald-400' : s.delta < 0 ? 'text-rose-400' : 'text-zinc-400')}>
                           {s.delta > 0 ? '+' : ''}{s.delta}
                         </span>
-                        <button type="button" onClick={() => delStep(loop.id, s.id)} className="text-zinc-600 hover:text-rose-400">
+                        <button aria-label="Delete" type="button" onClick={() => delStep(loop.id, s.id)} className="text-zinc-600 hover:text-rose-400">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </li>

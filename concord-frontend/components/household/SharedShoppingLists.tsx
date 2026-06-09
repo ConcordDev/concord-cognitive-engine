@@ -83,7 +83,7 @@ export function SharedShoppingLists() {
       <div className="flex gap-1.5 mb-3">
         <input value={newList} onChange={e => setNewList(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void addList(); }}
           placeholder="New list (e.g. Groceries)" className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-        <button onClick={addList} className="px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-600 text-white"><Plus className="w-3.5 h-3.5" /></button>
+        <button aria-label="Add" onClick={addList} className="px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-600 text-white"><Plus className="w-3.5 h-3.5" /></button>
       </div>
 
       {lists.length === 0 ? (

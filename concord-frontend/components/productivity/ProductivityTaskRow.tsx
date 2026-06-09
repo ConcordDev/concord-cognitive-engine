@@ -41,7 +41,7 @@ export function ProductivityTaskRow({ task, onChange, showDelete = true }: {
 
   return (
     <li className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-      <button type="button" onClick={complete}
+      <button aria-label="Confirm" type="button" onClick={complete}
         className="w-4 h-4 rounded-full border border-zinc-600 hover:border-red-500 flex items-center justify-center shrink-0">
         <Check className="w-3 h-3 text-transparent hover:text-red-400" />
       </button>
@@ -56,7 +56,7 @@ export function ProductivityTaskRow({ task, onChange, showDelete = true }: {
         )}
       </div>
       {showDelete && (
-        <button type="button" onClick={del} className="text-zinc-600 hover:text-rose-400 shrink-0">
+        <button aria-label="Delete" type="button" onClick={del} className="text-zinc-600 hover:text-rose-400 shrink-0">
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       )}

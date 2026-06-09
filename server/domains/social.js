@@ -8,6 +8,8 @@
 // All state is per-user, persisted in globalThis._concordSTATE Maps.
 // Shadows Instagram / X core engagement features.
 
+import { screenLocalSync } from "../lib/content-safety/index.js";
+
 export default function registerSocialActions(registerLensAction) {
   // ─── shared state helpers ───────────────────────────────────────────
   function getSocialState() {
@@ -88,6 +90,12 @@ export default function registerSocialActions(registerLensAction) {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
     const body = clip(params.body, 2000);
+    // #3 — screen the post at the publish boundary (sync local checks for the
+    // public tier). Blocks policy-violating content; allows the rest.
+    if (body) {
+      const screen = screenLocalSync(body, { targetScope: "published" });
+      if (!screen.allowed) return { ok: false, error: "post_blocked", reason: screen.reason, flags: screen.flags };
+    }
     const poll = params.poll && Array.isArray(params.poll.options)
       ? {
           question: clip(params.poll.question, 200),

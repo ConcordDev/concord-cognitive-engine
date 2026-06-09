@@ -199,7 +199,7 @@ export function MaintenanceReminders() {
                 <button onClick={() => complete(r.id)} disabled={busy} className="text-neon-green hover:text-green-300 p-1" title="Mark done & reschedule">
                   <CheckCircle2 className="w-4 h-4" />
                 </button>
-                <button onClick={() => remove(r.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1">
+                <button aria-label="Delete" onClick={() => remove(r.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

@@ -164,7 +164,7 @@ export function OneLineDiagram() {
                 {active.nodes.map((n) => (
                   <div key={n.id} className="flex items-center justify-between rounded border border-cyan-500/10 bg-zinc-950/40 px-2 py-1 text-[10px]">
                     <span className="text-zinc-200">{n.label} <span className="text-zinc-400">· {n.kind.replace('_', ' ')}{n.rating ? ` · ${n.rating}` : ''}</span></span>
-                    <button type="button" onClick={() => removeNode.mutate(n.id)} className="text-zinc-600 hover:text-rose-300"><Trash2 className="h-3 w-3" /></button>
+                    <button aria-label="Delete" type="button" onClick={() => removeNode.mutate(n.id)} className="text-zinc-600 hover:text-rose-300"><Trash2 className="h-3 w-3" /></button>
                   </div>
                 ))}
               </div>

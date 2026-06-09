@@ -170,7 +170,7 @@ export function GdEntitiesPanel({ gameId, onChange }: { gameId: string; onChange
               <div key={e.id} className="flex items-center gap-2 bg-zinc-950/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-[11px]">
                 <span className="font-semibold text-zinc-200">{e.name}</span>
                 <span className="flex-1 text-zinc-400">{e.values.join(' · ')}</span>
-                <button type="button" onClick={() => delEnum(e.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => delEnum(e.id)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
@@ -222,7 +222,7 @@ export function GdEntitiesPanel({ gameId, onChange }: { gameId: string; onChange
                   <span className="flex items-center gap-1 text-[11px] text-zinc-400"><Heart className="w-3 h-3 text-rose-400" />{e.health}</span>
                   <span className="flex items-center gap-1 text-[11px] text-zinc-400"><Swords className="w-3 h-3 text-amber-400" />{e.damage}</span>
                   <span className="flex items-center gap-1 text-[11px] text-zinc-400"><Wind className="w-3 h-3 text-sky-400" />{e.speed}</span>
-                  <button type="button" onClick={() => delEntity(e.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delEntity(e.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -236,7 +236,7 @@ export function GdEntitiesPanel({ gameId, onChange }: { gameId: string; onChange
                         <span className="font-medium text-zinc-200">{f.key}</span>
                         <span className="text-[9px] text-zinc-400 uppercase">{f.type}</span>
                         <span className="flex-1 text-zinc-400 truncate">{String(f.value)}</span>
-                        <button type="button" onClick={() => delField(e.id, f.key)} className="text-zinc-600 hover:text-rose-400">
+                        <button aria-label="Delete" type="button" onClick={() => delField(e.id, f.key)} className="text-zinc-600 hover:text-rose-400">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>

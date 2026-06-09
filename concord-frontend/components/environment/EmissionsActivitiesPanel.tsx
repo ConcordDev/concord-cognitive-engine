@@ -103,7 +103,7 @@ export function EmissionsActivitiesPanel() {
                   </div>
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', SCOPE_COLOUR[a.scope])}>S{a.scope}</span>
                   <span className="text-sm font-mono tabular-nums text-emerald-300">{a.co2eTonnes.toFixed(2)}t</span>
-                  <button onClick={() => remove(a.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button aria-label="Delete" onClick={() => remove(a.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </li>
               );
             })}

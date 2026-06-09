@@ -139,7 +139,7 @@ export function VoiceTranscripts() {
                     {r.highlightCount > 0 && <span className="text-amber-400"> · ★{r.highlightCount}</span>}
                   </p>
                 </button>
-                <button onClick={() => del(r.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => del(r.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>
@@ -171,7 +171,7 @@ export function VoiceTranscripts() {
               <div className="space-y-1 max-h-72 overflow-y-auto">
                 {active.segments.map(g => (
                   <div key={g.id} className={cn('group flex items-start gap-2 rounded px-1.5 py-1', g.highlighted && 'bg-amber-900/15')}>
-                    <button onClick={() => toggleHighlight(g.id)} className={cn('mt-0.5', g.highlighted ? 'text-amber-400' : 'text-zinc-700 hover:text-amber-400')}>
+                    <button aria-label="Favorite" onClick={() => toggleHighlight(g.id)} className={cn('mt-0.5', g.highlighted ? 'text-amber-400' : 'text-zinc-700 hover:text-amber-400')}>
                       <Star className="w-3 h-3" fill={g.highlighted ? 'currentColor' : 'none'} />
                     </button>
                     <span className="text-[10px] font-mono text-zinc-400 mt-0.5 w-9 shrink-0">{ts(g.startSec)}</span>

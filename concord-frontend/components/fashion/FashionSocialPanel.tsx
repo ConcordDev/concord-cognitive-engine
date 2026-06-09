@@ -152,7 +152,7 @@ export function FashionSocialPanel() {
                   <Bookmark className={cn('w-3.5 h-3.5', p.savedByMe && 'fill-amber-400')} /> {p.saves}
                 </button>
                 {p.mine && (
-                  <button type="button" onClick={() => del(p.id)}
+                  <button aria-label="Delete" type="button" onClick={() => del(p.id)}
                     className="ml-auto text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

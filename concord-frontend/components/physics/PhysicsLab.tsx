@@ -874,7 +874,7 @@ export function PhysicsLab() {
             <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-cyan-200">{selected.name}</span>
-                <button type="button" onClick={() => removeBody(selected.id)} className="text-zinc-400 hover:text-red-400">
+                <button aria-label="Delete" type="button" onClick={() => removeBody(selected.id)} className="text-zinc-400 hover:text-red-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

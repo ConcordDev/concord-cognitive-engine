@@ -71,7 +71,7 @@ export function DepartmentsPanel() {
                     {d.phone && <span className="inline-flex items-center gap-0.5"><Phone className="w-2.5 h-2.5" />{d.phone}</span>}
                   </div>
                 </div>
-                <button onClick={() => remove(d.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(d.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

@@ -62,7 +62,7 @@ export function RouteOptimizerPanel() {
                 <MapPin className="w-3 h-3 text-cyan-300" />
                 <span className="text-white">{s.label || s.id}</span>
                 <span className="text-[10px] text-gray-400 font-mono">{s.lat.toFixed(4)},{s.lng.toFixed(4)}</span>
-                <button onClick={() => setStops(prev => prev.filter(x => x.id !== s.id))} className="ml-auto opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => setStops(prev => prev.filter(x => x.id !== s.id))} className="ml-auto opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

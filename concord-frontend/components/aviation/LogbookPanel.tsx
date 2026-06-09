@@ -108,7 +108,7 @@ export function LogbookPanel() {
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', e.conditions === 'VFR' ? 'bg-emerald-500/15 text-emerald-300' : e.conditions === 'MVFR' ? 'bg-amber-500/15 text-amber-300' : 'bg-rose-500/15 text-rose-300')}>{e.conditions}</span>
                 <span className="ml-auto font-mono text-sm tabular-nums text-white">{e.totalHours.toFixed(1)}h</span>
                 <span className="text-[10px] text-gray-400">PIC {e.pic.toFixed(1)} · {e.dayLandings + e.nightLandings} ldg</span>
-                <button onClick={() => remove(e.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(e.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

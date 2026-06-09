@@ -88,7 +88,7 @@ export function SavedCollections() {
                 <p className="text-xs font-semibold text-zinc-100 truncate">{c.name}</p>
                 <p className="text-[10px] text-zinc-400">{c.artworkCount} artworks</p>
               </button>
-              <button onClick={() => del(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => del(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>
@@ -112,7 +112,7 @@ export function SavedCollections() {
                       <p className="text-[11px] font-semibold text-zinc-100 truncate">{a.title}</p>
                       <p className="text-[9px] text-zinc-400 truncate">{a.artist}{a.date ? ` · ${a.date}` : ''}</p>
                     </div>
-                    <button onClick={() => removeArtwork(a.id)}
+                    <button aria-label="Delete" onClick={() => removeArtwork(a.id)}
                       className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 rounded bg-black/60 text-rose-300">
                       <Trash2 className="w-3 h-3" />
                     </button>

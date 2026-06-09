@@ -167,7 +167,7 @@ export function StructuralCompass() {
                 <span className="text-xs font-mono text-zinc-100">{m.strike}° / {m.dip}°</span>
                 <span className="text-[10px] text-zinc-400">dip→{m.dipDirection}°</span>
                 {m.locationName && <span className="text-[10px] text-zinc-400 truncate flex-1">{m.locationName}</span>}
-                <button onClick={() => del(m.id)} className={cn('text-rose-400 ml-auto', 'opacity-0 group-hover:opacity-100')}>
+                <button aria-label="Delete" onClick={() => del(m.id)} className={cn('text-rose-400 ml-auto', 'opacity-0 group-hover:opacity-100')}>
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>

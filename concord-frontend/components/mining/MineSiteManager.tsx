@@ -101,7 +101,7 @@ export function MineSiteManager() {
                 <p className="text-xs font-semibold text-zinc-100 truncate">{st.name}</p>
                 <p className="text-[10px] text-zinc-400">{st.kind} · {st.commodity} · {st.status} · {st.productionTonnes.toLocaleString()} t · {st.incidentCount} incidents</p>
               </button>
-              <button onClick={() => delSite(st.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => delSite(st.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
             {active === st.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800">

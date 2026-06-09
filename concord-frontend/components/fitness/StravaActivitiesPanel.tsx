@@ -192,7 +192,7 @@ export function StravaActivitiesPanel() {
                   <p className="text-sm font-semibold text-zinc-100">{a.name}</p>
                   <p className="text-[11px] text-zinc-400 capitalize">{a.type} · {a.date}</p>
                 </div>
-                <button type="button" onClick={() => remove(a)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => remove(a)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

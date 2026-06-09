@@ -190,7 +190,7 @@ export function FsBudgetTeamPanel({ projectId, onChange }: { projectId: string; 
                     className={cn('w-20 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] font-mono',
                       l.actual > l.estimated ? 'text-rose-300' : l.actual > 0 ? 'text-emerald-300' : 'text-zinc-300')} />
                 </label>
-                <button type="button" onClick={() => delLine(l.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => delLine(l.id)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </li>
@@ -230,7 +230,7 @@ export function FsBudgetTeamPanel({ projectId, onChange }: { projectId: string; 
                 </span>
                 <span className="text-[9px] uppercase text-fuchsia-400">{c.role.replace(/_/g, ' ')}</span>
                 {c.dailyRate > 0 && <span className="text-[10px] text-zinc-400">${c.dailyRate}/day</span>}
-                <button type="button" onClick={() => delCast(c.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => delCast(c.id)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </li>
@@ -262,7 +262,7 @@ export function FsBudgetTeamPanel({ projectId, onChange }: { projectId: string; 
               <li key={c.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="text-xs text-zinc-100 flex-1">{c.name}</span>
                 <span className="text-[10px] text-zinc-400">{c.position || c.department}</span>
-                <button type="button" onClick={() => delCrew(c.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => delCrew(c.id)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </li>

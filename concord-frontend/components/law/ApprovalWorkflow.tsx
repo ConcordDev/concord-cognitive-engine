@@ -107,7 +107,7 @@ export function ApprovalWorkflow({ contractId, onChange }: { contractId: string;
               {ap.note && <span className="text-[9px] text-gray-400 italic truncate max-w-[120px]">{ap.note}</span>}
               {ap.state === 'pending' ? (
                 <div className="flex gap-1">
-                  <button onClick={() => decide(ap.id, 'approved')} disabled={busy}
+                  <button aria-label="Confirm" onClick={() => decide(ap.id, 'approved')} disabled={busy}
                     className="p-1 rounded bg-neon-green/15 text-neon-green hover:bg-neon-green/25 disabled:opacity-50">
                     <Check className="w-3 h-3" />
                   </button>

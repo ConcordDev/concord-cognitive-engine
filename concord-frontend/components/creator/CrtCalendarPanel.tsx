@@ -50,11 +50,11 @@ export function CrtCalendarPanel() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <button type="button" onClick={() => shift(-1)} className="text-zinc-400 hover:text-zinc-200">
+        <button aria-label="Previous" type="button" onClick={() => shift(-1)} className="text-zinc-400 hover:text-zinc-200">
           <ChevronLeft className="w-4 h-4" />
         </button>
         <h3 className="text-sm font-semibold text-zinc-100">{MONTHS[month - 1]} {year}</h3>
-        <button type="button" onClick={() => shift(1)} className="text-zinc-400 hover:text-zinc-200">
+        <button aria-label="Next" type="button" onClick={() => shift(1)} className="text-zinc-400 hover:text-zinc-200">
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>

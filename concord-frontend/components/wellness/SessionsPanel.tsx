@@ -240,7 +240,7 @@ export function SessionsPanel() {
                   </div>
                   <div className="text-[10px] text-zinc-400 mt-0.5">{p.desc}</div>
                 </div>
-                <button type="button" onClick={() => begin(p)}
+                <button aria-label="Play" type="button" onClick={() => begin(p)}
                   className="p-2 rounded-full bg-sky-600 hover:bg-sky-500 text-white flex-shrink-0">
                   <Play className="w-3.5 h-3.5" />
                 </button>

@@ -115,7 +115,7 @@ export function CreativeBoardsSection() {
                         <Copy className="w-3 h-3" /> Duplicate
                       </button>
                       <div className="flex-1" />
-                      <button type="button" onClick={() => delBoard(b.id)} className="text-zinc-600 hover:text-rose-400">
+                      <button aria-label="Delete" type="button" onClick={() => delBoard(b.id)} className="text-zinc-600 hover:text-rose-400">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>

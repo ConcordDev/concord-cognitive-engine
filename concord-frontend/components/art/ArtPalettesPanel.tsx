@@ -136,7 +136,7 @@ export function ArtPalettesPanel() {
               <li key={p.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2.5">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs text-zinc-200">{p.name}</span>
-                  <button type="button" onClick={() => delPalette(p.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delPalette(p.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

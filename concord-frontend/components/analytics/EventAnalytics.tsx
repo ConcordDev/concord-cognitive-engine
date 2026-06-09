@@ -158,7 +158,7 @@ export function EventAnalytics() {
               className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
             <input value={seg.propertyKey} onChange={e => setSeg({ ...seg, propertyKey: e.target.value })} placeholder="property"
               className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-            <button onClick={runSegment} className="px-2 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white inline-flex items-center gap-1">
+            <button aria-label="Filter" onClick={runSegment} className="px-2 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white inline-flex items-center gap-1">
               <Filter className="w-3 h-3" />
             </button>
           </div>

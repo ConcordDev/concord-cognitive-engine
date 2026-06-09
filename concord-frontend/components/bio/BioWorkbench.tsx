@@ -398,7 +398,7 @@ function LibraryTab() {
                 {s.description && <p className="text-[11px] text-gray-400 mt-1">{s.description}</p>}
                 <p className="text-[10px] font-mono text-gray-400 mt-1 truncate">{s.sequence.slice(0, 80)}{s.sequence.length > 80 ? '…' : ''}</p>
               </div>
-              <button type="button" onClick={() => remove(s.id)}
+              <button aria-label="Delete" type="button" onClick={() => remove(s.id)}
                 className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100">
                 <Trash2 className="w-3 h-3" />
               </button>

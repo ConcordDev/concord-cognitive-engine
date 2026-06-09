@@ -177,7 +177,7 @@ export function VocabularyBuilder({ refreshKey = 0, onChange }: { refreshKey?: n
               </div>
               <span className="text-xs font-semibold text-zinc-100">{w.word}</span>
               <span className="text-[11px] text-zinc-400 truncate flex-1">{w.definition}</span>
-              <button onClick={() => del(w.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => del(w.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>

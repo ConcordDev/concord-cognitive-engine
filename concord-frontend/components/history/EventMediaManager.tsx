@@ -86,7 +86,7 @@ export function EventMediaManager({
           className="w-24 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-zinc-200" />
         <input value={credit} onChange={(e) => setCredit(e.target.value)} placeholder="credit"
           className="w-20 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-zinc-200" />
-        <button onClick={add} disabled={!url.trim()}
+        <button aria-label="Add" onClick={add} disabled={!url.trim()}
           className="px-1.5 rounded bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-40">
           <Plus className="w-3 h-3" />
         </button>

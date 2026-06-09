@@ -75,7 +75,7 @@ export function PjTeamPanel({ projectId, onChange }: { projectId: string; onChan
                 <p className="text-[10px] text-zinc-400 capitalize">{m.role}</p>
               </div>
               <span className="text-[11px] text-zinc-400">{m.assigned} active</span>
-              <button type="button" onClick={() => del(m.id)} className="text-zinc-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => del(m.id)} className="text-zinc-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>

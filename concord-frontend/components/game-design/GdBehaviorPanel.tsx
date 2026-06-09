@@ -184,7 +184,7 @@ export function GdBehaviorPanel({ gameId, onChange }: { gameId: string; onChange
                     <span className="text-zinc-400 font-mono">= {r.params.value}</span>
                   )}
                   <div className="flex-1" />
-                  <button type="button" onClick={() => delRule(r.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delRule(r.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </li>

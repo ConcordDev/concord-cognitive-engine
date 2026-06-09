@@ -368,7 +368,7 @@ export function CanvasBuilder() {
                 {isPublished(c.id) && <Rocket className="w-3 h-3 text-emerald-400 shrink-0" />}
                 {c.name}
               </span>
-              <button onClick={(e) => { e.stopPropagation(); deleteCanvas(c.id); }}
+              <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); deleteCanvas(c.id); }}
                 className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -621,7 +621,7 @@ export function CanvasBuilder() {
           <div className="panel p-3">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs uppercase tracking-wider text-gray-400">Data Sources</p>
-              <button onClick={createBinding} className="text-neon-purple hover:text-white">
+              <button aria-label="Add" onClick={createBinding} className="text-neon-purple hover:text-white">
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -633,10 +633,10 @@ export function CanvasBuilder() {
                   <span className="text-gray-600"> · {b.kind}</span>
                 </span>
                 <span className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                  <button onClick={() => testBinding(b.id)} className="text-gray-400 hover:text-neon-cyan">
+                  <button aria-label="Refresh" onClick={() => testBinding(b.id)} className="text-gray-400 hover:text-neon-cyan">
                     <RefreshCw className="w-3 h-3" />
                   </button>
-                  <button onClick={() => deleteBinding(b.id)} className="text-gray-400 hover:text-red-400">
+                  <button aria-label="Delete" onClick={() => deleteBinding(b.id)} className="text-gray-400 hover:text-red-400">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </span>
@@ -656,7 +656,7 @@ export function CanvasBuilder() {
                     {wr.event} → {wr.action.domain}.{wr.action.macro}
                     {wr.refreshWidgetId && <span className="text-gray-600"> ↻</span>}
                   </span>
-                  <button onClick={() => deleteWiring(wr.id)}
+                  <button aria-label="Delete" onClick={() => deleteWiring(wr.id)}
                     className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400">
                     <Trash2 className="w-3 h-3" />
                   </button>

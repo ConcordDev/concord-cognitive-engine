@@ -118,7 +118,7 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
             <span key={j.id} className={cn('flex items-center gap-1 text-[11px] pl-2.5 pr-1.5 py-1 rounded-lg',
               activeJournal === j.id ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-300')}>
               <button type="button" onClick={() => setActiveJournal(j.id)}>{j.name} ({j.entryCount})</button>
-              <button type="button" onClick={() => delJournal(j.id)} className="text-zinc-400 hover:text-rose-300">
+              <button aria-label="Delete" type="button" onClick={() => delJournal(j.id)} className="text-zinc-400 hover:text-rose-300">
                 <Trash2 className="w-3 h-3" />
               </button>
             </span>
@@ -202,7 +202,7 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
                     </p>
                     {e.title && <p className="text-sm font-semibold text-zinc-100 mt-0.5">{e.title}</p>}
                   </div>
-                  <button type="button" onClick={() => delEntry(e.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                  <button aria-label="Delete" type="button" onClick={() => delEntry(e.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

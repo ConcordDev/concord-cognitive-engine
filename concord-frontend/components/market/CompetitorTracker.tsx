@@ -98,7 +98,7 @@ export function CompetitorTracker() {
                 <p className="text-xs font-semibold text-zinc-100 truncate">{c.name}</p>
                 <p className="text-[10px] text-zinc-400">{c.segment} · {c.marketSharePct != null ? `${c.marketSharePct}% share` : 'share n/a'} · <span className={THREAT_COLOR[c.threatLevel]}>{c.threatLevel} threat</span></p>
               </button>
-              <button onClick={() => delComp(c.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => delComp(c.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
             {active === c.id && <SwotEditor comp={c} onSave={saveSwot} />}
           </li>

@@ -205,7 +205,7 @@ export function EstimateInvoiceFlow() {
                       <span className="font-mono text-zinc-400">{l.hours}h</span>
                       <span className="font-mono text-zinc-400">${l.rate}</span>
                       <span className="font-mono text-teal-200">${(l.hours * l.rate).toFixed(2)}</span>
-                      <button type="button" onClick={() => removeLine.mutate(l.id)} className="text-zinc-600 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+                      <button aria-label="Delete" type="button" onClick={() => removeLine.mutate(l.id)} className="text-zinc-600 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
                     </div>
                   ))}
                   <div className="grid grid-cols-[1fr_56px_56px_72px] gap-1.5">
@@ -225,7 +225,7 @@ export function EstimateInvoiceFlow() {
                       <span className="font-mono text-zinc-400">{m.quantity} {m.unit}</span>
                       <span className="font-mono text-zinc-400">${m.unitPrice}</span>
                       <span className="font-mono text-teal-200">${(m.quantity * m.unitPrice).toFixed(2)}</span>
-                      <button type="button" onClick={() => removeLine.mutate(m.id)} className="text-zinc-600 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+                      <button aria-label="Delete" type="button" onClick={() => removeLine.mutate(m.id)} className="text-zinc-600 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
                     </div>
                   ))}
                   <div className="grid grid-cols-[1fr_56px_64px_72px] gap-1.5">

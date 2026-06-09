@@ -569,7 +569,7 @@ function TransformRulesPanel() {
             {rule.kind === 'regex_extract' && (
               <input value={rule.pattern || ''} onChange={(e) => updateRule(i, { pattern: e.target.value })} placeholder="(\\d+)" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-xs text-zinc-100 placeholder:text-zinc-400" />
             )}
-            <button onClick={() => removeRule(i)} className="text-zinc-400 hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
+            <button aria-label="Delete" onClick={() => removeRule(i)} className="text-zinc-400 hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
           </div>
         ))}
       </div>
@@ -706,7 +706,7 @@ function TemplatesPanel() {
               </div>
               <div className="flex items-center gap-1.5">
                 <button onClick={() => apply(t.id)} className="rounded bg-cyan-600/80 px-2 py-0.5 text-[10px] text-white hover:bg-cyan-500">Apply</button>
-                <button onClick={() => del(t.id)} className="text-zinc-400 hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
+                <button aria-label="Delete" onClick={() => del(t.id)} className="text-zinc-400 hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
             </div>
             <div className="mt-1 flex flex-wrap gap-1.5 text-[10px] text-zinc-400">

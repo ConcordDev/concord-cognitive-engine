@@ -104,7 +104,7 @@ export function CategorisationRules() {
                 <span className="font-mono text-white truncate flex-1">"{r.matchText}"</span>
                 <span className="text-gray-400">→</span>
                 <span className="font-semibold text-emerald-300">{r.category}</span>
-                <button onClick={() => remove(r.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(r.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

@@ -196,7 +196,7 @@ export function PanelScheduleBuilder() {
                   <span className="font-mono text-amber-300">{c.breaker}A</span>
                   <span className="font-mono text-zinc-400">{c.wireGauge}</span>
                   <span className="font-mono text-cyan-300">{c.phase}{c.poles === 2 ? ' (2P)' : ''}</span>
-                  <button type="button" onClick={() => removeCircuit.mutate(c.id)} className="text-zinc-600 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+                  <button aria-label="Delete" type="button" onClick={() => removeCircuit.mutate(c.id)} className="text-zinc-600 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
                 </div>
               ))}
               {schedule.circuits.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-400">No circuits — add one below.</div>}

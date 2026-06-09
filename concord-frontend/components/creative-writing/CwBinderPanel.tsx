@@ -158,13 +158,13 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
         <span className={cn('w-1.5 h-1.5 rounded-full', STATUS_COLOR[sc.status].replace('text-', 'bg-'))} />
       </button>
       <div className="flex opacity-0 group-hover:opacity-100">
-        <button type="button" onClick={() => moveScene(sc.id, 'up')} className="text-zinc-600 hover:text-zinc-300">
+        <button aria-label="Collapse" type="button" onClick={() => moveScene(sc.id, 'up')} className="text-zinc-600 hover:text-zinc-300">
           <ChevronUp className="w-3 h-3" />
         </button>
-        <button type="button" onClick={() => moveScene(sc.id, 'down')} className="text-zinc-600 hover:text-zinc-300">
+        <button aria-label="Expand" type="button" onClick={() => moveScene(sc.id, 'down')} className="text-zinc-600 hover:text-zinc-300">
           <ChevronDown className="w-3 h-3" />
         </button>
-        <button type="button" onClick={() => delScene(sc.id)} className="text-zinc-600 hover:text-rose-400">
+        <button aria-label="Delete" type="button" onClick={() => delScene(sc.id)} className="text-zinc-600 hover:text-rose-400">
           <Trash2 className="w-3 h-3" />
         </button>
       </div>
@@ -195,13 +195,13 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
               <Folder className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span className="text-xs font-medium text-zinc-200 flex-1 truncate">{ch.title}</span>
               <div className="flex opacity-0 group-hover:opacity-100">
-                <button type="button" onClick={() => moveChapter(ch.id, 'up')} className="text-zinc-600 hover:text-zinc-300">
+                <button aria-label="Collapse" type="button" onClick={() => moveChapter(ch.id, 'up')} className="text-zinc-600 hover:text-zinc-300">
                   <ChevronUp className="w-3 h-3" />
                 </button>
-                <button type="button" onClick={() => moveChapter(ch.id, 'down')} className="text-zinc-600 hover:text-zinc-300">
+                <button aria-label="Expand" type="button" onClick={() => moveChapter(ch.id, 'down')} className="text-zinc-600 hover:text-zinc-300">
                   <ChevronDown className="w-3 h-3" />
                 </button>
-                <button type="button" onClick={() => delChapter(ch.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => delChapter(ch.id)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>

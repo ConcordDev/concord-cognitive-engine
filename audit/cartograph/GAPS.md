@@ -1,8 +1,8 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-14T19:49:30.357Z. Each gap proposes a concrete wire action._
+_Generated 2026-06-09T02:16:46.505Z. Each gap proposes a concrete wire action._
 
-## Dead tables (22)
+## Dead tables (28)
 
 | Table | Migration | Wire option | Archive option |
 |---|---|---|---|
@@ -28,6 +28,12 @@ _Generated 2026-05-14T19:49:30.357Z. Each gap proposes a concrete wire action._
 | `plugin_installs` | server/migrations/085_plugin_gallery.js | `analytics.plugin_installsStats` macro | // REPLACED_BY: migration_NN |
 | `evo_asset_interactions_fix` | server/migrations/107_evo_assets_fk_repair.js | `analytics.evo_asset_interactions_fixStats` macro | // REPLACED_BY: migration_NN |
 | `evo_asset_versions_fix` | server/migrations/107_evo_assets_fk_repair.js | `analytics.evo_asset_versions_fixStats` macro | // REPLACED_BY: migration_NN |
+| `mount_riders` | server/migrations/224_immersive_substrate.js | `analytics.mount_ridersStats` macro | // REPLACED_BY: migration_NN |
+| `letter_delivery_queue` | server/migrations/224_immersive_substrate.js | `analytics.letter_delivery_queueStats` macro | // REPLACED_BY: migration_NN |
+| `turn_combats` | server/migrations/251_turn_combat.js | `analytics.turn_combatsStats` macro | // REPLACED_BY: migration_NN |
+| `turn_combatants` | server/migrations/251_turn_combat.js | `analytics.turn_combatantsStats` macro | // REPLACED_BY: migration_NN |
+| `turn_log` | server/migrations/251_turn_combat.js | `analytics.turn_logStats` macro | // REPLACED_BY: migration_NN |
+| `omitted` | server/migrations/275_evo_asset_fk_repair.js | `analytics.omittedStats` macro | // REPLACED_BY: migration_NN |
 
 ## Orphan modules (0)
 
@@ -37,13 +43,14 @@ _None._
 
 _None — every module either has a heartbeat or is invoked by a macro callsite._
 
-## Headless backend domains (25)
+## Headless backend domains (26)
 
 | Domain | Macro count | Suggested frontend lens dir |
 |---|---:|---|
+| `semantic` | 8 | `concord-frontend/app/lenses/semantic/page.tsx` |
+| `compile` | 1 | `concord-frontend/app/lenses/compile/page.tsx` |
 | `observability` | 1 | `concord-frontend/app/lenses/observability/page.tsx` |
 | `refusal` | 4 | `concord-frontend/app/lenses/refusal/page.tsx` |
-| `npc` | 3 | `concord-frontend/app/lenses/npc/page.tsx` |
 | `forward_sim` | 3 | `concord-frontend/app/lenses/forward-sim/page.tsx` |
 | `embodied` | 3 | `concord-frontend/app/lenses/embodied/page.tsx` |
 | `scars` | 2 | `concord-frontend/app/lenses/scars/page.tsx` |
@@ -67,13 +74,12 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `sub_world` | 2 | `concord-frontend/app/lenses/sub-world/page.tsx` |
 | `therapy` | 3 | `concord-frontend/app/lenses/therapy/page.tsx` |
 
-## Orphan lenses (3)
+## Orphan lenses (2)
 
 | Lens dir | Reason | Action |
 |---|---|---|
-| `expedition-journal` | no_backend_evidence_in_page_tsx | wire backend OR remove |
-| `root` | no_backend_evidence_in_page_tsx | wire backend OR remove |
-| `ux-suite` | no_backend_evidence_in_page_tsx | wire backend OR remove |
+| `move-builder` | no_backend_evidence_in_page_tsx | wire backend OR remove |
+| `narrative-walk` | no_backend_evidence_in_page_tsx | wire backend OR remove |
 
 ## Unused macros (0)
 
@@ -81,12 +87,13 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 
 _None._
 
-## Unshaped socket events (23)
+## Unshaped socket events (34)
 
 | Event | First emitter | Action |
 |---|---|---|
 | `world:basketball-started` | server/domains/basketball.js:19 | add to event-shapes.js |
-| `ghost-hunt:residue-confronted` | server/domains/ghost-hunt.js:55 | add to event-shapes.js |
+| `liveshare:op` | server/domains/code.js:2340 | add to event-shapes.js |
+| `ghost-hunt:residue-confronted` | server/domains/ghost-hunt.js:369 | add to event-shapes.js |
 | `world:racing-started` | server/domains/racing.js:17 | add to event-shapes.js |
 | `voice:participant-joined` | server/domains/voice-chat.js:45 | add to event-shapes.js |
 | `voice:participant-left` | server/domains/voice-chat.js:62 | add to event-shapes.js |
@@ -98,16 +105,26 @@ _None._
 | `mount:loyalty-low` | server/emergent/mount-care-cycle.js:80 | add to event-shapes.js |
 | `npc:travelled` | server/emergent/npc-travel-cycle.js:48 | add to event-shapes.js |
 | `npc:combat-resolved` | server/emergent/npc-vs-npc-combat-cycle.js:76 | add to event-shapes.js |
+| `liveshare:debug:state-snapshot` | server/lib/code-liveshare-bus.js:111 | add to event-shapes.js |
 | `subscribe.error` | server/lib/dx/dx-socket-bus.js:141 | add to event-shapes.js |
 | `subscribe.ok` | server/lib/dx/dx-socket-bus.js:148 | add to event-shapes.js |
-| `world:sonic-pulse` | server/lib/embodied/signals.js:105 | add to event-shapes.js |
+| `world:sonic-pulse` | server/lib/embodied/signals.js:106 | add to event-shapes.js |
+| `house:visitor-arrived` | server/lib/house-visit.js:49 | add to event-shapes.js |
 | `npc:quest-accepted` | server/lib/npc-quest-runner.js:36 | add to event-shapes.js |
 | `npc:quest-completed` | server/lib/npc-quest-runner.js:56 | add to event-shapes.js |
 | `mentorship:npc-adopted` | server/lib/npc-skill-author.js:252 | add to event-shapes.js |
 | `npc:level-up` | server/lib/npc-skill-progression.js:52 | add to event-shapes.js |
-| `concordia:lethal-hit` | server/routes/worlds.js:2056 | add to event-shapes.js |
-| `combat:hero_kill` | server/routes/worlds.js:2062 | add to event-shapes.js |
-| `combat:bloodline_fire_cast` | server/routes/worlds.js:2064 | add to event-shapes.js |
+| `webrtc:peer-left` | server/lib/webrtc-signalling.js:74 | add to event-shapes.js |
+| `webrtc:peer-list` | server/lib/webrtc-signalling.js:49 | add to event-shapes.js |
+| `yjs:doc-reset` | server/lib/yjs-realtime.js:169 | add to event-shapes.js |
+| `yjs:sync-state` | server/lib/yjs-realtime.js:101 | add to event-shapes.js |
+| `concordia:lethal-hit` | server/routes/worlds.js:2748 | add to event-shapes.js |
+| `combat:hero_kill` | server/routes/worlds.js:2754 | add to event-shapes.js |
+| `combat:bloodline_fire_cast` | server/routes/worlds.js:2756 | add to event-shapes.js |
+| `world:npc-spared` | server/routes/worlds.js:955 | add to event-shapes.js |
+| `boss:state` | server/routes/worlds.js:2639 | add to event-shapes.js |
+| `combat:npc-attack-evaded` | server/routes/worlds.js:3095 | add to event-shapes.js |
+| `brawl-invited` | server/server.js:51328 | add to event-shapes.js |
 
 ## Universe-coverage gaps (in-scope categories)
 
@@ -117,14 +134,13 @@ _None._
 | **5** | `diagram` | ❌ missing | lenses/whiteboard |
 | **6** | `unified-self` | ❌ missing | lenses/self |
 | **12** | `brain-training` | ❌ missing | lenses/lattice |
+| - | `body-comp` | 🟡 partial | lenses/self |
 | - | `mathematics` | 🟡 partial | lenses/math |
 | - | `slides` | 🟡 partial | lenses/slides |
 | - | `wiki` | ❌ missing | lenses/docs |
 | - | `screen-share` | ❌ missing | lenses/voice |
-| - | `meditation` | ❌ missing | lenses/mental-health |
+| - | `meditation` | 🟡 partial | lenses/mental-health |
 | - | `healthcare` | ❌ missing | lenses/healthcare |
-| - | `accounting` | 🟡 partial | lenses/accounting |
-| - | `body-comp` | ❌ missing | lenses/self |
 | - | `bibliography` | ❌ missing | lenses/paper |
 | - | `dataset` | ❌ missing | lenses/database |
 | - | `defense` | 🟡 partial | lenses/defense |

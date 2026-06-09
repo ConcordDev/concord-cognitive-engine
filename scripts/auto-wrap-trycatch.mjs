@@ -29,7 +29,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import * as acorn from '../server/node_modules/acorn/dist/acorn.mjs';
 
 const ROOT = path.resolve(new URL(import.meta.url).pathname, '..', '..');
@@ -216,12 +216,12 @@ for (const [absPath, fileCandidates] of byFile) {
     fs.writeFileSync(absPath, src);
     // Belt-and-suspenders: node --check
     try {
-      execSync(`node --check "${absPath}"`, { stdio: 'pipe' });
+      execFileSync('node', ['--check', absPath], { stdio: 'pipe' });
     } catch (e) {
       console.error(`[${relPath}] node --check FAILED — restoring original`);
       // Restore from git
       try {
-        execSync(`git checkout "${absPath}"`, { cwd: ROOT, stdio: 'pipe' });
+        execFileSync('git', ['checkout', absPath], { cwd: ROOT, stdio: 'pipe' });
       } catch (_) { /* ignore */ }
       continue;
     }

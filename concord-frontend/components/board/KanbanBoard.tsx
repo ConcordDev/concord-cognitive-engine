@@ -100,12 +100,12 @@ export function KanbanBoard() {
               className={cn('px-2.5 py-1 text-xs rounded-lg border', active?.id === b.id ? 'bg-purple-600/15 border-purple-700/50 text-purple-200' : 'bg-zinc-900/60 border-zinc-800 text-zinc-300 hover:border-zinc-700')}>
               {b.name} <span className="text-zinc-600">{b.cardCount}</span>
             </button>
-            <button onClick={() => deleteBoard(b.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+            <button aria-label="Delete" onClick={() => deleteBoard(b.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
           </span>
         ))}
         <input value={newBoard} onChange={e => setNewBoard(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void createBoard(); }}
           placeholder="New board" className="w-28 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-200" />
-        <button onClick={createBoard} className="px-2 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white"><Plus className="w-3.5 h-3.5" /></button>
+        <button aria-label="Add" onClick={createBoard} className="px-2 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white"><Plus className="w-3.5 h-3.5" /></button>
       </div>
 
       {active ? (
@@ -130,9 +130,9 @@ export function KanbanBoard() {
                           <span className="text-[9px] text-zinc-400">☑ {card.checklist.filter(i => i.done).length}/{card.checklist.length}</span>
                         )}
                         <div className="ml-auto flex opacity-0 group-hover:opacity-100">
-                          <button onClick={() => moveCard(card.id, -1)} disabled={ci === 0} className="text-zinc-400 hover:text-zinc-200 disabled:opacity-30"><ChevronLeft className="w-3 h-3" /></button>
-                          <button onClick={() => moveCard(card.id, 1)} disabled={ci === active.columns.length - 1} className="text-zinc-400 hover:text-zinc-200 disabled:opacity-30"><ChevronRight className="w-3 h-3" /></button>
-                          <button onClick={() => deleteCard(card.id)} className="text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                          <button aria-label="Previous" onClick={() => moveCard(card.id, -1)} disabled={ci === 0} className="text-zinc-400 hover:text-zinc-200 disabled:opacity-30"><ChevronLeft className="w-3 h-3" /></button>
+                          <button aria-label="Next" onClick={() => moveCard(card.id, 1)} disabled={ci === active.columns.length - 1} className="text-zinc-400 hover:text-zinc-200 disabled:opacity-30"><ChevronRight className="w-3 h-3" /></button>
+                          <button aria-label="Delete" onClick={() => deleteCard(card.id)} className="text-rose-400"><Trash2 className="w-3 h-3" /></button>
                         </div>
                       </div>
                     </div>
@@ -142,7 +142,7 @@ export function KanbanBoard() {
                   <input value={newCard[col.id] || ''} onChange={e => setNewCard({ ...newCard, [col.id]: e.target.value })}
                     onKeyDown={e => { if (e.key === 'Enter') void addCard(col.id); }}
                     placeholder="+ card" className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-[11px] text-zinc-200" />
-                  <button onClick={() => addCard(col.id)} className="px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"><Plus className="w-3 h-3" /></button>
+                  <button aria-label="Add" onClick={() => addCard(col.id)} className="px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"><Plus className="w-3 h-3" /></button>
                 </div>
               </div>
             );

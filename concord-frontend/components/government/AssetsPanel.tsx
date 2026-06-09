@@ -99,7 +99,7 @@ export function AssetsPanel() {
                 </div>
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', CONDITION_COLOUR[a.condition])}>{a.condition}</span>
                 <button onClick={() => logMaint(a.id)} className="px-2 py-0.5 text-[10px] rounded bg-cyan-500/30 text-cyan-300 hover:bg-cyan-500/50">Log work</button>
-                <button onClick={() => remove(a.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(a.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

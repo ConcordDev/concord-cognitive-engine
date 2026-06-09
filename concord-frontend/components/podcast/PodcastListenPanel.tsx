@@ -47,8 +47,8 @@ function EpisodeCard({ ep, onChange, queueControls }: {
         <div className="flex items-center gap-1 shrink-0">
           {queueControls && (
             <>
-              <button type="button" onClick={queueControls.onUp} className="text-zinc-600 hover:text-zinc-300"><ArrowUp className="w-3.5 h-3.5" /></button>
-              <button type="button" onClick={queueControls.onDown} className="text-zinc-600 hover:text-zinc-300"><ArrowDown className="w-3.5 h-3.5" /></button>
+              <button aria-label="Move up" type="button" onClick={queueControls.onUp} className="text-zinc-600 hover:text-zinc-300"><ArrowUp className="w-3.5 h-3.5" /></button>
+              <button aria-label="Move down" type="button" onClick={queueControls.onDown} className="text-zinc-600 hover:text-zinc-300"><ArrowDown className="w-3.5 h-3.5" /></button>
             </>
           )}
         </div>

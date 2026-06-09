@@ -19,6 +19,11 @@ const MEMORY_LAYERS = Object.freeze({
     storageType: "skills",
     retrieval: "skill_registry",
   },
+  action: {
+    description: "What I did — durable log of past actions / tool outputs (Phase 6 long-term memory)",
+    storageType: "agent_action_log",
+    retrieval: "relevance+recency",
+  },
 });
 
 // Async write queue: entries are { layer, content, options, resolve, reject }
@@ -71,6 +76,21 @@ async function syncMemoryWrite(layer, content, options = {}) {
     case "procedural": {
       // Procedural memory is the skills registry — managed by skills.js
       return { written: false, reason: "procedural layer: add skills via skill files" };
+    }
+
+    case "action": {
+      // Durable agent action log (Phase 6 long-term memory).
+      const { recordAction } = await import("../agent-action-log.js");
+      const ok = await recordAction(options.db, {
+        userId: options.userId,
+        sessionId: options.sessionId || null,
+        action: content.action,
+        input: content.input,
+        output: content.output ?? content.outcome,
+        tool: content.tool,
+        outcome: content.outcome,
+      });
+      return { written: !!ok };
     }
 
     default:
@@ -147,6 +167,14 @@ export async function readMemory({ layers = ["episodic", "semantic", "procedural
         case "procedural": {
           // Return skill descriptions — loaded by skills registry if available
           results.push({ layer, block: "", items: [] });
+          break;
+        }
+
+        case "action": {
+          // Durable agent action log — relevance × recency recall (Phase 6).
+          const { getRecentActions } = await import("../agent-action-log.js");
+          const { actions, block } = await getRecentActions(db, { userId, query, limit });
+          results.push({ layer, block, items: actions });
           break;
         }
       }

@@ -48,7 +48,7 @@ export function CertificatesPanel() {
                   <div className="flex items-center gap-2 text-[11px] font-mono">
                     <span className="text-gray-400">Verification:</span>
                     <span className="text-amber-300">{c.verificationCode}</span>
-                    <button onClick={() => navigator.clipboard?.writeText(c.verificationCode)} className="text-gray-400 hover:text-cyan-300"><Copy className="w-3 h-3" /></button>
+                    <button aria-label="Copy" onClick={() => navigator.clipboard?.writeText(c.verificationCode)} className="text-gray-400 hover:text-cyan-300"><Copy className="w-3 h-3" /></button>
                     <span className="ml-auto text-gray-400">Issued {new Date(c.issuedAt).toLocaleDateString()}</span>
                   </div>
                 </div>

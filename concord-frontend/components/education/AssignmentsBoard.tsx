@@ -56,7 +56,7 @@ export function AssignmentsBoard({ courseId }: { courseId?: string }) {
         <ClipboardList className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Assignments {courseId && `· ${courseId.slice(0, 12)}`}</span>
         <span className="ml-auto text-[10px] text-gray-400">{assignments.length}</span>
-        {courseId && <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>}
+        {courseId && <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>}
       </header>
 
       {creating && courseId && (

@@ -147,7 +147,7 @@ export function ProductivityRemindersPanel({ onChange }: { onChange: () => void 
                 </p>
               </div>
               {r.fired && <Bell className="w-3 h-3 text-zinc-600 shrink-0" />}
-              <button type="button" onClick={() => del(r.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+              <button aria-label="Delete" type="button" onClick={() => del(r.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>

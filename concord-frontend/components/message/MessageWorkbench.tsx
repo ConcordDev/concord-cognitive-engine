@@ -124,7 +124,7 @@ function SavedTab() {
                 <p className="text-xs text-gray-200 mt-1">{s.body}</p>
                 {s.note && <p className="text-[10px] text-gray-400 mt-1 italic">Note: {s.note}</p>}
               </div>
-              <button type="button" onClick={() => unsave(s.messageId)}
+              <button aria-label="Delete" type="button" onClick={() => unsave(s.messageId)}
                 className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
             </div>
           </div>

@@ -80,7 +80,7 @@ export function LessonNotes({ lessonId }: { lessonId?: string }) {
                   <div className="text-xs text-gray-100 whitespace-pre-wrap break-words">{n.text}</div>
                   <div className="text-[10px] text-gray-400 mt-0.5">{new Date(n.createdAt).toLocaleString()}</div>
                 </div>
-                <button onClick={() => remove(n.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(n.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

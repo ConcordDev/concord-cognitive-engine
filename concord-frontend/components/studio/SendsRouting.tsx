@@ -72,7 +72,7 @@ export function SendsRouting({ projectId }: { projectId?: string }) {
                 <span className="font-mono text-cyan-300">{s.toTrackId.slice(0, 10)}</span>
                 <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{s.prePost}</span>
                 <span className="ml-auto font-mono tabular-nums text-emerald-300">{s.levelDb} dB</span>
-                <button onClick={() => remove(s.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(s.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

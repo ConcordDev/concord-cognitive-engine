@@ -10,7 +10,7 @@
 // Each gate is wrapped so one failure never crashes the dashboard (graceful
 // floor). Usage: node scripts/health.mjs [--ci]
 
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -18,8 +18,12 @@ import { fileURLToPath } from 'url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ci = process.argv.includes('--ci');
 
+// Every call site passes a fixed, space-separated `node scripts/X.mjs [--json]`
+// literal (no shell metacharacters), so split-and-execFile is equivalent and
+// removes the shell entirely — no injection surface.
 function run(cmd) {
-  try { return execSync(cmd, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); }
+  const [bin, ...args] = cmd.split(' ');
+  try { return execFileSync(bin, args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); }
   catch (e) { return (e.stdout || '') + (e.stderr || ''); }
 }
 function readJson(rel) { try { return JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8')); } catch { return null; } }

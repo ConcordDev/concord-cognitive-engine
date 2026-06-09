@@ -616,7 +616,7 @@ function TenantPanel() {
             <option value="all">All</option>
             <option value="suspended">Suspended</option>
           </select>
-          <button onClick={load} className={BTN}>
+          <button aria-label="Refresh" onClick={load} className={BTN}>
             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -912,7 +912,7 @@ function TracePanel() {
             onChange={(e) => setMinMs(Number(e.target.value) || 0)}
             aria-label="Minimum trace duration ms"
           />
-          <button onClick={load} className={BTN}>
+          <button aria-label="Refresh" onClick={load} className={BTN}>
             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -1069,7 +1069,7 @@ function FeatureFlagPanel() {
       icon={Flag}
       title="Feature Flags"
       action={
-        <button onClick={load} className={BTN}>
+        <button aria-label="Refresh" onClick={load} className={BTN}>
           <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
         </button>
       }
@@ -1271,7 +1271,7 @@ function IncidentPanel() {
             <option value="active">Active</option>
             <option value="resolved">Resolved</option>
           </select>
-          <button onClick={load} className={BTN}>
+          <button aria-label="Refresh" onClick={load} className={BTN}>
             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>

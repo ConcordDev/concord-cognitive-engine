@@ -523,6 +523,35 @@ export default function CodeLensPage() {
   const [forgeResult, setForgeResult] = useState<string | null>(null);
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
 
+  // ── Phase 1: real semantic IntelliSense ──────────────────────────────────
+  // The editor's tabs are local; the `code.lsp-*` macros (TS LanguageService)
+  // read the backend workspace, so we mirror the active buffer into an ephemeral
+  // per-session project (debounced, like LSP didChange) and feed MonacoWrapper a
+  // `semantic` context. `files-write` auto-creates the project bucket.
+  const LIVE_PROJECT_ID = 'code-lens-live';
+  const runCodeMacro = useCallback(async (action: string, input: Record<string, unknown>) => {
+    try {
+      const res = await api.post('/api/lens/run', { domain: 'code', action, input });
+      return (res.data?.result as Record<string, unknown>) ?? null;
+    } catch { return null; }
+  }, []);
+  // Debounced mirror of the active buffer → backend, so hover/completions/
+  // diagnostics reflect what's on screen (LSP didChange semantics).
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (syncTimer.current) clearTimeout(syncTimer.current);
+    const path = activeTab.name;
+    const content = activeTab.content;
+    syncTimer.current = setTimeout(() => {
+      void runCodeMacro('files-write', { projectId: LIVE_PROJECT_ID, path, content });
+    }, 350);
+    return () => { if (syncTimer.current) clearTimeout(syncTimer.current); };
+  }, [activeTab.name, activeTab.content, runCodeMacro]);
+  const semanticCtx = useMemo(
+    () => ({ projectId: LIVE_PROJECT_ID, path: activeTab.name, run: runCodeMacro }),
+    [activeTab.name, runCodeMacro],
+  );
+
   // Forge App Generation mutation
   const forgeAppMutation = useMutation({
     mutationFn: async (description: string) => {
@@ -1898,6 +1927,7 @@ export default function CodeLensPage() {
                     value={activeTab.content}
                     onChange={(val) => updateTabContent(val)}
                     language={activeTab.language || 'javascript'}
+                    semantic={semanticCtx}
                     onEditorReady={(ed) => { editorInstanceRef.current = ed; }}
                     onSelectionChange={(s) => setSelection(s.text ? s : null)}
                     options={{

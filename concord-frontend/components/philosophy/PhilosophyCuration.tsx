@@ -217,7 +217,7 @@ function ImageGridTab({ channels, onMutate }: { channels: ChannelMeta[]; onMutat
               <div className="p-2">
                 <div className="flex items-start gap-1">
                   <p className="flex-1 text-[11px] text-zinc-300 line-clamp-2">{b.content}</p>
-                  <button onClick={() => del(b.id)} className="opacity-0 group-hover:opacity-100 text-rose-400 shrink-0">
+                  <button aria-label="Delete" onClick={() => del(b.id)} className="opacity-0 group-hover:opacity-100 text-rose-400 shrink-0">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
@@ -425,7 +425,7 @@ function CollaboratorsTab({ channels }: { channels: ChannelMeta[] }) {
               <li key={u} className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded px-2 py-1">
                 <Users className="w-3 h-3 text-amber-400" />
                 <span className="flex-1 text-[11px] text-zinc-200">{u}</span>
-                <button onClick={() => remove(u)} className="text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(u)} className="text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>
@@ -630,7 +630,7 @@ function ReferenceTab() {
                   <p className="text-[11px] font-semibold text-zinc-200 truncate">{p.title}</p>
                   <p className="text-[9px] text-zinc-400">{p.kind}</p>
                 </button>
-                <button onClick={() => del(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400">
+                <button aria-label="Delete" onClick={() => del(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </li>

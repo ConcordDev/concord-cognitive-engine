@@ -143,7 +143,7 @@ export function ArtStudioSection() {
                           <p className="text-xs text-zinc-100 truncate">{a.title}</p>
                           <p className="text-[10px] text-zinc-400">{a.width}×{a.height} · {a.strokeCount} strokes</p>
                         </div>
-                        <button type="button" onClick={() => delArtwork(a.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                        <button aria-label="Delete" type="button" onClick={() => delArtwork(a.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>

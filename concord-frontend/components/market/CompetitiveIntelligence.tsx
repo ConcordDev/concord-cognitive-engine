@@ -242,7 +242,7 @@ function BattlecardsTab() {
             <p className="text-xs font-bold text-zinc-100">vs {c.competitorName}</p>
             <div className="flex gap-1.5">
               <button onClick={() => setEditing(c)} className="text-[10px] text-indigo-400 hover:text-indigo-300">Edit</button>
-              <button onClick={() => del(c.id)} className="text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => del(c.id)} className="text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
           </div>
           {c.overview && <p className="text-[11px] text-zinc-400 mb-2">{c.overview}</p>}
@@ -459,7 +459,7 @@ function WinLossTab() {
               <span className="text-zinc-200 truncate">{d.dealName}</span>
               <span className="text-zinc-400">· {d.competitor} · {d.reason}</span>
             </span>
-            <button onClick={() => del(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+            <button aria-label="Delete" onClick={() => del(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
           </li>
         ))}
       </ul>
@@ -573,7 +573,7 @@ function WebWatchTab() {
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <button onClick={() => rescan(w.url)} disabled={busy} className="text-[10px] text-indigo-400 hover:text-indigo-300 disabled:opacity-40">Re-scan</button>
-                <button onClick={() => delWatch(w.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => delWatch(w.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </div>
             </div>
             {w.current && (

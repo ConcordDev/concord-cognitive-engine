@@ -112,7 +112,7 @@ export function Watchlist() {
                   <td className="px-3 py-1.5 text-right text-gray-300 tabular-nums">{q.pe?.toFixed(1) ?? '—'}</td>
                   <td className="px-3 py-1.5 text-right text-gray-300 tabular-nums">${(q.marketCap / 1e9).toFixed(0)}B</td>
                   <td className="px-3 py-1.5 text-right">
-                    <button onClick={() => remove(q.symbol)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-400">
+                    <button aria-label="Delete" onClick={() => remove(q.symbol)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-400">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </td>

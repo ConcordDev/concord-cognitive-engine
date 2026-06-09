@@ -133,7 +133,7 @@ function ProjectList({ onSelect }: { onSelect: (id: string) => void }) {
                 <p className="text-sm font-medium text-gray-100">{p.name}</p>
                 <p className="text-[11px] text-gray-400">{p.bpm} BPM · {p.timeSignature} · {p.trackCount} tracks</p>
               </button>
-              <button type="button" onClick={() => remove(p.id)}
+              <button aria-label="Delete" type="button" onClick={() => remove(p.id)}
                 className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
             </div>
           </div>
@@ -217,7 +217,7 @@ function ProjectView({ projectId, onBack }: { projectId: string; onBack: () => v
                 className={cn('px-2 py-0.5 text-[10px] rounded uppercase font-mono', t.muted ? 'bg-rose-500/20 text-rose-300' : 'border border-white/10 text-gray-400')}>M</button>
               <button type="button" onClick={() => updateTrack(t.id, { solo: !t.solo })}
                 className={cn('px-2 py-0.5 text-[10px] rounded uppercase font-mono', t.solo ? 'bg-amber-500/20 text-amber-300' : 'border border-white/10 text-gray-400')}>S</button>
-              <button type="button" onClick={() => removeTrack(t.id)}
+              <button aria-label="Delete" type="button" onClick={() => removeTrack(t.id)}
                 className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
             </div>
           </div>

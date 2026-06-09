@@ -20,25 +20,31 @@ export async function runNpcTravelCycle(STATE) {
 
   // 1. Execute pending intents whose time has come.
   const pending = db.prepare(`SELECT * FROM npc_travel_intents WHERE status = 'pending' AND executes_at <= ?`).all(now);
-  for (const intent of pending) {
-    try {
-      // Update residency.
-      db.prepare(`
+  // Hoist the per-intent statements (constant SQL) out of the loop — prepared
+  // once, reused per intent (was an N+1 re-preparing five statements per row).
+  const updResidencyStmt = db.prepare(`
         UPDATE npc_residency
            SET current_world_id = ?, arrived_at = unixepoch(), total_worlds_visited = total_worlds_visited + 1
          WHERE npc_id = ?
-      `).run(intent.destination_world_id, intent.npc_id);
+      `);
+  const selOldWorldStmt = db.prepare(`SELECT world_id FROM world_npcs WHERE id = ?`);
+  const updNpcWorldStmt = db.prepare(`UPDATE world_npcs SET world_id = ?, current_location = ? WHERE id = ?`);
+  const delRoutineStmt = db.prepare(`DELETE FROM npc_routine_state WHERE npc_id = ?`);
+  const markExecutedStmt = db.prepare(`UPDATE npc_travel_intents SET status = 'executed' WHERE id = ?`);
+  for (const intent of pending) {
+    try {
+      // Update residency.
+      updResidencyStmt.run(intent.destination_world_id, intent.npc_id);
 
       // Update world_npcs.world_id (current location).
-      const old = db.prepare(`SELECT world_id FROM world_npcs WHERE id = ?`).get(intent.npc_id);
-      db.prepare(`UPDATE world_npcs SET world_id = ?, current_location = ? WHERE id = ?`)
-        .run(intent.destination_world_id, '{"x":0,"z":0}', intent.npc_id);
+      const old = selOldWorldStmt.get(intent.npc_id);
+      updNpcWorldStmt.run(intent.destination_world_id, '{"x":0,"z":0}', intent.npc_id);
 
       // Invalidate routine state — the NPC needs a new schedule for the new world.
-      try { db.prepare(`DELETE FROM npc_routine_state WHERE npc_id = ?`).run(intent.npc_id); } catch { /* table may not exist */ }
+      try { delRoutineStmt.run(intent.npc_id); } catch { /* table may not exist */ }
 
       // Mark the intent executed.
-      db.prepare(`UPDATE npc_travel_intents SET status = 'executed' WHERE id = ?`).run(intent.id);
+      markExecutedStmt.run(intent.id);
       executed++;
 
       // Realtime: tell active world clients.

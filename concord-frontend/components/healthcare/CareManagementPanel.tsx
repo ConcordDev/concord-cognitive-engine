@@ -123,7 +123,7 @@ export function CareManagementPanel({ patientId }: { patientId: string }) {
                   <div className="text-xs text-white font-medium truncate">{m.providerName}</div>
                   <div className="text-[10px] text-gray-400 capitalize">{m.role.replace('-', ' ')}{m.specialty ? ` · ${m.specialty}` : ''}</div>
                 </div>
-                <button type="button" onClick={() => remove(m.id)} className="text-gray-400 hover:text-rose-300">
+                <button aria-label="Delete" type="button" onClick={() => remove(m.id)} className="text-gray-400 hover:text-rose-300">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

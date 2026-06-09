@@ -100,7 +100,7 @@ export function TravelExplorePanel() {
                 {selected.priceLevel > 0 ? ` · ${'$'.repeat(selected.priceLevel)}` : ''}
               </p>
             </div>
-            <button type="button" onClick={() => save(selected)}
+            <button aria-label="Save" type="button" onClick={() => save(selected)}
               className={cn('p-1.5 rounded-lg', selected.saved ? 'text-sky-400' : 'text-zinc-600 hover:text-sky-400')}>
               <Bookmark className={cn('w-4 h-4', selected.saved && 'fill-sky-400')} />
             </button>
@@ -115,7 +115,7 @@ export function TravelExplorePanel() {
           <p className="text-xs font-semibold text-zinc-300 mb-1">Write a review</p>
           <div className="flex items-center gap-1 mb-2">
             {[1, 2, 3, 4, 5].map((n) => (
-              <button key={n} type="button" onClick={() => setMyRating(n)}>
+              <button aria-label="Favorite" key={n} type="button" onClick={() => setMyRating(n)}>
                 <Star className={cn('w-5 h-5', n <= myRating ? 'text-amber-400 fill-amber-400' : 'text-zinc-700')} />
               </button>
             ))}
@@ -202,7 +202,7 @@ export function TravelExplorePanel() {
                   <span className="text-[10px] text-zinc-400">{p.reviewCount} reviews</span>
                 </div>
               </button>
-              <button type="button" onClick={() => save(p)}
+              <button aria-label="Save" type="button" onClick={() => save(p)}
                 className={cn('p-1.5 rounded-lg', p.saved ? 'text-sky-400' : 'text-zinc-600 hover:text-sky-400')}>
                 <Bookmark className={cn('w-4 h-4', p.saved && 'fill-sky-400')} />
               </button>

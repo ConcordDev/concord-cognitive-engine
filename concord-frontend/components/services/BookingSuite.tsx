@@ -786,7 +786,7 @@ function RecurringWaitlist() {
             {w.status === 'waiting' && (
               <>
                 <button onClick={() => promote(w.id)} className="text-green-400 text-xs hover:underline">Promote</button>
-                <button onClick={() => removeWait(w.id)} className="text-red-400 text-xs hover:underline"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button aria-label="Delete" onClick={() => removeWait(w.id)} className="text-red-400 text-xs hover:underline"><Trash2 className="w-3.5 h-3.5" /></button>
               </>
             )}
           </div>

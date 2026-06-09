@@ -33,6 +33,7 @@
 
 import { getEmergentState } from "../emergent/store.js";
 import { validatePlugin as runValidation, RESERVED_NAMESPACES } from "./validator.js";
+import { makeConfinedCtx } from "../lib/confined-ctx.js";
 import {
   compileEmergentPlugin as _compileEmergentPlugin,
   createPluginGovernanceProposal,
@@ -139,7 +140,22 @@ export function validatePlugin(STATE, pluginModule, opts = {}) {
  * @returns {Object} Sandboxed context
  */
 export function buildSandboxedContext(STATE, pluginId, opts = {}) {
-  const { runMacro, log: logFn, isEmergentGen = false } = opts;
+  const { runMacro, log: logFn, isEmergentGen = false, manifest = null } = opts;
+
+  // Item 5 — confine plugin macro access to its DECLARED manifest (default a
+  // read-only creative/knowledge set; emergent-gen gets the tightest). The
+  // confined runMacro enforces the capability allowlist + the forbidden-domain
+  // set (code/repair/admin/config) + a per-actor rate cap. The RESERVED_NAMESPACES
+  // + emergent rate-limit in callMacro below stay as defense-in-depth.
+  const grants = Array.isArray(manifest?.macros) && manifest.macros.length
+    ? manifest.macros
+    : (isEmergentGen ? ["dtu.*", "discovery.*"] : ["dtu.*", "discovery.*", "art.*", "music.*", "glyph-spells.*"]);
+  let confinedRun = runMacro;
+  if (runMacro) {
+    try {
+      confinedRun = makeConfinedCtx({ userId: `plugin:${pluginId}`, runMacro, db: STATE?.db, manifest: { macros: grants } }).runMacro;
+    } catch { confinedRun = runMacro; }
+  }
 
   // Plugin-local storage (sandboxed per plugin)
   const localStorage = new Map();
@@ -178,7 +194,10 @@ export function buildSandboxedContext(STATE, pluginId, opts = {}) {
       }
 
       try {
-        return runMacro(domain, name, input, { actor: { userId: `plugin:${pluginId}`, role: "plugin", scopes: ["read"] } });
+        // Route through the confined gate (capability manifest + forbidden
+        // domains + rate cap). Falls back to the raw runner only if confinement
+        // couldn't be constructed.
+        return confinedRun(domain, name, input);
       } catch (err) {
         return { ok: false, error: String(err.message || err) };
       }
@@ -415,6 +434,7 @@ function activatePlugin(STATE, pluginModule, opts = {}) {
     runMacro,
     log: helpers?.log,
     isEmergentGen,
+    manifest: pluginModule.manifest || null,
   });
 
   // Call init

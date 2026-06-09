@@ -168,7 +168,7 @@ export function ContactsPanel() {
                       {c.phone && <span> · {c.phone}</span>}
                     </div>
                   </div>
-                  <button onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300">
+                  <button aria-label="Delete" onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </li>

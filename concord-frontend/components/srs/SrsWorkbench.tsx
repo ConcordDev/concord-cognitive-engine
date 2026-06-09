@@ -316,7 +316,7 @@ function DecksTab({
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </select>
-            <button onClick={createDeck} disabled={busy || !newDeck.trim()}
+            <button aria-label="Add" onClick={createDeck} disabled={busy || !newDeck.trim()}
               className="px-2 py-1 rounded bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40">
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -335,7 +335,7 @@ function DecksTab({
             <input value={filterQuery} onChange={e => setFilterQuery(e.target.value)}
               placeholder="tag:hard / is:due / is:new"
               className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-            <button onClick={createFiltered} disabled={busy || !filterName.trim()}
+            <button aria-label="Add" onClick={createFiltered} disabled={busy || !filterName.trim()}
               className="px-2 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-40">
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -708,7 +708,7 @@ function MediaLibrary({ flash }: { flash: (m: string) => void }) {
         <input value={name} onChange={e => setName(e.target.value)}
           placeholder="Label"
           className="w-28 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-        <button onClick={add} disabled={!url.trim()}
+        <button aria-label="Add" onClick={add} disabled={!url.trim()}
           className="px-2 py-1 rounded bg-pink-600 hover:bg-pink-500 text-white disabled:opacity-40">
           <Plus className="w-3.5 h-3.5" />
         </button>

@@ -92,7 +92,7 @@ export function AccountsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Building2 className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Linked accounts</span>
-        <button onClick={() => setCreating(v => !v)} className="ml-auto p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
+        <button aria-label="Add" onClick={() => setCreating(v => !v)} className="ml-auto p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       <div className="px-4 py-3 border-b border-white/10 grid grid-cols-3 gap-3">
@@ -143,7 +143,7 @@ export function AccountsPanel() {
                     {editing?.id === a.id ? (
                       <span className="inline-flex items-center gap-1">
                         <input type="number" value={editing.value} onChange={e => setEditing({ id: a.id, value: e.target.value })} className="w-24 px-1.5 py-0.5 text-xs bg-lattice-deep border border-cyan-500/40 rounded text-white" autoFocus />
-                        <button onClick={() => saveBalance(a.id)} className="text-emerald-300"><Check className="w-3.5 h-3.5" /></button>
+                        <button aria-label="Confirm" onClick={() => saveBalance(a.id)} className="text-emerald-300"><Check className="w-3.5 h-3.5" /></button>
                         <button onClick={() => setEditing(null)} className="text-gray-400"><X className="w-3.5 h-3.5" /></button>
                       </span>
                     ) : (
@@ -152,7 +152,7 @@ export function AccountsPanel() {
                         <Edit3 className="w-2.5 h-2.5 inline ml-1 opacity-0 group-hover:opacity-100" />
                       </button>
                     )}
-                    <button onClick={() => unlink(a.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                    <button aria-label="Delete" onClick={() => unlink(a.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                   </li>
                 ))}
               </ul>

@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useCallback, useRef } from 'react';
 import type { OnMount, OnChange } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
+import { registerConcordDsl } from '@/lib/dsl/concord-dsl-lang';
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -92,6 +93,18 @@ interface MonacoWrapperProps {
    * for that call.
    */
   inlineCompletion?: (ctx: { textBeforeCursor: string; textAfterCursor: string; language: string }) => Promise<string>;
+  /**
+   * Phase 1 — real semantic IntelliSense. When provided, registers hover /
+   * completion / signature-help providers that call the `code.lsp-*` macros
+   * (TS LanguageService-backed) with the cursor position. `run(action, input)`
+   * should resolve to the macro `result`. `projectId`/`path` are read fresh on
+   * every request (via an internal ref) so switching tabs Just Works.
+   */
+  semantic?: {
+    projectId: string;
+    path: string;
+    run: (action: string, input: Record<string, unknown>) => Promise<Record<string, unknown> | null>;
+  };
 }
 
 export default function MonacoWrapper({
@@ -104,13 +117,19 @@ export default function MonacoWrapper({
   onSelectionChange,
   options,
   inlineCompletion,
+  semantic,
 }: MonacoWrapperProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  // Read fresh on every provider call (handleMount captures only the first value).
+  const semanticRef = useRef(semantic);
+  semanticRef.current = semantic;
 
   const handleMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
     monaco.editor.defineTheme('concord-dark', CONCORD_DARK_THEME);
     monaco.editor.setTheme('concord-dark');
+    // Register the Concord DSL language (highlighting + keyword/macro completions).
+    try { registerConcordDsl(monaco as unknown as Parameters<typeof registerConcordDsl>[0]); } catch { /* non-fatal */ }
     editor.focus();
     onEditorReady?.(editor);
     if (onSelectionChange) {
@@ -161,6 +180,93 @@ export default function MonacoWrapper({
         },
         freeInlineCompletions() { /* noop */ },
       });
+    }
+
+    // ── Phase 1: real semantic providers (hover / completions / signature) ──
+    if (semanticRef.current) {
+      const lang = resolveLanguage(language);
+      // One registration per (monaco, lang) — handleMount can re-fire on
+      // remount/HMR and double-registration would double every suggestion.
+      const flags = monaco.languages as unknown as Record<string, boolean>;
+      const flag = `__concordSem_${lang}`;
+      if (!flags[flag]) {
+        flags[flag] = true;
+
+        type SemModel = NonNullable<ReturnType<editor.IStandaloneCodeEditor['getModel']>>;
+        type SemPos = { lineNumber: number; column: number };
+
+        const KIND: Record<string, number> = {
+          method: monaco.languages.CompletionItemKind.Method,
+          function: monaco.languages.CompletionItemKind.Function,
+          property: monaco.languages.CompletionItemKind.Field,
+          var: monaco.languages.CompletionItemKind.Variable,
+          const: monaco.languages.CompletionItemKind.Constant,
+          let: monaco.languages.CompletionItemKind.Variable,
+          class: monaco.languages.CompletionItemKind.Class,
+          interface: monaco.languages.CompletionItemKind.Interface,
+          enum: monaco.languages.CompletionItemKind.Enum,
+          keyword: monaco.languages.CompletionItemKind.Keyword,
+          module: monaco.languages.CompletionItemKind.Module,
+          parameter: monaco.languages.CompletionItemKind.Variable,
+        };
+
+        monaco.languages.registerHoverProvider(lang, {
+          async provideHover(_model: SemModel, position: SemPos) {
+            const ctx = semanticRef.current; if (!ctx) return null;
+            try {
+              const r = await ctx.run('lsp-hover', { projectId: ctx.projectId, path: ctx.path, position: { line: position.lineNumber, column: position.column } });
+              const hover = r && (r as { found?: boolean; hover?: string }).found ? String((r as { hover?: string }).hover || '') : '';
+              if (!hover) return null;
+              const doc = (r as { doc?: string | null }).doc;
+              const contents = [{ value: '```typescript\n' + hover + '\n```' }];
+              if (doc) contents.push({ value: String(doc) });
+              return { contents };
+            } catch { return null; }
+          },
+        });
+
+        monaco.languages.registerCompletionItemProvider(lang, {
+          triggerCharacters: ['.', '(', '[', '"', "'", '`', '/', '@', '<', '#', ' '],
+          async provideCompletionItems(model: SemModel, position: SemPos) {
+            const ctx = semanticRef.current; if (!ctx) return { suggestions: [] };
+            try {
+              const word = model.getWordUntilPosition(position);
+              const range = { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: word.startColumn, endColumn: word.endColumn };
+              const r = await ctx.run('lsp-completions', { projectId: ctx.projectId, path: ctx.path, position: { line: position.lineNumber, column: position.column }, prefix: word.word });
+              const entries = (r && (r as { completions?: Array<{ label: string; kind?: string; detail?: string }> }).completions) || [];
+              return {
+                suggestions: entries.slice(0, 200).map((c) => ({
+                  label: c.label,
+                  kind: KIND[String(c.kind)] ?? monaco.languages.CompletionItemKind.Variable,
+                  detail: c.detail || '',
+                  insertText: c.label,
+                  range,
+                })),
+              };
+            } catch { return { suggestions: [] }; }
+          },
+        });
+
+        monaco.languages.registerSignatureHelpProvider(lang, {
+          signatureHelpTriggerCharacters: ['(', ','],
+          async provideSignatureHelp(_model: SemModel, position: SemPos) {
+            const ctx = semanticRef.current; if (!ctx) return null;
+            try {
+              const r = await ctx.run('lsp-signature', { projectId: ctx.projectId, path: ctx.path, position: { line: position.lineNumber, column: position.column } });
+              if (!r || !(r as { found?: boolean }).found) return null;
+              const res = r as { label: string; parameters?: Array<{ label: string; documentation?: string | null }>; activeParameter?: number };
+              return {
+                value: {
+                  signatures: [{ label: res.label, parameters: (res.parameters || []).map((p) => ({ label: p.label, documentation: p.documentation || '' })) }],
+                  activeSignature: 0,
+                  activeParameter: res.activeParameter || 0,
+                },
+                dispose() { /* noop */ },
+              };
+            } catch { return null; }
+          },
+        });
+      }
     }
   }, [onEditorReady, onSelectionChange, inlineCompletion, language]);
 

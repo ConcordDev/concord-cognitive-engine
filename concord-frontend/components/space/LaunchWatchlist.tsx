@@ -74,7 +74,7 @@ export function LaunchWatchlist() {
         <ul className="space-y-1">
           {items.map(i => (
             <li key={i.id} className="group flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
-              <button onClick={() => toggleWatched(i.id)}
+              <button aria-label="Confirm" onClick={() => toggleWatched(i.id)}
                 className={cn('w-5 h-5 rounded-full flex items-center justify-center shrink-0',
                   i.watched ? 'bg-emerald-600 text-white' : 'border border-zinc-600 text-transparent hover:border-emerald-500')}>
                 <Check className="w-3 h-3" />
@@ -89,7 +89,7 @@ export function LaunchWatchlist() {
                 : i.status === 'launched' ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-800 text-zinc-400')}>
                 {i.daysUntil == null ? 'TBD' : i.status === 'launched' ? 'launched' : i.status === 'today' ? 'today' : `T-${i.daysUntil}d`}
               </span>
-              <button onClick={() => untrack(i.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => untrack(i.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>

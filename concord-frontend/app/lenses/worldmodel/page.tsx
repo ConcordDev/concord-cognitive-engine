@@ -374,7 +374,7 @@ function EntitiesTab({
                 <option value="string">string</option>
                 <option value="boolean">boolean</option>
               </select>
-              <button className={btnGhost} onClick={() => setTypeFields((fs) => fs.filter((_, j) => j !== i))}>
+              <button aria-label="Delete" className={btnGhost} onClick={() => setTypeFields((fs) => fs.filter((_, j) => j !== i))}>
                 <Trash2 className="h-3 w-3" />
               </button>
             </div>
@@ -389,7 +389,7 @@ function EntitiesTab({
               <li key={t.name} className="flex items-center gap-2 rounded border border-emerald-900/30 bg-black/30 px-2 py-1.5 text-xs">
                 <span className="font-mono text-emerald-300">{t.name}</span>
                 <span className="text-emerald-700">{t.fields.map((f) => `${f.key}:${f.kind}`).join(', ') || 'no fields'}</span>
-                <button className={`${btnGhost} ml-auto`} onClick={() => delType.mutate(t.name)}><Trash2 className="h-3 w-3" /></button>
+                <button aria-label="Delete" className={`${btnGhost} ml-auto`} onClick={() => delType.mutate(t.name)}><Trash2 className="h-3 w-3" /></button>
               </li>
             ))}
           </ul>
@@ -409,7 +409,7 @@ function EntitiesTab({
               <button className={`${btnGhost} ml-auto`} onClick={() => setEditId(editId === e.id ? null : e.id)}>
                 <Pencil className="h-3 w-3" /> attrs
               </button>
-              <button className={btnGhost} onClick={() => del.mutate(e.id)}><Trash2 className="h-3 w-3" /></button>
+              <button aria-label="Delete" className={btnGhost} onClick={() => del.mutate(e.id)}><Trash2 className="h-3 w-3" /></button>
             </div>
             {editId === e.id && editEntity && (
               <AttrEditor entity={editEntity} types={types} onSaved={() => { setEditId(null); onChanged(); }} />
@@ -585,8 +585,8 @@ function RelationRow({
         </>
       ) : (
         <>
-          <button className={`${btnGhost} ml-auto`} onClick={() => setEdit(true)}><Pencil className="h-3 w-3" /></button>
-          <button className={btnGhost} onClick={onDelete}><Trash2 className="h-3 w-3" /></button>
+          <button aria-label="Edit" className={`${btnGhost} ml-auto`} onClick={() => setEdit(true)}><Pencil className="h-3 w-3" /></button>
+          <button aria-label="Delete" className={btnGhost} onClick={onDelete}><Trash2 className="h-3 w-3" /></button>
         </>
       )}
     </li>
@@ -699,7 +699,7 @@ function ShockEditor({
             value={sh.step} onChange={(e) => onChange(shocks.map((x, j) => j === i ? { ...x, step: Number(e.target.value) } : x))} />
           <input className={`${input} w-24`} type="number" aria-label="Shock delta" placeholder="delta"
             value={sh.delta} onChange={(e) => onChange(shocks.map((x, j) => j === i ? { ...x, delta: Number(e.target.value) } : x))} />
-          <button className={btnGhost} onClick={() => onChange(shocks.filter((_, j) => j !== i))}><Trash2 className="h-3 w-3" /></button>
+          <button aria-label="Delete" className={btnGhost} onClick={() => onChange(shocks.filter((_, j) => j !== i))}><Trash2 className="h-3 w-3" /></button>
         </div>
       ))}
       <button className={btnGhost} disabled={entities.length === 0}
@@ -1027,7 +1027,7 @@ function LibraryTab({ entities }: { entities: WmEntity[] }) {
                   onClick={() => rerun.mutate(s)}>
                   <Play className="h-3 w-3" /> re-run
                 </button>
-                <button className={btnGhost} onClick={() => del.mutate(s.id)}><Trash2 className="h-3 w-3" /></button>
+                <button aria-label="Delete" className={btnGhost} onClick={() => del.mutate(s.id)}><Trash2 className="h-3 w-3" /></button>
               </li>
             ))}
           </ul>

@@ -77,7 +77,7 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
         <Package className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Shipments</span>
         <span className="ml-auto text-[10px] text-gray-400">{shipments.length}</span>
-        <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
+        <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       <div className="border-b border-white/10">
@@ -113,7 +113,7 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
                   <select value={s.status} onChange={e => { e.stopPropagation(); setStatus(s.id, e.target.value); }} onClick={e => e.stopPropagation()} className={cn('text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border-0 cursor-pointer', STATUS_COLOUR[s.status])}>
                     {STATUSES.map(st => <option key={st} value={st}>{st.replace(/_/g, ' ')}</option>)}
                   </select>
-                  <button onClick={(e) => { e.stopPropagation(); remove(s.id); }} className="ml-auto opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); remove(s.id); }} className="ml-auto opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-gray-200">
                   <span className="truncate flex-1">{s.origin}</span>

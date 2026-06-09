@@ -139,7 +139,7 @@ export function PreApprovalFlow() {
             <div className="flex items-center gap-2 mb-2">
               <Landmark className="w-3.5 h-3.5 text-cyan-400" />
               <span className="text-[10px] uppercase tracking-wider text-gray-400">Lenders</span>
-              <button onClick={() => setAddingLender((v) => !v)} className="ml-auto p-0.5 text-gray-400 hover:text-white"><Plus className="w-3.5 h-3.5" /></button>
+              <button aria-label="Add" onClick={() => setAddingLender((v) => !v)} className="ml-auto p-0.5 text-gray-400 hover:text-white"><Plus className="w-3.5 h-3.5" /></button>
             </div>
             {addingLender && (
               <div className="grid grid-cols-6 gap-2 text-xs mb-2">

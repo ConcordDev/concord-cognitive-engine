@@ -3,6 +3,7 @@ digraph Concord {
 
   lens__parent_ [label="lens/[parent]", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_accounting [label="lens/accounting", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_achievements [label="lens/achievements", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_admin [label="lens/admin", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_affect [label="lens/affect", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_agents [label="lens/agents", color=green, style=filled, fillcolor="#e0ffe0"];
@@ -11,6 +12,7 @@ digraph Concord {
   lens_alliance [label="lens/alliance", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_analytics [label="lens/analytics", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_animation [label="lens/animation", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_announcements [label="lens/announcements", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_anon [label="lens/anon", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_answers [label="lens/answers", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_app_maker [label="lens/app-maker", color=green, style=filled, fillcolor="#e0ffe0"];
@@ -20,6 +22,7 @@ digraph Concord {
   lens_astronomy [label="lens/astronomy", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_atlas [label="lens/atlas", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_attention [label="lens/attention", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_auction [label="lens/auction", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_audit [label="lens/audit", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_automotive [label="lens/automotive", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_aviation [label="lens/aviation", color=green, style=filled, fillcolor="#e0ffe0"];
@@ -31,12 +34,15 @@ digraph Concord {
   lens_bridge [label="lens/bridge", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_byo_keys [label="lens/byo-keys", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_calendar [label="lens/calendar", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_careers [label="lens/careers", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_carpentry [label="lens/carpentry", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_chat [label="lens/chat", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_chem [label="lens/chem", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_civic_bonds [label="lens/civic-bonds", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_classroom [label="lens/classroom", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_code [label="lens/code", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_code_quality [label="lens/code-quality", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_codex [label="lens/codex", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_cognition [label="lens/cognition", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_cognitive_replay [label="lens/cognitive-replay", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_collab [label="lens/collab", color=green, style=filled, fillcolor="#e0ffe0"];
@@ -46,19 +52,13 @@ digraph Concord {
   lens_consulting [label="lens/consulting", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_cooking [label="lens/cooking", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_council [label="lens/council", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_courtship [label="lens/courtship", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_crafting [label="lens/crafting", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_creative [label="lens/creative", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_creative_writing [label="lens/creative-writing", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_creator [label="lens/creator", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_creatures [label="lens/creatures", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_cri [label="lens/cri", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_crisis_ops [label="lens/crisis-ops", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_crypto [label="lens/crypto", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_custom [label="lens/custom", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_daily [label="lens/daily", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_database [label="lens/database", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_death_insurance [label="lens/death-insurance", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_debate [label="lens/debate", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_debug [label="lens/debug", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_defense [label="lens/defense", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_deities [label="lens/deities", color=green, style=filled, fillcolor="#e0ffe0"];
 }

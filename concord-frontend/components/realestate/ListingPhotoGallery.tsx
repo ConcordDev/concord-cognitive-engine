@@ -133,8 +133,8 @@ export function ListingPhotoGallery({ listingId }: { listingId?: string }) {
                 <Image src={active.url} alt={active.caption || active.room || 'Listing photo'} fill unoptimized className="object-contain" />
                 {photos.length > 1 && (
                   <>
-                    <button onClick={() => setActiveIdx((i) => (i - 1 + photos.length) % photos.length)} className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80"><ChevronLeft className="w-4 h-4" /></button>
-                    <button onClick={() => setActiveIdx((i) => (i + 1) % photos.length)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80"><ChevronRight className="w-4 h-4" /></button>
+                    <button aria-label="Previous" onClick={() => setActiveIdx((i) => (i - 1 + photos.length) % photos.length)} className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80"><ChevronLeft className="w-4 h-4" /></button>
+                    <button aria-label="Next" onClick={() => setActiveIdx((i) => (i + 1) % photos.length)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80"><ChevronRight className="w-4 h-4" /></button>
                   </>
                 )}
                 {(active.caption || active.room) && (

@@ -151,7 +151,7 @@ export function RecordingPanel({ projectId, trackId }: { projectId?: string; tra
                         </button>
                         <span className="text-white">#{t.takeNumber} {t.name}</span>
                         <span className="text-gray-400">{t.durationSec}s</span>
-                        <button onClick={() => removeTake(t.id)} className="ml-auto text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                        <button aria-label="Delete" onClick={() => removeTake(t.id)} className="ml-auto text-rose-400"><Trash2 className="w-3 h-3" /></button>
                       </li>
                     ))}
                   </ul>

@@ -218,7 +218,7 @@ export function RecipeBoxSection() {
                       <div className="mt-2 flex items-center gap-1">
                         <button onClick={() => openScale(r)} className="px-1.5 py-0.5 text-[10px] rounded border border-white/10 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1"><Scaling className="w-3 h-3" />Scale</button>
                         <button onClick={() => setEditRecipe({ ...r })} className="px-1.5 py-0.5 text-[10px] rounded border border-white/10 text-gray-300 hover:bg-white/[0.05]">Edit</button>
-                        <button onClick={() => deleteRecipe(r.id)} className="ml-auto opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+                        <button aria-label="Delete" onClick={() => deleteRecipe(r.id)} className="ml-auto opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
                   </div>
@@ -322,7 +322,7 @@ export function RecipeBoxSection() {
                       <Package className="w-3 h-3 text-gray-400" />
                       <span className="flex-1 text-white">{p.name}</span>
                       <span className="text-[10px] text-gray-400">{p.aisle}</span>
-                      <button onClick={() => delPantry(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                      <button aria-label="Delete" onClick={() => delPantry(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-3 h-3" /></button>
                     </li>
                   ))}
                 </ul>

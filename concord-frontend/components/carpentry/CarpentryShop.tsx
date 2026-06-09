@@ -93,7 +93,7 @@ function BoardFootCalc() {
             <select className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" value={p.species} onChange={(e) => setPieces((ps) => ps.map((x, idx) => idx === i ? { ...x, species: e.target.value } : x))}>
               {SPECIES_LIST.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <button type="button" onClick={() => setPieces((ps) => ps.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button aria-label="Delete" type="button" onClick={() => setPieces((ps) => ps.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <div className="flex items-center justify-between">

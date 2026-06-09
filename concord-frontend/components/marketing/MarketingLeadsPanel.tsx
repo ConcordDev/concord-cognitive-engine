@@ -146,7 +146,7 @@ export function MarketingLeadsPanel({ onChange }: { onChange: () => void }) {
                       {l.source}{l.value > 0 ? ` · $${l.value}` : ''}
                     </p>
                   </div>
-                  <button type="button" onClick={() => del(l.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => del(l.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

@@ -243,7 +243,7 @@ export function GCalSection() {
         <div className="px-3 pb-2">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold flex-1">My calendars</span>
-            <button onClick={addCalendar} className="text-gray-400 hover:text-white"><Plus className="w-3 h-3" /></button>
+            <button aria-label="Add" onClick={addCalendar} className="text-gray-400 hover:text-white"><Plus className="w-3 h-3" /></button>
           </div>
           <ul className="space-y-0.5">
             {calendars.map(c => (
@@ -262,7 +262,7 @@ export function GCalSection() {
             <ListTodo className="w-3 h-3 text-gray-400" />
             <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold flex-1">Tasks</span>
             <button onClick={() => setShowTasks(v => !v)} className="text-gray-400 text-[10px]">{showTasks ? 'hide' : 'show'}</button>
-            <button onClick={addTask} className="text-gray-400 hover:text-white"><Plus className="w-3 h-3" /></button>
+            <button aria-label="Add" onClick={addTask} className="text-gray-400 hover:text-white"><Plus className="w-3 h-3" /></button>
           </div>
           {showTasks && (
             <>
@@ -275,16 +275,16 @@ export function GCalSection() {
                 )}
                 {tasks.filter(t => t.status === 'todo').map(t => (
                   <li key={t.id} className="group flex items-center gap-1.5 text-[11px] py-0.5">
-                    <button onClick={() => toggleTask(t)}><Square className="w-3 h-3 text-gray-400 hover:text-blue-300" /></button>
+                    <button aria-label="Stop" onClick={() => toggleTask(t)}><Square className="w-3 h-3 text-gray-400 hover:text-blue-300" /></button>
                     <span className="truncate flex-1 text-gray-300">{t.title}</span>
                     <span className={cn('text-[9px]', PRIORITY_COLOUR[t.priority])}>{t.estimateMin}m</span>
                     {t.blockedEventId && <Clock className="w-2.5 h-2.5 text-blue-400" />}
-                    <button onClick={() => deleteTask(t.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-2.5 h-2.5" /></button>
+                    <button aria-label="Delete" onClick={() => deleteTask(t.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-2.5 h-2.5" /></button>
                   </li>
                 ))}
                 {tasks.filter(t => t.status === 'done').slice(0, 5).map(t => (
                   <li key={t.id} className="flex items-center gap-1.5 text-[11px] py-0.5 opacity-50">
-                    <button onClick={() => toggleTask(t)}><CheckSquare className="w-3 h-3 text-emerald-400" /></button>
+                    <button aria-label="Toggle" onClick={() => toggleTask(t)}><CheckSquare className="w-3 h-3 text-emerald-400" /></button>
                     <span className="truncate flex-1 text-gray-400 line-through">{t.title}</span>
                   </li>
                 ))}
@@ -299,8 +299,8 @@ export function GCalSection() {
         {/* Toolbar */}
         <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
           <button onClick={() => setCursor(new Date())} className="px-2.5 py-1 text-xs rounded border border-white/15 text-gray-300 hover:bg-white/[0.05]">Today</button>
-          <button onClick={() => shiftCursor(-1)} className="p-1 text-gray-400 hover:text-white"><ChevronLeft className="w-4 h-4" /></button>
-          <button onClick={() => shiftCursor(1)} className="p-1 text-gray-400 hover:text-white"><ChevronRight className="w-4 h-4" /></button>
+          <button aria-label="Previous" onClick={() => shiftCursor(-1)} className="p-1 text-gray-400 hover:text-white"><ChevronLeft className="w-4 h-4" /></button>
+          <button aria-label="Next" onClick={() => shiftCursor(1)} className="p-1 text-gray-400 hover:text-white"><ChevronRight className="w-4 h-4" /></button>
           <span className="text-sm font-semibold text-gray-200">{headerLabel}</span>
           {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-400" />}
           <div className="ml-auto flex items-center gap-1">

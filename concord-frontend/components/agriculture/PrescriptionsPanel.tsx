@@ -87,7 +87,7 @@ export function PrescriptionsPanel() {
                 </div>
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', r.status === 'approved' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300')}>{r.status}</span>
                 {r.status === 'draft' && <button onClick={() => approve(r.id)} className="p-1 text-emerald-400 hover:text-emerald-300" title="Approve"><Check className="w-3 h-3" /></button>}
-                <button onClick={() => remove(r.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(r.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

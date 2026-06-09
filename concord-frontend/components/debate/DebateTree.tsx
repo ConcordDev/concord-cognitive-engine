@@ -93,7 +93,7 @@ export function DebateTree() {
                 <p className="text-xs font-semibold text-white line-clamp-2">{d.thesis}</p>
                 <p className="text-[10px] text-gray-400">{d.claimCount} claims · {d.score.supportPct}% for</p>
               </button>
-              <button onClick={() => del(d.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => del(d.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>
@@ -151,9 +151,9 @@ function ClaimChildren({ claims, parentId, depth, onAdd, onVote, onDelete }: {
               </span>
               <p className="text-xs text-gray-200 flex-1">{c.text}</p>
               <span className="text-[10px] text-gray-400 shrink-0">{c.weight.toFixed(1)}</span>
-              <button onClick={() => onVote(c.id, 5)} className="text-gray-600 hover:text-emerald-400"><ThumbsUp className="w-3 h-3" /></button>
-              <button onClick={() => onVote(c.id, 1)} className="text-gray-600 hover:text-rose-400"><ThumbsDown className="w-3 h-3" /></button>
-              <button onClick={() => onDelete(c.id)} className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Thumbs up" onClick={() => onVote(c.id, 5)} className="text-gray-600 hover:text-emerald-400"><ThumbsUp className="w-3 h-3" /></button>
+              <button aria-label="Thumbs down" onClick={() => onVote(c.id, 1)} className="text-gray-600 hover:text-rose-400"><ThumbsDown className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => onDelete(c.id)} className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
           </div>
           <ClaimChildren claims={claims} parentId={c.id} depth={depth + 1} onAdd={onAdd} onVote={onVote} onDelete={onDelete} />
@@ -169,7 +169,7 @@ function ClaimChildren({ claims, parentId, depth, onAdd, onVote, onDelete }: {
           onKeyDown={e => { if (e.key === 'Enter' && draft.trim().length >= 4) { onAdd(parentId, stance, draft); setDraft(''); } }}
           placeholder={depth === 0 ? 'Add a claim…' : 'Add a counter-claim…'}
           className="flex-1 bg-black/40 border border-white/15 rounded px-1.5 py-0.5 text-[11px] text-white" />
-        <button onClick={() => { if (draft.trim().length >= 4) { onAdd(parentId, stance, draft); setDraft(''); } }}
+        <button aria-label="Add" onClick={() => { if (draft.trim().length >= 4) { onAdd(parentId, stance, draft); setDraft(''); } }}
           className="px-1.5 py-0.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white"><Plus className="w-3 h-3" /></button>
       </div>
     </div>

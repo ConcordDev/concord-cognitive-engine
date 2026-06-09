@@ -127,7 +127,7 @@ export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
           <ul className="space-y-1">
             {dailyMix.slice(0, 8).map((t) => (
               <li key={t.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
-                <button type="button" onClick={() => play(t.id)} className="text-emerald-400 hover:text-emerald-300">
+                <button aria-label="Play" type="button" onClick={() => play(t.id)} className="text-emerald-400 hover:text-emerald-300">
                   <Play className="w-3.5 h-3.5" />
                 </button>
                 <span className="text-[11px] text-zinc-300 truncate">{t.title} <span className="text-zinc-400">— {t.artist}</span></span>

@@ -113,7 +113,7 @@ function MetricsTab() {
         <div className={cardCls}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Metrics ({metrics.length})</span>
-            <button onClick={refresh} className="text-zinc-400 hover:text-zinc-200"><RefreshCw className="w-3 h-3" /></button>
+            <button aria-label="Refresh" onClick={refresh} className="text-zinc-400 hover:text-zinc-200"><RefreshCw className="w-3 h-3" /></button>
           </div>
           <div className="space-y-1 max-h-72 overflow-y-auto">
             {metrics.length === 0 && <div className="text-[11px] text-zinc-400">No metrics yet.</div>}
@@ -222,7 +222,7 @@ function DashboardsTab() {
               <div key={d.id} className={`flex items-center gap-1 px-2 py-1 rounded ${active?.id === d.id ? 'bg-cyan-500/15' : 'bg-zinc-900'}`}>
                 <button onClick={() => setActive(d)} className="flex-1 text-left text-[11px] text-zinc-200 truncate">{d.title}</button>
                 <span className="text-[10px] text-zinc-400">{d.widgets?.length || 0}w</span>
-                <button onClick={() => del(d.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => del(d.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </div>
             ))}
           </div>
@@ -243,7 +243,7 @@ function DashboardsTab() {
                   <div key={w.id} className="rounded border border-zinc-800 bg-zinc-900/60 p-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-semibold text-zinc-200">{w.title}</span>
-                      <button onClick={() => removeWidget(w.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                      <button aria-label="Delete" onClick={() => removeWidget(w.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                     </div>
                     <div className="text-[10px] text-zinc-400 mt-0.5">{w.kind}{w.metric ? ` · ${w.metric} (${w.agg})` : ''}</div>
                   </div>
@@ -380,7 +380,7 @@ function TracesTab() {
       <div className={cardCls}>
         <div className="flex items-center gap-2">
           <button className={btnCls} disabled={busy} onClick={seedSample}><Plus className="w-3 h-3" /> Record sample trace</button>
-          <button onClick={refresh} className="text-zinc-400 hover:text-zinc-200"><RefreshCw className="w-3.5 h-3.5" /></button>
+          <button aria-label="Refresh" onClick={refresh} className="text-zinc-400 hover:text-zinc-200"><RefreshCw className="w-3.5 h-3.5" /></button>
         </div>
         <Notice n={notice} />
       </div>
@@ -523,7 +523,7 @@ function MonitorsTab() {
                 <span className="text-[11px] text-zinc-200 flex-1 truncate">{m.name}</span>
                 <span className="text-[10px] text-zinc-400">{m.type} · {m.severity}</span>
                 {ev && <span className={`text-[10px] ${ev.breached ? 'text-rose-400' : 'text-emerald-400'}`}>{ev.reason}</span>}
-                <button onClick={() => del(m.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => del(m.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </div>
             );
           })}
@@ -592,7 +592,7 @@ function SyntheticsTab() {
               <button onClick={() => runCheck(c.id)} disabled={busy === c.id} className="text-cyan-400 hover:text-cyan-300">
                 {busy === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
               </button>
-              <button onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
           ))}
         </div>
@@ -659,7 +659,7 @@ function OnCallTab() {
           <div className="text-[11px] text-zinc-300 mb-2">Currently on-call: <span className="text-cyan-300 font-semibold">{status?.current?.person || 'unassigned'}</span></div>
           <div className="flex gap-2">
             <input className={`${inputCls} flex-1`} value={person} onChange={(e) => setPerson(e.target.value)} placeholder="add person" />
-            <button className={btnCls} disabled={busy} onClick={addPerson}><Plus className="w-3 h-3" /></button>
+            <button aria-label="Add" className={btnCls} disabled={busy} onClick={addPerson}><Plus className="w-3 h-3" /></button>
           </div>
           <div className="mt-2 space-y-0.5">
             {(status?.schedule || []).map((s: any, i: number) => (
@@ -678,7 +678,7 @@ function OnCallTab() {
             <select className={inputCls} value={minSeverity} onChange={(e) => setMinSeverity(e.target.value)}>
               {['sev1', 'sev2', 'sev3', 'sev4'].map((s) => <option key={s} value={s}>≥{s}</option>)}
             </select>
-            <button className={btnCls} disabled={busy} onClick={addRoute}><Plus className="w-3 h-3" /></button>
+            <button aria-label="Add" className={btnCls} disabled={busy} onClick={addRoute}><Plus className="w-3 h-3" /></button>
           </div>
           <div className="mt-2 space-y-0.5">
             {(status?.routes || []).map((r: any) => (

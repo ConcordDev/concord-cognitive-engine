@@ -202,7 +202,7 @@ function AlignmentTab() {
             </ul>
           )}
         </div>
-        <button onClick={() => remove(node.id)} className="text-zinc-600 hover:text-red-400">
+        <button aria-label="Delete" onClick={() => remove(node.id)} className="text-zinc-600 hover:text-red-400">
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -356,7 +356,7 @@ function CheckinsTab() {
               </div>
               {c.note && <p className="mt-0.5 text-[10px] text-zinc-400">{c.note}</p>}
             </div>
-            <button onClick={() => remove(c.id)} className="text-zinc-600 hover:text-red-400">
+            <button aria-label="Delete" onClick={() => remove(c.id)} className="text-zinc-600 hover:text-red-400">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -433,7 +433,7 @@ function TeamGoalsTab() {
                   {g.totalContributed} / {g.target} · {g.members.length} member{g.members.length !== 1 ? 's' : ''}
                 </p>
               </div>
-              <button onClick={() => remove(g.id)} className="text-zinc-600 hover:text-red-400">
+              <button aria-label="Delete" onClick={() => remove(g.id)} className="text-zinc-600 hover:text-red-400">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -584,7 +584,7 @@ function TemplatesTab() {
                   {rg.cadence} · {rg.occurrences} run{rg.occurrences !== 1 ? 's' : ''} · next {rg.nextDue.slice(0, 10)}
                 </span>
               </div>
-              <button onClick={() => removeRecurring(rg.id)} className="text-zinc-600 hover:text-red-400">
+              <button aria-label="Delete" onClick={() => removeRecurring(rg.id)} className="text-zinc-600 hover:text-red-400">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -656,7 +656,7 @@ function ChartsTab() {
           {points.map((p, i) => (
             <span key={i} className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">
               {p.date}: {p.progress}%
-              <button onClick={() => removePoint(i)} className="text-zinc-400 hover:text-red-400">
+              <button aria-label="Delete" onClick={() => removePoint(i)} className="text-zinc-400 hover:text-red-400">
                 <Trash2 className="h-3 w-3" />
               </button>
             </span>
@@ -831,7 +831,7 @@ function RemindersTab() {
               {!rm.done && (
                 <button onClick={() => complete(rm.id)} className="text-[10px] text-emerald-400 hover:text-emerald-300">Complete</button>
               )}
-              <button onClick={() => remove(rm.id)} className="text-zinc-600 hover:text-red-400">
+              <button aria-label="Delete" onClick={() => remove(rm.id)} className="text-zinc-600 hover:text-red-400">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -941,7 +941,7 @@ function DependenciesTab() {
             <span className="font-mono text-[11px] text-zinc-300">{e.from}</span>
             <span className={`text-[10px] uppercase ${e.kind === 'blocks' ? 'text-red-400' : 'text-zinc-400'}`}>{e.kind}</span>
             <span className="font-mono text-[11px] text-zinc-300">{e.to}</span>
-            <button onClick={() => unlink(e)} className="ml-auto text-zinc-600 hover:text-red-400">
+            <button aria-label="Delete" onClick={() => unlink(e)} className="ml-auto text-zinc-600 hover:text-red-400">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>

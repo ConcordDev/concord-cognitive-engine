@@ -1,0 +1,17 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "org.concord-os/cognitive-engine",
+  "description": "Concord Cognitive Engine — a verifying knowledge substrate. Tools: verify a claim against cited sources (deterministic citation floor + council judge), exact symbolic math (CAS, no hallucination), DTU semantic search, cited expert answers, and web search.",
+  "version": "1.0.0",
+  "websiteUrl": "https://concord-os.org",
+  "repository": {
+    "url": "https://github.com/ryttps94jq-gif/concord-cognitive-engine",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://concord-os.org/mcp"
+    }
+  ]
+}

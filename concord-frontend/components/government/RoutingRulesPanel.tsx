@@ -75,7 +75,7 @@ export function RoutingRulesPanel() {
                 <span className="font-mono text-amber-300 capitalize">{r.category.replace(/_/g, ' ')}</span>
                 <ArrowRight className="w-3 h-3 text-gray-400" />
                 <span className="text-white">{r.departmentName}</span>
-                <button onClick={() => remove(r.id)} className="ml-auto opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(r.id)} className="ml-auto opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

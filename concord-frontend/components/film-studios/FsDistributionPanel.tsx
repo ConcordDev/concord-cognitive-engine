@@ -141,7 +141,7 @@ export function FsDistributionPanel({ projectId }: { projectId: string }) {
                     className={cn('text-[10px] rounded px-1.5 py-0.5 border-0 font-medium ml-auto', STATUS_COLOR[s.status] || 'bg-zinc-700 text-zinc-300')}>
                     {STATUSES.map((st) => <option key={st} value={st}>{st.replace(/_/g, ' ')}</option>)}
                   </select>
-                  <button type="button" onClick={() => delSubmission(s.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delSubmission(s.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

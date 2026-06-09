@@ -114,7 +114,7 @@ export function InsightsPanel() {
                 <Search className="w-3 h-3 text-gray-400" />
                 <button onClick={() => { setQ(s.keyword); search(s.keyword); }} className="text-xs text-white flex-1 text-left hover:text-orange-300">{s.keyword}</button>
                 <span className="text-[10px] text-gray-400">{s.savedAt.slice(0, 10)}</span>
-                <button onClick={() => remove(s.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(s.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

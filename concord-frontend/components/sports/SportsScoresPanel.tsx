@@ -48,11 +48,11 @@ function GameCard({ g, onChange, watchIds, refresh }: {
         <span className={cn('text-[10px] uppercase', STATUS_COLOR[g.status])}>{g.status}</span>
         <div className="flex items-center gap-1">
           <span className="text-[10px] text-zinc-400 uppercase">{g.league} · {g.date}</span>
-          <button type="button" onClick={watch}
+          <button aria-label="Favorite" type="button" onClick={watch}
             className={cn('p-0.5', watchIds.includes(g.id) ? 'text-amber-400' : 'text-zinc-600 hover:text-amber-400')}>
             <Star className={cn('w-3.5 h-3.5', watchIds.includes(g.id) && 'fill-amber-400')} />
           </button>
-          <button type="button" onClick={del} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+          <button aria-label="Delete" type="button" onClick={del} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
       </div>
       <div className="mt-1 space-y-1">

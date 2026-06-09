@@ -154,6 +154,18 @@ async function main() {
       }
     }
 
+    // Qdrant ANN backfill (Item 1) — bulk-upsert this batch's vectors. No-op
+    // unless VECTOR_DB=qdrant + reachable; best-effort, never blocks the run.
+    try {
+      const qd = (await import("../lib/qdrant-client.js")).default;
+      if (qd.configured()) {
+        const items = batch
+          .filter((d) => Array.isArray(d._embedding) && d._embedding.length)
+          .map((d) => ({ dtuId: d.id, vector: Float32Array.from(d._embedding), payload: { tier: d.tier } }));
+        if (items.length) await qd.upsertBatch(items);
+      }
+    } catch { /* best-effort */ }
+
     // Progress
     const pct = Math.round(((i + batch.length) / ids.length) * 100);
     console.log(`[Backfill] Progress: ${pct}% (embedded: ${embedded}, errors: ${errors}, skipped: ${skipped})`);

@@ -343,7 +343,7 @@ function ContractsTab() {
               {c.description && <p className="text-[11px] text-gray-400 mt-1">{c.description}</p>}
             </div>
             {c.active && (
-              <button type="button" onClick={() => cancel(c.id)}
+              <button aria-label="Delete" type="button" onClick={() => cancel(c.id)}
                 className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
             )}
           </div>

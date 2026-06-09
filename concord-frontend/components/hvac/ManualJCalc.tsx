@@ -334,7 +334,7 @@ function ZoneBalanceMonitor() {
               <input className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" placeholder="Room name" value={z.name} onChange={(e) => setZones((zs) => zs.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))} />
               <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" placeholder="Current °F" value={z.currentTemp} onChange={(e) => setZones((zs) => zs.map((x, idx) => idx === i ? { ...x, currentTemp: e.target.value } : x))} />
               <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" placeholder="Target °F" value={z.targetTemp} onChange={(e) => setZones((zs) => zs.map((x, idx) => idx === i ? { ...x, targetTemp: e.target.value } : x))} />
-              <button type="button" onClick={() => setZones((zs) => zs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button aria-label="Delete" type="button" onClick={() => setZones((zs) => zs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
         </div>

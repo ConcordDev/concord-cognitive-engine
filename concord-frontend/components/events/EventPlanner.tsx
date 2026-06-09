@@ -139,7 +139,7 @@ export function EventPlanner() {
                 <p className="text-xs font-semibold text-zinc-100 truncate">{e.name}</p>
                 <p className="text-[10px] text-zinc-400 capitalize">{e.type}{e.date ? ` · ${e.date}` : ''} · {e.doneTaskCount}/{e.taskCount} tasks</p>
               </button>
-              <button onClick={() => del(e.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => del(e.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>
@@ -169,13 +169,13 @@ export function EventPlanner() {
                     {t.done && <Check className="w-3 h-3" />}
                   </button>
                   <span className={cn('flex-1', t.done ? 'text-zinc-400 line-through' : 'text-zinc-200')}>{t.title}</span>
-                  <button onClick={() => delTask(t.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button aria-label="Delete" onClick={() => delTask(t.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
               ))}
               <div className="flex gap-1 mt-1">
                 <input value={taskTitle} onChange={e => setTaskTitle(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void addTask(); }}
                   placeholder="+ task" className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200" />
-                <button onClick={addTask} className="px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"><Plus className="w-3 h-3" /></button>
+                <button aria-label="Add" onClick={addTask} className="px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"><Plus className="w-3 h-3" /></button>
               </div>
             </div>
 
@@ -187,7 +187,7 @@ export function EventPlanner() {
                   <span className="text-zinc-200">{v.name}</span>
                   <span className="text-[10px] text-zinc-400">{v.role}</span>
                   <span className="ml-auto text-zinc-400">${v.cost.toLocaleString()}</span>
-                  <button onClick={() => delVendor(v.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button aria-label="Delete" onClick={() => delVendor(v.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
               ))}
               <div className="flex gap-1 mt-1">
@@ -197,7 +197,7 @@ export function EventPlanner() {
                   className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200" />
                 <input value={vendor.cost} onChange={e => setVendor({ ...vendor, cost: e.target.value })} placeholder="$"
                   className="w-14 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200" />
-                <button onClick={addVendor} className="px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"><Plus className="w-3 h-3" /></button>
+                <button aria-label="Add" onClick={addVendor} className="px-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"><Plus className="w-3 h-3" /></button>
               </div>
             </div>
           </div>

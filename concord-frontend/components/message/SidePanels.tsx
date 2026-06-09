@@ -83,7 +83,7 @@ export function ScheduledList({ onChanged }: { onChanged?: () => void }) {
                   <div className="text-[10px] text-amber-300 font-mono">→ {new Date(s.sendAt).toLocaleString()}</div>
                   <div className="text-xs text-white whitespace-pre-wrap mt-0.5">{s.body}</div>
                 </div>
-                <button onClick={() => cancel(s.id)} className="p-1 rounded hover:bg-rose-500/20 text-rose-300"><XCircle className="w-3.5 h-3.5" /></button>
+                <button aria-label="Close" onClick={() => cancel(s.id)} className="p-1 rounded hover:bg-rose-500/20 text-rose-300"><XCircle className="w-3.5 h-3.5" /></button>
               </li>
             ))}
           </ul>

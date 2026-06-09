@@ -578,6 +578,50 @@ export default function registerArActions(registerLensAction) {
     return map.get(uid);
   }
 
+  // ── DB-backed per-user store (migration 332) ───────────────────────────────
+  // Returns a Map-like facade ({ get, set, delete, values, size }) over an
+  // ar_* table so authored AR scenes/targets/publishes survive a restart. When
+  // ctx.db is absent or the table doesn't exist (minimal/test builds), it falls
+  // back transparently to the in-memory globalThis bucket. The macros call only
+  // get/set/delete/values()/size, so the facade is a drop-in for `bucket(...)`.
+  function dbStore(ctx, table, memMap) {
+    const db = ctx && ctx.db;
+    const uid = userIdOf(ctx);
+    if (!db) return bucket(memMap, uid);
+    try { db.prepare(`SELECT 1 FROM ${table} LIMIT 1`).get(); }
+    catch { return bucket(memMap, uid); }
+    return {
+      get(id) {
+        const r = db.prepare(`SELECT data_json FROM ${table} WHERE user_id = ? AND id = ?`).get(uid, id);
+        return r ? JSON.parse(r.data_json) : undefined;
+      },
+      set(id, val) {
+        const createdAt = (val && val.createdAt) || new Date().toISOString();
+        const updatedAt = (val && val.updatedAt) || createdAt;
+        db.prepare(
+          `INSERT INTO ${table} (id, user_id, data_json, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET data_json = excluded.data_json, updated_at = excluded.updated_at`,
+        ).run(id, uid, JSON.stringify(val), createdAt, updatedAt);
+        return val;
+      },
+      delete(id) {
+        return db.prepare(`DELETE FROM ${table} WHERE user_id = ? AND id = ?`).run(uid, id).changes > 0;
+      },
+      values() {
+        return db.prepare(`SELECT data_json FROM ${table} WHERE user_id = ? ORDER BY updated_at DESC`)
+          .all(uid).map((r) => JSON.parse(r.data_json));
+      },
+      get size() {
+        return db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE user_id = ?`).get(uid).n;
+      },
+    };
+  }
+
+  const sceneStore = (ctx) => dbStore(ctx, "ar_scenes", arState().scenes);
+  const targetStore = (ctx) => dbStore(ctx, "ar_image_targets", arState().targets);
+  const publishStore = (ctx) => dbStore(ctx, "ar_publishes", arState().publishes);
+
   function rid(prefix) {
     return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   }
@@ -686,8 +730,7 @@ export default function registerArActions(registerLensAction) {
    */
   registerLensAction("ar", "sceneSave", (ctx, artifact, params) => {
     try {
-      const uid = userIdOf(ctx);
-      const scenes = bucket(arState().scenes, uid);
+      const scenes = sceneStore(ctx);
       const input = (params && params.scene) || {};
       if (!input.name || typeof input.name !== "string") {
         return { ok: false, error: "scene.name is required" };
@@ -775,7 +818,7 @@ export default function registerArActions(registerLensAction) {
   /** sceneList — list the caller's authored scenes (summary form). */
   registerLensAction("ar", "sceneList", (ctx) => {
     try {
-      const scenes = bucket(arState().scenes, userIdOf(ctx));
+      const scenes = sceneStore(ctx);
       const list = [...scenes.values()]
         .sort((a, b) => (b.updatedAt > a.updatedAt ? 1 : -1))
         .map((s) => ({
@@ -797,7 +840,7 @@ export default function registerArActions(registerLensAction) {
   /** sceneGet — fetch one full scene by id. */
   registerLensAction("ar", "sceneGet", (ctx, artifact, params) => {
     try {
-      const scenes = bucket(arState().scenes, userIdOf(ctx));
+      const scenes = sceneStore(ctx);
       const id = params && params.sceneId;
       if (!id) return { ok: false, error: "sceneId is required" };
       const scene = scenes.get(id);
@@ -811,7 +854,7 @@ export default function registerArActions(registerLensAction) {
   /** sceneDelete — remove a scene the caller owns. */
   registerLensAction("ar", "sceneDelete", (ctx, artifact, params) => {
     try {
-      const scenes = bucket(arState().scenes, userIdOf(ctx));
+      const scenes = sceneStore(ctx);
       const id = params && params.sceneId;
       if (!id) return { ok: false, error: "sceneId is required" };
       const existed = scenes.delete(id);
@@ -834,7 +877,7 @@ export default function registerArActions(registerLensAction) {
       let objects = p.objects;
       let behaviors = p.behaviors;
       if (p.sceneId) {
-        const scene = bucket(arState().scenes, userIdOf(ctx)).get(p.sceneId);
+        const scene = sceneStore(ctx).get(p.sceneId);
         if (!scene) return { ok: false, error: "scene not found" };
         objects = scene.objects;
         behaviors = scene.behaviors;
@@ -982,7 +1025,6 @@ export default function registerArActions(registerLensAction) {
    */
   registerLensAction("ar", "imageTargetCompile", (ctx, artifact, params) => {
     try {
-      const uid = userIdOf(ctx);
       const p = params || {};
       if (!p.name) return { ok: false, error: "name is required" };
       const w = clampNum(p.width, 1, 16384, 1024);
@@ -1027,7 +1069,7 @@ export default function registerArActions(registerLensAction) {
         sceneId: p.sceneId || null,
         compiledAt: new Date().toISOString(),
       };
-      bucket(arState().targets, uid).set(target.id, target);
+      targetStore(ctx).set(target.id, target);
       return { ok: true, result: { target } };
     } catch (e) {
       return { ok: false, error: String(e && e.message || e) };
@@ -1037,7 +1079,7 @@ export default function registerArActions(registerLensAction) {
   /** imageTargetList — list the caller's compiled image targets. */
   registerLensAction("ar", "imageTargetList", (ctx) => {
     try {
-      const targets = bucket(arState().targets, userIdOf(ctx));
+      const targets = targetStore(ctx);
       return { ok: true, result: { targets: [...targets.values()], count: targets.size } };
     } catch (e) {
       return { ok: false, error: String(e && e.message || e) };
@@ -1052,10 +1094,9 @@ export default function registerArActions(registerLensAction) {
    */
   registerLensAction("ar", "publishScene", (ctx, artifact, params) => {
     try {
-      const uid = userIdOf(ctx);
       const p = params || {};
       if (!p.sceneId) return { ok: false, error: "sceneId is required" };
-      const scene = bucket(arState().scenes, uid).get(p.sceneId);
+      const scene = sceneStore(ctx).get(p.sceneId);
       if (!scene) return { ok: false, error: "scene not found" };
 
       const slug = rid("p").slice(2);
@@ -1079,7 +1120,7 @@ export default function registerArActions(registerLensAction) {
         expiresAt: new Date(now + expiresInHours * 3600 * 1000).toISOString(),
         version: scene.version,
       };
-      bucket(arState().publishes, uid).set(record.id, record);
+      publishStore(ctx).set(record.id, record);
       return { ok: true, result: { publish: record } };
     } catch (e) {
       return { ok: false, error: String(e && e.message || e) };
@@ -1098,7 +1139,7 @@ export default function registerArActions(registerLensAction) {
       const p = params || {};
       let objects, anchor, settings;
       if (p.sceneId) {
-        const scene = bucket(arState().scenes, userIdOf(ctx)).get(p.sceneId);
+        const scene = sceneStore(ctx).get(p.sceneId);
         if (!scene) return { ok: false, error: "scene not found" };
         objects = scene.objects;
         anchor = scene.anchor;
@@ -1130,7 +1171,7 @@ export default function registerArActions(registerLensAction) {
       let objects, anchor, settings;
 
       if (p.sceneId) {
-        const scene = bucket(arState().scenes, userIdOf(ctx)).get(p.sceneId);
+        const scene = sceneStore(ctx).get(p.sceneId);
         if (scene) { objects = scene.objects; anchor = scene.anchor; settings = scene.settings; }
       }
       if (!objects) {

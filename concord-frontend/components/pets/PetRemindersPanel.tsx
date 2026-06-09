@@ -122,7 +122,7 @@ export function PetRemindersPanel({ petId, onChange }: { petId: string; onChange
                 <span className={cn('text-[10px]', STATUS_COLOR[rm.status] || 'text-zinc-400')}>
                   {rm.dueDate || 'no date'}
                 </span>
-                <button type="button" onClick={() => delReminder(rm.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => delReminder(rm.id)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </li>

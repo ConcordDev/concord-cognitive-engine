@@ -125,7 +125,7 @@ export function GdLevelPanel({ gameId, onChange }: { gameId: string; onChange: (
               <button type="button" onClick={() => dupLevel(l.id)} className="text-zinc-600 hover:text-sky-400" title="Duplicate">
                 <Copy className="w-3.5 h-3.5" />
               </button>
-              <button type="button" onClick={() => delLevel(l.id)} className="text-zinc-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => delLevel(l.id)} className="text-zinc-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>
@@ -544,11 +544,11 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
                     {l.name}
                     <span className="ml-1 text-[9px] text-zinc-400 uppercase">{l.kind}</span>
                   </button>
-                  <button type="button" onClick={() => moveLayer(l, 1)} className="text-zinc-600 hover:text-zinc-300"><ChevronUp className="w-3 h-3" /></button>
-                  <button type="button" onClick={() => moveLayer(l, -1)} className="text-zinc-600 hover:text-zinc-300"><ChevronDown className="w-3 h-3" /></button>
-                  <button type="button" onClick={() => dupLayer(l)} className="text-zinc-600 hover:text-sky-400"><Copy className="w-3 h-3" /></button>
+                  <button aria-label="Collapse" type="button" onClick={() => moveLayer(l, 1)} className="text-zinc-600 hover:text-zinc-300"><ChevronUp className="w-3 h-3" /></button>
+                  <button aria-label="Expand" type="button" onClick={() => moveLayer(l, -1)} className="text-zinc-600 hover:text-zinc-300"><ChevronDown className="w-3 h-3" /></button>
+                  <button aria-label="Copy" type="button" onClick={() => dupLayer(l)} className="text-zinc-600 hover:text-sky-400"><Copy className="w-3 h-3" /></button>
                   {level.layers.length > 1 && (
-                    <button type="button" onClick={() => delLayer(l)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                    <button aria-label="Delete" type="button" onClick={() => delLayer(l)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                   )}
                 </div>
                 <input type="range" min={0} max={1} step={0.1} value={l.opacity ?? 1}
@@ -640,7 +640,7 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
                     {entities.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
                   </select>
                   <span className="text-[10px] text-zinc-400">{Math.round(o.x / level.tileSize)},{Math.round(o.y / level.tileSize)}</span>
-                  <button type="button" onClick={() => deleteObject(o.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => deleteObject(o.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </li>
@@ -688,7 +688,7 @@ function AutoRulePanel({
               <span className="text-zinc-400">→</span>
               <span className="w-3 h-3 rounded border border-black/30" style={{ background: tiles.find((t) => t.id === r.tile)?.color || '#52525b' }} />
               <span>{tiles.find((t) => t.id === r.tile)?.name || r.tile}</span>
-              <button type="button" onClick={() => onDelete(r.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" type="button" onClick={() => onDelete(r.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>

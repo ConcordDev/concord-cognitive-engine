@@ -199,13 +199,13 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
               {t.points > 0 && <span className="text-[10px] text-zinc-400">{t.points}pt</span>}
               {filters.sort === 'rank' && (
                 <span className="flex">
-                  <button type="button" onClick={() => rank(t.id, -1)} disabled={i === 0}
+                  <button aria-label="Collapse" type="button" onClick={() => rank(t.id, -1)} disabled={i === 0}
                     className="text-zinc-600 hover:text-zinc-300 disabled:opacity-30"><ChevronUp className="w-3.5 h-3.5" /></button>
-                  <button type="button" onClick={() => rank(t.id, 1)} disabled={i === tasks.length - 1}
+                  <button aria-label="Expand" type="button" onClick={() => rank(t.id, 1)} disabled={i === tasks.length - 1}
                     className="text-zinc-600 hover:text-zinc-300 disabled:opacity-30"><ChevronDown className="w-3.5 h-3.5" /></button>
                 </span>
               )}
-              <button type="button" onClick={() => lensRun('projects', 'task-delete', { id: t.id }).then(refresh)}
+              <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'task-delete', { id: t.id }).then(refresh)}
                 className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
             </li>
           ))}

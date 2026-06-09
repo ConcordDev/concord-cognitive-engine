@@ -141,7 +141,7 @@ export function AppointmentSchedules() {
                   <p className="text-xs font-semibold text-zinc-100 truncate">{s.title}</p>
                   <p className="text-[10px] text-zinc-400">{s.durationMin}m · {s.bookingCount} booked</p>
                 </button>
-                <button onClick={() => del(s.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => del(s.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

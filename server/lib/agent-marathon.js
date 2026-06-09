@@ -160,7 +160,7 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
     runMacro,
     lensActions,
     history,
-    opts: { maxTurns: tickTurns, slot: opts.slot },
+    opts: { maxTurns: tickTurns, slot: opts.slot, sessionId },
   });
 
   if (!result.ok) {

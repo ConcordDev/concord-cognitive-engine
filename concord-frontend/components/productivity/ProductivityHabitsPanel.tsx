@@ -63,7 +63,7 @@ export function ProductivityHabitsPanel({ onChange }: { onChange: () => void }) 
         <ul className="space-y-2">
           {habits.map((h) => (
             <li key={h.id} className="flex items-center gap-3 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-              <button type="button" onClick={() => checkin(h.id)}
+              <button aria-label="Confirm" type="button" onClick={() => checkin(h.id)}
                 className={cn('w-9 h-9 rounded-full border flex items-center justify-center shrink-0',
                   h.doneToday ? 'bg-red-600 border-red-600' : 'border-zinc-600 hover:border-red-500')}>
                 <Check className={cn('w-4 h-4', h.doneToday ? 'text-white' : 'text-zinc-600')} />
@@ -75,7 +75,7 @@ export function ProductivityHabitsPanel({ onChange }: { onChange: () => void }) 
               <span className="flex items-center gap-1 text-xs font-bold text-amber-400 shrink-0">
                 <Flame className="w-3.5 h-3.5" />{h.streak}
               </span>
-              <button type="button" onClick={() => del(h.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+              <button aria-label="Delete" type="button" onClick={() => del(h.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>

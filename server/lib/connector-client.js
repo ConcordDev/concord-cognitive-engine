@@ -85,6 +85,37 @@ export async function writeGoogleCalendarEvent(db, userId, event, opts = {}) {
   );
 }
 
+const GMAIL_BASE = "https://gmail.googleapis.com/gmail/v1";
+
+/**
+ * Send an email through a user's Gmail (real fan-out, connector_id
+ * "google_gmail", scope gmail.send). Builds an RFC-822 message and POSTs the
+ * base64url `raw` to the Gmail send endpoint. Honest reasons on missing token.
+ */
+export async function writeGmailMessage(db, userId, mail = {}, opts = {}) {
+  const to = mail.to;
+  if (!to) return { ok: false, reason: "missing_recipient" };
+  const headers = [
+    `To: ${to}`,
+    mail.from ? `From: ${mail.from}` : null,
+    mail.cc ? `Cc: ${mail.cc}` : null,
+    `Subject: ${mail.subject || "(no subject)"}`,
+    "MIME-Version: 1.0",
+    `Content-Type: ${mail.html ? "text/html" : "text/plain"}; charset=UTF-8`,
+  ].filter(Boolean);
+  const rfc822 = `${headers.join("\r\n")}\r\n\r\n${mail.body || mail.html || ""}`;
+  const raw = Buffer.from(rfc822, "utf8")
+    .toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return connectorFetch(
+    db,
+    userId,
+    "google_gmail",
+    `${GMAIL_BASE}/users/me/messages/send`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ raw }) },
+    opts,
+  );
+}
+
 function toGcalTime(value, allDay) {
   if (!value) return undefined;
   if (allDay) return { date: String(value).slice(0, 10) };

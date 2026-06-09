@@ -195,7 +195,7 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
                   </td>
                 ))}
                 <td className="pl-1">
-                  <button onClick={() => delRow(ri)} className="text-zinc-700 hover:text-rose-400">
+                  <button aria-label="Delete" onClick={() => delRow(ri)} className="text-zinc-700 hover:text-rose-400">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </td>

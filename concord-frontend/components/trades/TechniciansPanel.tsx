@@ -68,7 +68,7 @@ export function TechniciansPanel() {
         <Users className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Technicians</span>
         <span className="ml-auto text-[10px] text-gray-400">{techs.length}</span>
-        <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
+        <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       {creating && (
@@ -102,7 +102,7 @@ export function TechniciansPanel() {
                   <select value={t.status} onChange={e => setStatus(t.id, e.target.value as Tech['status'])} className="text-[10px] bg-lattice-deep border border-lattice-border rounded px-1.5 py-0.5 text-white">
                     {STATUS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                   </select>
-                  <button onClick={() => remove(t.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button aria-label="Delete" onClick={() => remove(t.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
                 {t.skills.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1 ml-11">

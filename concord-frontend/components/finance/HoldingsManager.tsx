@@ -92,7 +92,7 @@ export function HoldingsManager() {
             {totalGain >= 0 ? '+' : ''}{totalGainPct.toFixed(2)}%
           </span>
         </span>
-        <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
+        <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       {creating && (
@@ -136,8 +136,8 @@ export function HoldingsManager() {
                       {editPrice?.id === h.id ? (
                         <span className="inline-flex items-center gap-1">
                           <input type="number" value={editPrice.value} onChange={e => setEditPrice({ id: h.id, value: e.target.value })} className="w-16 px-1 py-0.5 text-xs bg-lattice-deep border border-cyan-500/40 rounded text-white" autoFocus />
-                          <button onClick={() => updatePrice(h.id)} className="text-emerald-300"><Check className="w-3 h-3" /></button>
-                          <button onClick={() => setEditPrice(null)} className="text-gray-400"><X className="w-3 h-3" /></button>
+                          <button aria-label="Confirm" onClick={() => updatePrice(h.id)} className="text-emerald-300"><Check className="w-3 h-3" /></button>
+                          <button aria-label="Edit" onClick={() => setEditPrice(null)} className="text-gray-400"><X className="w-3 h-3" /></button>
                         </span>
                       ) : (
                         <button onClick={() => setEditPrice({ id: h.id, value: String(h.price) })} className="hover:text-cyan-300">${h.price.toFixed(2)}<Edit3 className="w-2.5 h-2.5 inline ml-1 opacity-0 group-hover:opacity-100" /></button>
@@ -146,7 +146,7 @@ export function HoldingsManager() {
                     <td className="text-right font-mono tabular-nums text-white">${h.value.toFixed(0)}</td>
                     <td className={cn('text-right font-mono tabular-nums pr-3', gain >= 0 ? 'text-emerald-300' : 'text-rose-300')}>{gain >= 0 ? '+' : ''}${gain.toFixed(0)} ({gainPct.toFixed(1)}%)</td>
                     <td className="pr-2 text-right">
-                      <button onClick={() => remove(h.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                      <button aria-label="Delete" onClick={() => remove(h.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                     </td>
                   </tr>
                 );

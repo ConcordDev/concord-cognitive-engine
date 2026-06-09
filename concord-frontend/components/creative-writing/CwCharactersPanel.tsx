@@ -111,7 +111,7 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
                   <span className="text-sm font-semibold text-zinc-100">{c.name}</span>
                   <span className={cn('ml-2 text-[10px] uppercase', ROLE_COLOR[c.role])}>{c.role}</span>
                 </button>
-                <button type="button" onClick={() => delCharacter(c.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => delCharacter(c.id)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -156,7 +156,7 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
                   <span className="text-zinc-200">{r.fromName}</span>
                   <span className="text-amber-400">— {r.kind} →</span>
                   <span className="text-zinc-200 flex-1">{r.toName}</span>
-                  <button type="button"
+                  <button aria-label="Delete" type="button"
                     onClick={() => lensRun('creative-writing', 'character-unrelate', { id: r.id }).then(refresh)}
                     className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </li>

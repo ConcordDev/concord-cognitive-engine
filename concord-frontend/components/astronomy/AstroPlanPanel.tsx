@@ -96,7 +96,7 @@ export function AstroPlanPanel({ onChange }: { onChange: () => void }) {
                 </span>
                 <div className="flex items-center gap-2">
                   <span className={cn('text-[10px] uppercase', PRIORITY_COLOR[w.priority])}>{w.priority}</span>
-                  <button type="button" onClick={() => removeWish(w.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => removeWish(w.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -138,7 +138,7 @@ export function AstroPlanPanel({ onChange }: { onChange: () => void }) {
                 </div>
                 <div className="flex items-center gap-2">
                   {e.upcoming && <span className="text-[10px] text-indigo-400 uppercase">upcoming</span>}
-                  <button type="button" onClick={() => removeEvent(e.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => removeEvent(e.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

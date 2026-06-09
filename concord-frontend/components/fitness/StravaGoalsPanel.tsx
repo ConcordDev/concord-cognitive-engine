@@ -116,7 +116,7 @@ export function StravaGoalsPanel() {
                   <span className="text-xs text-zinc-200 capitalize">
                     {g.metric.replace(/_/g, ' ')} · {g.target} {METRIC_UNIT[g.metric]} / {g.period}
                   </span>
-                  <button type="button" onClick={() => delGoal(g.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delGoal(g.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

@@ -97,7 +97,7 @@ export function CwThreadsPanel({ projectId, onChange }: { projectId: string; onC
               <GitBranch className="w-4 h-4 text-zinc-400 shrink-0" />
               <span className="text-sm text-zinc-100 flex-1">{t.name}</span>
               <span className="text-[11px] text-zinc-400">{t.sceneCount} scene{t.sceneCount === 1 ? '' : 's'}</span>
-              <button type="button" onClick={() => delThread(t.id)} className="text-zinc-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => delThread(t.id)} className="text-zinc-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>

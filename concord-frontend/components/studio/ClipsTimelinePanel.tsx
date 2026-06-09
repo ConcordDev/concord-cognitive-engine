@@ -74,7 +74,7 @@ export function ClipsTimelinePanel({ projectId, trackId }: { projectId?: string;
                   <div className="text-sm text-white">{c.name}</div>
                   <div className="text-[10px] text-gray-400">{c.kind} · start {c.startBeats} · length {c.lengthBeats} beats</div>
                 </div>
-                <button onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

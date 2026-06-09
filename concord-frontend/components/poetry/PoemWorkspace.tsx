@@ -96,7 +96,7 @@ export function PoemWorkspace() {
                 <p className="text-[11px] font-semibold text-zinc-100 truncate">{p.title}</p>
                 <p className="text-[9px] text-zinc-400">{p.form} · {p.lineCount} lines · {p.status}</p>
               </button>
-              <button onClick={() => del(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => del(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>

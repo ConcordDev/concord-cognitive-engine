@@ -457,7 +457,7 @@ export function PortfolioWorkbench() {
             Holdings (FIFO cost basis)
           </h3>
           <div className="flex items-center gap-2">
-            <button onClick={loadHoldings} className="p-1.5 text-gray-400 hover:text-white rounded hover:bg-white/5">
+            <button aria-label="Refresh" onClick={loadHoldings} className="p-1.5 text-gray-400 hover:text-white rounded hover:bg-white/5">
               <RefreshCw className="w-4 h-4" />
             </button>
             <button

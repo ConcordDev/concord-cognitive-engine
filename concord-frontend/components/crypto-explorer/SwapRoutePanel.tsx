@@ -91,7 +91,7 @@ export function SwapRoutePanel() {
           <input type="text" value={sellToken} onChange={(e) => setSellToken(e.target.value)} className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 font-mono text-[10px] text-white" />
         </div>
         <div className="flex justify-center">
-          <button type="button" onClick={flip} className="rounded-full border border-cyan-500/30 bg-cyan-500/10 p-1.5 text-cyan-300 hover:bg-cyan-500/20"><ArrowDownUp className="h-3.5 w-3.5" /></button>
+          <button aria-label="Reorder" type="button" onClick={flip} className="rounded-full border border-cyan-500/30 bg-cyan-500/10 p-1.5 text-cyan-300 hover:bg-cyan-500/20"><ArrowDownUp className="h-3.5 w-3.5" /></button>
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-zinc-400">Buy token (address)</label>

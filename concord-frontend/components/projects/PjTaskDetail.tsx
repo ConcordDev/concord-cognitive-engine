@@ -301,7 +301,7 @@ export function PjTaskDetail({
                 <li key={r.id} className="flex items-center gap-2 text-[11px]">
                   <span className="text-indigo-400 w-20">{r.kind.replace(/_/g, ' ')}</span>
                   <span className="flex-1 truncate text-zinc-300">{r.task ? `${r.task.ref} ${r.task.title}` : '—'}</span>
-                  <button type="button" onClick={() => lensRun('projects', 'relation-delete', { id: r.id }).then(refresh)}
+                  <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'relation-delete', { id: r.id }).then(refresh)}
                     className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </li>
               ))}
@@ -338,7 +338,7 @@ export function PjTaskDetail({
                       <a href={a.url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-indigo-400 hover:underline">{a.name}</a>
                     </>
                   )}
-                  <button type="button" onClick={() => lensRun('projects', 'attachment-delete', { id: a.id }).then(refresh)}
+                  <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'attachment-delete', { id: a.id }).then(refresh)}
                     className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </li>
               ))}

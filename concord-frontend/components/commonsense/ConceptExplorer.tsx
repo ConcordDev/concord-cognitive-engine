@@ -117,7 +117,7 @@ export function ConceptExplorer() {
 
       {breadcrumbs.length > 0 && (
         <div className="flex flex-wrap items-center gap-1 rounded-md border border-cyan-500/15 bg-cyan-500/5 p-2">
-          <button type="button" onClick={back} disabled={breadcrumbs.length === 0} className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-50"><ChevronLeft className="h-3 w-3" /></button>
+          <button aria-label="Previous" type="button" onClick={back} disabled={breadcrumbs.length === 0} className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-50"><ChevronLeft className="h-3 w-3" /></button>
           {breadcrumbs.map((c, i) => (
             <span key={`${c}-${i}`} className="flex items-center gap-1 text-[11px] text-zinc-400">
               {i > 0 && <ArrowRight className="h-2.5 w-2.5 text-zinc-600" />}

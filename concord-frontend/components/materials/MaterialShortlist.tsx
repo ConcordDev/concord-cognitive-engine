@@ -130,7 +130,7 @@ export function MaterialShortlist() {
               <span className="text-[10px] text-zinc-400 ml-auto">
                 {FIELDS.filter(f => m.properties[f.key] != null).map(f => `${f.label} ${m.properties[f.key]}`).join(' · ')}
               </span>
-              <button onClick={() => remove(m.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => remove(m.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>

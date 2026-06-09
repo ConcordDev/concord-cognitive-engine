@@ -255,7 +255,7 @@ export function InsurancePoliciesPanel({ onChange }: { onChange: () => void }) {
                   {p.kind} · {p.policyNumber} · ${p.annualPremium}/yr · renews {p.renewalDate}
                 </p>
               </button>
-              <button type="button" onClick={() => delPolicy(p.id)} className="text-zinc-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => delPolicy(p.id)} className="text-zinc-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>

@@ -108,7 +108,7 @@ function ConduitFillCalc() {
                 {AWG_LIST.map((g) => <option key={g} value={g}>{g} AWG THHN</option>)}
               </select>
               <input type="number" min={0} value={r.count} onChange={(e) => setRows((rs) => rs.map((x, idx) => idx === i ? { ...x, count: e.target.value } : x))} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" />
-              <button type="button" onClick={() => setRows((rs) => rs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button aria-label="Delete" type="button" onClick={() => setRows((rs) => rs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
         </div>

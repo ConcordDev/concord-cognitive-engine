@@ -80,12 +80,12 @@ export function ChoreRotation() {
             {chores.map((c, i) => (
               <div key={`${c}-${i}`} className="flex items-center gap-2 text-xs">
                 <span className="flex-1 truncate text-zinc-200">{c}</span>
-                <button type="button" onClick={() => removeItem(i, chores, setChores)} className="text-zinc-400 hover:text-rose-400"><Trash2 className="h-3 w-3" /></button>
+                <button aria-label="Delete" type="button" onClick={() => removeItem(i, chores, setChores)} className="text-zinc-400 hover:text-rose-400"><Trash2 className="h-3 w-3" /></button>
               </div>
             ))}
             <form onSubmit={(e) => { e.preventDefault(); addItem(newChore, chores, setChores, setNewChore); }} className="flex gap-1">
               <input type="text" value={newChore} onChange={(e) => setNewChore(e.target.value)} placeholder="Add chore" className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" />
-              <button type="submit" className="rounded border border-zinc-800 px-2 text-zinc-400 hover:border-emerald-500/40 hover:text-emerald-300"><Plus className="h-3 w-3" /></button>
+              <button aria-label="Add" type="submit" className="rounded border border-zinc-800 px-2 text-zinc-400 hover:border-emerald-500/40 hover:text-emerald-300"><Plus className="h-3 w-3" /></button>
             </form>
           </div>
         </div>
@@ -95,12 +95,12 @@ export function ChoreRotation() {
             {members.map((m, i) => (
               <div key={`${m}-${i}`} className="flex items-center gap-2 text-xs">
                 <span className="flex-1 truncate text-zinc-200">{m}</span>
-                <button type="button" onClick={() => removeItem(i, members, setMembers)} className="text-zinc-400 hover:text-rose-400"><Trash2 className="h-3 w-3" /></button>
+                <button aria-label="Delete" type="button" onClick={() => removeItem(i, members, setMembers)} className="text-zinc-400 hover:text-rose-400"><Trash2 className="h-3 w-3" /></button>
               </div>
             ))}
             <form onSubmit={(e) => { e.preventDefault(); addItem(newMember, members, setMembers, setNewMember); }} className="flex gap-1">
               <input type="text" value={newMember} onChange={(e) => setNewMember(e.target.value)} placeholder="Add member" className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" />
-              <button type="submit" className="rounded border border-zinc-800 px-2 text-zinc-400 hover:border-emerald-500/40 hover:text-emerald-300"><Plus className="h-3 w-3" /></button>
+              <button aria-label="Add" type="submit" className="rounded border border-zinc-800 px-2 text-zinc-400 hover:border-emerald-500/40 hover:text-emerald-300"><Plus className="h-3 w-3" /></button>
             </form>
           </div>
         </div>

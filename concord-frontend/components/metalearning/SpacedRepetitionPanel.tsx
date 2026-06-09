@@ -155,7 +155,7 @@ export function SpacedRepetitionPanel() {
                     {(c.overdueDays ?? 0) > 0 && ` · ${c.overdueDays}d overdue`}
                   </p>
                 </div>
-                <button onClick={() => remove(c.id)} disabled={busy === c.id}
+                <button aria-label="Delete" onClick={() => remove(c.id)} disabled={busy === c.id}
                   className="text-gray-600 hover:text-red-400 disabled:opacity-50">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

@@ -144,7 +144,7 @@ export function FsWatchPartyPanel({ projectId }: { projectId: string }) {
               <span key={p.id} className={cn('flex items-center gap-1.5 text-[11px] pl-2.5 pr-1.5 py-1 rounded-lg',
                 activeParty === p.id ? 'bg-fuchsia-600 text-white' : 'bg-zinc-800 text-zinc-300')}>
                 <button type="button" onClick={() => setActiveParty(p.id)}>{p.title}</button>
-                <button type="button" onClick={() => delParty(p.id)} className="text-zinc-300/70 hover:text-rose-200">
+                <button aria-label="Delete" type="button" onClick={() => delParty(p.id)} className="text-zinc-300/70 hover:text-rose-200">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </span>
@@ -205,7 +205,7 @@ export function FsWatchPartyPanel({ projectId }: { projectId: string }) {
                     onChange={(e) => setChatText(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') void postChat(); }}
                     className="flex-1 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
-                  <button type="button" onClick={postChat}
+                  <button aria-label="Send" type="button" onClick={postChat}
                     className="flex items-center justify-center w-7 h-7 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded">
                     <Send className="w-3.5 h-3.5" />
                   </button>

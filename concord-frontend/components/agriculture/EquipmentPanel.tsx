@@ -98,7 +98,7 @@ export function EquipmentPanel() {
                 <select value={e.status} onChange={ev => setStatus(e.id, ev.target.value as Equipment['status'])} className={cn('text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border-0', STATUS_COLOUR[e.status])}>
                   {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
-                <button onClick={() => remove(e.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(e.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

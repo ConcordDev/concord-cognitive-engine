@@ -337,7 +337,7 @@ function WeldInspection() {
               <label className="flex items-center justify-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-1 text-[10px] text-zinc-300">
                 <input type="checkbox" checked={it.passed} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, passed: e.target.checked } : x))} />Pass
               </label>
-              <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button aria-label="Delete" type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
           <button type="button" onClick={() => setItems((is) => [...is, { item: '', passed: true }])} className="inline-flex items-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:border-emerald-500/40"><Plus className="h-3 w-3" />Add finding</button>

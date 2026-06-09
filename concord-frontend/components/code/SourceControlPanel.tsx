@@ -170,7 +170,7 @@ export function SourceControlPanel({ tabs, savedScripts, onJumpToTab, onCommitAl
               <span className="truncate">{selectedTab.name}</span>
               <span className="text-green-400">+{changedLines.added}</span>
               <span className="text-red-400">−{changedLines.removed}</span>
-              <button
+              <button aria-label="Save"
                 onClick={() => setSelectedTabId(null)}
                 className="ml-auto text-gray-400 hover:text-white"
               >
