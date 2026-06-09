@@ -55,6 +55,54 @@ const PROD_URL_RE = /['"`](https?:\/\/(?!localhost|127\.0\.0\.1|0\.0\.0\.0|::1)[
 // Also includes well-known external service URLs that legitimately don't
 // belong in an env var (CDN libraries, marketplace listings, public docs).
 const PLACEHOLDER_URL_RE = /(?:^|\b)(example\.com|example\.org|example\.net|\.example(?:\b|\/)|\.test(?:\b|\/)|\.invalid(?:\b|\/)|w3\.org|your-[a-z-]+\.com|[a-z][\w-]*\.example|placeholder|concord-os\.org(?:\/|$|"|`|')|github\.com\/|claude\.ai\/|anthropic\.com|mit-license\.org|marketplace\.visualstudio\.com|plugins\.jetbrains\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|unpkg\.com|registry\.npmjs\.org|nodejs\.org|developer\.mozilla\.org|python\.org|openapis\.org|swagger\.io|json-schema\.org|fonts\.googleapis\.com|fonts\.gstatic\.com|stripe\.com\/docs|docs\.stripe\.com|fediverse\.party|activitypub\.rocks|webfinger\.net|gravatar\.com|googleapis\.com|matrix\.org|element\.io|raw\.githubusercontent\.com|api\.github\.com|api\.openai\.com|api\.anthropic\.com|api\.stripe\.com|youtube\.com|youtu\.be|wikipedia\.org|wikimedia\.org|creativecommons\.org)/i;
+// Well-known PUBLIC third-party API endpoints. These are stable, public,
+// vendor-published base URLs (open data / science / OAuth / WebRTC) that
+// correctly do NOT belong in an env var — they're not deployment-specific
+// configuration, they're the public contract of the upstream service.
+// Conservative: only clearly-public-API hosts go here. Anchored on
+// `://[sub.]host` so prefix-shadowing (`evil-arxiv.org`) can't match.
+const PUBLIC_API_HOST_RE = new RegExp(
+  "^https?:\\/\\/(?:www\\.|[a-z0-9-]+\\.)*(?:" + [
+    // Government / science open-data + biomedical
+    "ncbi\\.nlm\\.nih\\.gov", "nlm\\.nih\\.gov", "nih\\.gov",
+    "nist\\.gov", "nasa\\.gov", "gsfc\\.nasa\\.gov", "usgs\\.gov",
+    "fda\\.gov", "fema\\.gov", "data\\.gov", "cms\\.hhs\\.gov",
+    "nhtsa\\.dot\\.gov", "nhtsa\\.gov", "bls\\.gov", "usaspending\\.gov",
+    "nal\\.usda\\.gov", "aviationweather\\.gov",
+    // Academic / reference / open knowledge
+    "export\\.arxiv\\.org", "arxiv\\.org", "openstax\\.org",
+    "courtlistener\\.com", "wikidata\\.org", "musicbrainz\\.org",
+    "openfoodfacts\\.org", "openlibrary\\.org", "gutendex\\.com",
+    "gutenberg\\.org", "gbif\\.org", "restcountries\\.com",
+    "doi\\.org", "worldbank\\.org", "propublica\\.org",
+    "materialsproject\\.org", "trefle\\.io", "zenquotes\\.io",
+    "commoncrawl\\.org", "index\\.commoncrawl\\.org",
+    // Public data / utility APIs
+    "coingecko\\.com", "stackexchange\\.com", "algolia\\.com",
+    "ycombinator\\.com", "open-meteo\\.com", "boardgamegeek\\.com",
+    "sunrise-sunset\\.org", "wheretheiss\\.at", "spacexdata\\.com",
+    "thespacedevs\\.com", "earthquake\\.usgs\\.gov", "imgflip\\.com",
+    "torproject\\.org", "sketchfab\\.com", "qrserver\\.com",
+    "finance\\.yahoo\\.com", "aviationapi\\.com", "artic\\.edu",
+    "eonet\\.gsfc\\.nasa\\.gov", "openrouter\\.ai", "reddit\\.com",
+    // OAuth authorize / token + identity discovery hosts
+    "accounts\\.google\\.com", "oauth2\\.googleapis\\.com",
+    "slack\\.com", "webfinger\\.net",
+    // WebRTC / TURN (Cloudflare Realtime)
+    "rtc\\.live\\.cloudflare\\.com",
+    // Stripe.js public loader CDN (required fixed URL, not config)
+    "js\\.stripe\\.com",
+  // Boundary after the host: a path/query/fragment/port separator, the
+  // end of the string, OR a `${` template-interpolation (e.g.
+  // `reddit.com${p.permalink}`) / closing quote — all of which mean the
+  // host token ended exactly here and isn't a prefix of a longer host.
+  ].join("|") + ")(?:[/:?#$'\"`]|$)",
+  "i",
+);
+// Federation discovery is a protocol path, not a configurable URL — the
+// host comes from a runtime variable (`https://${host}/.well-known/...`).
+const WELL_KNOWN_PATH_RE = /\/\.well-known\//;
+
 const LOCALHOST_RE = /['"`](https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?[^'"`]*)['"`]/g;
 const KNOWN_PORTS = new Set([5050, 11434, 11435, 11436, 11437, 11438, 3000, 3001, 5432, 6379, 9090, 3030]);
 const PORT_RE = /\bport\s*[:=]\s*(\d{4,5})\b/gi;
@@ -98,6 +146,14 @@ export async function runEnvConfigDriftDetector({ root, opts = {} } = {}) {
         if (/^\s*(?:\/\/|\/\*|\*|#)/.test(lineText)) continue;
         // Skip placeholder / reserved / standards-namespace / brand URLs.
         if (PLACEHOLDER_URL_RE.test(url)) continue;
+        // Skip well-known PUBLIC third-party API endpoints (open data /
+        // science / OAuth / WebRTC) — these are the upstream service's
+        // public contract, not deployment config, so they correctly stay
+        // hardcoded rather than env-driven.
+        if (PUBLIC_API_HOST_RE.test(url)) continue;
+        // Skip federation discovery (`/.well-known/webfinger`, etc.) — the
+        // host is a runtime variable, the path is a fixed protocol path.
+        if (WELL_KNOWN_PATH_RE.test(url)) continue;
         // Skip well-known external services that never go in env vars:
         // social share intents, map tiles, OSS docs, CDN frameworks.
         // Patterns anchored on `://hostname` so prefix-shadowing like

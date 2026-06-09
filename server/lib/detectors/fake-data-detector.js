@@ -49,6 +49,20 @@ const FAKE_EXPORT_RE = /^export\s+(?:async\s+)?(?:function|const|let|var|class)\
 // the name in production paths.
 const FAKE_IDENT_RE = /\b(mock|fake|stub|placeholder|dummy)([A-Z_]\w+)\s*[(=:]/g;
 
+// Domain-noun allowlist: "dummy" is a real game-mechanic noun in this
+// codebase — a COMBAT TRAINING DUMMY (HP, count, loadout), not placeholder
+// data. These identifiers are legitimate domain terms, not deferred-wiring
+// smells. Matched case-insensitively against the full identifier.
+const DOMAIN_TERM_IDENTS = new Set([
+  "dummyconfig", "dummyconfigs", "dummyid", "dummyids", "dummyhp",
+  "dummycount", "dummyentity", "dummytarget", "dummytargets",
+  "dummystate", "dummyloadout",
+]);
+// Files where a "dummy" identifier is overwhelmingly the training-dummy
+// domain noun (combat sandbox / arena / training). In these contexts a
+// `dummy*` identifier is a domain term, not fake data.
+const TRAINING_CONTEXT_RE = /(?:^|[/\\])(?:sandbox|arena|training|combat)[\w-]*\.(?:js|ts|tsx|jsx|mjs)$/i;
+
 // Suspicious string literals in non-test code. Match the suspicious
 // token anywhere inside a string literal (allow trailing context),
 // and accept hyphen / underscore / space as separators inside the
@@ -269,6 +283,14 @@ export async function runFakeDataDetector({ root, opts = {} } = {}) {
           // tested as test files; here in prod paths they're real usages).
           // Also skip identifiers starting with underscore (already-marked-internal).
           if (ident.startsWith("_")) continue;
+          // Skip the combat-training-DUMMY domain noun: either a known
+          // training-dummy identifier OR any `dummy*` identifier inside a
+          // sandbox/arena/training/combat file. (Other fake-prefixes —
+          // mock/fake/stub/placeholder — still fire here.)
+          if (m[1].toLowerCase() === "dummy" &&
+              (DOMAIN_TERM_IDENTS.has(ident.toLowerCase()) || TRAINING_CONTEXT_RE.test(rel))) {
+            continue;
+          }
           // Skip identifiers explicitly tagged as runtime-mock-mode (e.g.
           // mockOpenAI is a feature flag, not fake data).
           if (/^(mock(?:Openai|Llm|Brain|Inference|Llama)|stubReceiver)/i.test(ident)) continue;

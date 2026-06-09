@@ -30,6 +30,32 @@ import {
 // Maps fix names to shell commands that actually apply them on disk.
 // Returns a command string or null (= cannot be automated, escalate).
 
+// ── Capture validators ──────────────────────────────────────────────────────
+// match[1] is interpolated from pattern-matched build output into a SHELL
+// command (these fixes legitimately need a shell — they use &&/||/pipes — so
+// execFileSync isn't an option). Every interpolated capture is therefore
+// validated against a strict allowlist regex BEFORE it reaches the command
+// string; anything that doesn't match is rejected (returns null → escalate),
+// closing the command-injection sink at the source.
+//   - npm package name: scoped or unscoped, optional @version (npm naming rules)
+//   - port: bare digits only
+//   - filesystem path: no shell-meta chars, no leading dash, no '..' traversal
+const NPM_NAME_RE = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*(@[a-zA-Z0-9-._^~><=|*x ]+)?$/;
+const PORT_RE = /^\d{1,5}$/;
+const SAFE_PATH_RE = /^[A-Za-z0-9_./-]+$/;
+
+function safePkg(s) {
+  return typeof s === "string" && NPM_NAME_RE.test(s) ? s : null;
+}
+function safePort(s) {
+  if (typeof s !== "string" || !PORT_RE.test(s)) return null;
+  const n = Number(s);
+  return n >= 1 && n <= 65535 ? s : null;
+}
+function safePath(s) {
+  return typeof s === "string" && SAFE_PATH_RE.test(s) && !s.includes("..") ? s : null;
+}
+
 function _fixCmd(name, match, projectRoot) {
   const cmds = {
     // npm / lockfile
@@ -40,8 +66,8 @@ function _fixCmd(name, match, projectRoot) {
     delete_and_reinstall:    () => `cd "${projectRoot}" && rm -rf node_modules package-lock.json && npm install`,
     reinstall_deps:          () => `cd "${projectRoot}" && npm install`,
     npm_audit_fix:           () => `cd "${projectRoot}" && npm audit fix || true`,
-    install_package:         () => match?.[1] ? `cd "${projectRoot}" && npm install "${match[1]}" || true` : null,
-    install_missing:         () => match?.[1] ? `cd "${projectRoot}" && npm install "${match[1]}" || true` : null,
+    install_package:         () => { const p = safePkg(match?.[1]); return p ? `cd "${projectRoot}" && npm install "${p}" || true` : null; },
+    install_missing:         () => { const p = safePkg(match?.[1]); return p ? `cd "${projectRoot}" && npm install "${p}" || true` : null; },
 
     // native modules
     rebuild_native:          () => `cd "${projectRoot}" && npm rebuild`,
@@ -50,10 +76,10 @@ function _fixCmd(name, match, projectRoot) {
     reinstall_sharp:         () => `cd "${projectRoot}" && npm install --platform=linux --arch=x64 sharp`,
 
     // runtime
-    kill_process:            () => match?.[1] ? `fuser -k ${match[1]}/tcp 2>/dev/null || true` : null,
+    kill_process:            () => { const p = safePort(match?.[1]); return p ? `fuser -k ${p}/tcp 2>/dev/null || true` : null; },
     increase_heap:           () => null, // requires env change — escalate
-    create_directory:        () => match?.[1] ? `mkdir -p "${match[1]}"` : null,
-    fix_permissions:         () => match?.[1] ? `chmod -R u+rwX "${match[1]}"` : null,
+    create_directory:        () => { const p = safePath(match?.[1]); return p ? `mkdir -p "${p}"` : null; },
+    fix_permissions:         () => { const p = safePath(match?.[1]); return p ? `chmod -R u+rwX "${p}"` : null; },
 
     // docker
     docker_prune:            () => `docker system prune -f && docker builder prune -f`,
@@ -99,7 +125,11 @@ function runEslintAutofix(buildOutput, rootDir) {
     for (const line of lines) {
       // Match: ./path/to/file.tsx:42:10 or ./app/foo/bar.ts:100:5
       const m = line.match(/(\.\/(app|components|lib|hooks|store)\/[^\s:]+\.[jt]sx?)/);
-      if (m) fileSet.add(m[1]);
+      // The capture is interpolated into a shell command below; the broad
+      // [^\s:]+ inner match still admits shell-meta chars (" $ ` ; etc.), so
+      // re-validate each path against the strict safe-path allowlist and drop
+      // anything that doesn't pass (no traversal, no meta chars).
+      if (m && safePath(m[1])) fileSet.add(m[1]);
     }
     if (fileSet.size === 0) return 0;
 

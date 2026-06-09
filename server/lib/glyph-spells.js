@@ -251,17 +251,20 @@ export function mintSpell(db, { userId, worldId, componentIds, name, fuelItemIds
     // Consume one of each owned fuel item (FIFO, world-scoped). Guarded — the
     // ownership was verified above; this only debits.
     if (fuel) {
-      for (const itemId of fuel.items) {
-        const slot = db.prepare(`
+      const selFuelSlot = db.prepare(`
           SELECT id, quantity FROM player_inventory
           WHERE user_id = ? AND world_id = ? AND item_id = ? AND quantity > 0
           ORDER BY acquired_at ASC LIMIT 1
-        `).get(userId, worldId, itemId);
+        `);
+      const decFuelSlot = db.prepare(`UPDATE player_inventory SET quantity = quantity - 1 WHERE id = ?`);
+      const delFuelSlot = db.prepare(`DELETE FROM player_inventory WHERE id = ?`);
+      for (const itemId of fuel.items) {
+        const slot = selFuelSlot.get(userId, worldId, itemId);
         if (!slot) continue;
         if (slot.quantity > 1) {
-          db.prepare(`UPDATE player_inventory SET quantity = quantity - 1 WHERE id = ?`).run(slot.id);
+          decFuelSlot.run(slot.id);
         } else {
-          db.prepare(`DELETE FROM player_inventory WHERE id = ?`).run(slot.id);
+          delFuelSlot.run(slot.id);
         }
       }
     }

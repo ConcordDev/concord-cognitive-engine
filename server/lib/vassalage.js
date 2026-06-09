@@ -44,6 +44,9 @@ export function runTribute(db, worldId, now = Math.floor(Date.now() / 1000)) {
     edges = db.prepare(`SELECT * FROM vassalage WHERE world_id = ? AND status = 'sworn' AND (last_tribute_at IS NULL OR last_tribute_at + tribute_cadence_s <= ?)`).all(worldId, now);
   } catch { return { ok: true, flowed: 0 }; }
   let flowed = 0, skimmed = 0;
+  const debitRealm = db.prepare(`UPDATE realms SET treasury = treasury - ? WHERE id = ? AND treasury >= ?`);
+  const creditRealm = db.prepare(`UPDATE realms SET treasury = treasury + ? WHERE id = ?`);
+  const creditCollector = db.prepare(`UPDATE world_npcs SET wealth_sparks = COALESCE(wealth_sparks,0) + ? WHERE id = ?`);
   for (const e of edges) {
     const amount = Number(e.tribute_rate) || 0;
     if (amount <= 0) { _stampTribute(db, e.id, now); continue; }
@@ -53,15 +56,15 @@ export function runTribute(db, worldId, now = Math.floor(Date.now() / 1000)) {
       // The vassal pays the FULL tribute; net reaches the liege, skim is diverted.
       let debited = false;
       try {
-        const r = db.prepare(`UPDATE realms SET treasury = treasury - ? WHERE id = ? AND treasury >= ?`).run(amount, e.vassal_id, amount);
+        const r = debitRealm.run(amount, e.vassal_id, amount);
         debited = r.changes > 0;
       } catch { debited = false; }
       if (!debited) { _stampTribute(db, e.id, now); continue; }
-      try { db.prepare(`UPDATE realms SET treasury = treasury + ? WHERE id = ?`).run(net, e.liege_id); } catch { /* noop */ }
+      try { creditRealm.run(net, e.liege_id); } catch { /* noop */ }
     } else {
-      try { db.prepare(`UPDATE realms SET treasury = treasury + ? WHERE id = ?`).run(net, e.liege_id); } catch { /* noop */ }
+      try { creditRealm.run(net, e.liege_id); } catch { /* noop */ }
     }
-    if (skim > 0 && e.collector_id) { try { db.prepare(`UPDATE world_npcs SET wealth_sparks = COALESCE(wealth_sparks,0) + ? WHERE id = ?`).run(skim, e.collector_id); } catch { /* noop */ } }
+    if (skim > 0 && e.collector_id) { try { creditCollector.run(skim, e.collector_id); } catch { /* noop */ } }
     flowed += net; skimmed += skim;
     _stampTribute(db, e.id, now);
   }

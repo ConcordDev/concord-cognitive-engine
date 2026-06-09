@@ -566,26 +566,30 @@ export function applyEvolution(db, entityKind, entityId, evolution, opts = {}) {
     if (fuelIds.length > 0) {
       try {
         const owned = [];
-        for (const itemId of fuelIds) {
-          const row = db.prepare(`
+        const sumQty = db.prepare(`
             SELECT COALESCE(SUM(quantity),0) AS qty FROM player_inventory
             WHERE user_id = ? AND world_id = ? AND item_id = ?
-          `).get(opts.userId, opts.worldId, itemId);
+          `);
+        for (const itemId of fuelIds) {
+          const row = sumQty.get(opts.userId, opts.worldId, itemId);
           if ((row?.qty ?? 0) >= 1) owned.push(itemId);
         }
         if (owned.length > 0) {
           const resolved = resolveCraft({ inputs: owned.map((id) => ({ itemId: id, qty: 1 })), db });
           if (resolved?.ok) {
             const mult = Math.max(1.0, 1 + (resolved.outputPotency / 100) * EVOLUTION_FUEL_BOOST);
-            for (const itemId of owned) {
-              const slot = db.prepare(`
+            const selFuelSlot = db.prepare(`
                 SELECT id, quantity FROM player_inventory
                 WHERE user_id = ? AND world_id = ? AND item_id = ? AND quantity > 0
                 ORDER BY acquired_at ASC LIMIT 1
-              `).get(opts.userId, opts.worldId, itemId);
+              `);
+            const decFuelSlot = db.prepare(`UPDATE player_inventory SET quantity = quantity - 1 WHERE id = ?`);
+            const delFuelSlot = db.prepare(`DELETE FROM player_inventory WHERE id = ?`);
+            for (const itemId of owned) {
+              const slot = selFuelSlot.get(opts.userId, opts.worldId, itemId);
               if (!slot) continue;
-              if (slot.quantity > 1) db.prepare(`UPDATE player_inventory SET quantity = quantity - 1 WHERE id = ?`).run(slot.id);
-              else db.prepare(`DELETE FROM player_inventory WHERE id = ?`).run(slot.id);
+              if (slot.quantity > 1) decFuelSlot.run(slot.id);
+              else delFuelSlot.run(slot.id);
             }
             if (Number.isFinite(evolution.maxDamageAfter)) {
               evolution.maxDamageAfter = Math.round(evolution.maxDamageAfter * mult * 10) / 10;

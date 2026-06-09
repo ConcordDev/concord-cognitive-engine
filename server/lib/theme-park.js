@@ -67,25 +67,35 @@ export function tickVisitors(db, worldId, opts = {}) {
     `).all(worldId);
     if (open.length === 0) return { ok: true, assigned: 0, departed: 0 };
 
-    let assigned = 0;
-    for (const v of waiting) {
-      const target = open[assigned % open.length];
-      db.prepare(`
+    // Hoisted constant-SQL statements reused across the assign + depart loops.
+    const assignVisitor = db.prepare(`
         UPDATE visitor_npcs SET current_attraction_id = ? WHERE id = ?
-      `).run(target.id, v.id);
-      db.prepare(`
+      `);
+    const bumpAttraction = db.prepare(`
         UPDATE attractions
         SET current_visitors = current_visitors + 1,
             total_visits = total_visits + 1,
             total_revenue = total_revenue + ?,
             base_appeal = MIN(1.0, base_appeal + ?)
         WHERE id = ?
-      `).run(target.ticket_cc, APPEAL_RIDE_BONUS_PER_VISIT, target.id);
-      db.prepare(`
+      `);
+    const bumpSatisfaction = db.prepare(`
         UPDATE visitor_npcs
         SET satisfaction = MIN(1.0, satisfaction + ?), total_paid = total_paid + ?
         WHERE id = ?
-      `).run(SATISFACTION_GAIN_BASE, target.ticket_cc, v.id);
+      `);
+    const decAttraction = db.prepare(`
+          UPDATE attractions SET current_visitors = MAX(0, current_visitors - 1)
+          WHERE id = ?
+        `);
+    const delVisitor = db.prepare(`DELETE FROM visitor_npcs WHERE id = ?`);
+
+    let assigned = 0;
+    for (const v of waiting) {
+      const target = open[assigned % open.length];
+      assignVisitor.run(target.id, v.id);
+      bumpAttraction.run(target.ticket_cc, APPEAL_RIDE_BONUS_PER_VISIT, target.id);
+      bumpSatisfaction.run(SATISFACTION_GAIN_BASE, target.ticket_cc, v.id);
       assigned++;
     }
 
@@ -96,12 +106,9 @@ export function tickVisitors(db, worldId, opts = {}) {
     `).all(worldId);
     for (const d of departing) {
       if (d.current_attraction_id) {
-        db.prepare(`
-          UPDATE attractions SET current_visitors = MAX(0, current_visitors - 1)
-          WHERE id = ?
-        `).run(d.current_attraction_id);
+        decAttraction.run(d.current_attraction_id);
       }
-      db.prepare(`DELETE FROM visitor_npcs WHERE id = ?`).run(d.id);
+      delVisitor.run(d.id);
     }
 
     return { ok: true, assigned, departed: departing.length };
