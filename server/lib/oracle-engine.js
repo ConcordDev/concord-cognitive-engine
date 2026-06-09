@@ -886,9 +886,10 @@ export function createOracleEngine(opts = {}) {
     for (const d of domainSpecific) push(d);
     for (const d of priorAnswers) push(d);
 
-    // Item 3 — optional HDC compositional-recall pass (gated, off by default). Adds
-    // concept-overlap hits the embedding rank missed; complements, never replaces.
-    if (process.env.CONCORD_HDC_RECALL === '1') {
+    // Item 3 — HDC compositional-recall pass (on by default in prod; disable with
+    // CONCORD_HDC_RECALL=0). Adds concept-overlap hits the embedding rank missed;
+    // complements, never replaces. Pure-compute + try/catch — cheap vs the LLM path.
+    if (process.env.CONCORD_HDC_RECALL !== '0') {
       try {
         const { hdcRecall } = await import('./hdc-refusal-bridge.js');
         for (const d of hdcRecall(q, candidates, { topK: 8, exclude: mergedIds })) push(d);
