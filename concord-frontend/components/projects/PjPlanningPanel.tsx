@@ -96,7 +96,7 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
                       m.status === 'completed' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-zinc-800 text-zinc-300')}>
                     <CheckCircle2 className="w-3 h-3" />{m.status === 'completed' ? 'Done' : 'Mark'}
                   </button>
-                  <button type="button" onClick={() => lensRun('projects', 'milestone-delete', { id: m.id }).then(refresh)}
+                  <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'milestone-delete', { id: m.id }).then(refresh)}
                     className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
                 <div className="flex items-center gap-2">
@@ -134,7 +134,7 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
                 <span className={cn('text-[10px] font-bold uppercase w-14', SEVERITY_COLOR[r.severity])}>{r.severity}</span>
                 <span className="text-xs text-zinc-200 flex-1 truncate">{r.name}</span>
                 <span className="text-[10px] text-zinc-400">L{r.likelihood}×I{r.impact} = {r.score}</span>
-                <button type="button" onClick={() => lensRun('projects', 'risk-delete', { id: r.id }).then(refresh)}
+                <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'risk-delete', { id: r.id }).then(refresh)}
                   className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
@@ -164,7 +164,7 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
                     onBlur={(e) => lensRun('projects', 'goal-update-progress', { id: g.id, current: Number(e.target.value) }).then(refresh)}
                     className="w-16 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] text-zinc-100" />
                   <span className="text-[10px] text-zinc-400">/ {g.target} {g.metric}</span>
-                  <button type="button" onClick={() => lensRun('projects', 'goal-delete', { id: g.id }).then(refresh)}
+                  <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'goal-delete', { id: g.id }).then(refresh)}
                     className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
                 <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">

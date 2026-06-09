@@ -172,7 +172,7 @@ export function ProjectGantt() {
                             </span>
                           )}
                           <span>{b.durationDays}d · {b.progress}%</span>
-                          <button onClick={() => deletePhase(b.id)} disabled={busy} className="text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                          <button aria-label="Delete" onClick={() => deletePhase(b.id)} disabled={busy} className="text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                         </span>
                       </div>
                       <div className="relative h-5 bg-lattice-deep rounded">

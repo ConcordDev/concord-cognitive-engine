@@ -300,7 +300,7 @@ export function WellnessSection() {
                         </div>
                         <div className="text-[9px] text-gray-400">best {h.longestStreak}</div>
                       </div>
-                      <button onClick={() => archiveHabit(h.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                      <button aria-label="Delete" onClick={() => archiveHabit(h.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-300"><Trash2 className="w-3 h-3" /></button>
                     </div>
                     <div className="mt-1.5 flex items-center gap-1">
                       {h.last7.map(d => (
@@ -385,7 +385,7 @@ export function WellnessSection() {
                       {w.distanceKm !== null && ` · ${w.distanceKm} km`}
                       <span className="text-[10px] text-gray-400"> · {w.intensity}</span>
                     </div>
-                    <button onClick={() => delWorkout(w.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                    <button aria-label="Delete" onClick={() => delWorkout(w.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-300"><Trash2 className="w-3 h-3" /></button>
                   </li>
                 ))}
               </ul>
@@ -413,7 +413,7 @@ export function WellnessSection() {
                         <span className="text-sm text-white flex-1 truncate">{g.name}</span>
                         <span className="text-xs font-mono text-gray-400">{g.current}/{g.target} {g.unit}</span>
                         <button onClick={() => updateGoal(g)} className="px-1.5 py-0.5 text-[10px] rounded border border-white/10 text-gray-300 hover:bg-white/[0.05]">Update</button>
-                        <button onClick={() => delGoal(g.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                        <button aria-label="Delete" onClick={() => delGoal(g.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-300"><Trash2 className="w-3 h-3" /></button>
                       </div>
                       <div className="mt-1.5 h-1.5 bg-white/10 rounded-full overflow-hidden">
                         <div className={cn('h-full', g.status === 'achieved' ? 'bg-emerald-400' : 'bg-rose-400')} style={{ width: `${pct}%` }} />

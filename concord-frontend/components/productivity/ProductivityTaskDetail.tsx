@@ -149,7 +149,7 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
             <input type="date" value={sub.dueDate || ''} onChange={(e) => updateSub(sub, { dueDate: e.target.value })}
               aria-label="Subtask due date"
               className="bg-zinc-950 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-100 w-28" />
-            <button type="button" onClick={() => delSub(sub)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+            <button aria-label="Delete" type="button" onClick={() => delSub(sub)} className="text-zinc-600 hover:text-rose-400 shrink-0">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>

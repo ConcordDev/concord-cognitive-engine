@@ -126,7 +126,7 @@ export function FashionCapsulePanel() {
                     </div>
                   </button>
                   <span className="text-[11px] text-fuchsia-300 mr-2">{c.pctFilled}%</span>
-                  <button type="button" onClick={() => delCapsule(c.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delCapsule(c.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -192,7 +192,7 @@ export function FashionCapsulePanel() {
                     <span className={cn('text-[11px]', ch.complete ? 'text-emerald-400' : 'text-zinc-400')}>
                       {ch.progress}/{ch.target}{ch.complete ? ' — done' : ''}
                     </span>
-                    <button type="button" onClick={() => unenroll(ch.id)} className="text-zinc-600 hover:text-rose-400">
+                    <button aria-label="Delete" type="button" onClick={() => unenroll(ch.id)} className="text-zinc-600 hover:text-rose-400">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>

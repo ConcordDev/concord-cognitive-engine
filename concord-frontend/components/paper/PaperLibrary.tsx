@@ -120,7 +120,7 @@ export function PaperLibrary() {
         <div className="ml-auto flex gap-1">
           <input value={newCollection} onChange={e => setNewCollection(e.target.value)} placeholder="+ collection"
             className="w-28 bg-zinc-950 border border-zinc-800 rounded px-2 py-0.5 text-[11px] text-zinc-200" />
-          <button onClick={addCollection} className="text-zinc-400 hover:text-cyan-300"><Plus className="w-3.5 h-3.5" /></button>
+          <button aria-label="Add" onClick={addCollection} className="text-zinc-400 hover:text-cyan-300"><Plus className="w-3.5 h-3.5" /></button>
         </div>
       </div>
 
@@ -144,7 +144,7 @@ export function PaperLibrary() {
                   </button>
                 ))}
               </div>
-              <button onClick={() => del(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => del(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
             {active?.id === p.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800">

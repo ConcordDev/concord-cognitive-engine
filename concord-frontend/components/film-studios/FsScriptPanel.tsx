@@ -195,7 +195,7 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
                   <span className="text-xs font-semibold text-zinc-100">{rev.label}</span>
                   <span className="text-[10px] text-zinc-400 capitalize">{rev.color} pages · {rev.author}</span>
                   <span className="text-[10px] text-zinc-400 ml-auto">{rev.lockedPages.length} locked</span>
-                  <button type="button" onClick={() => delRevision(rev.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delRevision(rev.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -256,7 +256,7 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
                     {sc.shootDayNumber != null && (
                       <span className="text-[10px] text-emerald-400">Day {sc.shootDayNumber}</span>
                     )}
-                    <button type="button" onClick={() => delScene(sc.id)} className="text-zinc-600 hover:text-rose-400">
+                    <button aria-label="Delete" type="button" onClick={() => delScene(sc.id)} className="text-zinc-600 hover:text-rose-400">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>

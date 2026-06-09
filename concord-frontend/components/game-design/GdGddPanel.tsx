@@ -92,15 +92,15 @@ export function GdGddPanel({ gameId, onChange }: { gameId: string; onChange: () 
                   <FileText className="w-3.5 h-3.5 text-lime-400" /> {s.title}
                 </h3>
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => moveSection(s.id, -1)} disabled={i === 0}
+                  <button aria-label="Collapse" type="button" onClick={() => moveSection(s.id, -1)} disabled={i === 0}
                     className="text-zinc-600 hover:text-zinc-300 disabled:opacity-30">
                     <ChevronUp className="w-3.5 h-3.5" />
                   </button>
-                  <button type="button" onClick={() => moveSection(s.id, 1)} disabled={i === sections.length - 1}
+                  <button aria-label="Expand" type="button" onClick={() => moveSection(s.id, 1)} disabled={i === sections.length - 1}
                     className="text-zinc-600 hover:text-zinc-300 disabled:opacity-30">
                     <ChevronDown className="w-3.5 h-3.5" />
                   </button>
-                  <button type="button" onClick={() => delSection(s.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delSection(s.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

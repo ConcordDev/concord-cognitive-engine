@@ -62,7 +62,7 @@ export function ToursPanel({ defaultListingId }: { defaultListingId?: string }) 
         <Calendar className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Tours</span>
         <span className="ml-auto text-[10px] text-gray-400">{tours.filter(t => t.status === 'requested').length} upcoming</span>
-        <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
+        <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       {creating && (

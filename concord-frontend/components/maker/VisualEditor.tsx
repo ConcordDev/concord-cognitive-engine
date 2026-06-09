@@ -247,7 +247,7 @@ export function VisualEditor({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-mono text-pink-300">{selected.type}</span>
-              <button onClick={() => removeElement(selected.id)} className="text-rose-400 hover:text-rose-300">
+              <button aria-label="Delete" onClick={() => removeElement(selected.id)} className="text-rose-400 hover:text-rose-300">
                 <Trash2 className="h-3 w-3" />
               </button>
             </div>
@@ -277,7 +277,7 @@ export function VisualEditor({
               {selected.binding ? (
                 <div className="flex items-center justify-between rounded bg-emerald-950/30 px-1.5 py-1 text-emerald-300">
                   <span className="truncate">{selected.binding.kind}: {selected.binding.label}</span>
-                  <button onClick={() => unbind(selected.id)} className="text-emerald-400 hover:text-emerald-200">
+                  <button aria-label="Unlink" onClick={() => unbind(selected.id)} className="text-emerald-400 hover:text-emerald-200">
                     <Unlink className="h-3 w-3" />
                   </button>
                 </div>

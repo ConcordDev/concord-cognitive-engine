@@ -158,7 +158,7 @@ export function ShoppingList() {
                   {it.vendorUrl && (
                     <a href={it.vendorUrl} target="_blank" rel="noopener noreferrer" className="text-neon-cyan p-1"><ExternalLink className="w-3.5 h-3.5" /></a>
                   )}
-                  <button onClick={() => remove(it.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button aria-label="Delete" onClick={() => remove(it.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   <input

@@ -130,7 +130,7 @@ export function AdvocacyPanel() {
                     <button onClick={() => showTally(a.billId)} className="font-mono text-xs text-cyan-300 hover:underline">{a.billId}</button>
                     <span className={`px-1.5 py-0.5 rounded text-[10px] ${STANCE_COLOUR[a.stance]}`}>{a.stance}</span>
                     <span className="text-[10px] text-gray-400 ml-auto">{new Date(a.contactedAt).toLocaleDateString()}</span>
-                    <button onClick={() => remove(a.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                    <button aria-label="Delete" onClick={() => remove(a.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
                   </div>
                   {a.billTitle && <div className="text-xs text-white mt-0.5 truncate">{a.billTitle}</div>}
                   {a.representative && <div className="text-[10px] text-gray-400">via {a.representative} ({a.channel})</div>}

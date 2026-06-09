@@ -257,7 +257,7 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
                         <span className="w-2 h-2 rounded-full bg-amber-400" />
                         <span className="font-mono text-zinc-400">f{mk.frame}</span>
                         <span className="flex-1">{mk.label}</span>
-                        <button type="button"
+                        <button aria-label="Delete" type="button"
                           onClick={() => lensRun('film-studios', 'marker-delete', { id: mk.id }).then(loadCut)}
                           className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                       </li>

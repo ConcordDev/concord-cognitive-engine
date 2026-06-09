@@ -105,14 +105,14 @@ export function VulnManager() {
               className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
             <input value={assetForm.vendor} onChange={e => setAssetForm({ ...assetForm, vendor: e.target.value })} placeholder="vendor"
               className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-            <button onClick={addAsset} className="px-2 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"><Plus className="w-3 h-3" /></button>
+            <button aria-label="Add" onClick={addAsset} className="px-2 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"><Plus className="w-3 h-3" /></button>
           </div>
           <ul className="space-y-1 max-h-48 overflow-y-auto">
             {assets.map(a => (
               <li key={a.id} className="group flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1">
                 <span className="text-xs text-zinc-200 flex-1 truncate">{a.name} <span className="text-zinc-400">{a.vendor || a.type}</span></span>
                 {a.openVulnCount > 0 && <span className="text-[10px] text-rose-400">{a.openVulnCount} open</span>}
-                <button onClick={() => del('asset', a.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => del('asset', a.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>
@@ -135,7 +135,7 @@ export function VulnManager() {
               className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
             <input value={vulnForm.cvss} onChange={e => setVulnForm({ ...vulnForm, cvss: e.target.value })} placeholder="CVSS"
               className="w-12 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-            <button onClick={addVuln} className="px-2 rounded bg-rose-600 hover:bg-rose-500 text-white"><Plus className="w-3 h-3" /></button>
+            <button aria-label="Add" onClick={addVuln} className="px-2 rounded bg-rose-600 hover:bg-rose-500 text-white"><Plus className="w-3 h-3" /></button>
           </div>
           <ul className="space-y-1 max-h-48 overflow-y-auto">
             {vulns.map(v => (
@@ -147,7 +147,7 @@ export function VulnManager() {
                   className="bg-zinc-950 border border-zinc-800 rounded px-1 py-0.5 text-[9px] text-zinc-300">
                   {STATUSES.map(st => <option key={st} value={st}>{st}</option>)}
                 </select>
-                <button onClick={() => del('vuln', v.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => del('vuln', v.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

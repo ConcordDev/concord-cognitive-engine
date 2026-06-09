@@ -93,7 +93,7 @@ export function DatabaseViews() {
             onKeyDown={e => { if (e.key === 'Enter') void createDb(); }}
             placeholder="New database"
             className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-          <button onClick={createDb} className="px-1.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200">
+          <button aria-label="Add" onClick={createDb} className="px-1.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200">
             <Plus className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -106,7 +106,7 @@ export function DatabaseViews() {
                 <Table2 className="w-3 h-3 inline mr-1 text-zinc-400" />{d.name}
                 <span className="text-[10px] text-zinc-400 ml-1">{d.rowCount} rows</span>
               </button>
-              <button onClick={() => deleteDb(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400">
+              <button aria-label="Delete" onClick={() => deleteDb(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400">
                 <Trash2 className="w-3 h-3" />
               </button>
             </li>
@@ -220,7 +220,7 @@ function DbTable({ db, onUpdate, onDelete }: {
                 </td>
               ))}
               <td className="text-center">
-                <button onClick={() => onDelete(r.id)} className="text-zinc-700 hover:text-rose-400">
+                <button aria-label="Delete" onClick={() => onDelete(r.id)} className="text-zinc-700 hover:text-rose-400">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </td>

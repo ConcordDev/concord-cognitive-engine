@@ -97,7 +97,7 @@ export function FileExplorer({
           >
             <File className="w-3 h-3 text-gray-400 flex-shrink-0" />
             <span className="flex-1 truncate font-mono">{f.path}</span>
-            <button onClick={(e) => { e.stopPropagation(); remove(f.path); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-rose-300">
+            <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); remove(f.path); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-rose-300">
               <Trash2 className="w-3 h-3" />
             </button>
           </li>

@@ -276,7 +276,7 @@ function ConfigTab() {
               <span className="font-mono text-gray-200 w-40 truncate">{v.key}</span>
               <span className="font-mono text-gray-400 flex-1 truncate">{v.value}</span>
               <span className="text-[10px] text-gray-400">{(v.targets || []).join(', ')}</span>
-              <button className="text-red-400 hover:text-red-300" onClick={() => del(v.id)}>
+              <button aria-label="Delete" className="text-red-400 hover:text-red-300" onClick={() => del(v.id)}>
                 <Trash2 className="w-3 h-3" />
               </button>
             </div>
@@ -348,7 +348,7 @@ function DomainsTab() {
                 <CheckCircle className="w-3 h-3" /> Verify
               </button>
             )}
-            <button className="text-red-400 hover:text-red-300" onClick={() => remove(d.id)}>
+            <button aria-label="Delete" className="text-red-400 hover:text-red-300" onClick={() => remove(d.id)}>
               <Trash2 className="w-3 h-3" />
             </button>
           </div>
@@ -462,7 +462,7 @@ function AlertsTab() {
                     : 'bg-lattice-surface text-gray-400'}`}>{a.severity}</span>
               {a.triggered && <span className="text-[10px] text-red-400">FIRING</span>}
               {a.channel && <span className="text-[10px] text-gray-400">→ {a.channel.label}</span>}
-              <button className="text-red-400 hover:text-red-300 ml-auto" onClick={() => del(a.id)}>
+              <button aria-label="Delete" className="text-red-400 hover:text-red-300 ml-auto" onClick={() => del(a.id)}>
                 <Trash2 className="w-3 h-3" />
               </button>
             </div>

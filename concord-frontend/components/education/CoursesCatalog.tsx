@@ -79,7 +79,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
         <BookOpen className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Course catalog</span>
         <span className="ml-auto text-[10px] text-gray-400">{courses.length}</span>
-        <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
+        <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
@@ -140,7 +140,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                   ) : (
                     <button onClick={() => enroll(c)} className="px-2.5 py-1 text-[11px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Enroll</button>
                   )}
-                  <button onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button aria-label="Delete" onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </li>
               );
             })}

@@ -143,7 +143,7 @@ export function DataModelDesigner({
                 onChange={(e) => setTables((prev) => prev.map((t) => (t.id === sel.id ? { ...t, name: e.target.value } : t)))}
                 className="flex-1 rounded border border-pink-900/40 bg-black/40 px-2 py-1 font-mono text-sm text-pink-100"
               />
-              <button onClick={() => deleteTable(sel.id)} className="text-rose-400 hover:text-rose-300">
+              <button aria-label="Delete" onClick={() => deleteTable(sel.id)} className="text-rose-400 hover:text-rose-300">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -176,7 +176,7 @@ export function DataModelDesigner({
                       <input type="checkbox" checked={!!f.required} onChange={(e) => patchField(i, { required: e.target.checked })} />
                     </td>
                     <td className="py-0.5">
-                      <button onClick={() => removeField(i)} className="text-rose-400 hover:text-rose-300">
+                      <button aria-label="Delete" onClick={() => removeField(i)} className="text-rose-400 hover:text-rose-300">
                         <Trash2 className="h-3 w-3" />
                       </button>
                     </td>
@@ -227,7 +227,7 @@ export function DataModelDesigner({
                 <span className="text-pink-200">{r.fromName}</span>
                 <span className="text-pink-600">—{r.kind}—</span>
                 <span className="text-pink-200">{r.toName}</span>
-                <button onClick={() => deleteRelation(r.id)} className="ml-auto text-rose-400 hover:text-rose-300">
+                <button aria-label="Delete" onClick={() => deleteRelation(r.id)} className="ml-auto text-rose-400 hover:text-rose-300">
                   <Trash2 className="h-3 w-3" />
                 </button>
               </li>

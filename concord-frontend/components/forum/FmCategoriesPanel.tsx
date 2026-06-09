@@ -71,7 +71,7 @@ export function FmCategoriesPanel({ onChange }: { onChange: () => void }) {
                 {c.description && <p className="text-[10px] text-zinc-400">{c.description}</p>}
               </div>
               <span className="text-[11px] text-zinc-400">{c.topicCount} topics</span>
-              <button type="button" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>

@@ -54,7 +54,7 @@ export function NewsBriefing() {
         <Coffee className="w-4 h-4 text-yellow-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Daily briefing · AI-curated</span>
         <span className="ml-auto flex items-center gap-1">
-          <button onClick={refresh} className="p-1 text-gray-400 hover:text-white"><RefreshCw className={loading ? 'w-3.5 h-3.5 animate-spin' : 'w-3.5 h-3.5'} /></button>
+          <button aria-label="Refresh" onClick={refresh} className="p-1 text-gray-400 hover:text-white"><RefreshCw className={loading ? 'w-3.5 h-3.5 animate-spin' : 'w-3.5 h-3.5'} /></button>
           <button onClick={speak} className="p-1 text-gray-400 hover:text-white" title="Read aloud"><Volume2 className="w-3.5 h-3.5" /></button>
         </span>
       </header>

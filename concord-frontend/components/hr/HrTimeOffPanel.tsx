@@ -130,7 +130,7 @@ export function HrTimeOffPanel({ onChange }: { onChange: () => void }) {
                 </div>
                 {r.status === 'pending' ? (
                   <div className="flex gap-1">
-                    <button type="button" onClick={() => decide(r.id, false)}
+                    <button aria-label="Confirm" type="button" onClick={() => decide(r.id, false)}
                       className="p-1 rounded bg-emerald-700/30 text-emerald-300"><Check className="w-3.5 h-3.5" /></button>
                     <button type="button" onClick={() => decide(r.id, true)}
                       className="p-1 rounded bg-rose-700/30 text-rose-300"><X className="w-3.5 h-3.5" /></button>

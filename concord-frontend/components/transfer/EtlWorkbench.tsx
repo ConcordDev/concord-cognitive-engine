@@ -268,7 +268,7 @@ export function EtlWorkbench() {
                       <button onClick={() => checkDrift(c.id)} disabled={busy === 'drift:' + c.id} title="Schema drift" className="p-1 rounded hover:bg-white/10 text-gray-400">
                         <RefreshCw className={`w-3 h-3 ${busy === 'drift:' + c.id ? 'animate-spin' : ''}`} />
                       </button>
-                      <button onClick={() => removeConnector(c.id)} className="p-1 rounded hover:bg-rose-500/20 text-rose-400">
+                      <button aria-label="Delete" onClick={() => removeConnector(c.id)} className="p-1 rounded hover:bg-rose-500/20 text-rose-400">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
@@ -331,7 +331,7 @@ export function EtlWorkbench() {
                   <span className="font-medium">{p.name}</span>
                   <div className="flex items-center gap-1">
                     <span className="text-[9px] px-1 rounded bg-white/5 text-gray-400">{p.schedule?.mode || 'manual'}</span>
-                    <button onClick={(e) => { e.stopPropagation(); removePipeline(p.id); }} className="p-1 rounded hover:bg-rose-500/20 text-rose-400">
+                    <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); removePipeline(p.id); }} className="p-1 rounded hover:bg-rose-500/20 text-rose-400">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
@@ -578,7 +578,7 @@ function MappingEditor({
                 <button onClick={() => setMappings((mm) => mm.map((x, j) => j === i ? { ...x, transforms: (x.transforms || []).filter((_: any, k: number) => k !== ti) } : x))} className="text-rose-400"><X className="w-2.5 h-2.5" /></button>
               </span>
             ))}
-            <button onClick={() => setMappings((mm) => mm.filter((_, j) => j !== i))} className="ml-auto text-rose-400"><Trash2 className="w-3 h-3" /></button>
+            <button aria-label="Delete" onClick={() => setMappings((mm) => mm.filter((_, j) => j !== i))} className="ml-auto text-rose-400"><Trash2 className="w-3 h-3" /></button>
           </div>
         ))}
       </div>
@@ -596,7 +596,7 @@ function MappingEditor({
             <select value={d.from} onChange={(e) => setDerived((dd) => dd.map((x, j) => j === i ? { ...x, from: e.target.value } : x))} className="input-lattice text-[10px] py-0.5">
               {srcFields.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
             </select>
-            <button onClick={() => setDerived((dd) => dd.filter((_, j) => j !== i))} className="ml-auto text-rose-400"><Trash2 className="w-3 h-3" /></button>
+            <button aria-label="Delete" onClick={() => setDerived((dd) => dd.filter((_, j) => j !== i))} className="ml-auto text-rose-400"><Trash2 className="w-3 h-3" /></button>
           </div>
         ))}
       </div>
@@ -629,7 +629,7 @@ function MappingEditor({
             {r.type === 'enum' && (
               <input value={(r.values || []).join(',')} onChange={(e) => setRules((rr) => rr.map((x, j) => j === i ? { ...x, values: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) } : x))} placeholder="a,b,c" className="input-lattice text-[10px] py-0.5 w-32" />
             )}
-            <button onClick={() => setRules((rr) => rr.filter((_, j) => j !== i))} className="ml-auto text-rose-400"><Trash2 className="w-3 h-3" /></button>
+            <button aria-label="Delete" onClick={() => setRules((rr) => rr.filter((_, j) => j !== i))} className="ml-auto text-rose-400"><Trash2 className="w-3 h-3" /></button>
           </div>
         ))}
       </div>

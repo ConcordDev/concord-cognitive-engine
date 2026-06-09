@@ -184,7 +184,7 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
                 <input value={branchDraft} onChange={(e) => setBranchDraft(e.target.value)}
                   placeholder="new-branch"
                   className="flex-1 px-1.5 py-0.5 text-[11px] bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-                <button onClick={createBranch} className="p-1 text-blue-300 hover:text-blue-200"><Plus className="w-3 h-3" /></button>
+                <button aria-label="Add" onClick={createBranch} className="p-1 text-blue-300 hover:text-blue-200"><Plus className="w-3 h-3" /></button>
               </div>
             </Section>
 

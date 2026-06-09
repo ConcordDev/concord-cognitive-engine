@@ -144,7 +144,7 @@ export function QuestGraphEditor() {
               >
                 {g.title} <span className="text-pink-700">· {g.nodeCount}n</span>
               </button>
-              <button onClick={() => deleteGraph(g.id)} className="text-rose-500 hover:text-rose-300">
+              <button aria-label="Delete" onClick={() => deleteGraph(g.id)} className="text-rose-500 hover:text-rose-300">
                 <Trash2 className="h-3 w-3" />
               </button>
             </li>
@@ -276,7 +276,7 @@ export function QuestGraphEditor() {
                 Draw edge →
               </button>
               {sel.kind !== 'start' && (
-                <button onClick={() => deleteNode(sel.id)} className="rounded bg-rose-900/40 px-2 py-1 text-rose-300 hover:bg-rose-800/50">
+                <button aria-label="Delete" onClick={() => deleteNode(sel.id)} className="rounded bg-rose-900/40 px-2 py-1 text-rose-300 hover:bg-rose-800/50">
                   <Trash2 className="h-3 w-3" />
                 </button>
               )}
@@ -289,7 +289,7 @@ export function QuestGraphEditor() {
                   return (
                     <div key={e.id} className="flex items-center gap-1 text-[10px]">
                       <span className="text-pink-300">→ {tgt?.title ?? '?'}</span>
-                      <button onClick={() => deleteEdge(e.id)} className="ml-auto text-rose-400 hover:text-rose-300">
+                      <button aria-label="Delete" onClick={() => deleteEdge(e.id)} className="ml-auto text-rose-400 hover:text-rose-300">
                         <Trash2 className="h-2.5 w-2.5" />
                       </button>
                     </div>

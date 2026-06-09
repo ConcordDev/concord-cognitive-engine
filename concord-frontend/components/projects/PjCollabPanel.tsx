@@ -301,7 +301,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
                     className={cn('text-[10px] px-1.5 py-0.5 rounded', i.enabled ? 'bg-emerald-900/50 text-emerald-300' : 'bg-zinc-800 text-zinc-400')}>
                     {i.enabled ? 'on' : 'off'}
                   </button>
-                  <button type="button" onClick={() => lensRun('projects', 'integration-delete', { id: i.id }).then(refresh)}
+                  <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'integration-delete', { id: i.id }).then(refresh)}
                     className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </li>
               );
@@ -376,7 +376,7 @@ export function PjCollabPanel({ projectId, onChange }: { projectId: string; onCh
                 <span className="text-zinc-200 flex-1">
                   {p.priority} issues respond within <span className="text-rose-300">{p.responseDays}d</span>, escalate to <span className="text-rose-300">{p.escalateTo}</span>
                 </span>
-                <button type="button" onClick={() => lensRun('projects', 'sla-policy-delete', { id: p.id }).then(refresh)}
+                <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'sla-policy-delete', { id: p.id }).then(refresh)}
                   className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}

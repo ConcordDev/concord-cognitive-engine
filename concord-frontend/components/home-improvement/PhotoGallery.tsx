@@ -128,7 +128,7 @@ export function PhotoGallery() {
                         {mode === 'before' ? 'See after' : 'See before'}
                       </button>
                     )}
-                    <button onClick={() => remove(e.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button aria-label="Delete" onClick={() => remove(e.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
               </div>

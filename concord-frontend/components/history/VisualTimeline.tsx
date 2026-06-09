@@ -216,13 +216,13 @@ export function VisualTimeline({ timelineId }: { timelineId: string }) {
           {selected && (
             <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
               <div className="flex items-center gap-2 mb-2">
-                <button onClick={goPrev} disabled={selectedIdx === 0}
+                <button aria-label="Previous" onClick={goPrev} disabled={selectedIdx === 0}
                   className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
                 <span className="text-[11px] font-mono text-amber-400">{selected.dateLabel}</span>
                 <span className="text-sm font-bold text-zinc-100 flex-1 truncate">{selected.title}</span>
                 <span className="text-[9px] px-1.5 py-0.5 rounded text-zinc-900 font-semibold"
                   style={{ backgroundColor: catColor(selected.category) }}>{selected.category}</span>
-                <button onClick={goNext} disabled={selectedIdx >= positioned.length - 1}
+                <button aria-label="Next" onClick={goNext} disabled={selectedIdx >= positioned.length - 1}
                   className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
               </div>
               {selected.place && (

@@ -76,7 +76,7 @@ export function AcSalesTaxPanel() {
               <li key={c.id} className="flex items-center gap-2 text-xs text-gray-300 bg-black/20 rounded px-2 py-1">
                 <span className="flex-1">{c.name}</span>
                 <span className="text-gray-400">{c.rate}%</span>
-                <button type="button" onClick={() => lensRun({ domain: 'accounting', action: 'tax-code-delete', input: { id: c.id } }).then(refresh)}
+                <button aria-label="Delete" type="button" onClick={() => lensRun({ domain: 'accounting', action: 'tax-code-delete', input: { id: c.id } }).then(refresh)}
                   className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}

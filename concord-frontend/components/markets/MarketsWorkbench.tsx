@@ -408,7 +408,7 @@ function AlertsTab() {
                 <p className="text-[10px] text-gray-400">{a.status} · {new Date(a.createdAt).toLocaleString()}</p>
               </div>
               {a.status === 'active' && (
-                <button type="button" onClick={() => cancel(a.id)}
+                <button aria-label="Delete" type="button" onClick={() => cancel(a.id)}
                   className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
               )}
             </div>

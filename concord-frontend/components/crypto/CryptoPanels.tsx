@@ -65,7 +65,7 @@ export function WatchlistPanel() {
               <span className="text-sm font-semibold text-white w-20">{w.ticker}</span>
               <span className="text-[11px] font-mono text-gray-400 flex-1">{w.symbol}</span>
               <span className="text-sm font-mono text-white w-24 text-right">{w.priceUsd !== null ? `$${w.priceUsd.toLocaleString()}` : '—'}</span>
-              <button onClick={() => remove(w.symbol)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-rose-500/20 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => remove(w.symbol)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-rose-500/20 text-rose-300"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>

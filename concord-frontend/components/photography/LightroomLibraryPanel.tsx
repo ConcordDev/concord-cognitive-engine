@@ -127,7 +127,7 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
                     </p>
                   </div>
                 </div>
-                <button type="button" onClick={() => del(p.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => del(p.id)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -136,13 +136,13 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
                 {/* stars */}
                 <span className="flex items-center gap-0.5">
                   {[1, 2, 3, 4, 5].map((n) => (
-                    <button key={n} type="button" onClick={() => rate(p, n)}>
+                    <button aria-label="Favorite" key={n} type="button" onClick={() => rate(p, n)}>
                       <Star className={cn('w-3.5 h-3.5', n <= p.rating ? 'text-amber-400 fill-amber-400' : 'text-zinc-700')} />
                     </button>
                   ))}
                 </span>
                 {/* flags */}
-                <button type="button" onClick={() => flag(p, 'pick')}
+                <button aria-label="Confirm" type="button" onClick={() => flag(p, 'pick')}
                   className={cn('p-1 rounded', p.flag === 'pick' ? 'bg-emerald-700/30 text-emerald-300' : 'text-zinc-600 hover:text-emerald-400')}>
                   <Check className="w-3.5 h-3.5" />
                 </button>

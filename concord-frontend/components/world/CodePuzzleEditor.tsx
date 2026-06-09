@@ -146,7 +146,7 @@ export function CodePuzzleEditor({ building, onClose, worldId }: OverlayProps) {
                   <span className="w-12 text-cyan-100">{p.op}</span>
                   <input value={p.a ?? ''} onChange={(e) => updateInstr(i, 'a', e.target.value)} className="w-10 rounded bg-zinc-900 px-1 text-cyan-200" />
                   <input value={p.b ?? ''} onChange={(e) => updateInstr(i, 'b', e.target.value)} className="w-10 rounded bg-zinc-900 px-1 text-cyan-200" />
-                  <button onClick={() => removeInstr(i)} className="ml-auto text-red-400 hover:text-red-300"><Trash2 size={10} /></button>
+                  <button aria-label="Delete" onClick={() => removeInstr(i)} className="ml-auto text-red-400 hover:text-red-300"><Trash2 size={10} /></button>
                 </div>
               ))}
             </div>

@@ -97,7 +97,7 @@ export function EngagementTracker() {
                 <p className="text-xs font-semibold text-zinc-100 truncate">{e.name}</p>
                 <p className="text-[10px] text-zinc-400">{e.client} · {e.loggedHours}h logged · ${e.billed.toLocaleString()} billed · {e.utilizationPct}% of budget · {e.status}</p>
               </button>
-              <button onClick={() => delEng(e.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => delEng(e.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
             {active === e.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800">

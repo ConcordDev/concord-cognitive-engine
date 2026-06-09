@@ -153,7 +153,7 @@ export function TravelTripsPanel({ onChange }: { onChange: () => void }) {
                       {[it.day, it.time, it.category].filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  <button type="button" onClick={() => delItin(it.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delItin(it.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </li>
@@ -195,7 +195,7 @@ export function TravelTripsPanel({ onChange }: { onChange: () => void }) {
                   <span className="text-xs text-zinc-200 capitalize">{b.type}{b.provider ? ` · ${b.provider}` : ''}</span>
                   <span className="flex items-center gap-2">
                     <span className="text-[11px] text-zinc-400 font-mono">${b.cost}</span>
-                    <button type="button" onClick={() => delBooking(b.id)} className="text-zinc-600 hover:text-rose-400">
+                    <button aria-label="Delete" type="button" onClick={() => delBooking(b.id)} className="text-zinc-600 hover:text-rose-400">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </span>
@@ -283,7 +283,7 @@ export function TravelTripsPanel({ onChange }: { onChange: () => void }) {
                   {t.startDate ? ` · ${t.startDate}` : ''}{t.durationDays ? ` · ${t.durationDays}d` : ''}
                 </p>
               </button>
-              <button type="button" onClick={() => delTrip(t.id)} className="text-zinc-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => delTrip(t.id)} className="text-zinc-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>

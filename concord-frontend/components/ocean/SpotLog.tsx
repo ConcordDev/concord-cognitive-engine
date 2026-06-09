@@ -117,7 +117,7 @@ export function SpotLog() {
                   {sp.kind} · {sp.sessionCount} sessions{sp.lat != null && sp.lon != null ? ' · geo' : ''}
                 </p>
               </button>
-              <button onClick={() => delSpot(sp.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => delSpot(sp.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>
@@ -151,7 +151,7 @@ export function SpotLog() {
                     {[1, 2, 3, 4, 5].map(n => <Star key={n} className={cn('w-2.5 h-2.5', se.rating! >= n ? 'text-amber-400' : 'text-zinc-700')} fill={se.rating! >= n ? 'currentColor' : 'none'} />)}
                   </span>
                 )}
-                <button onClick={() => delSession(se.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => delSession(se.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

@@ -75,7 +75,7 @@ export function PresetsLibraryPanel() {
                 <span className="text-[10px] text-gray-400 font-mono">{p.pluginName}</span>
                 <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{p.category}</span>
                 {p.tags.length > 0 && <span className="ml-auto text-[10px] text-violet-300">{p.tags.slice(0, 2).join(' · ')}</span>}
-                <button onClick={() => remove(p.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(p.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

@@ -71,7 +71,7 @@ export function MarkersPanel({ projectId }: { projectId?: string }) {
                 <span className="text-sm text-white flex-1 truncate">{m.name}</span>
                 <span className="text-[10px] text-gray-400 font-mono">{m.timeBeats}b</span>
                 <span className="text-[9px] uppercase text-gray-400">{m.kind.replace('_', ' ')}</span>
-                <button onClick={() => remove(m.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(m.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

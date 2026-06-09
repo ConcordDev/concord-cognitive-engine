@@ -81,7 +81,7 @@ export function CarriersPanel() {
                   <div className="text-sm text-white truncate">{c.name}</div>
                   <div className="text-[10px] text-gray-400">SCAC {c.scac || '—'} · {c.modes.join(' / ')}</div>
                 </div>
-                <button onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

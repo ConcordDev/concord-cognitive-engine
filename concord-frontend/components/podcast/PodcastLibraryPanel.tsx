@@ -84,7 +84,7 @@ export function PodcastLibraryPanel({ onChange }: { onChange: () => void }) {
                   <p className="text-xs text-zinc-200 truncate">{e.title}</p>
                   <p className="text-[10px] text-zinc-400">{e.showTitle} · {fmt(e.durationSec)}</p>
                 </div>
-                <button type="button" onClick={() => removeDownload(e.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                <button aria-label="Delete" type="button" onClick={() => removeDownload(e.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </li>

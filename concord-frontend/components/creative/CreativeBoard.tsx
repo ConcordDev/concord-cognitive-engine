@@ -253,7 +253,7 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
                         card.color === col ? 'ring-1 ring-white' : '')} />
                   ))}
                   <div className="flex-1" />
-                  <button type="button" onClick={() => delCard(card.id)} className="text-zinc-400 hover:text-rose-300">
+                  <button aria-label="Delete" type="button" onClick={() => delCard(card.id)} className="text-zinc-400 hover:text-rose-300">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

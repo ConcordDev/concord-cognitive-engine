@@ -119,7 +119,7 @@ export function PetHealthPanel({ petId, onChange }: { petId: string; onChange: (
                   <span className={cn('text-[10px] capitalize', STATUS_COLOR[v.status] || 'text-zinc-400')}>
                     {v.status.replace(/_/g, ' ')}
                   </span>
-                  <button type="button" onClick={() => delVaccine(v.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delVaccine(v.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

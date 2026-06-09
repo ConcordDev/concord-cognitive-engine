@@ -121,7 +121,7 @@ export function MeetingsPanel() {
                     <span className={`px-1.5 py-0.5 rounded text-[10px] ${m.status === 'minutes_published' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}`}>
                       {m.status === 'minutes_published' ? 'minutes published' : 'scheduled'}
                     </span>
-                    <button onClick={() => remove(m.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                    <button aria-label="Delete" onClick={() => remove(m.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
                   </div>
                   {isOpen && (
                     <div className="mt-2 pl-2 border-l-2 border-cyan-500/20 space-y-2">

@@ -155,7 +155,7 @@ export function InteractiveExercises() {
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] uppercase tracking-wider text-gray-400">Step {i + 1}</span>
                     {steps.length > 1 && (
-                      <button onClick={() => setSteps(p => p.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-400">
+                      <button aria-label="Delete" onClick={() => setSteps(p => p.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-400">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}

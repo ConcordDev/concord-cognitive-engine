@@ -151,7 +151,7 @@ export function DailyJournal() {
               <span className="text-[11px] font-mono text-zinc-400">{e.date}</span>
               <div className="ml-auto flex items-center gap-1">
                 {e.tags.map(t => <span key={t} className="text-[9px] px-1 rounded bg-rose-900/40 text-rose-300">{t}</span>)}
-                <button onClick={() => del(e.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => del(e.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </div>
             </div>
             <p className="text-sm text-zinc-200 whitespace-pre-wrap">{e.body}</p>

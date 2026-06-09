@@ -96,7 +96,7 @@ export function ShippingZonesEditor() {
                   <Globe className="w-3.5 h-3.5 text-cyan-300" />
                   <span className="text-sm text-white font-medium flex-1 truncate">{z.name}</span>
                   <span className="text-[10px] text-gray-400 font-mono">{z.countries.join(', ')}</span>
-                  <button onClick={() => remove(z.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button aria-label="Delete" onClick={() => remove(z.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
                 <div className="mt-1 grid grid-cols-2 gap-1 text-[11px]">
                   {z.rates.map(r => (

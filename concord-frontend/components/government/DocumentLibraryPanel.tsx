@@ -118,7 +118,7 @@ export function DocumentLibraryPanel() {
                         <PenLine className="w-2.5 h-2.5" />signable
                       </span>
                     )}
-                    <button onClick={() => remove(d.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                    <button aria-label="Delete" onClick={() => remove(d.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
                   </div>
                   {isOpen && (
                     <div className="mt-2 pl-2 border-l-2 border-cyan-500/20 space-y-2">

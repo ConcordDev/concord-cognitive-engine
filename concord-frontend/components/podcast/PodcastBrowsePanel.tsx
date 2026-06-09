@@ -158,7 +158,7 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
                     className={cn('p-1 rounded', e.inQueue ? 'text-violet-400' : 'text-zinc-600 hover:text-violet-400')}>
                     <ListPlus className="w-3.5 h-3.5" />
                   </button>
-                  <button type="button" onClick={() => downloadEp(e.id)}
+                  <button aria-label="Download" type="button" onClick={() => downloadEp(e.id)}
                     className={cn('p-1 rounded', e.downloaded ? 'text-emerald-400' : 'text-zinc-600 hover:text-emerald-400')}>
                     <Download className="w-3.5 h-3.5" />
                   </button>
@@ -173,7 +173,7 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
           <p className="text-xs font-semibold text-zinc-300 mb-1">Rate this show</p>
           <div className="flex items-center gap-1">
             {[1, 2, 3, 4, 5].map((n) => (
-              <button key={n} type="button" onClick={() => setMyRating(n)}>
+              <button aria-label="Favorite" key={n} type="button" onClick={() => setMyRating(n)}>
                 <Star className={cn('w-5 h-5', n <= myRating ? 'text-amber-400 fill-amber-400' : 'text-zinc-700')} />
               </button>
             ))}

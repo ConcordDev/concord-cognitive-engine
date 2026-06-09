@@ -400,7 +400,7 @@ function ReaderTab({ papers, busy, setBusy, setErr, onChanged }:
                         <p className="text-[11px] text-zinc-200">{a.quote}</p>
                         {a.comment && <p className="text-[10px] text-zinc-400 mt-0.5 italic">— {a.comment}</p>}
                       </div>
-                      <button onClick={() => delAnnotation(a.id)} className="opacity-0 group-hover:opacity-100 text-rose-400 shrink-0">
+                      <button aria-label="Delete" onClick={() => delAnnotation(a.id)} className="opacity-0 group-hover:opacity-100 text-rose-400 shrink-0">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
@@ -689,7 +689,7 @@ function GroupsTab({ papers, busy, setBusy, setErr }:
                   <div key={p.id} className="group flex items-center gap-2 text-[11px] text-zinc-300">
                     <span className="w-1 h-1 rounded-full bg-zinc-600 shrink-0" />
                     <span className="truncate min-w-0 flex-1">{p.title}{p.year ? ` (${p.year})` : ''}</span>
-                    <button onClick={() => removePaper(g.id, p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400">
+                    <button aria-label="Delete" onClick={() => removePaper(g.id, p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
@@ -774,7 +774,7 @@ function AlertsTab({ busy, setBusy, setErr }: TabProps) {
                 <p className="text-[9px] text-zinc-400 mt-0.5">{new Date(a.createdAt).toLocaleString()}</p>
               </div>
               {!a.read && (
-                <button onClick={() => markRead(a.id)} className="shrink-0 text-[10px] text-violet-400 hover:text-violet-300">
+                <button aria-label="Confirm" onClick={() => markRead(a.id)} className="shrink-0 text-[10px] text-violet-400 hover:text-violet-300">
                   <Check className="w-3 h-3" />
                 </button>
               )}

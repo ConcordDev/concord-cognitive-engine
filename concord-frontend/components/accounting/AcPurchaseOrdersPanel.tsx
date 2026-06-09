@@ -92,7 +92,7 @@ export function AcPurchaseOrdersPanel() {
                     <PackageCheck className="w-3 h-3" /> Receive
                   </button>
                 ) : <span className="text-[10px] text-emerald-400 uppercase">received</span>}
-                <button type="button" onClick={() => lensRun({ domain: 'accounting', action: 'po-delete', input: { id: po.id } }).then(refresh)}
+                <button aria-label="Delete" type="button" onClick={() => lensRun({ domain: 'accounting', action: 'po-delete', input: { id: po.id } }).then(refresh)}
                   className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
               <p className="text-[10px] text-gray-400 mt-0.5">

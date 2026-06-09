@@ -91,7 +91,7 @@ function TakeoffEstimate() {
             </select>
             <input type="number" step="0.01" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={it.unitCost} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, unitCost: e.target.value } : x))} />
             <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={it.wastePercent} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, wastePercent: e.target.value } : x))} />
-            <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button aria-label="Delete" type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <div className="flex items-center justify-between">
@@ -166,7 +166,7 @@ function CriticalPathView() {
             <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Foundation" value={t.name} onChange={(e) => setTasks((ts) => ts.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))} />
             <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={t.duration} onChange={(e) => setTasks((ts) => ts.map((x, idx) => idx === i ? { ...x, duration: e.target.value } : x))} />
             <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Excavation, Permits" value={t.deps} onChange={(e) => setTasks((ts) => ts.map((x, idx) => idx === i ? { ...x, deps: e.target.value } : x))} />
-            <button type="button" onClick={() => setTasks((ts) => ts.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button aria-label="Delete" type="button" onClick={() => setTasks((ts) => ts.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <div className="flex items-center justify-between">
@@ -262,7 +262,7 @@ function SafetyCompliance() {
               <label className="flex items-center justify-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-1 text-[10px] text-rose-300">
                 <input type="checkbox" checked={it.critical} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, critical: e.target.checked } : x))} />Crit
               </label>
-              <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button aria-label="Delete" type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
         </div>
@@ -340,7 +340,7 @@ function ProgressReport() {
             <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Foundation" value={p.name} onChange={(e) => setPhases((ps) => ps.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))} />
             <input type="number" min={0} max={100} className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={p.plannedPercent} onChange={(e) => setPhases((ps) => ps.map((x, idx) => idx === i ? { ...x, plannedPercent: e.target.value } : x))} />
             <input type="number" min={0} max={100} className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={p.actualPercent} onChange={(e) => setPhases((ps) => ps.map((x, idx) => idx === i ? { ...x, actualPercent: e.target.value } : x))} />
-            <button type="button" onClick={() => setPhases((ps) => ps.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button aria-label="Delete" type="button" onClick={() => setPhases((ps) => ps.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <div className="flex items-center justify-between">

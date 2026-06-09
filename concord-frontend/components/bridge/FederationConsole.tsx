@@ -201,7 +201,7 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
               <span className="text-zinc-200">{p.name}</span>
               <span className="text-zinc-600">{p.kind}</span>
-              <button onClick={() => removePeer(p.id)} className="text-zinc-600 hover:text-red-400">
+              <button aria-label="Delete" onClick={() => removePeer(p.id)} className="text-zinc-600 hover:text-red-400">
                 <Trash2 className="w-3 h-3" />
               </button>
             </div>
@@ -418,7 +418,7 @@ function FlowsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null)
         <div className="flex gap-3 text-xs text-zinc-400">
           <span className="text-green-400">{counts.succeeded} ok</span>
           <span className="text-red-400">{counts.failed} failed</span>
-          <button onClick={load}><RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /></button>
+          <button aria-label="Refresh" onClick={load}><RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /></button>
         </div>
       </div>
 
@@ -554,7 +554,7 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
               <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">{m.transform}</span>
               <span className="text-zinc-600">{m.dataType}</span>
               {m.required && <span className="text-amber-400">required</span>}
-              <button onClick={() => remove(m.id)} className="ml-auto text-zinc-600 hover:text-red-400">
+              <button aria-label="Delete" onClick={() => remove(m.id)} className="ml-auto text-zinc-600 hover:text-red-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -787,7 +787,7 @@ function AlertsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null
               <span className="text-zinc-600">
                 {r.peerId ? (peers.find(p => p.id === r.peerId)?.name || 'peer') : 'all peers'}
               </span>
-              <button onClick={() => removeRule(r.id)} className="ml-auto text-zinc-600 hover:text-red-400">
+              <button aria-label="Delete" onClick={() => removeRule(r.id)} className="ml-auto text-zinc-600 hover:text-red-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>

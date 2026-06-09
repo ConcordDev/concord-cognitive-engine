@@ -141,7 +141,7 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
               <li key={f.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="text-xs text-zinc-200 flex-1">{f.name}</span>
                 <span className="text-[10px] text-zinc-400">{f.type}{f.options.length ? ` · ${f.options.join('/')}` : ''}</span>
-                <button type="button" onClick={() => lensRun('projects', 'custom-field-delete', { id: f.id }).then(refresh)}
+                <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'custom-field-delete', { id: f.id }).then(refresh)}
                   className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
@@ -179,7 +179,7 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
                   className={cn('text-[10px] px-1.5 py-0.5 rounded', r.enabled ? 'bg-emerald-900/50 text-emerald-300' : 'bg-zinc-800 text-zinc-400')}>
                   {r.enabled ? 'on' : 'off'}
                 </button>
-                <button type="button" onClick={() => lensRun('projects', 'rule-delete', { id: r.id }).then(refresh)}
+                <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'rule-delete', { id: r.id }).then(refresh)}
                   className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
@@ -210,7 +210,7 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
                 </span>
                 <button type="button" onClick={() => lensRun('projects', 'template-apply', { id: t.id }).then(refresh)}
                   className="text-[10px] px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded">Apply</button>
-                <button type="button" onClick={() => lensRun('projects', 'template-delete', { id: t.id }).then(refresh)}
+                <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'template-delete', { id: t.id }).then(refresh)}
                   className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}

@@ -165,7 +165,7 @@ export function LearningPaths() {
                   <span className={cn('text-xs font-bold', path.complete ? 'text-neon-green' : 'text-gray-400')}>
                     {path.completedSteps}/{path.totalSteps} · {path.progressPct}%
                   </span>
-                  <button onClick={() => deletePath(path.id)} className="text-gray-400 hover:text-red-400">
+                  <button aria-label="Delete" onClick={() => deletePath(path.id)} className="text-gray-400 hover:text-red-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

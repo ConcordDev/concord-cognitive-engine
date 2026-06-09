@@ -79,9 +79,9 @@ export function DawShell({
       <header className="px-4 py-2 border-b border-white/10 bg-[#0a0c10] flex items-center gap-3">
         <div className="flex items-center gap-1">
           <button onClick={onStop} className="p-1.5 rounded hover:bg-white/10 text-gray-300"><SkipBack className="w-3.5 h-3.5" /></button>
-          <button onClick={onStop} className="p-1.5 rounded hover:bg-white/10 text-gray-300"><Square className="w-3.5 h-3.5" /></button>
-          <button onClick={onPlay} className={cn('p-1.5 rounded hover:bg-white/10', isPlaying ? 'bg-emerald-500/30 text-emerald-300' : 'text-gray-300')}><Play className="w-3.5 h-3.5" /></button>
-          <button onClick={onRecord} className={cn('p-1.5 rounded hover:bg-white/10', isRecording ? 'bg-rose-500/30 text-rose-300 animate-pulse' : 'text-gray-300')}><Circle className={cn('w-3.5 h-3.5', isRecording && 'fill-rose-300')} /></button>
+          <button aria-label="Stop" onClick={onStop} className="p-1.5 rounded hover:bg-white/10 text-gray-300"><Square className="w-3.5 h-3.5" /></button>
+          <button aria-label="Play" onClick={onPlay} className={cn('p-1.5 rounded hover:bg-white/10', isPlaying ? 'bg-emerald-500/30 text-emerald-300' : 'text-gray-300')}><Play className="w-3.5 h-3.5" /></button>
+          <button aria-label="Record" onClick={onRecord} className={cn('p-1.5 rounded hover:bg-white/10', isRecording ? 'bg-rose-500/30 text-rose-300 animate-pulse' : 'text-gray-300')}><Circle className={cn('w-3.5 h-3.5', isRecording && 'fill-rose-300')} /></button>
           <button className="p-1.5 rounded hover:bg-white/10 text-gray-300"><Repeat className="w-3.5 h-3.5" /></button>
         </div>
         <div className="font-mono text-sm tabular-nums text-violet-300">

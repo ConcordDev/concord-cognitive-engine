@@ -164,7 +164,7 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
                   className={cn('text-[10px] rounded px-1.5 py-0.5 border-0 font-medium', QUALITY_COLOR[m.quality] || 'bg-zinc-700 text-zinc-300')}>
                   {QUALITIES.map((q) => <option key={q} value={q}>{q}</option>)}
                 </select>
-                <button type="button" onClick={() => delMedia(m.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                <button aria-label="Delete" type="button" onClick={() => delMedia(m.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </li>
@@ -197,7 +197,7 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-zinc-100">{g.name}</span>
                   <span className="text-[10px] text-zinc-400">{g.angleCount} angles</span>
-                  <button type="button" onClick={() => delGroup(g.id)} className="ml-auto text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delGroup(g.id)} className="ml-auto text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

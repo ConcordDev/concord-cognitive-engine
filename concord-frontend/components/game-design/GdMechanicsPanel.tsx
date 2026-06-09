@@ -89,7 +89,7 @@ export function GdMechanicsPanel({ gameId, onChange }: { gameId: string; onChang
                     <p className="text-xs font-medium text-zinc-100">{m.name}</p>
                     {m.description && <p className="text-[11px] text-zinc-400">{m.description}</p>}
                   </div>
-                  <button type="button" onClick={() => delMechanic(m.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                  <button aria-label="Delete" type="button" onClick={() => delMechanic(m.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </li>

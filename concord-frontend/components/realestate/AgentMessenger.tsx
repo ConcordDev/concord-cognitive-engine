@@ -72,7 +72,7 @@ export function AgentMessenger() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <MessageSquare className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Agents & messages</span>
-        <button onClick={() => setAddingAgent(v => !v)} className="ml-auto p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
+        <button aria-label="Add" onClick={() => setAddingAgent(v => !v)} className="ml-auto p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       {addingAgent && (
@@ -128,7 +128,7 @@ export function AgentMessenger() {
               </div>
               <form onSubmit={(e) => { e.preventDefault(); send(); }} className="border-t border-white/10 p-2 flex items-center gap-2">
                 <input value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type a message…" className="flex-1 px-3 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-                <button type="submit" disabled={!draft.trim()} className="p-2 rounded bg-cyan-500 text-black hover:bg-cyan-400 disabled:opacity-40"><Send className="w-3.5 h-3.5" /></button>
+                <button aria-label="Send" type="submit" disabled={!draft.trim()} className="p-2 rounded bg-cyan-500 text-black hover:bg-cyan-400 disabled:opacity-40"><Send className="w-3.5 h-3.5" /></button>
               </form>
             </>
           ) : (

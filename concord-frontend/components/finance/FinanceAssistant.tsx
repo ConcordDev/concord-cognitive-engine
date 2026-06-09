@@ -96,7 +96,7 @@ export function FinanceAssistant() {
 
       <form onSubmit={e => { e.preventDefault(); send(input); }} className="border-t border-white/10 p-2 flex items-center gap-2">
         <input value={input} onChange={e => setInput(e.target.value)} placeholder="Ask about your finances…" disabled={pending} className="flex-1 px-3 py-2 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <button type="submit" disabled={pending || !input.trim()} className="p-2 rounded bg-violet-500 text-white hover:bg-violet-400 disabled:opacity-40">
+        <button aria-label="Send" type="submit" disabled={pending || !input.trim()} className="p-2 rounded bg-violet-500 text-white hover:bg-violet-400 disabled:opacity-40">
           <Send className="w-3.5 h-3.5" />
         </button>
       </form>

@@ -340,7 +340,7 @@ function CloningTab() {
             <textarea value={f.sequence} onChange={(e) => setFrags((p) => p.map((x, j) => j === i ? { ...x, sequence: e.target.value } : x))}
               rows={2} className={ta} placeholder="fragment DNA…" />
             {frags.length > 2 && (
-              <button type="button" onClick={() => setFrags((p) => p.filter((_, j) => j !== i))}
+              <button aria-label="Delete" type="button" onClick={() => setFrags((p) => p.filter((_, j) => j !== i))}
                 className="p-1.5 text-gray-600 hover:text-rose-300"><Trash2 className="w-3.5 h-3.5" /></button>
             )}
           </div>

@@ -103,7 +103,7 @@ export function CrtAudiencePanel({ onChange }: { onChange: () => void }) {
                     {p.growth > 0 ? '+' : ''}{p.growth.toLocaleString()}
                   </span>
                 )}
-                <button type="button" onClick={() => delPlatform(p.platformId)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => delPlatform(p.platformId)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

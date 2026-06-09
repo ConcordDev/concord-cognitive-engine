@@ -104,7 +104,7 @@ export function YelpCollectionsPanel() {
                   </div>
                   <ChevronRight className={cn('w-4 h-4 text-zinc-600 ml-auto transition-transform', open === c.id && 'rotate-90')} />
                 </button>
-                <button type="button" onClick={() => del(c.id)} className="px-3 text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => del(c.id)} className="px-3 text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

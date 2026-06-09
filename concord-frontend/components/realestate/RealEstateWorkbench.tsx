@@ -303,7 +303,7 @@ function SearchesTab() {
               <p className="text-sm text-gray-100">{s.name}</p>
               <p className="text-[10px] text-gray-400">{s.alertCadence} alerts · {new Date(s.createdAt).toLocaleDateString()}</p>
             </div>
-            <button type="button" onClick={() => remove(s.id)}
+            <button aria-label="Delete" type="button" onClick={() => remove(s.id)}
               className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
           </div>
         ))

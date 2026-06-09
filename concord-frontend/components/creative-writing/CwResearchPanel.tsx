@@ -97,7 +97,7 @@ export function CwResearchPanel({ projectId }: { projectId: string }) {
                   className="flex-1 text-left text-xs font-medium text-zinc-100">{n.title}
                   <span className={cn('ml-2 text-[9px] uppercase', KIND_COLOR[n.kind])}>{n.kind}</span>
                 </button>
-                <button type="button" onClick={() => del(n.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => del(n.id)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

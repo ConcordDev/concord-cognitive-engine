@@ -158,7 +158,7 @@ export function ContractorDirectory() {
                     {p.quoteCount > 0 && <span className="text-neon-green">Lowest quote: ${p.lowestQuote.toLocaleString()}</span>}
                   </div>
                 </button>
-                <button onClick={() => removePro(p.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button aria-label="Delete" onClick={() => removePro(p.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
 
               {openPro === p.id && (

@@ -264,7 +264,7 @@ function ThreadNodeView({
               {node.collapsed ? 'Expand' : 'Collapse'}
             </button>
           )}
-          <button
+          <button aria-label="Delete"
             onClick={() => onDelete(node.id)}
             className="ml-auto flex items-center gap-0.5 text-gray-400 hover:text-red-400"
           >

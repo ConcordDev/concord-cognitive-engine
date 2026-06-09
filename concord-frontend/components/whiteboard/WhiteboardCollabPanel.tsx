@@ -156,7 +156,7 @@ function FramesTab({ boardId }: { boardId: string }) {
                 <div className="truncate text-white">{f.label}</div>
                 <div className="text-[10px] text-gray-400 font-mono">{f.memberIds.length} member{f.memberIds.length === 1 ? '' : 's'} · {Math.round(f.w)}×{Math.round(f.h)}</div>
               </div>
-              <button onClick={() => deleteFrame(f.id)} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => deleteFrame(f.id)} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>
@@ -248,7 +248,7 @@ function ConnectorsTab({ boardId, shapes }: { boardId: string; shapes: Shape[] }
                   {c.unresolved ? <span className="text-amber-300">endpoint missing</span> : `route ${c.route?.length ?? 0}px · ${c.route?.waypoints.length ?? 0} waypoints`}
                 </div>
               </div>
-              <button onClick={() => deleteConnector(c.id)} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => deleteConnector(c.id)} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>
@@ -320,7 +320,7 @@ function EmbedsTab({ boardId }: { boardId: string }) {
                   {e.description && <div className="text-[10px] text-gray-400 truncate">{e.description}</div>}
                   <div className="text-[10px] text-gray-400 font-mono uppercase">{e.kind}</div>
                 </div>
-                <button onClick={() => deleteEmbed(e.id)} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => deleteEmbed(e.id)} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
               </li>
             );
           })}

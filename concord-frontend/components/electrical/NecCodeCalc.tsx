@@ -99,7 +99,7 @@ function PanelLoadCalc() {
               <select className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={c.voltage} onChange={(e) => setCircuits((cs) => cs.map((x, idx) => idx === i ? { ...x, voltage: e.target.value } : x))}>
                 <option value="120">120V</option><option value="240">240V</option>
               </select>
-              <button type="button" onClick={() => setCircuits((cs) => cs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button aria-label="Delete" type="button" onClick={() => setCircuits((cs) => cs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
         </div>
@@ -342,7 +342,7 @@ function CircuitMap() {
               <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="Kitchen" value={r.room} onChange={(e) => setRows((rs) => rs.map((x, idx) => idx === i ? { ...x, room: e.target.value } : x))} />
               <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="receptacles, lights" value={r.devices} onChange={(e) => setRows((rs) => rs.map((x, idx) => idx === i ? { ...x, devices: e.target.value } : x))} />
               <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" placeholder="ft" value={r.wireRunFeet} onChange={(e) => setRows((rs) => rs.map((x, idx) => idx === i ? { ...x, wireRunFeet: e.target.value } : x))} />
-              <button type="button" onClick={() => setRows((rs) => rs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button aria-label="Delete" type="button" onClick={() => setRows((rs) => rs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
         </div>
@@ -434,7 +434,7 @@ function SafetyChecklist() {
               <label className="flex items-center justify-center gap-1 self-start rounded border border-zinc-800 bg-zinc-950 px-1 py-1 text-[10px] text-rose-300">
                 <input type="checkbox" checked={item.critical} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, critical: e.target.checked } : x))} />Crit
               </label>
-              <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="self-start rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button aria-label="Delete" type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="self-start rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
         </div>

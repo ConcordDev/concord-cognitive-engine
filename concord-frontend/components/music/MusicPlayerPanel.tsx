@@ -122,7 +122,7 @@ export function MusicPlayerPanel({ onChange }: { onChange: () => void }) {
           <ul className="space-y-1">
             {queue.map((t) => (
               <li key={t.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-                <button type="button" onClick={() => play(t.id)} className="text-emerald-400 hover:text-emerald-300">
+                <button aria-label="Play" type="button" onClick={() => play(t.id)} className="text-emerald-400 hover:text-emerald-300">
                   <Play className="w-3.5 h-3.5" />
                 </button>
                 <span className="text-xs text-zinc-200 truncate flex-1">{t.title} <span className="text-zinc-400">— {t.artist}</span></span>
@@ -142,7 +142,7 @@ export function MusicPlayerPanel({ onChange }: { onChange: () => void }) {
           <ul className="space-y-1">
             {recent.slice(0, 10).map((t) => (
               <li key={t.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-                <button type="button" onClick={() => play(t.id)} className="text-emerald-400 hover:text-emerald-300">
+                <button aria-label="Play" type="button" onClick={() => play(t.id)} className="text-emerald-400 hover:text-emerald-300">
                   <Play className="w-3.5 h-3.5" />
                 </button>
                 <span className="text-xs text-zinc-300 truncate">{t.title} <span className="text-zinc-400">— {t.artist}</span></span>

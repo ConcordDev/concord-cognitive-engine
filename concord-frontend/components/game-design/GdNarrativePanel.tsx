@@ -149,7 +149,7 @@ export function GdNarrativePanel({ gameId, onChange }: { gameId: string; onChang
                     <span className="text-sm font-semibold text-zinc-100">{n.title}</span>
                     <span className={cn('ml-2 text-[10px] uppercase', KIND_COLOR[n.kind])}>{n.kind}</span>
                   </button>
-                  <button type="button" onClick={() => delNode(n.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => delNode(n.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -164,7 +164,7 @@ export function GdNarrativePanel({ gameId, onChange }: { gameId: string; onChang
                         <span className="text-amber-300">{l.label}</span>
                         <span className="text-zinc-400">→</span>
                         <span className="flex-1 truncate">{titleOf(l.toId)}</span>
-                        <button type="button" onClick={() => delLink(l.id)} className="text-zinc-600 hover:text-rose-400">
+                        <button aria-label="Delete" type="button" onClick={() => delLink(l.id)} className="text-zinc-600 hover:text-rose-400">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </li>

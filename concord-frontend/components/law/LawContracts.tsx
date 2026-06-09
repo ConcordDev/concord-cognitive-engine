@@ -199,7 +199,7 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
                 className="bg-black/50 border border-white/15 rounded px-1.5 py-1 text-[11px] text-white">
                 {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
-              <button onClick={() => remove(active.id)} className="p-1 text-rose-400 hover:bg-rose-500/10 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
+              <button aria-label="Delete" onClick={() => remove(active.id)} className="p-1 text-rose-400 hover:bg-rose-500/10 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
 
             <div className="flex gap-2">

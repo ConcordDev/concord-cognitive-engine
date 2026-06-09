@@ -74,7 +74,7 @@ export function DispatchBoardPanel() {
         <Calendar className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Dispatch board</span>
         <input type="date" value={date} onChange={e => setDate(e.target.value)} className="ml-auto text-xs bg-lattice-deep border border-lattice-border rounded px-2 py-0.5 text-white" />
-        <button onClick={refresh} className="p-1 text-gray-400 hover:text-white"><RefreshCw className="w-3.5 h-3.5" /></button>
+        <button aria-label="Refresh" onClick={refresh} className="p-1 text-gray-400 hover:text-white"><RefreshCw className="w-3.5 h-3.5" /></button>
       </header>
 
       {loading ? (

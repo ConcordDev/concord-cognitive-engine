@@ -203,7 +203,7 @@ export function LinguisticsActionPanel() {
         {dictResult && dictResult.entries[0] && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 max-h-72 overflow-y-auto">
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Definition
-              {firstAudio && <button type="button" onClick={() => { const a = new Audio(firstAudio); a.play().catch(() => {}); }} className="text-cyan-300 hover:text-cyan-100"><Volume2 className="h-3 w-3" /></button>}
+              {firstAudio && <button aria-label="Volume" type="button" onClick={() => { const a = new Audio(firstAudio); a.play().catch(() => {}); }} className="text-cyan-300 hover:text-cyan-100"><Volume2 className="h-3 w-3" /></button>}
               {dictResult.entries[0].phonetic && <span className="font-mono text-zinc-400 normal-case">/{dictResult.entries[0].phonetic}/</span>}
             </div>
             {dictResult.entries[0].meanings.slice(0, 3).map((m, mi) => (

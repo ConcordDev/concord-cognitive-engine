@@ -120,7 +120,7 @@ export function FieldLog() {
                 <span className={cn('text-[9px] px-1.5 py-0.5 rounded capitalize', KIND_COLOR[o.kind] || KIND_COLOR.other)}>{o.kind}</span>
                 <span className="text-xs font-semibold text-zinc-100 flex-1 truncate">{o.name}</span>
                 <span className="text-[10px] text-zinc-400">{o.collectedAt}</span>
-                <button onClick={() => del(o.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => del(o.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </div>
               {(o.locationName || o.formation || o.notes) && (
                 <p className="text-[11px] text-zinc-400 mt-0.5">

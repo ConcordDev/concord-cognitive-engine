@@ -80,7 +80,7 @@ export function AutomationLanesPanel({ trackId }: { trackId?: string }) {
                     <span className="text-xs font-mono text-white">{l.parameter}</span>
                     <span className="ml-auto text-[10px] text-gray-400">{l.points.length} pts</span>
                     <button onClick={() => addPoint(l.id, Math.random() * 8, Math.random())} className="px-2 py-0.5 text-[10px] rounded bg-cyan-500/30 text-cyan-300 hover:bg-cyan-500/50">+ pt</button>
-                    <button onClick={() => remove(l.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                    <button aria-label="Delete" onClick={() => remove(l.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
                   </div>
                   <svg viewBox={`0 0 ${maxBeats * 10} 30`} preserveAspectRatio="none" className="w-full h-8 bg-black/30 rounded">
                     {l.points.length > 1 && (

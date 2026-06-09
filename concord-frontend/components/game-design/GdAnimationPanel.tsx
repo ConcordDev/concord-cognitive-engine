@@ -253,13 +253,13 @@ export function GdAnimationPanel({ gameId, onChange }: { gameId: string; onChang
                     onChange={(e) => patchFrame(f.id, { durationMs: Number(e.target.value) || 80 })}
                     className="w-12 bg-zinc-950 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-100 text-center" />
                   <div className="flex items-center gap-0.5">
-                    <button type="button" onClick={() => moveFrame(f.id, -1)} className="text-zinc-600 hover:text-zinc-200">
+                    <button aria-label="Previous" type="button" onClick={() => moveFrame(f.id, -1)} className="text-zinc-600 hover:text-zinc-200">
                       <ChevronLeft className="w-3 h-3" />
                     </button>
-                    <button type="button" onClick={() => delFrame(f.id)} className="text-zinc-600 hover:text-rose-400">
+                    <button aria-label="Delete" type="button" onClick={() => delFrame(f.id)} className="text-zinc-600 hover:text-rose-400">
                       <Trash2 className="w-3 h-3" />
                     </button>
-                    <button type="button" onClick={() => moveFrame(f.id, 1)} className="text-zinc-600 hover:text-zinc-200">
+                    <button aria-label="Next" type="button" onClick={() => moveFrame(f.id, 1)} className="text-zinc-600 hover:text-zinc-200">
                       <ChevronRight className="w-3 h-3" />
                     </button>
                   </div>

@@ -91,7 +91,7 @@ export function PhilosophyChannels() {
                 <p className="text-xs font-semibold text-zinc-100 truncate">{c.title}</p>
                 <p className="text-[10px] text-zinc-400">{c.blockCount} blocks</p>
               </button>
-              <button onClick={() => deleteChannel(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => deleteChannel(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>
@@ -135,7 +135,7 @@ export function PhilosophyChannels() {
                         <Icon className="w-3 h-3 text-indigo-400" />
                         <span className="text-[9px] uppercase text-zinc-400">{b.kind}</span>
                         {b.channelIds.length > 1 && <span className="text-[9px] text-indigo-400">· in {b.channelIds.length} channels</span>}
-                        <button onClick={() => deleteBlock(b.id)} className="ml-auto opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                        <button aria-label="Delete" onClick={() => deleteBlock(b.id)} className="ml-auto opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
                       </div>
                       <p className={cn('text-xs text-zinc-200', b.kind === 'quote' && 'italic')}>{b.content}</p>
                       {b.source && <p className="text-[10px] text-zinc-400 mt-1">— {b.source}</p>}

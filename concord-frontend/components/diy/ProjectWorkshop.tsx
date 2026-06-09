@@ -1122,7 +1122,7 @@ function ToolGate({
               </option>
             ))}
           </select>
-          <button onClick={addTool} className={ds.btnSecondary}>
+          <button aria-label="Add" onClick={addTool} className={ds.btnSecondary}>
             <Plus className="h-4 w-4" />
           </button>
         </div>

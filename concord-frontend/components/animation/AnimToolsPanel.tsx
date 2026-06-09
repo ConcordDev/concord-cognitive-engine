@@ -348,7 +348,7 @@ function AudioSyncPanel({ anim, onChange }: { anim: Anim; onChange: () => void }
                 <span className="text-[10px] text-zinc-400">
                   frame {t.startFrame}{t.endFrame != null ? `–${t.endFrame}` : ''}
                 </span>
-                <button type="button" onClick={() => removeTrack(t.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => removeTrack(t.id)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -765,7 +765,7 @@ function RigPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
               <input type="range" min={-180} max={180} defaultValue={b.angle}
                 onChange={(e) => setBoneAngle(b, Number(e.target.value))}
                 className="flex-1 accent-cyan-500" />
-              <button type="button" onClick={() => deleteBone(b.id)} className="text-zinc-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => deleteBone(b.id)} className="text-zinc-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>
@@ -871,7 +871,7 @@ function BrushPanel() {
               <span className="text-[11px] text-zinc-200 flex-1 truncate">{b.name}</span>
               <span className="text-[10px] text-zinc-400">{b.tool} · {b.size}px</span>
               <span className="text-[10px] text-cyan-400">P{Math.round(b.pressureSize * 100)}</span>
-              <button type="button" onClick={() => del(b.id)} className="text-zinc-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => del(b.id)} className="text-zinc-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>

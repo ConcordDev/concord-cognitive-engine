@@ -101,7 +101,7 @@ export function StudyJournalPanel() {
               type="number" placeholder="Minutes" className="input-lattice w-24 text-sm" />
             <span className="text-xs text-gray-400">Effectiveness:</span>
             {[1, 2, 3, 4, 5].map((n) => (
-              <button key={n} onClick={() => setEffectiveness(n)}>
+              <button aria-label="Favorite" key={n} onClick={() => setEffectiveness(n)}>
                 <Star className={`w-4 h-4 ${n <= effectiveness ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'}`} />
               </button>
             ))}

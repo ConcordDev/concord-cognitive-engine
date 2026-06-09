@@ -171,7 +171,7 @@ function BankFeedTab() {
                 <button type="button" onClick={() => sync(i.id)} disabled={syncing === i.id} className={btnGhost}>
                   {syncing === i.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Sync
                 </button>
-                <button type="button" onClick={() => unlink(i.id)} className="text-gray-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => unlink(i.id)} className="text-gray-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -380,7 +380,7 @@ function DimensionsTab() {
             <option value="project">Project</option>
           </select>
           <input className={inp} placeholder="Tag name" value={name} onChange={(e) => setName(e.target.value)} />
-          <button type="button" className={btn} onClick={create} disabled={!name.trim()}>
+          <button aria-label="Add" type="button" className={btn} onClick={create} disabled={!name.trim()}>
             <Plus className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -392,7 +392,7 @@ function DimensionsTab() {
             <li key={d.id} className="flex items-center gap-1.5 bg-black/20 border border-white/10 rounded px-2 py-1">
               <span className="text-[9px] uppercase text-gray-400 bg-black/40 rounded px-1">{d.kind}</span>
               <span className="text-xs text-gray-200 flex-1 truncate">{d.name}</span>
-              <button type="button" onClick={() => del(d.id)} className="text-gray-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => del(d.id)} className="text-gray-600 hover:text-rose-400">
                 <Trash2 className="w-3 h-3" />
               </button>
             </li>
@@ -670,7 +670,7 @@ function RecurringBillsTab() {
               <button type="button" onClick={() => toggle(b.id)} className="text-[10px] text-gray-400 hover:text-gray-200">
                 {b.active ? 'Pause' : 'Resume'}
               </button>
-              <button type="button" onClick={() => del(b.id)} className="text-gray-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => del(b.id)} className="text-gray-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>

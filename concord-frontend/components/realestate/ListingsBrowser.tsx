@@ -181,7 +181,7 @@ export function ListingsBrowser({
                       {picked ? '✓' : 'Compare'}
                     </button>
                   )}
-                  <button onClick={() => remove(l.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button aria-label="Delete" onClick={() => remove(l.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </li>
               );
             })}

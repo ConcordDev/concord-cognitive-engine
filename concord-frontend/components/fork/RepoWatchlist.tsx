@@ -118,7 +118,7 @@ export function RepoWatchlist() {
             <button onClick={() => refreshRepo(r.id)} disabled={busy === r.id} className="text-zinc-400 hover:text-violet-300">
               {busy === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
             </button>
-            <button onClick={() => delRepo(r.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+            <button aria-label="Delete" onClick={() => delRepo(r.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
           </li>
         ))}
       </ul>

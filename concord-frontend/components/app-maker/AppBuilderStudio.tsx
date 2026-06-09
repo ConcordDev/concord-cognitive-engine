@@ -503,7 +503,7 @@ function DataModelDesigner({ project, run, reload }: SubProps) {
                       Save
                     </button>
                   )}
-                  <button onClick={() => deleteTable(t)} className="text-gray-400 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button aria-label="Delete" onClick={() => deleteTable(t)} className="text-gray-400 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
               <div className="space-y-1">
@@ -528,7 +528,7 @@ function DataModelDesigner({ project, run, reload }: SubProps) {
                         onChange={(e) => { const fs = [...fieldsFor(t)]; fs[i] = { ...f, required: e.target.checked }; mutateFields(t.id, fs); }}
                       /> req
                     </label>
-                    <button
+                    <button aria-label="Close"
                       onClick={() => mutateFields(t.id, fieldsFor(t).filter((_, j) => j !== i))}
                       className="text-gray-600 hover:text-red-400"
                     >
@@ -575,7 +575,7 @@ function DataModelDesigner({ project, run, reload }: SubProps) {
             <span className="text-white">{r.fromName}</span>
             <span className="text-neon-purple font-mono">{r.kind}</span>
             <span className="text-white">{r.toName}</span>
-            <button onClick={() => deleteRelation(r.id)} className="ml-auto text-gray-600 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+            <button aria-label="Delete" onClick={() => deleteRelation(r.id)} className="ml-auto text-gray-600 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
           </div>
         ))}
       </div>
@@ -675,7 +675,7 @@ function WorkflowBuilder({ project, run, reload }: SubProps) {
               <Workflow className="w-3.5 h-3.5 text-neon-purple" />
               <span className="text-sm font-medium">{w.name}</span>
               <span className="text-[10px] bg-neon-purple/15 text-neon-purple rounded px-1.5 py-0.5">{w.trigger.replace(/_/g, ' ')}</span>
-              <button onClick={() => deleteWorkflow(w.id)} className="ml-auto text-gray-600 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+              <button aria-label="Delete" onClick={() => deleteWorkflow(w.id)} className="ml-auto text-gray-600 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px]">
               {w.steps.map((s, i) => (
@@ -769,7 +769,7 @@ function ConnectorPanel({ project, run, reload }: SubProps) {
                 >
                   {testing === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Test
                 </button>
-                <button onClick={() => deleteConnector(c.id)} className="text-gray-600 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button aria-label="Delete" onClick={() => deleteConnector(c.id)} className="text-gray-600 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
               <p className="text-[11px] text-gray-400 font-mono mt-1 truncate">{c.endpoint || '(no endpoint)'}</p>
               {t && (
@@ -867,7 +867,7 @@ function ComponentLibraryPanel({ project, run, reload }: SubProps) {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-gray-400">{c.baseType}</span>
-              <button onClick={() => deleteComponent(c.id)} className="text-gray-600 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={() => deleteComponent(c.id)} className="text-gray-600 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
             </div>
           </div>
         ))}

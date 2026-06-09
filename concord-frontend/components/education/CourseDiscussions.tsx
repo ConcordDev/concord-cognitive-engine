@@ -57,7 +57,7 @@ export function CourseDiscussions({ courseId }: { courseId?: string }) {
           {replyTo && <div className="text-[10px] text-cyan-300 flex items-center gap-1"><Reply className="w-3 h-3" />Replying to {replyTo.slice(0, 12)}… <button onClick={() => setReplyTo(null)} className="ml-1 text-gray-400 hover:text-rose-400">×</button></div>}
           <div className="flex items-center gap-2">
             <textarea value={draft} onChange={e => setDraft(e.target.value)} placeholder={replyTo ? 'Your reply…' : 'Ask the class a question…'} rows={2} className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white resize-none" />
-            <button onClick={post} disabled={!draft.trim()} className="p-2 rounded bg-violet-500 text-white hover:bg-violet-400 disabled:opacity-40"><Send className="w-3.5 h-3.5" /></button>
+            <button aria-label="Send" onClick={post} disabled={!draft.trim()} className="p-2 rounded bg-violet-500 text-white hover:bg-violet-400 disabled:opacity-40"><Send className="w-3.5 h-3.5" /></button>
           </div>
         </div>
       )}

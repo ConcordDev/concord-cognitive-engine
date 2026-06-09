@@ -255,7 +255,7 @@ function FieldsTab({
                   {f.lat.toFixed(4)}, {f.lng.toFixed(4)}
                 </p>
               </div>
-              <button type="button"
+              <button aria-label="Delete" type="button"
                 onClick={(e) => { e.stopPropagation(); remove(f.id); }}
                 className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"
               >
@@ -508,7 +508,7 @@ function ScoutTab({ field, fields, onSelect }: { field: Field | null; fields: Fi
                 </div>
                 <p className="text-xs text-gray-200">{p.note}</p>
               </div>
-              <button type="button" onClick={() => remove(p.id)}
+              <button aria-label="Delete" type="button" onClick={() => remove(p.id)}
                 className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100">
                 <Trash2 className="w-3 h-3" />
               </button>

@@ -70,7 +70,7 @@ export function QuotesPanel() {
         <FileText className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Quotes & estimates</span>
         <span className="ml-auto text-[10px] text-gray-400">{quotes.length}</span>
-        <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
+        <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       {creating && (

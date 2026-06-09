@@ -73,7 +73,7 @@ export function RecurringInvestments() {
         <Repeat className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Recurring investments</span>
         <span className="ml-auto text-[10px] text-gray-400 font-mono">${monthlyTotal.toFixed(0)}/mo deployed</span>
-        <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
+        <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       {creating && (
@@ -113,7 +113,7 @@ export function RecurringInvestments() {
                 <button onClick={() => togglePause(p.id)} className="p-1.5 rounded hover:bg-white/10 text-gray-400" title={p.status === 'active' ? 'Pause' : 'Resume'}>
                   {p.status === 'active' ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                 </button>
-                <button onClick={() => remove(p.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button aria-label="Delete" onClick={() => remove(p.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
           </ul>

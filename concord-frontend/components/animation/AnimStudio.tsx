@@ -465,7 +465,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
             className="flex items-center gap-1 px-2 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
             <Copy className="w-3 h-3" /> Duplicate
           </button>
-          <button type="button" onClick={deleteFrame}
+          <button aria-label="Delete" type="button" onClick={deleteFrame}
             className="flex items-center gap-1 px-2 py-1 text-[11px] bg-zinc-800 hover:bg-rose-900 text-zinc-200 rounded">
             <Trash2 className="w-3 h-3" />
           </button>
@@ -543,7 +543,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
           <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
             <Layers className="w-3.5 h-3.5 text-cyan-400" /> Frame {frameIdx + 1} layers
           </h3>
-          <button type="button" onClick={addLayer} className="text-zinc-400 hover:text-cyan-300"><Plus className="w-4 h-4" /></button>
+          <button aria-label="Add" type="button" onClick={addLayer} className="text-zinc-400 hover:text-cyan-300"><Plus className="w-4 h-4" /></button>
         </div>
         <ul className="space-y-1">
           {[...(frame.layers || [])].reverse().map((l) => (
@@ -559,7 +559,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
               <input type="range" min={0} max={1} step={0.1} value={l.opacity}
                 onChange={(e) => updateLayer(l.id, { opacity: Number(e.target.value) })}
                 className="w-14 accent-cyan-500" />
-              <button type="button" onClick={() => deleteLayer(l.id)} className="text-zinc-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => deleteLayer(l.id)} className="text-zinc-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>
@@ -594,7 +594,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
                 <span className="flex-1">{t.name}</span>
                 <span className="text-zinc-400">@ {t.startSec}s</span>
                 {t.url && <a href={t.url} target="_blank" rel="noopener noreferrer" className="text-cyan-400">open</a>}
-                <button type="button"
+                <button aria-label="Delete" type="button"
                   onClick={() => lensRun('animation', 'audio-track-remove', { animId: anim.id, id: t.id }).then(reloadAnim)}
                   className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>

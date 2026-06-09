@@ -123,7 +123,7 @@ export function TravelWatchesPanel({ onChange }: { onChange: () => void }) {
                     className="flex items-center gap-1 px-2 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
                     <RefreshCw className="w-3 h-3" /> Update
                   </button>
-                  <button type="button" onClick={() => del(w.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => del(w.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

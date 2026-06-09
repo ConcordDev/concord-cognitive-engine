@@ -89,7 +89,7 @@ export function AstroGearPanel() {
                   </p>
                 </div>
               </div>
-              <button type="button" onClick={() => del(e.id)} className="text-zinc-600 hover:text-rose-400">
+              <button aria-label="Delete" type="button" onClick={() => del(e.id)} className="text-zinc-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>

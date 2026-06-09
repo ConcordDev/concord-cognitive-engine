@@ -93,7 +93,7 @@ export function WorkflowBuilder({
                 <button onClick={() => setEditing(w)} className="font-medium text-pink-100 hover:underline">{w.name}</button>
                 <span className="rounded bg-pink-900/40 px-1.5 py-0.5 text-[9px] text-pink-300">{w.trigger}</span>
                 <span className="text-pink-700">{w.steps.length} step{w.steps.length === 1 ? '' : 's'}</span>
-                <button onClick={() => remove(w.id)} className="ml-auto text-rose-400 hover:text-rose-300">
+                <button aria-label="Delete" onClick={() => remove(w.id)} className="ml-auto text-rose-400 hover:text-rose-300">
                   <Trash2 className="h-3 w-3" />
                 </button>
               </div>

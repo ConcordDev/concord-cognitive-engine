@@ -303,7 +303,7 @@ function JobCosting() {
             <input type="number" step="0.5" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={it.hours} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, hours: e.target.value } : x))} />
             <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={it.rate} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, rate: e.target.value } : x))} />
             <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={it.materialCost} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, materialCost: e.target.value } : x))} />
-            <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button aria-label="Delete" type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <div className="flex items-center justify-between">

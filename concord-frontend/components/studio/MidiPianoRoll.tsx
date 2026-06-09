@@ -95,7 +95,7 @@ export function MidiPianoRoll({ clipId }: { clipId?: string }) {
                 <span className="font-mono text-violet-300 w-12">{noteName(n.pitch)}</span>
                 <span className="text-gray-400">vel {n.velocity}</span>
                 <span className="text-gray-400">@{n.startBeats}b · {n.lengthBeats}b</span>
-                <button onClick={() => remove(n.id)} className="ml-auto opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(n.id)} className="ml-auto opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

@@ -176,7 +176,7 @@ function PlacesPanel({ places, onChanged, onShowOnMap }: { places: Place[]; onCh
         <span className="text-xs font-semibold text-gray-200">Saved places</span>
         <span className="text-[10px] text-gray-400">{places.length}</span>
         <button onClick={() => onShowOnMap(places.map(p => ({ lat: p.lat, lng: p.lng, label: `${CAT_EMOJI[p.category]} ${p.name}` })))} className="ml-auto text-[10px] text-teal-300 hover:text-teal-200">Show all</button>
-        <button onClick={() => setCreating(v => !v)} className="p-0.5 text-teal-300 hover:text-teal-200"><Plus className="w-3.5 h-3.5" /></button>
+        <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-0.5 text-teal-300 hover:text-teal-200"><Plus className="w-3.5 h-3.5" /></button>
       </header>
       {creating && (
         <div className="p-2 border-b border-white/10 space-y-1.5 bg-black/30">
@@ -204,7 +204,7 @@ function PlacesPanel({ places, onChanged, onShowOnMap }: { places: Place[]; onCh
               {p.notes && <div className="text-[10px] text-gray-400 truncate">{p.notes}</div>}
             </div>
             {p.rating !== null && <span className="text-[10px] text-amber-300 inline-flex items-center gap-0.5"><Star className="w-2.5 h-2.5 fill-current" />{p.rating}</span>}
-            <button onClick={(e) => { e.stopPropagation(); remove(p.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+            <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); remove(p.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
           </li>
         ))}
       </ul>
@@ -245,7 +245,7 @@ function ListsPanel({ lists, places, onChanged, onShowOnMap }: { lists: MapList[
       <header className="px-3 py-2.5 border-b border-white/10 flex items-center gap-2">
         <span className="text-xs font-semibold text-gray-200">Lists</span>
         <span className="text-[10px] text-gray-400">{lists.length}</span>
-        <button onClick={() => setCreating(v => !v)} className="ml-auto p-0.5 text-teal-300 hover:text-teal-200"><Plus className="w-3.5 h-3.5" /></button>
+        <button aria-label="Add" onClick={() => setCreating(v => !v)} className="ml-auto p-0.5 text-teal-300 hover:text-teal-200"><Plus className="w-3.5 h-3.5" /></button>
       </header>
       {creating && (
         <div className="p-2 border-b border-white/10 flex gap-1">
@@ -261,12 +261,12 @@ function ListsPanel({ lists, places, onChanged, onShowOnMap }: { lists: MapList[
           return (
             <li key={l.id}>
               <div className="px-3 py-2 hover:bg-white/[0.03] flex items-center gap-2 group">
-                <button onClick={() => setExpand(isOpen ? null : l.id)}><ChevronRight className={cn('w-3 h-3 text-gray-400 transition', isOpen && 'rotate-90')} /></button>
+                <button aria-label="Next" onClick={() => setExpand(isOpen ? null : l.id)}><ChevronRight className={cn('w-3 h-3 text-gray-400 transition', isOpen && 'rotate-90')} /></button>
                 <ListChecks className="w-3.5 h-3.5" style={{ color: l.color }} />
                 <span className="flex-1 text-xs text-white truncate">{l.name}</span>
                 <span className="text-[10px] text-gray-400">{l.placeCount}</span>
                 <button onClick={() => onShowOnMap(l.places.map(p => ({ lat: p.lat, lng: p.lng, label: `${CAT_EMOJI[p.category]} ${p.name}` })))} className="opacity-0 group-hover:opacity-100 text-[10px] text-teal-300">map</button>
-                <button onClick={() => del(l.id)} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => del(l.id)} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
               </div>
               {isOpen && (
                 <div className="px-3 pb-2 space-y-1">
@@ -339,12 +339,12 @@ function TripsPanel({ trips, places, onChanged, onShowOnMap }: { trips: Trip[]; 
           return (
             <li key={t.id}>
               <div className="px-3 py-2 hover:bg-white/[0.03] flex items-center gap-2 group">
-                <button onClick={() => setExpand(isOpen ? null : t.id)}><ChevronRight className={cn('w-3 h-3 text-gray-400 transition', isOpen && 'rotate-90')} /></button>
+                <button aria-label="Next" onClick={() => setExpand(isOpen ? null : t.id)}><ChevronRight className={cn('w-3 h-3 text-gray-400 transition', isOpen && 'rotate-90')} /></button>
                 <Route className="w-3.5 h-3.5 text-teal-400" />
                 <span className="flex-1 text-xs text-white truncate">{t.name}</span>
                 <span className="text-[10px] text-gray-400">{t.stops.length} stop(s)</span>
                 <button onClick={() => onShowOnMap(t.stops.map(st => ({ lat: st.lat, lng: st.lng, label: st.name })))} className="opacity-0 group-hover:opacity-100 text-[10px] text-teal-300">map</button>
-                <button onClick={() => del(t.id)} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => del(t.id)} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
               </div>
               {isOpen && (
                 <div className="px-3 pb-2 space-y-1">

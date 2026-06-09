@@ -87,7 +87,7 @@ export function MindMapBuilder() {
           <span className={cn('w-1.5 h-1.5 rounded-full', node.central ? 'bg-violet-400' : 'bg-zinc-500')} />
           <span className={cn('text-xs', node.central ? 'font-bold text-violet-200' : 'text-zinc-200')}>{node.label}</span>
           {!node.central && (
-            <button onClick={() => delNode(node.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+            <button aria-label="Delete" onClick={() => delNode(node.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
           )}
         </div>
         {kids.map(k => <NodeBranch key={k.id} node={k} depth={depth + 1} />)}
@@ -95,7 +95,7 @@ export function MindMapBuilder() {
           <input value={addParent[node.id] || ''} onChange={e => setAddParent({ ...addParent, [node.id]: e.target.value })}
             onKeyDown={e => { if (e.key === 'Enter') void addNode(node.id); }}
             placeholder="+ branch" className="w-32 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-300" />
-          <button onClick={() => addNode(node.id)} className="text-zinc-600 hover:text-violet-300"><GitBranch className="w-3 h-3" /></button>
+          <button aria-label="Branch" onClick={() => addNode(node.id)} className="text-zinc-600 hover:text-violet-300"><GitBranch className="w-3 h-3" /></button>
         </div>
       </div>
     );
@@ -116,12 +116,12 @@ export function MindMapBuilder() {
               className={cn('px-2.5 py-1 text-xs rounded-lg border', active?.id === m.id ? 'bg-violet-600/15 border-violet-700/50 text-violet-200' : 'bg-zinc-900/60 border-zinc-800 text-zinc-300 hover:border-zinc-700')}>
               {m.title} <span className="text-zinc-600">{m.nodeCount}</span>
             </button>
-            <button onClick={() => deleteMap(m.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+            <button aria-label="Delete" onClick={() => deleteMap(m.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
           </span>
         ))}
         <input value={newMap} onChange={e => setNewMap(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void createMap(); }}
           placeholder="New map" className="w-28 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-200" />
-        <button onClick={createMap} className="px-2 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white"><Plus className="w-3.5 h-3.5" /></button>
+        <button aria-label="Add" onClick={createMap} className="px-2 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white"><Plus className="w-3.5 h-3.5" /></button>
       </div>
 
       {active ? (

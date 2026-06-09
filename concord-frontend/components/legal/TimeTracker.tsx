@@ -186,7 +186,7 @@ export function TimeTracker() {
                   <span className="text-xs font-mono text-gray-400">{e.hours.toFixed(2)}h × ${e.rate}</span>
                   <span className="text-sm font-mono tabular-nums text-white w-20 text-right">${e.amount.toFixed(2)}</span>
                   {e.status !== 'billed' && (
-                    <button onClick={() => deleteEntry(e.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-rose-500/20 text-rose-300">
+                    <button aria-label="Delete" onClick={() => deleteEntry(e.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-rose-500/20 text-rose-300">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   )}

@@ -44,7 +44,7 @@ export function NewsArticleCard({ article, onChange }: { article: NewsArticle; o
             {article.source} · <span className="capitalize">{article.topic}</span> · {String(article.publishedAt).slice(0, 10)}
           </p>
         </div>
-        <button type="button" onClick={save}
+        <button aria-label="Save" type="button" onClick={save}
           className={cn('p-1 rounded shrink-0', article.saved ? 'text-rose-400' : 'text-zinc-600 hover:text-zinc-300')}>
           <Bookmark className={cn('w-3.5 h-3.5', article.saved && 'fill-current')} />
         </button>

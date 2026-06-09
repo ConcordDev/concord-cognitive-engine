@@ -1212,7 +1212,7 @@ function AgreementsPanel() {
                     {v.completedDate ? ` · done ${v.completedDate}` : ''}
                   </span>
                   {v.status === 'scheduled' && a.status === 'active' && (
-                    <button onClick={() => completeVisit(a.id, v.seq)} className={ds.btnGhost}>
+                    <button aria-label="Confirm" onClick={() => completeVisit(a.id, v.seq)} className={ds.btnGhost}>
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     </button>
                   )}

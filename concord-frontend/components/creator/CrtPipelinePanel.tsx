@@ -102,7 +102,7 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
                         </button>
                       )}
                       <div className="flex-1" />
-                      <button type="button" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400">
+                      <button aria-label="Delete" type="button" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>

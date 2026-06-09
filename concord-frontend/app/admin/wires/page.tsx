@@ -231,7 +231,7 @@ export default function WiresDashboard() {
           </div>
           <p className="text-sm text-zinc-400">
             Every <code className="text-xs font-mono text-emerald-300">live_*</code> macro registered across the lens fleet,
-            auto-discovered from <Link href="/api/lens-actions/aviation" className="underline text-zinc-300">/api/lens-actions/&lt;domain&gt;</Link>.
+            auto-discovered from <code className="text-xs font-mono text-zinc-300">/api/lens-actions/&lt;domain&gt;</code>.
             Click any row to test live; the substrate fires the macro with sensible defaults and reports the result.
           </p>
         </header>

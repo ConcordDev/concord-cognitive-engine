@@ -70,7 +70,7 @@ export function ZonesPanel() {
                   <div className="text-[10px] text-gray-400">Field {z.fieldId.slice(0, 10)} · {z.soilType} · {z.areaAcres}ac</div>
                 </div>
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', z.productivityClass === 'high' ? 'bg-emerald-500/15 text-emerald-300' : z.productivityClass === 'medium' ? 'bg-amber-500/15 text-amber-300' : 'bg-rose-500/15 text-rose-300')}>{z.productivityClass}</span>
-                <button onClick={() => remove(z.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(z.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

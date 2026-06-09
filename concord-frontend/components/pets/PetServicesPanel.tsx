@@ -192,7 +192,7 @@ export function PetServicesPanel({ petId, onChange }: { petId: string; onChange:
                   <div className="flex items-center gap-1 mt-1.5">
                     <span className="text-[10px] text-zinc-400">Rate:</span>
                     {[1, 2, 3, 4, 5].map((n) => (
-                      <button key={n} type="button" onClick={() => rate(b, n)}>
+                      <button aria-label="Favorite" key={n} type="button" onClick={() => rate(b, n)}>
                         <Star className="w-3.5 h-3.5 text-zinc-600 hover:text-amber-400" />
                       </button>
                     ))}

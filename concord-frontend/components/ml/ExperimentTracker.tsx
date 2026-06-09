@@ -148,7 +148,7 @@ export function ExperimentTracker() {
                       </button>
                     </>
                   )}
-                  <button className="btn-neon small pink" disabled={busy === selected.id}
+                  <button aria-label="Delete" className="btn-neon small pink" disabled={busy === selected.id}
                     onClick={() => remove(selected.id)}>
                     <Trash2 className="w-3 h-3" />
                   </button>

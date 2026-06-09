@@ -127,7 +127,7 @@ export function InsuranceClaimsPanel({ onChange }: { onChange: () => void }) {
                   <button type="button" onClick={() => deny(c)}
                     className="text-[11px] px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded-lg">Deny</button>
                 )}
-                <button type="button" onClick={() => del(c.id)} className="ml-auto text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => del(c.id)} className="ml-auto text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

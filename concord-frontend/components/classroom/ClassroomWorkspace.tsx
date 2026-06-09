@@ -333,7 +333,7 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
                 className="text-[10px] px-2 py-1 rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700">
                 {openId === a.id ? 'Hide' : 'Open'}
               </button>
-              <button onClick={() => remove(a.id)}
+              <button aria-label="Delete" onClick={() => remove(a.id)}
                 className="text-[10px] px-1.5 py-1 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60">
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -556,7 +556,7 @@ function MaterialsTab({ cohortId, flash }: TabProps) {
                   ) : <span className="text-zinc-200">{m.title}</span>}
                   {m.notes && <div className="text-[10px] text-zinc-400 mt-0.5">{m.notes}</div>}
                 </div>
-                <button onClick={() => remove(m.id)}
+                <button aria-label="Delete" onClick={() => remove(m.id)}
                   className="text-[10px] px-1.5 py-0.5 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60">
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -708,7 +708,7 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
                 <input className={`${inputCls} w-20`} type="number" min={1} placeholder="Points"
                   value={q.points} onChange={(e) => setQ(i, { points: e.target.value })} />
                 {questions.length > 1 && (
-                  <button onClick={() => setQuestions((qs) => qs.filter((_, idx) => idx !== i))}
+                  <button aria-label="Delete" onClick={() => setQuestions((qs) => qs.filter((_, idx) => idx !== i))}
                     className="text-[10px] px-1.5 rounded bg-rose-900/40 text-rose-300">
                     <Trash2 className="w-3 h-3" />
                   </button>

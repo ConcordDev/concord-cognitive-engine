@@ -151,7 +151,7 @@ export function SystemDynamicsBuilder() {
           <button onClick={save} className={cn(ds.btnSecondary, ds.btnSmall)}>
             <Save className="w-3.5 h-3.5" /> Save Model
           </button>
-          <button onClick={refreshSaved} className={cn(ds.btnGhost, ds.btnSmall)}>
+          <button aria-label="Refresh" onClick={refreshSaved} className={cn(ds.btnGhost, ds.btnSmall)}>
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -163,7 +163,7 @@ export function SystemDynamicsBuilder() {
                   <FolderOpen className="w-3 h-3" /> {m.name}
                   <span className="text-gray-600">({m.stockCount}S/{m.flowCount}F)</span>
                 </button>
-                <button onClick={() => remove(m.id)} className="text-gray-600 hover:text-red-400">
+                <button aria-label="Delete" onClick={() => remove(m.id)} className="text-gray-600 hover:text-red-400">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
@@ -328,7 +328,7 @@ export function SystemDynamicsBuilder() {
                   setParamRows(rows); syncParams(rows);
                 }}
               />
-              <button
+              <button aria-label="Delete"
                 onClick={() => { const rows = paramRows.filter((_, x) => x !== i); setParamRows(rows); syncParams(rows); }}
                 className={cn(ds.btnGhost, 'p-1.5 text-red-400')}
               >

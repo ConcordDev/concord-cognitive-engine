@@ -94,7 +94,7 @@ export function AcInventoryPanel() {
                     <button type="button" onClick={() => adjust(it.id)} className="text-[10px] px-1.5 py-0.5 bg-white/10 rounded">adjust</button>
                   </>
                 )}
-                <button type="button" onClick={() => lensRun({ domain: 'accounting', action: 'item-delete', input: { id: it.id } }).then(refresh)}
+                <button aria-label="Delete" type="button" onClick={() => lensRun({ domain: 'accounting', action: 'item-delete', input: { id: it.id } }).then(refresh)}
                   className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             );

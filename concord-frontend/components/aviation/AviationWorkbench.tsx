@@ -484,7 +484,7 @@ function PlansTab() {
                   </p>
                 )}
               </div>
-              <button type="button" onClick={() => remove(p.id)}
+              <button aria-label="Delete" type="button" onClick={() => remove(p.id)}
                 className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100">
                 <Trash2 className="w-3 h-3" />
               </button>

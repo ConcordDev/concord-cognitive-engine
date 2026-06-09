@@ -113,7 +113,7 @@ export function FsScreenplayPanel({ projectId }: { projectId: string }) {
                 </select>
                 <textarea value={el.text} onChange={(e) => setLine(i, e.target.value)} rows={1}
                   className={cn('flex-1 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs resize-y', EL_STYLE[el.type] || 'text-zinc-200')} />
-                <button type="button" onClick={() => delLine(i)} className="text-zinc-600 hover:text-rose-400 mt-1">
+                <button aria-label="Delete" type="button" onClick={() => delLine(i)} className="text-zinc-600 hover:text-rose-400 mt-1">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

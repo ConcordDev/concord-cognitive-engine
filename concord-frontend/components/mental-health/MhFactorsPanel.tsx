@@ -83,7 +83,7 @@ export function MhFactorsPanel({ onChange }: { onChange: () => void }) {
               className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="Group"
               className="w-24 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-            <button type="button" onClick={addFactor}
+            <button aria-label="Add" type="button" onClick={addFactor}
               className="px-3 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 text-white rounded-lg"><Plus className="w-3.5 h-3.5" /></button>
           </div>
           {factors.length === 0 ? (

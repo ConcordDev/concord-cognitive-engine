@@ -105,7 +105,7 @@ export function SharePanel({ pageId }: { pageId: string }) {
           {shareUrl && (
             <div className="flex items-center gap-1 rounded border border-zinc-800 bg-zinc-900/40 px-1.5 py-1">
               <code className="flex-1 text-[10px] text-sky-300 truncate">{shareUrl}</code>
-              <button onClick={copyLink} className="text-zinc-400 hover:text-zinc-100">
+              <button aria-label="Copy" onClick={copyLink} className="text-zinc-400 hover:text-zinc-100">
                 <Copy className="w-3 h-3" />
               </button>
               {copied && <span className="text-[9px] text-emerald-400">copied</span>}

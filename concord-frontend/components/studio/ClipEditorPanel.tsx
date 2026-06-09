@@ -157,7 +157,7 @@ export function ClipEditorPanel({ projectId, trackId }: { projectId?: string; tr
                     {selected.warpMarkers.map((m, i) => (
                       <li key={i} className="flex items-center gap-2 text-[11px] text-gray-300">
                         <span className="font-mono">beat {m.beat} → {m.sampleSec}s</span>
-                        <button onClick={() => removeWarpMarker(i)} className="ml-auto text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                        <button aria-label="Delete" onClick={() => removeWarpMarker(i)} className="ml-auto text-rose-400"><Trash2 className="w-3 h-3" /></button>
                       </li>
                     ))}
                   </ul>

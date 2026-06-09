@@ -74,7 +74,7 @@ export function RunPanel({
                 <input value={form.command} onChange={(e) => setForm({ ...form, command: e.target.value })}
                   placeholder="command — e.g. npm test"
                   className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-                <button type="button" onClick={addConfig} className="p-1 text-blue-300 hover:text-blue-200"><Plus className="w-3.5 h-3.5" /></button>
+                <button aria-label="Add" type="button" onClick={addConfig} className="p-1 text-blue-300 hover:text-blue-200"><Plus className="w-3.5 h-3.5" /></button>
               </div>
             </div>
 
@@ -90,7 +90,7 @@ export function RunPanel({
                   <div className="text-[11px] text-white truncate">{c.name}</div>
                   <div className="text-[10px] text-gray-400 font-mono truncate">{c.command}</div>
                 </div>
-                <button type="button" onClick={() => delConfig(c.id)}
+                <button aria-label="Delete" type="button" onClick={() => delConfig(c.id)}
                   className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-300">
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -109,7 +109,7 @@ export function RunPanel({
                   <div className="text-[11px] text-white truncate">{b.label || b.path.split('/').pop()}</div>
                   <div className="text-[10px] text-blue-300 font-mono truncate">{b.path}:{b.line}</div>
                 </button>
-                <button type="button" onClick={() => delBookmark(b.id)}
+                <button aria-label="Delete" type="button" onClick={() => delBookmark(b.id)}
                   className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-300">
                   <Trash2 className="w-3 h-3" />
                 </button>

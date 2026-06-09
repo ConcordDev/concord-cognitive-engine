@@ -166,7 +166,7 @@ export function MarketPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Globe className="w-4 h-4 text-blue-400" />
         <span className="text-sm font-semibold text-gray-200">Market overview</span>
-        <button type="button" onClick={refresh} className="ml-auto text-gray-400 hover:text-white"><RefreshCw className="w-3.5 h-3.5" /></button>
+        <button aria-label="Refresh" type="button" onClick={refresh} className="ml-auto text-gray-400 hover:text-white"><RefreshCw className="w-3.5 h-3.5" /></button>
       </header>
 
       {loading ? (
@@ -391,7 +391,7 @@ export function WalletsPanel() {
                 <span className="text-xs text-white font-medium">{w.name}</span>
                 <span className="text-[9px] uppercase px-1 rounded bg-white/10 text-gray-400">{w.kind}</span>
                 <div className="flex-1" />
-                <button type="button" onClick={() => delWallet(w.id)} className="text-gray-400 hover:text-rose-300">
+                <button aria-label="Delete" type="button" onClick={() => delWallet(w.id)} className="text-gray-400 hover:text-rose-300">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

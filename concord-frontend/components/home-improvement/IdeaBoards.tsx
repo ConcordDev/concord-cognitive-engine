@@ -124,7 +124,7 @@ export function IdeaBoards() {
                   <p className="text-sm font-medium text-white truncate">{b.name}</p>
                   <p className="text-xs text-gray-400">{b.room.replace(/_/g, ' ')} · {b.ideaCount} idea{b.ideaCount !== 1 ? 's' : ''}{b.description ? ` · ${b.description}` : ''}</p>
                 </button>
-                <button onClick={() => removeBoard(b.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button aria-label="Delete" onClick={() => removeBoard(b.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
 
               {openBoard === b.id && (
@@ -148,7 +148,7 @@ export function IdeaBoards() {
                           {idea.sourceUrl ? (
                             <a href={idea.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-neon-cyan flex items-center gap-0.5"><Link2 className="w-3 h-3" /> source</a>
                           ) : <span />}
-                          <button onClick={() => removeIdea(b.id, idea.id)} disabled={busy} className="text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                          <button aria-label="Delete" onClick={() => removeIdea(b.id, idea.id)} disabled={busy} className="text-gray-400 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                         </div>
                       </div>
                     ))}

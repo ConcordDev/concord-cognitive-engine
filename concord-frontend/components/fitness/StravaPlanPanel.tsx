@@ -166,7 +166,7 @@ export function StravaPlanPanel() {
               <input placeholder="km" inputMode="decimal" value={d.targetDistanceKm}
                 onChange={(e) => setDrafts(drafts.map((x, j) => j === i ? { ...x, targetDistanceKm: e.target.value } : x))}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <button type="button"
+              <button aria-label="Delete" type="button"
                 onClick={() => setDrafts(drafts.length > 1 ? drafts.filter((_, j) => j !== i) : drafts)}
                 className="text-zinc-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />
@@ -210,7 +210,7 @@ export function StravaPlanPanel() {
                       <RefreshCw className="w-3 h-3" /> Reschedule {p.adherence.missed} missed
                     </button>
                   )}
-                  <button type="button" onClick={() => remove(p.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => remove(p.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

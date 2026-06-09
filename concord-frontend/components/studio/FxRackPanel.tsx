@@ -124,7 +124,7 @@ export function FxRackPanel() {
                   <div className="text-sm text-white">{r.name}</div>
                   <div className="text-[10px] text-gray-400">{r.units.map((u) => u.type).join(' → ')}</div>
                 </div>
-                <button onClick={() => deleteRack(r.id)} className="p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => deleteRack(r.id)} className="p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

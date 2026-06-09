@@ -432,7 +432,7 @@ export function GraphParityPanel() {
                   </span>
                   <button onClick={() => applyFilter(f.id)} disabled={!mapId}
                     className="ml-auto text-cyan-400 hover:text-cyan-200 disabled:opacity-40">Apply</button>
-                  <button onClick={() => deleteFilter(f.id)} className="text-rose-400 hover:text-rose-300">
+                  <button aria-label="Delete" onClick={() => deleteFilter(f.id)} className="text-rose-400 hover:text-rose-300">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
@@ -475,7 +475,7 @@ export function GraphParityPanel() {
                   <span className="text-zinc-400 text-[10px]">
                     {[r.labelContains && `label~"${r.labelContains}"`, r.tag && `tag~"${r.tag}"`].filter(Boolean).join(' · ')}
                   </span>
-                  <button onClick={() => removeRule(r.id)} className="ml-auto text-rose-400 hover:text-rose-300">
+                  <button aria-label="Delete" onClick={() => removeRule(r.id)} className="ml-auto text-rose-400 hover:text-rose-300">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>

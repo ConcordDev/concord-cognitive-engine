@@ -275,7 +275,7 @@ export function MiroSection() {
                 <div className="truncate text-white">{b.title}</div>
                 <div className="text-[10px] text-gray-400">{b.elementCount} elements · {b.updatedAt.slice(0, 10)}</div>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); deleteBoard(b.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); deleteBoard(b.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}
         </ul>

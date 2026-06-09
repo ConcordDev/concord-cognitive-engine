@@ -141,7 +141,7 @@ export function MidiMapPanel({ projectId }: { projectId?: string }) {
                   <div className="text-sm text-white truncate">{m.target}</div>
                   <div className="text-[10px] text-gray-400 font-mono">{m.msgType} {m.controller} · ch {m.channel} · {m.rangeMin}–{m.rangeMax} · {m.deviceName}</div>
                 </div>
-                <button onClick={() => remove(m.id)} className="p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => remove(m.id)} className="p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>

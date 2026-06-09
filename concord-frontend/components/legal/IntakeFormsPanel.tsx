@@ -300,7 +300,7 @@ export function IntakeFormsPanel() {
                     </div>
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
-                  <button
+                  <button aria-label="Delete"
                     onClick={(e) => { e.stopPropagation(); deleteForm(f.id); }}
                     className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300"
                   >

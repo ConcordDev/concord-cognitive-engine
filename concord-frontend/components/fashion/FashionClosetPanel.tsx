@@ -135,7 +135,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
                     {i.category}{i.brand ? ` · ${i.brand}` : ''}{i.color ? ` · ${i.color}` : ''}
                   </p>
                 </div>
-                <button type="button" onClick={() => del(i.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                <button aria-label="Delete" type="button" onClick={() => del(i.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

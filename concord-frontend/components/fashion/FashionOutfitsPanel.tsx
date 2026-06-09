@@ -116,7 +116,7 @@ export function FashionOutfitsPanel({ onChange }: { onChange: () => void }) {
                   className="ml-2 flex items-center gap-1 px-2 py-1 text-[11px] bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg">
                   <Repeat className="w-3 h-3" /> Wear
                 </button>
-                <button type="button" onClick={() => del(o.id)} className="ml-1 text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => del(o.id)} className="ml-1 text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

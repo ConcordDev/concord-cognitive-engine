@@ -54,7 +54,7 @@ export function BookingsPanel() {
         <Inbox className="w-4 h-4 text-amber-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Online bookings</span>
         <span className="ml-auto text-[10px] text-gray-400">{pending} pending · {bookings.length} total</span>
-        <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
+        <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       {creating && (
