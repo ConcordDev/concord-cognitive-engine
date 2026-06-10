@@ -241,6 +241,7 @@ export function IntakeFormsPanel() {
                   Req
                 </label>
                 <button
+                  aria-label="Remove field"
                   onClick={() => setDraftFields((prev) => prev.filter((_, idx) => idx !== i))}
                   className="col-span-1 p-1 rounded hover:bg-rose-500/20 text-rose-300 justify-self-end"
                   disabled={draftFields.length === 1}

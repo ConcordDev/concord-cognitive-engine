@@ -274,7 +274,7 @@ function ListsPanel({ lists, places, onChanged, onShowOnMap }: { lists: MapList[
                     <div key={p.id} className="flex items-center gap-1.5 text-[11px] text-gray-300">
                       <span>{CAT_EMOJI[p.category]}</span>
                       <span className="flex-1 truncate">{p.name}</span>
-                      <button onClick={() => removePlace(l.id, p.id)} className="text-rose-300"><X className="w-3 h-3" /></button>
+                      <button aria-label="Remove place" onClick={() => removePlace(l.id, p.id)} className="text-rose-300"><X className="w-3 h-3" /></button>
                     </div>
                   ))}
                   <div className="flex gap-1">
@@ -353,7 +353,7 @@ function TripsPanel({ trips, places, onChanged, onShowOnMap }: { trips: Trip[]; 
                       <span className="text-teal-400 font-mono">{i + 1}.</span>
                       <span className="flex-1 truncate">{st.name}</span>
                       <span className="text-[9px] text-gray-400">day {st.day}</span>
-                      <button onClick={() => removeStop(t.id, st.id)} className="text-rose-300"><X className="w-3 h-3" /></button>
+                      <button aria-label="Remove stop" onClick={() => removeStop(t.id, st.id)} className="text-rose-300"><X className="w-3 h-3" /></button>
                     </div>
                   ))}
                   <div className="flex gap-1">

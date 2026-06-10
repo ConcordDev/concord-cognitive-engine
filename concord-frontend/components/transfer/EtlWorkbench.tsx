@@ -373,7 +373,7 @@ export function EtlWorkbench() {
             <h3 className="font-semibold flex items-center gap-2 text-sm">
               <FlaskConical className="w-4 h-4 text-neon-cyan" /> Dry-run preview
             </h3>
-            <button onClick={() => setDryRun(null)} className="p-1 rounded hover:bg-white/10 text-gray-400"><X className="w-4 h-4" /></button>
+            <button aria-label="Close" onClick={() => setDryRun(null)} className="p-1 rounded hover:bg-white/10 text-gray-400"><X className="w-4 h-4" /></button>
           </div>
           <p className="text-xs text-gray-400">
             {dryRun.sampled}/{dryRun.totalSourceRows} rows sampled —

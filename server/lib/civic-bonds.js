@@ -198,9 +198,10 @@ export function fundBond(db, id, actorId) {
   const tx = db.transaction(() => {
     // Funding order step 1 — escrow each pledge's capped return reserve.
     const pledges = db.prepare(`SELECT * FROM civic_bond_pledges WHERE bond_id=? AND status='escrowed'`).all(String(id));
+    const setReserve = db.prepare(`UPDATE civic_bond_pledges SET return_reserved=? WHERE id=?`);
     for (const p of pledges) {
       const reserve = Math.floor(p.amount * bond.return_rate);
-      db.prepare(`UPDATE civic_bond_pledges SET return_reserved=? WHERE id=?`).run(reserve, p.id);
+      setReserve.run(reserve, p.id);
     }
     db.prepare(`UPDATE civic_bonds SET status='active', voting_status='funded', funded_at=? WHERE id=?`).run(now(), String(id));
     return { ok: true };
@@ -241,6 +242,7 @@ export function completeBond(db, id) {
 
   const tx = db.transaction(() => {
     const pledges = db.prepare(`SELECT * FROM civic_bond_pledges WHERE bond_id=? AND status='escrowed'`).all(String(id));
+    const markDelivered = db.prepare(`UPDATE civic_bond_pledges SET status='delivered' WHERE id=?`);
     let returnsTotal = 0;
     for (const p of pledges) {
       if (p.return_reserved > 0) {
@@ -248,7 +250,7 @@ export function completeBond(db, id) {
           refId: `civic_return:${id}:${p.entity_kind}:${p.entity_id}`, reason: `civic_return:${id}` });
         returnsTotal += p.return_reserved;
       }
-      db.prepare(`UPDATE civic_bond_pledges SET status='delivered' WHERE id=?`).run(p.id);
+      markDelivered.run(p.id);
     }
     // DPW (item 8): in-house crews cost less than a contractor's marked-up bid,
     // so the build consumes less than target → more under-budget residue.
@@ -282,6 +284,7 @@ export function failBond(db, id, reason = "failed") {
 
   const tx = db.transaction(() => {
     const pledges = db.prepare(`SELECT * FROM civic_bond_pledges WHERE bond_id=? AND status='escrowed'`).all(String(id));
+    const markRefunded = db.prepare(`UPDATE civic_bond_pledges SET status='refunded' WHERE id=?`);
     let refunded = 0;
     for (const p of pledges) {
       if (p.amount > 0) {
@@ -289,7 +292,7 @@ export function failBond(db, id, reason = "failed") {
           refId: `civic_refund:${id}:${p.entity_kind}:${p.entity_id}`, reason: `civic_refund:${id}` });
         refunded += p.amount;
       }
-      db.prepare(`UPDATE civic_bond_pledges SET status='refunded' WHERE id=?`).run(p.id);
+      markRefunded.run(p.id);
     }
     db.prepare(`UPDATE civic_bonds SET status='failed' WHERE id=?`).run(String(id));
     return { ok: true, refunded };
@@ -358,8 +361,9 @@ export function sweepStalledBonds(db, { nowSec = Math.floor(Date.now() / 1000), 
         AND current_pledged < target_amount * funding_gate_pct
     `).all(nowSec - deadline).map((r) => r.id);
   } catch { return { ok: true, paused: 0, reason: "no_table" }; }
+  const pauseBond = db.prepare(`UPDATE civic_bonds SET status='paused' WHERE id=? AND status='funding'`);
   for (const id of stalled) {
-    db.prepare(`UPDATE civic_bonds SET status='paused' WHERE id=? AND status='funding'`).run(id);
+    pauseBond.run(id);
   }
   return { ok: true, paused: stalled.length, ids: stalled };
 }

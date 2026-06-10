@@ -71,33 +71,33 @@ const validParams = {
   moodTags: ["calm", "cozy"],
 };
 
-describe("studio.publish-as-adaptive-music", () => {
-  it("rejects anonymous publishers", () => {
-    const r = call("publish-as-adaptive-music", { db, actor: { userId: "anon" }, userId: "anon" }, validParams);
+describe("studio.publish-as-adaptive-music", async () => {
+  it("rejects anonymous publishers", async () => {
+    const r = await call("publish-as-adaptive-music", { db, actor: { userId: "anon" }, userId: "anon" }, validParams);
     assert.equal(r.ok, false);
     assert.match(r.error, /auth/i);
   });
 
-  it("rejects unknown region", () => {
-    const r = call("publish-as-adaptive-music", ctxAlice(), { ...validParams, soundscapeRegion: "moon" });
+  it("rejects unknown region", async () => {
+    const r = await call("publish-as-adaptive-music", ctxAlice(), { ...validParams, soundscapeRegion: "moon" });
     assert.equal(r.ok, false);
     assert.match(r.error, /region/i);
   });
 
-  it("rejects unknown intensity", () => {
-    const r = call("publish-as-adaptive-music", ctxAlice(), { ...validParams, intensity: "ferocious" });
+  it("rejects unknown intensity", async () => {
+    const r = await call("publish-as-adaptive-music", ctxAlice(), { ...validParams, intensity: "ferocious" });
     assert.equal(r.ok, false);
     assert.match(r.error, /intensity/i);
   });
 
-  it("rejects missing manifest", () => {
-    const r = call("publish-as-adaptive-music", ctxAlice(), { ...validParams, manifest: null });
+  it("rejects missing manifest", async () => {
+    const r = await call("publish-as-adaptive-music", ctxAlice(), { ...validParams, manifest: null });
     assert.equal(r.ok, false);
     assert.match(r.error, /manifest/i);
   });
 
-  it("rejects non-data-URL audio", () => {
-    const r = call("publish-as-adaptive-music", ctxAlice(), {
+  it("rejects non-data-URL audio", async () => {
+    const r = await call("publish-as-adaptive-music", ctxAlice(), {
       ...validParams,
       referenceStemDataUrl: "https://example/x.wav",
     });
@@ -105,8 +105,8 @@ describe("studio.publish-as-adaptive-music", () => {
     assert.match(r.error, /base64 data/i);
   });
 
-  it("writes route_artifacts row + dtu row + returns downloadUrl", () => {
-    const r = call("publish-as-adaptive-music", ctxAlice(), validParams);
+  it("writes route_artifacts row + dtu row + returns downloadUrl", async () => {
+    const r = await call("publish-as-adaptive-music", ctxAlice(), validParams);
     assert.equal(r.ok, true);
     assert.equal(r.result.region, "tavern");
     assert.equal(r.result.intensity, "ambient");
@@ -135,35 +135,35 @@ describe("studio.publish-as-adaptive-music", () => {
     assert.equal(body.manifest.trackCount, 2);
   });
 
-  it("accepts all 9 regions", () => {
+  it("accepts all 9 regions", async () => {
     const regions = ["tavern", "archive", "forge", "market", "tower", "plaza", "wilderness", "arena", "underground"];
     for (const r of regions) {
-      const res = call("publish-as-adaptive-music", ctxAlice(), { ...validParams, soundscapeRegion: r });
+      const res = await call("publish-as-adaptive-music", ctxAlice(), { ...validParams, soundscapeRegion: r });
       assert.equal(res.ok, true, `${r} should publish`);
     }
     const count = db.prepare("SELECT COUNT(*) AS n FROM dtus").get().n;
     assert.equal(count, regions.length);
   });
 
-  it("accepts all 3 intensities", () => {
+  it("accepts all 3 intensities", async () => {
     for (const i of ["ambient", "active", "battle"]) {
-      const res = call("publish-as-adaptive-music", ctxAlice(), { ...validParams, intensity: i });
+      const res = await call("publish-as-adaptive-music", ctxAlice(), { ...validParams, intensity: i });
       assert.equal(res.ok, true);
     }
   });
 });
 
-describe("studio.list-adaptive-music", () => {
-  it("returns empty when nothing published", () => {
-    const r = call("list-adaptive-music", ctxAlice(), {});
+describe("studio.list-adaptive-music", async () => {
+  it("returns empty when nothing published", async () => {
+    const r = await call("list-adaptive-music", ctxAlice(), {});
     assert.equal(r.ok, true);
     assert.equal(r.result.count, 0);
   });
 
-  it("lists every track with downloadUrl + manifestSummary", () => {
-    call("publish-as-adaptive-music", ctxAlice(), validParams);
-    call("publish-as-adaptive-music", ctxAlice(), { ...validParams, soundscapeRegion: "arena", intensity: "battle" });
-    const r = call("list-adaptive-music", ctxAlice(), {});
+  it("lists every track with downloadUrl + manifestSummary", async () => {
+    await call("publish-as-adaptive-music", ctxAlice(), validParams);
+    await call("publish-as-adaptive-music", ctxAlice(), { ...validParams, soundscapeRegion: "arena", intensity: "battle" });
+    const r = await call("list-adaptive-music", ctxAlice(), {});
     assert.equal(r.ok, true);
     assert.equal(r.result.count, 2);
     for (const t of r.result.tracks) {
@@ -173,28 +173,28 @@ describe("studio.list-adaptive-music", () => {
     }
   });
 
-  it("filters by region", () => {
-    call("publish-as-adaptive-music", ctxAlice(), validParams);
-    call("publish-as-adaptive-music", ctxAlice(), { ...validParams, soundscapeRegion: "arena" });
-    const r = call("list-adaptive-music", ctxAlice(), { region: "arena" });
+  it("filters by region", async () => {
+    await call("publish-as-adaptive-music", ctxAlice(), validParams);
+    await call("publish-as-adaptive-music", ctxAlice(), { ...validParams, soundscapeRegion: "arena" });
+    const r = await call("list-adaptive-music", ctxAlice(), { region: "arena" });
     assert.equal(r.ok, true);
     assert.equal(r.result.count, 1);
     assert.equal(r.result.tracks[0].region, "arena");
   });
 
-  it("filters by intensity", () => {
-    call("publish-as-adaptive-music", ctxAlice(), { ...validParams, intensity: "ambient" });
-    call("publish-as-adaptive-music", ctxAlice(), { ...validParams, intensity: "battle" });
-    const r = call("list-adaptive-music", ctxAlice(), { intensity: "battle" });
+  it("filters by intensity", async () => {
+    await call("publish-as-adaptive-music", ctxAlice(), { ...validParams, intensity: "ambient" });
+    await call("publish-as-adaptive-music", ctxAlice(), { ...validParams, intensity: "battle" });
+    const r = await call("list-adaptive-music", ctxAlice(), { intensity: "battle" });
     assert.equal(r.ok, true);
     assert.equal(r.result.count, 1);
     assert.equal(r.result.tracks[0].intensity, "battle");
   });
 
-  it("excludes private DTUs", () => {
-    const r = call("publish-as-adaptive-music", ctxAlice(), validParams);
+  it("excludes private DTUs", async () => {
+    const r = await call("publish-as-adaptive-music", ctxAlice(), validParams);
     db.prepare("UPDATE dtus SET visibility = 'private' WHERE id = ?").run(r.result.dtuId);
-    const listed = call("list-adaptive-music", ctxAlice(), {});
+    const listed = await call("list-adaptive-music", ctxAlice(), {});
     assert.equal(listed.result.count, 0);
   });
 });

@@ -205,25 +205,28 @@ export function tickDiseases(db, userId) {
     WHERE user_id = ? AND recovered_at IS NULL
   `).all(userId);
   const events = [];
+  const markRecovered = db.prepare("UPDATE player_diseases SET recovered_at = unixepoch() WHERE id = ?");
+  const setSeverity = db.prepare("UPDATE player_diseases SET severity = ? WHERE id = ?");
+  const insPain = db.prepare(`
+        INSERT INTO pain_signals (id, user_id, region, intensity, source, recorded_at)
+        VALUES (?, ?, 'systemic', ?, 'disease', unixepoch())
+      `);
   for (const d of active) {
     // Progress: small severity bump per tick, but also a chance of natural
     // recovery if currently low. (Stub recovery — real version would key
     // off rest/eat/meds within the tick window.)
     let next = d.severity + SURVIVAL_CONSTANTS.DISEASE_TICK_PROGRESS;
     if (next < SURVIVAL_CONSTANTS.DISEASE_RECOVERY_BELOW_SEVERITY) {
-      db.prepare("UPDATE player_diseases SET recovered_at = unixepoch() WHERE id = ?").run(d.id);
+      markRecovered.run(d.id);
       events.push({ kind: "recovered", id: d.id, diseaseId: d.disease_id });
       continue;
     }
     next = Math.min(1, next);
-    db.prepare("UPDATE player_diseases SET severity = ? WHERE id = ?").run(next, d.id);
+    setSeverity.run(next, d.id);
     // Pain signal at high severity
     if (next > 0.5) {
       const id = crypto.randomBytes(8).toString("hex");
-      db.prepare(`
-        INSERT INTO pain_signals (id, user_id, region, intensity, source, recorded_at)
-        VALUES (?, ?, 'systemic', ?, 'disease', unixepoch())
-      `).run(id, userId, Math.min(1, next));
+      insPain.run(id, userId, Math.min(1, next));
       events.push({ kind: "pain", id: d.id, intensity: next });
     }
   }

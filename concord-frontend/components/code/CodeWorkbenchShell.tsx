@@ -133,7 +133,7 @@ export function EditorTabs({ tabs, activePath, onSelect, onClose }: EditorTabsPr
             )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <span className="truncate">{t.path.split('/').pop()}</span>
             {t.modified && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
-            <button
+            <button aria-label="Close tab"
               type="button"
               onClick={(e) => { e.stopPropagation(); onClose(t.path); }}
               className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-300 ml-auto"

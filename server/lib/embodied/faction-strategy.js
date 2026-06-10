@@ -154,10 +154,11 @@ export function seedFactionStrategyState(db, factions) {
     return "consolidate";
   };
 
+  const selState = db.prepare(`SELECT faction_id FROM faction_strategy_state WHERE faction_id = ?`);
   for (const f of factions) {
     if (!f?.id) continue;
     try {
-      const before = db.prepare(`SELECT faction_id FROM faction_strategy_state WHERE faction_id = ?`).get(f.id);
+      const before = selState.get(f.id);
       ensureFactionState(db, f.id, { stance: stanceFor(f) });
       if (!before) seeded++;
     } catch { /* table optional */ }

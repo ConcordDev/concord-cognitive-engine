@@ -182,7 +182,7 @@ export function CircuitComposer({
         {pendingWires && (
           <span className="text-amber-400 flex items-center gap-1">
             wiring {armed?.id}: {pendingWires.wires.length}/{armed?.qubits} wires
-            <button onClick={cancelPending} className="text-zinc-400 hover:text-white"><X className="w-3 h-3" /></button>
+            <button aria-label="Close" onClick={cancelPending} className="text-zinc-400 hover:text-white"><X className="w-3 h-3" /></button>
           </span>
         )}
         {placed.length > 0 && !armed && !pendingWires && (

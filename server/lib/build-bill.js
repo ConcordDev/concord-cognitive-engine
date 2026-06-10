@@ -55,20 +55,23 @@ export function debitBuildBill(db, userId, worldId, bill) {
   const afford = canAfford(db, userId, worldId, bill);
   if (!afford.ok) return { ok: false, reason: "insufficient_materials", missing: afford.missing };
   const tx = db.transaction(() => {
-    for (const item of bill) {
-      let remaining = item.quantity;
-      const slots = db.prepare(`
+    const selSlots = db.prepare(`
         SELECT id, quantity FROM player_inventory
         WHERE user_id = ? AND world_id = ? AND item_id = ? AND quantity > 0
         ORDER BY acquired_at ASC
-      `).all(userId, worldId, item.id);
+      `);
+    const delSlot = db.prepare(`DELETE FROM player_inventory WHERE id = ?`);
+    const decSlot = db.prepare(`UPDATE player_inventory SET quantity = quantity - ? WHERE id = ?`);
+    for (const item of bill) {
+      let remaining = item.quantity;
+      const slots = selSlots.all(userId, worldId, item.id);
       for (const slot of slots) {
         if (remaining <= 0) break;
         if (slot.quantity <= remaining) {
-          db.prepare(`DELETE FROM player_inventory WHERE id = ?`).run(slot.id);
+          delSlot.run(slot.id);
           remaining -= slot.quantity;
         } else {
-          db.prepare(`UPDATE player_inventory SET quantity = quantity - ? WHERE id = ?`).run(remaining, slot.id);
+          decSlot.run(remaining, slot.id);
           remaining = 0;
         }
       }

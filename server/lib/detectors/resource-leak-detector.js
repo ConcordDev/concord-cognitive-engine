@@ -201,6 +201,43 @@ export async function runResourceLeakDetector({ root, opts = {} } = {}) {
         const isConcat = /^\s*\+\s*[^)\s]/.test(tail);
         const isDynamic = isTemplateInterpolated || isConcat;
         if (!isDynamic) continue;
+
+        // BOUNDED-CARDINALITY EXEMPTION. Template interpolation only leaks
+        // the statement cache when it can produce UNBOUNDED distinct SQL.
+        // When every `${…}` resolves to a SMALL, fixed set, the cache is
+        // bounded → not a leak. Two statically-detectable safe shapes:
+        //   (A) ternary with string-literal branches:
+        //         `... ${flag ? ", x = 1" : ""} ...`  → ≤2 distinct SQL.
+        //   (B) the interpolated identifier is the iterator of an
+        //       enclosing `for (const X of CONST)` where CONST is an
+        //       UPPER_SNAKE_CASE constant (e.g. PER_WORLD_WRITE_TABLES) —
+        //       the SQL varies only across a fixed table list.
+        // The `+ concat` form (no template) is left as-is — its
+        // boundedness can't be judged from the literal alone.
+        if (isTemplateInterpolated && !isConcat) {
+          const interps = [];
+          const ire = /\$\{([^}]*)\}/g;
+          let im;
+          while ((im = ire.exec(sqlString)) !== null) interps.push(im[1].trim());
+          // Loop header text (`for (const t of PER_WORLD_WRITE_TABLES) {`).
+          const loopHeader = m[0] || "";
+          // Iterators bound to an UPPER_SNAKE_CASE constant in this loop.
+          const boundedIterators = new Set();
+          const itm = loopHeader.match(/\bfor\s*\(\s*(?:const|let|var)\s+(?:\[\s*([\w,\s]+)\s*\]|(\w+))\s+of\s+([A-Z][A-Z0-9_]*)\b/);
+          if (itm) {
+            const names = (itm[1] || itm[2] || "").split(",").map(s => s.trim()).filter(Boolean);
+            for (const n of names) boundedIterators.add(n);
+          }
+          const isBoundedInterp = (expr) => {
+            // (A) ternary with both branches string literals.
+            const tern = expr.match(/^[^?]+\?\s*(['"`])(?:[^'"`]*)\1\s*:\s*(['"`])(?:[^'"`]*)\2$/);
+            if (tern) return true;
+            // (B) bare identifier that is a bounded loop iterator.
+            if (/^\w+$/.test(expr) && boundedIterators.has(expr)) return true;
+            return false;
+          };
+          if (interps.length > 0 && interps.every(isBoundedInterp)) continue;
+        }
         const lineNum = content.slice(0, prepareAbsIdx).split("\n").length;
         const lineText = content.split("\n")[lineNum - 1] || "";
         if (ANNOTATION_OK_RE.test(lineText)) continue;

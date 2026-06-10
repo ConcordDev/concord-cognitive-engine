@@ -310,7 +310,7 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
   return (
     <label className="flex items-center gap-3 cursor-pointer">
       <span className="w-44 text-gray-300 text-xs">{label}</span>
-      <button
+      <button aria-label="Toggle"
         type="button"
         role="switch"
         aria-checked={checked}

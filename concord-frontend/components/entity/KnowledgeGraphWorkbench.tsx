@@ -346,7 +346,7 @@ function GraphTab({ graph, busy, mutate }: {
                   onChange={(e) => setRenameVal(e.target.value)}
                   className="input-lattice text-sm flex-1"
                 />
-                <button
+                <button aria-label="Rename node"
                   disabled={busy || !renameVal.trim() || renameVal === selNode.name}
                   onClick={() => mutate('node-update', { id: selNode.id, name: renameVal.trim() }, 'Node renamed')}
                   className="btn-neon text-xs"

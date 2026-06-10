@@ -85,7 +85,7 @@ export function SchemeOverhearBargeIn() {
         <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-purple-300">
           <Ear size={12} /> Overheard
         </span>
-        <button onClick={() => setEv(null)} className="rounded p-0.5 text-zinc-500 hover:bg-zinc-800"><X size={12} /></button>
+        <button aria-label="Close" onClick={() => setEv(null)} className="rounded p-0.5 text-zinc-500 hover:bg-zinc-800"><X size={12} /></button>
       </div>
       <p className="mb-2 text-xs italic text-purple-100">
         “{ev.snippet || 'whispers of a plot in motion…'}”

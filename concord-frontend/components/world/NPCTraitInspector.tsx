@@ -72,7 +72,7 @@ export function NPCTraitInspector() {
             </h2>
             <p className="text-[10px] text-zinc-500 font-mono">{npcId}</p>
           </div>
-          <button onClick={close} className="rounded p-1 text-zinc-400 hover:bg-zinc-800">
+          <button aria-label="Close" onClick={close} className="rounded p-1 text-zinc-400 hover:bg-zinc-800">
             <X size={14} />
           </button>
         </header>

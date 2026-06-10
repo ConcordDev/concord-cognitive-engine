@@ -31,6 +31,7 @@ export function HorrorRoleHUDs() {
   const [endedAck, setEndedAck] = useState<Session | null>(null);
   const [evidenceForm, setEvidenceForm] = useState(false);
   const [evidenceKind, setEvidenceKind] = useState('footprint');
+  const [downing, setDowning] = useState<string | null>(null);
 
   useEffect(() => {
     const id = typeof window !== 'undefined' ? localStorage.getItem('concordia:activeWorldId') : null;
@@ -119,16 +120,22 @@ export function HorrorRoleHUDs() {
               <div key={u} className="flex items-center justify-between rounded bg-red-950/30 px-1.5 py-1">
                 <span className="font-mono text-[10px] text-red-100">{u.slice(0, 16)}…</span>
                 <button
+                  disabled={downing === u}
                   onClick={async () => {
-                    await fetch(`/api/horror/session/${session.id}/down`, {
-                      method: 'POST', credentials: 'include',
-                      headers: { 'content-type': 'application/json' },
-                      body: JSON.stringify({ targetUserId: u }),
-                    });
-                    refresh();
+                    setDowning(u);
+                    try {
+                      await fetch(`/api/horror/session/${session.id}/down`, {
+                        method: 'POST', credentials: 'include',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({ targetUserId: u }),
+                      });
+                      refresh();
+                    } finally {
+                      setDowning(null);
+                    }
                   }}
-                  className="rounded bg-red-500/40 px-1.5 py-0.5 text-[9px] text-red-50 hover:bg-red-500/60"
-                >down</button>
+                  className="rounded bg-red-500/40 px-1.5 py-0.5 text-[9px] text-red-50 hover:bg-red-500/60 disabled:opacity-40"
+                >{downing === u ? '…' : 'down'}</button>
               </div>
             ))}
             <div className="mt-1 text-[9px] text-red-300/60">downed: {downed.length}</div>
@@ -176,7 +183,7 @@ export function HorrorRoleHUDs() {
               <button onClick={submitEvidence} className="flex-1 rounded bg-amber-500/30 px-1.5 py-0.5 text-[10px] text-amber-100 hover:bg-amber-500/50">
                 Submit
               </button>
-              <button onClick={() => setEvidenceForm(false)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-700">
+              <button aria-label="Close" onClick={() => setEvidenceForm(false)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-700">
                 <X size={9} />
               </button>
             </div>

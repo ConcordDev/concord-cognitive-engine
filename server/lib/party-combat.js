@@ -228,12 +228,14 @@ function _applyAction(db, sessionId, actor, payload, nowMs) {
     // Ability is a damage + effect. Apply to multiple targets if AoE.
     const targets = Array.isArray(payload.targetIds) ? payload.targetIds : [];
     const hits = [];
+    const selTarget = db.prepare(`SELECT hp, team FROM party_combatants WHERE session_id = ? AND entity_id = ?`);
+    const setTargetHp = db.prepare(`UPDATE party_combatants SET hp = ? WHERE session_id = ? AND entity_id = ?`);
     for (const tid of targets) {
-      const t = db.prepare(`SELECT hp, team FROM party_combatants WHERE session_id = ? AND entity_id = ?`).get(sessionId, tid);
+      const t = selTarget.get(sessionId, tid);
       if (t && t.team !== actor.team && t.hp > 0) {
         const damage = Math.min(Math.max(1, Number(payload.damage) || 15), DAMAGE_CAP_HARD);
         const newHp = Math.max(0, t.hp - damage);
-        db.prepare(`UPDATE party_combatants SET hp = ? WHERE session_id = ? AND entity_id = ?`).run(newHp, sessionId, tid);
+        setTargetHp.run(newHp, sessionId, tid);
         _logAction(db, sessionId, actor.entity_id, "ability", tid, damage, nowMs);
         hits.push({ targetId: tid, damage, newHp });
       }

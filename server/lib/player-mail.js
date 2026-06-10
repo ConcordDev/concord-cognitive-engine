@@ -252,6 +252,8 @@ export function sweepExpiredMail(db) {
       WHERE status IN ('unread','read') AND expires_at <= unixepoch()
       LIMIT 200
     `).all();
+    const clearEscrow = db.prepare(`UPDATE dtus SET data = json_remove(COALESCE(data,'{}'), '$.mail_escrow') WHERE id = ?`);
+    const markMailExpired = db.prepare(`UPDATE player_mail SET status = 'expired' WHERE id = ?`);
     for (const row of expired) {
       try {
         const dtuIds = _parseJsonArray(row.attachment_dtu_ids);
@@ -261,10 +263,10 @@ export function sweepExpiredMail(db) {
           }
           for (const dtuId of dtuIds) {
             try {
-              db.prepare(`UPDATE dtus SET data = json_remove(COALESCE(data,'{}'), '$.mail_escrow') WHERE id = ?`).run(dtuId);
+              clearEscrow.run(dtuId);
             } catch { /* best-effort */ }
           }
-          db.prepare(`UPDATE player_mail SET status = 'expired' WHERE id = ?`).run(row.id);
+          markMailExpired.run(row.id);
         });
         tx();
         swept++;

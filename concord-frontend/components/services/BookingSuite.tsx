@@ -660,7 +660,7 @@ function ClientProfiles() {
         <div className={cn(ds.panel, 'space-y-3 border-pink-500/40')}>
           <div className="flex items-center justify-between">
             <p className={ds.heading3}>{history.profile.name}</p>
-            <button onClick={() => setHistory(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+            <button aria-label="Close" onClick={() => setHistory(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
             <div className="p-2 bg-lattice-surface rounded"><p className="text-lg font-bold text-white">{history.visits}</p><p className="text-[10px] text-gray-400">Visits</p></div>

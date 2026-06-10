@@ -22,6 +22,7 @@ const LIMITS = {
   'write.lens':         { max: 10, windowMs: 60000 },    // POST /api/lens/* — 10/min
   'write.dtus':         { max: 20, windowMs: 60000 },    // POST /api/dtus — 20/min
   'write.media.upload': { max: 5,  windowMs: 60000 },    // POST /api/media/upload — 5/min
+  'write.mail':         { max: 10, windowMs: 60000 },    // POST /api/mail/send — 10/min per user (anti-spam; auth-gated, capped payload)
   'write.client-error': { max: 50, windowMs: 60000 },    // POST /api/client-error — 50/min per IP (anon telemetry; an error storm must not self-DoS)
   'write.default':      { max: 20, windowMs: 60000 },    // All other POST/PUT/DELETE — 20/min
   'read.default':       { max: 120, windowMs: 60000 },   // GET routes (open, rate limited) — 120/min

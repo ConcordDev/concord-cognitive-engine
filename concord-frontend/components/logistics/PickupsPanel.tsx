@@ -85,7 +85,7 @@ export function PickupsPanel() {
                   <div className="text-[10px] text-gray-400 truncate">{p.address}</div>
                   <div className="text-[10px] text-gray-400">{p.date} · {p.timeWindow} · {p.packageCount} pkg</div>
                 </div>
-                {p.status === 'scheduled' && <button onClick={() => cancel(p.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400 hover:text-rose-300"><X className="w-3 h-3" /></button>}
+                {p.status === 'scheduled' && <button aria-label="Close" onClick={() => cancel(p.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400 hover:text-rose-300"><X className="w-3 h-3" /></button>}
               </li>
             ))}
           </ul>

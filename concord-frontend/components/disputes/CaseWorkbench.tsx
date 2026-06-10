@@ -439,7 +439,7 @@ function NewCaseModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
           <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
             <Plus className="w-4 h-4 text-indigo-400" /> Open Dispute Case
           </h3>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-300"><X className="w-4 h-4" /></button>
+          <button aria-label="Close" onClick={onClose} className="text-zinc-400 hover:text-zinc-300"><X className="w-4 h-4" /></button>
         </div>
         <div className="space-y-3 p-4">
           <Field label="Case Title">
@@ -832,7 +832,7 @@ function EvidenceTab({ c, items, busy, run, closed }: { c: PublicCase; items: Ev
                 <p className="text-[11px] text-zinc-400 mt-0.5">Reliability {Math.round(e.reliability * 100)}% · {fmtDate(e.uploadedAt)}</p>
               </div>
               {!closed && (
-                <button
+                <button aria-label="Remove evidence"
                   className="text-zinc-600 hover:text-rose-400"
                   disabled={busy === 'evidence-remove'}
                   onClick={() => run('evidence-remove', { caseId: c.id, evidenceId: e.id }, 'evidence-remove')}

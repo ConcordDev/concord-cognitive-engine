@@ -6,7 +6,7 @@
 // Google Calendar via the SSRF-guarded connector client (honoring the account's
 // pull/push/two-way direction). The legacy ICS pull (`accounts-sync`) stays.
 
-import { writeGoogleCalendarEvent } from "../lib/connector-client.js";
+import { writeGoogleCalendarEvent, readGoogleCalendarEvents } from "../lib/connector-client.js";
 
 export default function registerCalendarActions(registerLensAction) {
   registerLensAction("calendar", "detectConflicts", (ctx, artifact, _params) => {
@@ -1037,6 +1037,39 @@ export default function registerCalendarActions(registerLensAction) {
       acct.lastSyncAt = isoCal();
       saveCal();
       return { ok: true, result: { pushed: true, providerEventId: res.data?.id || null } };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
+
+  // Track C — pull events from the real Google Calendar API (not the legacy ICS
+  // path). Reading is always safe regardless of the account's push/pull direction.
+  // params: { accountId?, calendarId?, timeMin?, timeMax?, maxResults?, q? }.
+  // Honest reasons when no OAuth credential is stored (no_token / connector_not_configured).
+  registerLensAction("calendar", "accounts-pull-events", async (ctx, _a, params = {}) => {
+    try {
+      const userId = aidCal(ctx);
+      if (!userId || userId === "anon") return { ok: false, reason: "no_user", error: "no_user" };
+      if (!ctx?.db) return { ok: false, error: "db unavailable" };
+      // If an accountId is given, require it to be a google account; otherwise
+      // pull the user's primary google calendar directly.
+      if (params.accountId) {
+        const s = getCalState();
+        const acct = s ? listCal(s.connectedAccounts, userId).find((a) => a.id === String(params.accountId)) : null;
+        if (!acct) return { ok: false, error: "account not found" };
+        if (acct.provider !== "google") return { ok: false, reason: "pull_unsupported_provider", error: "pull_unsupported_provider", provider: acct.provider };
+      }
+      const res = await readGoogleCalendarEvents(ctx.db, userId, {
+        calendarId: params.calendarId || "primary",
+        timeMin: params.timeMin,
+        timeMax: params.timeMax,
+        maxResults: params.maxResults,
+        q: params.q,
+      });
+      // Mirror the connector reason into `error` so the calendar UI can detect
+      // the not-connected state (lensRun surfaces `error`, not `reason`).
+      if (!res.ok) return { ok: false, reason: res.reason || "pull_failed", error: res.reason || "pull_failed", detail: res };
+      return { ok: true, result: { events: res.events, nextPageToken: res.nextPageToken, source: "google" } };
     } catch (e) {
       return { ok: false, error: "handler_error", message: String(e?.message || e) };
     }

@@ -9,6 +9,7 @@
 
 import crypto from "node:crypto";
 import fs from "node:fs";
+import * as fsp from "node:fs/promises";
 import path from "node:path";
 import logger from "../logger.js";
 
@@ -16,26 +17,27 @@ const PHOTO_DIR = process.env.CONCORD_PHOTO_DIR ||
   path.resolve(process.cwd(), "data", "photos");
 const MAX_BLOB_BYTES = 5 * 1024 * 1024; // 5 MB cap per photo
 
-function _ensureDir(dir) {
-  try { fs.mkdirSync(dir, { recursive: true }); } catch { /* exists */ }
+async function _ensureDir(dir) {
+  try { await fsp.mkdir(dir, { recursive: true }); } catch { /* exists */ }
 }
 
-function _writeBlob(dataUrl, blobPath) {
+async function _writeBlob(dataUrl, blobPath) {
   // dataUrl looks like 'data:image/png;base64,iVBORw0...'.
   const m = String(dataUrl || "").match(/^data:(image\/\w+);base64,(.+)$/);
   if (!m) return { ok: false, error: "invalid_data_url" };
   const buf = Buffer.from(m[2], "base64");
   if (buf.byteLength > MAX_BLOB_BYTES) return { ok: false, error: "blob_too_large" };
   try {
-    _ensureDir(path.dirname(blobPath));
-    fs.writeFileSync(blobPath, buf);
+    // Async fs — a ≤5 MB PNG write must not block the event loop.
+    await _ensureDir(path.dirname(blobPath));
+    await fsp.writeFile(blobPath, buf);
     return { ok: true, bytes: buf.byteLength };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
 }
 
-export function savePhoto(db, userId, opts = {}) {
+export async function savePhoto(db, userId, opts = {}) {
   if (!db || !userId) return { ok: false, error: "missing_inputs" };
   const { worldId, dataUrl, caption, visibility = "private" } = opts;
   if (!dataUrl) return { ok: false, error: "missing_dataUrl" };
@@ -45,7 +47,7 @@ export function savePhoto(db, userId, opts = {}) {
 
   const id = `ph_${crypto.randomBytes(8).toString("hex")}`;
   const blobPath = path.join(PHOTO_DIR, `${id}.png`);
-  const blob = _writeBlob(dataUrl, blobPath);
+  const blob = await _writeBlob(dataUrl, blobPath);
   if (!blob.ok) return blob;
 
   try {
@@ -58,7 +60,7 @@ export function savePhoto(db, userId, opts = {}) {
     return { ok: true, id, blobPath, bytes: blob.bytes };
   } catch (err) {
     // Rollback the blob.
-    try { fs.unlinkSync(blobPath); } catch { /* ignore */ }
+    await fsp.unlink(blobPath).catch(() => { /* ignore */ });
     return { ok: false, error: err?.message };
   }
 }

@@ -161,9 +161,11 @@ export function sweepExpiredOrders(db) {
       SELECT id, restaurant_id FROM restaurant_orders
       WHERE status = 'pending' AND expires_at <= unixepoch()
     `).all();
+    const markExpired = db.prepare(`UPDATE restaurant_orders SET status = 'expired' WHERE id = ?`);
+    const incMissed = db.prepare(`UPDATE restaurants SET orders_missed = orders_missed + 1 WHERE id = ?`);
     for (const o of expired) {
-      db.prepare(`UPDATE restaurant_orders SET status = 'expired' WHERE id = ?`).run(o.id);
-      db.prepare(`UPDATE restaurants SET orders_missed = orders_missed + 1 WHERE id = ?`).run(o.restaurant_id);
+      markExpired.run(o.id);
+      incMissed.run(o.restaurant_id);
     }
     return { ok: true, expired: expired.length };
   } catch (err) {

@@ -573,7 +573,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
           <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
             <Music className="w-3.5 h-3.5 text-cyan-400" /> Audio tracks
           </h3>
-          <button type="button"
+          <button aria-label="Add track" type="button"
             onClick={async () => {
               const name = window.prompt('Track name:');
               if (!name || !name.trim()) return;

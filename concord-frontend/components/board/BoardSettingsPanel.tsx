@@ -165,7 +165,7 @@ export function BoardSettingsPanel({
                   placeholder="Label name"
                   className="flex-1 px-2 py-1.5 text-xs rounded-md bg-white/5 border border-white/10 text-gray-300 placeholder-gray-600 focus:outline-none focus:border-purple-500/40"
                 />
-                <button
+                <button aria-label="Create label"
                   onClick={() =>
                     labelName.trim() &&
                     run(
@@ -333,7 +333,7 @@ export function BoardSettingsPanel({
                     </option>
                   ))}
                 </select>
-                <button
+                <button aria-label="Add collaborator"
                   onClick={() =>
                     collabUser.trim() &&
                     run(

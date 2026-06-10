@@ -68,7 +68,71 @@ const PATTERNS = [
     id: "sync_fs_in_handler",
     severity: "high",
     description: "Synchronous fs call (readFileSync / writeFileSync) inside async path",
-    regex: /\bfs\.(?:readFileSync|writeFileSync|appendFileSync|statSync|existsSync)\s*\(/g,
+    // Tightened (FP sweep): a sync-fs call at MODULE-LOAD scope runs once
+    // at boot, not per request — e.g. `const DATA_DIR = process.env.X ||
+    // (fs.existsSync(...) ? ... : ...)` resolving a data dir once at
+    // import time. Those are NOT event-loop hazards. Only flag sync-fs
+    // calls that live INSIDE a function/handler body (brace-depth > 0),
+    // which is where a per-request blocking call actually hurts. The
+    // brace-depth walk ignores string/template/comment content so a `{`
+    // inside a literal doesn't shift the depth.
+    customScan: (content) => {
+      const out = [];
+      const callRe = /\bfs\.(?:readFileSync|writeFileSync|appendFileSync|statSync|existsSync)\s*\(/;
+      const lines = content.split("\n");
+      let depth = 0;           // brace nesting, code only
+      let inBlockComment = false;
+      let inTemplate = false;  // crude template-literal tracking
+      for (let i = 0; i < lines.length; i++) {
+        const raw = lines[i];
+        // Compute the depth AT THE START of this line; the call's scope is
+        // judged by whether it's already nested when the line begins, OR
+        // becomes nested before the call appears. We approximate using the
+        // line-start depth, which correctly classifies module-scope
+        // `const X = ... fs.existsSync(...)` (depth 0) vs handler bodies.
+        const depthAtLineStart = depth;
+        // Strip comments + string/template content for both brace counting
+        // AND for deciding the call is real code (not inside a comment).
+        let codeOnly = "";
+        let j = 0;
+        while (j < raw.length) {
+          const ch = raw[j];
+          const next = raw[j + 1];
+          if (inBlockComment) {
+            if (ch === "*" && next === "/") { inBlockComment = false; j += 2; continue; }
+            j++; continue;
+          }
+          if (inTemplate) {
+            if (ch === "\\") { j += 2; continue; }
+            if (ch === "`") { inTemplate = false; j++; continue; }
+            j++; continue;
+          }
+          if (ch === "/" && next === "*") { inBlockComment = true; j += 2; continue; }
+          if (ch === "/" && next === "/") break;            // line comment
+          if (ch === "`") { inTemplate = true; j++; continue; }
+          if (ch === '"' || ch === "'") {
+            const q = ch; j++;
+            while (j < raw.length) {
+              if (raw[j] === "\\") { j += 2; continue; }
+              if (raw[j] === q) { j++; break; }
+              j++;
+            }
+            continue;
+          }
+          if (ch === "{") depth++;
+          else if (ch === "}") depth = Math.max(0, depth - 1);
+          codeOnly += ch;
+          j++;
+        }
+        // Only flag when the call appears in real code on this line AND the
+        // line begins inside a function body (depth > 0). A `const X = ...`
+        // at module top-level begins at depth 0 → not flagged.
+        if (depthAtLineStart > 0 && callRe.test(codeOnly)) {
+          out.push({ line: i + 1 });
+        }
+      }
+      return out;
+    },
     skipFiles: [/\/tests?\//, /\/scripts\//, /\/migrations\//, /server\.js$/],
   },
   {

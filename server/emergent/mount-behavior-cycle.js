@@ -103,6 +103,15 @@ export async function runMountBehaviorCycle({ db } = {}) {
        LIMIT ?
     `).all(cap);
 
+    // Hoisted constant-SQL statements reused across the bounded candidate loop.
+    const selMountState = db.prepare(`SELECT mount_state FROM player_companions WHERE id = ?`);
+    const setMountState = db.prepare(`UPDATE player_companions SET mount_state = ? WHERE id = ?`);
+    const setBehavior = db.prepare(`
+          UPDATE player_companions
+             SET behavior_state = ?, pos_x = ?, pos_z = ?, behavior_updated_at = unixepoch()
+           WHERE id = ?
+        `);
+
     for (const c of candidates) {
       try {
         const x  = Number(c.pos_x ?? 0);
@@ -125,10 +134,10 @@ export async function runMountBehaviorCycle({ db } = {}) {
             nextPos   = _stepTowards(x, z, food.x, food.z, WANDER_STEP_M);
             // Decrement hunger via mount_state JSON merge.
             try {
-              const row = db.prepare(`SELECT mount_state FROM player_companions WHERE id = ?`).get(c.id);
+              const row = selMountState.get(c.id);
               const st  = row?.mount_state ? JSON.parse(row.mount_state) : {};
               st.hunger = Math.max(0, (st.hunger ?? 0) - 4);
-              db.prepare(`UPDATE player_companions SET mount_state = ? WHERE id = ?`).run(JSON.stringify(st), c.id);
+              setMountState.run(JSON.stringify(st), c.id);
             } catch { /* mount_state may not exist on legacy rows */ }
           } else {
             nextState = 'wandering';
@@ -139,11 +148,7 @@ export async function runMountBehaviorCycle({ db } = {}) {
           nextPos   = _wanderStep(x, z, c.id.charCodeAt(0));
         }
 
-        db.prepare(`
-          UPDATE player_companions
-             SET behavior_state = ?, pos_x = ?, pos_z = ?, behavior_updated_at = unixepoch()
-           WHERE id = ?
-        `).run(nextState, nextPos.x, nextPos.z, c.id);
+        setBehavior.run(nextState, nextPos.x, nextPos.z, c.id);
 
         if (nextState !== c.behavior_state) {
           stateChanges++;

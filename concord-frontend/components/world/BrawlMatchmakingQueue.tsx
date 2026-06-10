@@ -83,7 +83,7 @@ export function BrawlMatchmakingQueue() {
           <h2 className="flex items-center gap-2 text-sm font-semibold text-rose-200">
             <Swords size={14} /> Brawl matchmaker
           </h2>
-          <button onClick={() => setOpen(false)} className="rounded p-1 text-zinc-400 hover:bg-zinc-800">
+          <button aria-label="Open" onClick={() => setOpen(false)} className="rounded p-1 text-zinc-400 hover:bg-zinc-800">
             <X size={14} />
           </button>
         </header>

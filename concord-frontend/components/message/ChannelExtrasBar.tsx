@@ -64,7 +64,7 @@ export function ChannelExtrasBar({ channelId, pinNonce }: { channelId: string; p
           ) : (
             <span className="truncate max-w-[140px]">{b.title}</span>
           )}
-          <button onClick={() => removeBookmark(b.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><X className="w-2.5 h-2.5" /></button>
+          <button aria-label="Remove" onClick={() => removeBookmark(b.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><X className="w-2.5 h-2.5" /></button>
         </span>
       ))}
       {adding ? (

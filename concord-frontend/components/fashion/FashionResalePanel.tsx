@@ -110,7 +110,7 @@ export function FashionResalePanel({ onChange }: { onChange: () => void }) {
                     </select>
                     <button type="button" onClick={list}
                       className="px-2 py-1 text-[11px] bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg">List</button>
-                    <button type="button" onClick={() => setListForm(null)} className="text-zinc-400 hover:text-zinc-300">
+                    <button aria-label="Close" type="button" onClick={() => setListForm(null)} className="text-zinc-400 hover:text-zinc-300">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>

@@ -99,7 +99,7 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
       {notice && (
         <div className="px-3 py-1.5 text-[11px] text-amber-200 bg-amber-500/10 border-b border-white/5 flex items-center gap-2">
           <span className="flex-1">{notice}</span>
-          <button type="button" onClick={() => setNotice(null)} className="text-gray-400 hover:text-white"><X className="w-3 h-3" /></button>
+          <button aria-label="Dismiss" type="button" onClick={() => setNotice(null)} className="text-gray-400 hover:text-white"><X className="w-3 h-3" /></button>
         </div>
       )}
 
@@ -214,7 +214,7 @@ export function GitPanel({ projectId, onChanged }: { projectId: string | null; o
             <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
               <FileDiff className="w-3.5 h-3.5 text-blue-400" />
               <span className="text-xs font-mono text-white flex-1 truncate">{diff.path}</span>
-              <button type="button" onClick={() => setDiff(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+              <button aria-label="Close" type="button" onClick={() => setDiff(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
             </div>
             <div className="overflow-auto font-mono text-[11px]">
               {diff.hunks.length === 0 ? (

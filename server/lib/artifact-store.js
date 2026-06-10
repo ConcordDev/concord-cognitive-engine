@@ -1,11 +1,27 @@
-// @sync-fs-ok: artifact persistence layer requires atomic write semantics —
-// callers expect bytes to be on disk when the call returns. Switching to
-// async fs would introduce race conditions on artifact reads.
+// Write paths (storeArtifact / storeMultipartArtifact) use node:fs/promises so a
+// 5–100 MB artifact write does not block the event loop. Atomicity is preserved:
+// both functions are `async` and every caller `await`s them, so the bytes are on
+// disk by the time the promise resolves — exactly the guarantee the old sync code
+// gave, minus the main-thread stall.
+// @sync-fs-ok: the remaining sync fs is intentional — the read path
+// (retrieveArtifact) keeps a sync signature for its sync callers (a streaming
+// retrieveArtifactStream exists for large reads), small derived thumbnail/preview
+// writes are sub-KB, and the migration/cascade helpers run at tick/boot time, not
+// on a request path.
 import fs from "fs";
+import * as fsp from "node:fs/promises";
 import path from "path";
 import crypto from "crypto";
 import zlib from "zlib";
+import { promisify } from "node:util";
 import { execFileSync } from "child_process";
+
+const gzipAsync = promisify(zlib.gzip);
+
+// Async existence check — replaces fs.existsSync on the write path.
+async function fileExists(p) {
+  try { await fsp.access(p); return true; } catch { return false; }
+}
 import logger from '../logger.js';
 import { transcodeImage, transcodeAudio, transcodeVideo, generateVideoDerivatives, isTranscodingAvailable } from './artifact-transcoder.js';
 import { checkBudget, downgradePlan } from './artifact-budget.js';
@@ -96,31 +112,33 @@ export async function storeArtifact(dtuId, buffer, mimeType, filename) {
   const contentFile = `${hashHex}.${typeInfo.ext}`;
   const diskPath = path.join(ARTIFACT_ROOT, contentFile);
 
-  fs.mkdirSync(ARTIFACT_ROOT, { recursive: true });
+  await fsp.mkdir(ARTIFACT_ROOT, { recursive: true });
 
-  // Dedup: skip writing if this exact content already exists on disk
-  const alreadyExists = fs.existsSync(diskPath);
+  // Dedup: skip writing if this exact content already exists on disk.
+  // Content-addressed by sha256, so a concurrent write of the same content writes
+  // identical bytes — the TOCTOU between the check and the write is harmless.
+  const alreadyExists = await fileExists(diskPath);
   if (!alreadyExists) {
-    fs.writeFileSync(diskPath, buffer);
+    await fsp.writeFile(diskPath, buffer);
   }
 
   // Compress compressible types (text, SVG, MIDI, etc.)
   let compressedPath = null;
   if (typeInfo.compressible) {
     compressedPath = diskPath + ".gz";
-    if (!fs.existsSync(compressedPath)) {
-      const compressed = zlib.gzipSync(buffer, { level: GZIP_LEVEL });
-      fs.writeFileSync(compressedPath, compressed);
+    if (!(await fileExists(compressedPath))) {
+      const compressed = await gzipAsync(buffer, { level: GZIP_LEVEL });
+      await fsp.writeFile(compressedPath, compressed);
     }
   }
 
   // Also store in legacy DTU-based directory for backwards compat
   const dtuDir = path.join(ARTIFACT_ROOT, dtuId);
-  fs.mkdirSync(dtuDir, { recursive: true });
+  await fsp.mkdir(dtuDir, { recursive: true });
   const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
   const legacyPath = path.join(dtuDir, sanitizedFilename);
-  if (!fs.existsSync(legacyPath)) {
-    try { fs.symlinkSync(diskPath, legacyPath); } catch { fs.copyFileSync(diskPath, legacyPath); }
+  if (!(await fileExists(legacyPath))) {
+    try { await fsp.symlink(diskPath, legacyPath); } catch { await fsp.copyFile(diskPath, legacyPath); }
   }
 
   const thumbnail = generateThumbnail(dtuDir, diskPath, mimeType);
@@ -164,7 +182,7 @@ async function scheduleTranscoding(diskPath, hashHex, mimeType, result) {
   if (!available) return;
 
   const derivDir = path.join(ARTIFACT_ROOT, "derivatives", hashHex);
-  fs.mkdirSync(derivDir, { recursive: true });
+  await fsp.mkdir(derivDir, { recursive: true });
 
   try {
     if (mimeType.startsWith("image/") && mimeType !== "image/webp" && mimeType !== "image/svg+xml") {
@@ -213,7 +231,7 @@ export function stripArtifactData(dtu) {
 
 export async function storeMultipartArtifact(dtuId, files) {
   const dtuDir = path.join(ARTIFACT_ROOT, dtuId);
-  fs.mkdirSync(dtuDir, { recursive: true });
+  await fsp.mkdir(dtuDir, { recursive: true });
 
   const parts = [];
   let totalSize = 0;
@@ -221,7 +239,7 @@ export async function storeMultipartArtifact(dtuId, files) {
   for (const file of files) {
     const sanitized = file.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
     const filePath = path.join(dtuDir, sanitized);
-    fs.writeFileSync(filePath, file.buffer);
+    await fsp.writeFile(filePath, file.buffer);
     totalSize += file.buffer.length;
     parts.push({
       filename: sanitized,

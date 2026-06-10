@@ -78,17 +78,17 @@ const ctxAlice = (overrides = {}) => ({
 
 // ── Tests ──────────────────────────────────────────────────────────────
 
-describe("art.publish-as-texture", () => {
-  it("rejects anonymous publishers", () => {
-    const r = call("publish-as-texture", { db, actor: { userId: "anon" }, userId: "anon" }, {
+describe("art.publish-as-texture", async () => {
+  it("rejects anonymous publishers", async () => {
+    const r = await call("publish-as-texture", { db, actor: { userId: "anon" }, userId: "anon" }, {
       materialKind: "wood", seed: 1, channel: "color", imageDataUrl: TINY_PNG_DATA_URL,
     });
     assert.equal(r.ok, false);
     assert.match(r.error, /auth/i);
   });
 
-  it("rejects unknown materialKind", () => {
-    const r = call("publish-as-texture", ctxAlice(), {
+  it("rejects unknown materialKind", async () => {
+    const r = await call("publish-as-texture", ctxAlice(), {
       materialKind: "lava",
       seed: 1, channel: "color", imageDataUrl: TINY_PNG_DATA_URL,
     });
@@ -96,32 +96,32 @@ describe("art.publish-as-texture", () => {
     assert.match(r.error, /materialKind/);
   });
 
-  it("rejects unknown channel", () => {
-    const r = call("publish-as-texture", ctxAlice(), {
+  it("rejects unknown channel", async () => {
+    const r = await call("publish-as-texture", ctxAlice(), {
       materialKind: "wood", seed: 1, channel: "specular", imageDataUrl: TINY_PNG_DATA_URL,
     });
     assert.equal(r.ok, false);
     assert.match(r.error, /channel/);
   });
 
-  it("rejects a non-data-URL imageDataUrl", () => {
-    const r = call("publish-as-texture", ctxAlice(), {
+  it("rejects a non-data-URL imageDataUrl", async () => {
+    const r = await call("publish-as-texture", ctxAlice(), {
       materialKind: "wood", seed: 1, channel: "color", imageDataUrl: "https://example/x.png",
     });
     assert.equal(r.ok, false);
     assert.match(r.error, /base64 data/i);
   });
 
-  it("rejects when db is unavailable", () => {
-    const r = call("publish-as-texture", { actor: { userId: "user_alice" }, userId: "user_alice" }, {
+  it("rejects when db is unavailable", async () => {
+    const r = await call("publish-as-texture", { actor: { userId: "user_alice" }, userId: "user_alice" }, {
       materialKind: "wood", seed: 1, channel: "color", imageDataUrl: TINY_PNG_DATA_URL,
     });
     assert.equal(r.ok, false);
     assert.match(r.error, /db/i);
   });
 
-  it("writes the PNG to disk + registers an evo_assets row", () => {
-    const r = call("publish-as-texture", ctxAlice(), {
+  it("writes the PNG to disk + registers an evo_assets row", async () => {
+    const r = await call("publish-as-texture", ctxAlice(), {
       materialKind: "wood", seed: 42, channel: "color", imageDataUrl: TINY_PNG_DATA_URL,
     });
     assert.equal(r.ok, true);
@@ -148,11 +148,11 @@ describe("art.publish-as-texture", () => {
     assert.ok(stat.size > 50, "PNG file should have content");
   });
 
-  it("is idempotent on republish — same (source, sourceId) returns the existing assetId", () => {
-    const r1 = call("publish-as-texture", ctxAlice(), {
+  it("is idempotent on republish — same (source, sourceId) returns the existing assetId", async () => {
+    const r1 = await call("publish-as-texture", ctxAlice(), {
       materialKind: "stone", seed: 7, channel: "normal", imageDataUrl: TINY_PNG_DATA_URL,
     });
-    const r2 = call("publish-as-texture", ctxAlice(), {
+    const r2 = await call("publish-as-texture", ctxAlice(), {
       materialKind: "stone", seed: 7, channel: "normal", imageDataUrl: TINY_PNG_DATA_URL,
     });
     assert.equal(r1.ok, true);
@@ -162,10 +162,10 @@ describe("art.publish-as-texture", () => {
     assert.equal(r2.result.created, false);
   });
 
-  it("each of the 8 procedural kinds publishes successfully", () => {
+  it("each of the 8 procedural kinds publishes successfully", async () => {
     const kinds = ["stone", "wood", "brick", "cloth", "metal", "leather", "thatch", "dirt"];
     for (const k of kinds) {
-      const r = call("publish-as-texture", ctxAlice(), {
+      const r = await call("publish-as-texture", ctxAlice(), {
         materialKind: k, seed: 1, channel: "color", imageDataUrl: TINY_PNG_DATA_URL,
       });
       assert.equal(r.ok, true, `${k} should publish`);
@@ -174,10 +174,10 @@ describe("art.publish-as-texture", () => {
     assert.equal(count, kinds.length);
   });
 
-  it("each of the 4 channels registers as its own row at the same (kind, seed)", () => {
+  it("each of the 4 channels registers as its own row at the same (kind, seed)", async () => {
     const channels = ["color", "normal", "roughness", "ao"];
     for (const ch of channels) {
-      const r = call("publish-as-texture", ctxAlice(), {
+      const r = await call("publish-as-texture", ctxAlice(), {
         materialKind: "brick", seed: 99, channel: ch, imageDataUrl: TINY_PNG_DATA_URL,
       });
       assert.equal(r.ok, true);
@@ -194,9 +194,9 @@ describe("art.publish-as-texture", () => {
   });
 });
 
-describe("art.published-texture-coverage", () => {
-  it("returns null for every channel when nothing is published", () => {
-    const r = call("published-texture-coverage", ctxAlice(), { materialKind: "wood", seed: 1 });
+describe("art.published-texture-coverage", async () => {
+  it("returns null for every channel when nothing is published", async () => {
+    const r = await call("published-texture-coverage", ctxAlice(), { materialKind: "wood", seed: 1 });
     assert.equal(r.ok, true);
     assert.equal(r.result.channels.color, null);
     assert.equal(r.result.channels.normal, null);
@@ -204,14 +204,14 @@ describe("art.published-texture-coverage", () => {
     assert.equal(r.result.channels.ao, null);
   });
 
-  it("returns asset info for channels the player has published", () => {
-    call("publish-as-texture", ctxAlice(), {
+  it("returns asset info for channels the player has published", async () => {
+    await call("publish-as-texture", ctxAlice(), {
       materialKind: "wood", seed: 5, channel: "color", imageDataUrl: TINY_PNG_DATA_URL,
     });
-    call("publish-as-texture", ctxAlice(), {
+    await call("publish-as-texture", ctxAlice(), {
       materialKind: "wood", seed: 5, channel: "ao", imageDataUrl: TINY_PNG_DATA_URL,
     });
-    const r = call("published-texture-coverage", ctxAlice(), { materialKind: "wood", seed: 5 });
+    const r = await call("published-texture-coverage", ctxAlice(), { materialKind: "wood", seed: 5 });
     assert.equal(r.ok, true);
     assert.ok(r.result.channels.color?.assetId);
     assert.equal(r.result.channels.normal, null);

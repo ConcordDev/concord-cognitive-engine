@@ -110,12 +110,13 @@ export function startChain(db, userId, worldId, chainId) {
   const inputs = Array.isArray(chain.inputs) ? chain.inputs : [];
   if (inputs.length > 0) {
     try {
-      for (const inp of inputs) {
-        const need = Math.max(1, Number(inp.quantity) || 1);
-        const row = db.prepare(`
+      const sumQty = db.prepare(`
           SELECT COALESCE(SUM(quantity),0) AS qty FROM player_inventory
           WHERE user_id = ? AND world_id = ? AND item_id = ?
-        `).get(userId, worldId, inp.id);
+        `);
+      for (const inp of inputs) {
+        const need = Math.max(1, Number(inp.quantity) || 1);
+        const row = sumQty.get(userId, worldId, inp.id);
         if ((row?.qty ?? 0) < need) {
           return { ok: false, reason: "missing_material", material: inp.id, needed: need, have: row?.qty ?? 0 };
         }
@@ -126,20 +127,23 @@ export function startChain(db, userId, worldId, chainId) {
   const id = makeJobId();
   const tx = db.transaction(() => {
     if (inputs.length > 0) {
-      for (const inp of inputs) {
-        let remaining = Math.max(1, Number(inp.quantity) || 1);
-        const slots = db.prepare(`
+      const selSlots = db.prepare(`
           SELECT id, quantity FROM player_inventory
           WHERE user_id = ? AND world_id = ? AND item_id = ? AND quantity > 0
           ORDER BY acquired_at ASC
-        `).all(userId, worldId, inp.id);
+        `);
+      const delSlot = db.prepare(`DELETE FROM player_inventory WHERE id = ?`);
+      const decSlot = db.prepare(`UPDATE player_inventory SET quantity = quantity - ? WHERE id = ?`);
+      for (const inp of inputs) {
+        let remaining = Math.max(1, Number(inp.quantity) || 1);
+        const slots = selSlots.all(userId, worldId, inp.id);
         for (const slot of slots) {
           if (remaining <= 0) break;
           if (slot.quantity <= remaining) {
-            db.prepare(`DELETE FROM player_inventory WHERE id = ?`).run(slot.id);
+            delSlot.run(slot.id);
             remaining -= slot.quantity;
           } else {
-            db.prepare(`UPDATE player_inventory SET quantity = quantity - ? WHERE id = ?`).run(remaining, slot.id);
+            decSlot.run(remaining, slot.id);
             remaining = 0;
           }
         }

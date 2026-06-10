@@ -147,7 +147,7 @@ export function ListingPhotoGallery({ listingId }: { listingId?: string }) {
               <div className="flex gap-1.5 overflow-x-auto pb-1">
                 {photos.map((p, i) => (
                   <div key={p.id} className="relative flex-shrink-0 group">
-                    <button onClick={() => setActiveIdx(i)} className={cn('w-16 h-12 rounded overflow-hidden border', i === activeIdx ? 'border-cyan-400' : 'border-white/10')}>
+                    <button aria-label={`View photo ${i + 1}`} onClick={() => setActiveIdx(i)} className={cn('w-16 h-12 rounded overflow-hidden border', i === activeIdx ? 'border-cyan-400' : 'border-white/10')}>
                       <Image src={p.url} alt={p.room || 'thumb'} width={64} height={48} unoptimized className="object-cover w-full h-full" />
                     </button>
                     <button onClick={() => deletePhoto(p.id)} className="absolute -top-1 -right-1 p-0.5 rounded-full bg-rose-500 text-white opacity-0 group-hover:opacity-100" aria-label="Delete photo"><Trash2 className="w-2.5 h-2.5" /></button>

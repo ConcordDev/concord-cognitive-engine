@@ -252,7 +252,7 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
                       <div className="flex items-center gap-1">
                         <span className="text-xs font-semibold text-white flex-1">{cl.title}</span>
                         <span className="text-[9px] text-gray-400">{cl.category}</span>
-                        <button onClick={() => removeClause(cl.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><X className="w-3 h-3" /></button>
+                        <button aria-label="Remove" onClick={() => removeClause(cl.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><X className="w-3 h-3" /></button>
                       </div>
                       <p className="text-[10px] text-gray-400">{cl.text}</p>
                     </div>

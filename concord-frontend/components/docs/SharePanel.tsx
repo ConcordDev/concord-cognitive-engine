@@ -137,7 +137,7 @@ export function SharePanel({ pageId }: { pageId: string }) {
               <div key={iv.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900/40 px-2 py-1">
                 <span className="flex-1 text-[11px] text-zinc-200 truncate">{iv.invitee}</span>
                 <span className="text-[9px] uppercase rounded bg-zinc-800 px-1 text-zinc-400">{iv.role}</span>
-                <button onClick={() => revoke(iv.id)} className="text-zinc-400 hover:text-rose-400">
+                <button aria-label="Revoke invite" onClick={() => revoke(iv.id)} className="text-zinc-400 hover:text-rose-400">
                   <X className="w-3 h-3" />
                 </button>
               </div>

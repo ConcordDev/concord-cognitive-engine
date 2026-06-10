@@ -199,14 +199,14 @@ export function LearningPaths() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      <button
+                      <button aria-label="Move up"
                         onClick={() => reorder(path, idx, -1)}
                         disabled={idx === 0}
                         className="text-gray-400 hover:text-white disabled:opacity-20"
                       >
                         <ArrowUp className="w-3 h-3" />
                       </button>
-                      <button
+                      <button aria-label="Move down"
                         onClick={() => reorder(path, idx, 1)}
                         disabled={idx === path.steps.length - 1}
                         className="text-gray-400 hover:text-white disabled:opacity-20"

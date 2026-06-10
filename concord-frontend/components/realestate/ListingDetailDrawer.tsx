@@ -52,7 +52,7 @@ export function ListingDetailDrawer({ listing, onClose, onRequestTour }: { listi
         <header className="sticky top-0 z-10 px-4 py-2 border-b border-white/10 bg-[#0d1117]/95 backdrop-blur flex items-center gap-2">
           <MapPin className="w-4 h-4 text-cyan-400" />
           <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Listing detail</span>
-          <button onClick={onClose} className="ml-auto p-1 text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+          <button aria-label="Close" onClick={onClose} className="ml-auto p-1 text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
         </header>
 
         <div className="aspect-video bg-gradient-to-br from-emerald-900/40 to-cyan-900/30 relative flex items-center justify-center">

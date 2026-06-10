@@ -1021,6 +1021,7 @@ export function PhysicsLab() {
                 </button>
                 <button
                   type="button"
+                  aria-label="Delete scene"
                   onClick={() => deleteScene(s.id)}
                   className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100"
                 >

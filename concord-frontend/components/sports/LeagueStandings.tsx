@@ -138,6 +138,7 @@ export function LeagueStandings({ leagueId: initialLeagueId }: { leagueId?: stri
           className="flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100"
         />
         <button
+          aria-label="Add team"
           onClick={addTeam}
           disabled={pending || !newTeamName.trim()}
           className="rounded bg-neon-cyan/30 px-2 py-1.5 text-xs text-neon-cyan hover:bg-neon-cyan/50 disabled:opacity-50"

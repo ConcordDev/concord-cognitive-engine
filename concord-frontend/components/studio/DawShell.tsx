@@ -56,6 +56,14 @@ export interface DawShellProps {
   onStop?: () => void;
   onRecord?: () => void;
   onLaunchScene?: (sceneId: string) => void;
+  // Optional transport/track handlers. When omitted the corresponding button
+  // renders disabled (a presentational silhouette shouldn't expose controls
+  // that silently do nothing).
+  loopEnabled?: boolean;
+  onToggleLoop?: () => void;
+  onToggleMute?: (trackId: string) => void;
+  onToggleSolo?: (trackId: string) => void;
+  onToggleArm?: (trackId: string) => void;
   className?: string;
 }
 
@@ -71,6 +79,7 @@ export function DawShell({
   isPlaying, isRecording, positionBeats,
   tracks, clips, scenes = [],
   onPlay, onStop, onRecord, onLaunchScene,
+  loopEnabled, onToggleLoop, onToggleMute, onToggleSolo, onToggleArm,
   className,
 }: DawShellProps) {
   return (
@@ -78,11 +87,11 @@ export function DawShell({
       {/* Transport bar */}
       <header className="px-4 py-2 border-b border-white/10 bg-[#0a0c10] flex items-center gap-3">
         <div className="flex items-center gap-1">
-          <button onClick={onStop} className="p-1.5 rounded hover:bg-white/10 text-gray-300"><SkipBack className="w-3.5 h-3.5" /></button>
+          <button aria-label="Skip to start" onClick={onStop} className="p-1.5 rounded hover:bg-white/10 text-gray-300"><SkipBack className="w-3.5 h-3.5" /></button>
           <button aria-label="Stop" onClick={onStop} className="p-1.5 rounded hover:bg-white/10 text-gray-300"><Square className="w-3.5 h-3.5" /></button>
           <button aria-label="Play" onClick={onPlay} className={cn('p-1.5 rounded hover:bg-white/10', isPlaying ? 'bg-emerald-500/30 text-emerald-300' : 'text-gray-300')}><Play className="w-3.5 h-3.5" /></button>
           <button aria-label="Record" onClick={onRecord} className={cn('p-1.5 rounded hover:bg-white/10', isRecording ? 'bg-rose-500/30 text-rose-300 animate-pulse' : 'text-gray-300')}><Circle className={cn('w-3.5 h-3.5', isRecording && 'fill-rose-300')} /></button>
-          <button className="p-1.5 rounded hover:bg-white/10 text-gray-300"><Repeat className="w-3.5 h-3.5" /></button>
+          <button aria-label="Loop" onClick={onToggleLoop} disabled={!onToggleLoop} className={cn('p-1.5 rounded hover:bg-white/10', loopEnabled ? 'bg-violet-500/30 text-violet-300' : 'text-gray-300', !onToggleLoop && 'opacity-40 cursor-not-allowed')}><Repeat className="w-3.5 h-3.5" /></button>
         </div>
         <div className="font-mono text-sm tabular-nums text-violet-300">
           {Math.floor(positionBeats / timeSignatureNum) + 1}.{Math.floor(positionBeats % timeSignatureNum) + 1}.{Math.floor((positionBeats * 4) % 4) + 1}
@@ -108,9 +117,9 @@ export function DawShell({
                     <span className="flex-1 text-xs text-white truncate">{t.name}</span>
                   </div>
                   <div className="mt-1 flex items-center gap-0.5">
-                    <button className={cn('w-5 h-4 rounded text-[9px] font-bold', t.muted ? 'bg-amber-500 text-black' : 'bg-white/5 text-gray-400')}>M</button>
-                    <button className={cn('w-5 h-4 rounded text-[9px] font-bold', t.solo ? 'bg-yellow-500 text-black' : 'bg-white/5 text-gray-400')}>S</button>
-                    <button className={cn('w-5 h-4 rounded text-[9px] font-bold', t.armed ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/5 text-gray-400')}>R</button>
+                    <button aria-label="Mute track" onClick={onToggleMute ? () => onToggleMute(t.id) : undefined} disabled={!onToggleMute} className={cn('w-5 h-4 rounded text-[9px] font-bold', t.muted ? 'bg-amber-500 text-black' : 'bg-white/5 text-gray-400', !onToggleMute && 'opacity-40 cursor-not-allowed')}>M</button>
+                    <button aria-label="Solo track" onClick={onToggleSolo ? () => onToggleSolo(t.id) : undefined} disabled={!onToggleSolo} className={cn('w-5 h-4 rounded text-[9px] font-bold', t.solo ? 'bg-yellow-500 text-black' : 'bg-white/5 text-gray-400', !onToggleSolo && 'opacity-40 cursor-not-allowed')}>S</button>
+                    <button aria-label="Arm track for recording" onClick={onToggleArm ? () => onToggleArm(t.id) : undefined} disabled={!onToggleArm} className={cn('w-5 h-4 rounded text-[9px] font-bold', t.armed ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/5 text-gray-400', !onToggleArm && 'opacity-40 cursor-not-allowed')}>R</button>
                   </div>
                 </li>
               );

@@ -280,6 +280,8 @@ export function inheritHooks(db, deceasedNpcId, heirNpcId, { at = now() } = {}) 
   if (!db || !tableReady(db) || !deceasedNpcId || !heirNpcId) return { ok: false, reason: "missing_inputs" };
   let over = 0, held = 0;
 
+  const retireHook = db.prepare(`UPDATE npc_hooks SET spent_at = ? WHERE id = ?`);
+
   // Hooks held over the deceased → re-point target to the heir, decayed one
   // strength step (a hook on the heir is softer than on the original sinner).
   const overRows = db.prepare(`
@@ -296,7 +298,7 @@ export function inheritHooks(db, deceasedNpcId, heirNpcId, { at = now() } = {}) 
     });
     if (res.ok && (res.action === "granted" || res.action === "upgraded" || res.action === "refreshed")) over++;
     // Retire the hook over the now-dead original.
-    db.prepare(`UPDATE npc_hooks SET spent_at = ? WHERE id = ?`).run(at, r.id);
+    retireHook.run(at, r.id);
   }
 
   // Hooks the deceased HELD → heir becomes the new holder.
@@ -307,7 +309,7 @@ export function inheritHooks(db, deceasedNpcId, heirNpcId, { at = now() } = {}) 
   for (const r of heldRows) {
     if (r.target_kind === "npc" && r.target_id === heirNpcId) {
       // Don't hand the heir a hook over themselves — retire it.
-      db.prepare(`UPDATE npc_hooks SET spent_at = ? WHERE id = ?`).run(at, r.id);
+      retireHook.run(at, r.id);
       continue;
     }
     const res = grantHook(db, {
@@ -317,7 +319,7 @@ export function inheritHooks(db, deceasedNpcId, heirNpcId, { at = now() } = {}) 
       origin: "inherited", at,
     });
     if (res.ok && (res.action === "granted" || res.action === "upgraded" || res.action === "refreshed")) held++;
-    db.prepare(`UPDATE npc_hooks SET spent_at = ? WHERE id = ?`).run(at, r.id);
+    retireHook.run(at, r.id);
   }
 
   return { ok: true, transferredOver: over, transferredHeld: held };

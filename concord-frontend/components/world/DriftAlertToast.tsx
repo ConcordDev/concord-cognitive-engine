@@ -82,7 +82,7 @@ export function DriftAlertToast() {
         <h3 className={['flex items-center gap-1 text-sm font-semibold', critical ? 'text-red-300' : 'text-amber-300'].join(' ')}>
           <AlertTriangle size={14} /> {critical ? 'Critical drift' : 'High drift'}
         </h3>
-        <button onClick={() => { setActiveAlert(null); setResolution(null); }} className="text-zinc-400 hover:text-zinc-100">
+        <button aria-label="Close" onClick={() => { setActiveAlert(null); setResolution(null); }} className="text-zinc-400 hover:text-zinc-100">
           <X size={12} />
         </button>
       </header>

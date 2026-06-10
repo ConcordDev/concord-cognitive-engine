@@ -170,7 +170,7 @@ export function PjTaskDetail({
             {TYPES.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
           <span className="flex-1" />
-          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200">
+          <button aria-label="Close" type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200">
             <X className="w-4 h-4" />
           </button>
         </div>

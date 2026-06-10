@@ -140,9 +140,12 @@ export function sweepExpiredTenancies(db) {
     const expired = db.prepare(`
       SELECT tenant_world_id FROM world_tenancies WHERE leased_until < unixepoch()
     `).all();
-    for (const e of expired) {
-      db.prepare(`DELETE FROM world_tenant_members WHERE tenant_world_id = ?`).run(e.tenant_world_id);
-      db.prepare(`DELETE FROM world_tenancies WHERE tenant_world_id = ?`).run(e.tenant_world_id);
+    if (expired.length) {
+      // Batch both deletes into one statement each (was a per-row N+1).
+      const ids = expired.map((e) => e.tenant_world_id);
+      const ph = ids.map(() => "?").join(",");
+      db.prepare(`DELETE FROM world_tenant_members WHERE tenant_world_id IN (${ph})`).run(...ids);
+      db.prepare(`DELETE FROM world_tenancies WHERE tenant_world_id IN (${ph})`).run(...ids);
     }
     return { swept: expired.length };
   } catch (err) {

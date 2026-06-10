@@ -179,7 +179,7 @@ export function OrdersPanel({ patientId }: { patientId: string }) {
                     {STATUSES.map((st) => <option key={st} value={st} className="bg-[#0d1117]">{st}</option>)}
                   </select>
                   {!closed && (
-                    <button type="button" onClick={() => cancel(o.id)} className="text-gray-400 hover:text-rose-300">
+                    <button aria-label="Cancel order" type="button" onClick={() => cancel(o.id)} className="text-gray-400 hover:text-rose-300">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   )}

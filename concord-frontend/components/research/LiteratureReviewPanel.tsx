@@ -326,6 +326,7 @@ export function LiteratureReviewPanel() {
                 </button>
                 <button
                   type="button"
+                  aria-label="Delete saved review"
                   onClick={() => deleteSaved(rv.id)}
                   className="p-1 text-gray-600 hover:text-rose-300"
                 >

@@ -151,7 +151,7 @@ export function NotificationPrefsPanel({ channels }: { channels: ChannelLite[] }
             {prefs.keywords.map((kw) => (
               <span key={kw} className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] rounded bg-amber-500/10 border border-amber-500/20 text-amber-200">
                 {kw}
-                <button onClick={() => removeKeyword(kw)} className="text-rose-300"><X className="w-2.5 h-2.5" /></button>
+                <button aria-label="Remove" onClick={() => removeKeyword(kw)} className="text-rose-300"><X className="w-2.5 h-2.5" /></button>
               </span>
             ))}
           </div>
