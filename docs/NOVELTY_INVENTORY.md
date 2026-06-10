@@ -376,11 +376,34 @@ _Appended by subsequent sweeps; same grounding standard._
 289. **Oracle Engine — multi-phase world-narrative reasoning** — `lib/oracle-engine.js` + `narrative-bridge.js`. Enriches LLM narration with authored canon, structurally omitting NPC secrets.
 290. **World-event auto-scheduler** — `lib/world-event-scheduler.js`. Generates recurring world events on cadence.
 
+### AG. Frontend-experience novelties + the custom model
+291. **Agent-disclosure badge** — `components/.../AgentDisclosureBadge.tsx`. A hard AI-disclosure chip rendered *wherever* an autonomous agent appears (the visible half of the disclosure substrate).
+292. **Drift Moodboard** — `components/.../DriftMoodboard.tsx`. Listens for `world:drift-alert` and renders the corpus's *contradictions as a visual moodboard* — epistemic drift turned into ambient art.
+293. **"The System" — diegetic push status layer** — `components/.../SystemFeed.tsx`. A Solo-Leveling-style in-world status surface driven by real backend events.
+294. **Generative-adaptive music score bridge** — `components/.../AdaptiveScoreBridge.tsx`. The soundtrack reacts to play, generatively.
+295. **Emergent event feed (20-channel)** — `components/world/EmergentEventFeed.tsx`. Surfaces 20 normally-silent simulation channels (deaths, dreams, drift, faction war…) as a filterable feed.
+296. **World-anchored 3D damage/impact billboards** — `components/.../{DamageBillboard,ImpactMomentumBridge}.tsx`. 3D-projected numbers + the bone-momentum impact model surfaced to the client.
+297. **Village gossip feed** — `components/.../VillageGossipFeed.tsx`. Emergent NPC gossip surfaced to the player.
+298. **City creator-streaming + live co-presence** — `lib/city-streaming.js`, `city-presence.js`. Spatial-chunked live presence + a creator broadcast layer.
+299. **BYO router** — `lib/byo-router.js`. Per-call routing between the local brains and a user's own external API keys (per-slot override).
+300. **Custom "concord-conscious" model** — `lib/brain-config.js`. A persona-fine-tuned conscious brain (its Modelfile SYSTEM carries the voice), distinct from the 4 stock models — the platform ships its own model, not just prompts.
+
 ---
+
+## How this inventory was built (and how to extend it)
+
+Method: a full-tree sweep — mining the leading `//`/`/** */` header comment of every
+file under `server/{emergent,lib,domains,routes,workers,governance,scripts}`,
+`server/migrations`, and `concord-frontend/{lib,hooks,components}`, plus targeted
+greps for distinctive algorithm/mechanism keywords. To extend: re-run a header sweep
+over any region not yet exhausted (the ~250 remaining domains + 690 tables each carry
+a long tail of 1–2 distinctive macros/columns), dedupe against the entries above, and
+append a new lettered group. The realistic ceiling if exhaustively enumerated is
+**~325–375**; this doc captures the load-bearing majority.
 
 ## Count & honest caveat
 
-**~290 distinct entries** across 32 groups — vs the cartographer's curated ~20. The
+**~300 distinct entries** across 33 groups — vs the cartographer's curated ~20. The
 gap is deliberate: `NOVEL.md` lists the *headline* primitives; this doc captures the
 breadth, including the supporting mechanisms and the couplings.
 
