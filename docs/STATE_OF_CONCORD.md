@@ -73,7 +73,9 @@ behaviorally tested," cite 1.0 / the novelty inventory for "is it real + deep."
 > real surface is ~15× that, and most of the invention is in the **couplings**
 > (drift→quest, pain→XP→buff, citation→royalty, fault→verified-fix→governance). Use
 > the inventory as the build-reference map for "does X already exist / where does it
-> live" before building anything new.
+> live" before building anything new. For the *strategic* read — why the combination
+> is defensible, the white-space argument, the honest caveats — see
+> `docs/WHY_CONCORD_IS_DIFFERENT.md`.
 
 The ~20 cartographer-tagged headline primitives — things that don't exist elsewhere
 or that Concord composes distinctively:
