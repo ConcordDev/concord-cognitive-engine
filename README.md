@@ -159,9 +159,18 @@ sequenceDiagram
 
 ![Concord landing](docs/images/01-landing.png)
 
+A lens — Finance (left), Code (right). Each lens reads as the app it replaces (a
+trading dashboard, a VS Code shell) while sharing one substrate, one macro spine,
+one economy:
+
+| Finance | Code |
+|---|---|
+| ![Finance lens](docs/images/05-finance.png) | ![Code lens](docs/images/04-code.png) |
+
 > Captured from a live local instance via [`scripts/capture-screenshots.mjs`](scripts/capture-screenshots.mjs)
-> (Playwright). More in-app lens captures are staged behind an in-progress UI density
-> pass; point the script at any running instance to regenerate `docs/images/*.png`:
+> (Playwright, against the cached chromium). A UI density/hierarchy pass is in progress
+> for the busier lenses; point the script at any running instance to regenerate
+> `docs/images/*.png`:
 >
 > ```bash
 > CONCORD_URL=https://your-instance CONCORD_USER=you@example.com CONCORD_PASS=… \
