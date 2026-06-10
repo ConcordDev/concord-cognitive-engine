@@ -390,6 +390,37 @@ _Appended by subsequent sweeps; same grounding standard._
 
 ---
 
+### AH. The professional pure-compute domain layer (real formulas, not LLM-guessed)
+> A standout in aggregate: Concord ships deterministic, profession-grade calculators for *dozens* of fields. The notable standouts:
+301. **Real double-entry accounting** — `domains/accounting.js`. Trial balance, P&L, invoice aging, budget variance, rent roll.
+302. **NEC electrical code calculation suite** — `domains/electrical.js`. National Electrical Code calcs (ServiceTitan-shape).
+303. **Aircraft weight & balance** — `domains/aviation.js`. Loading stations (pilot/copilot/fuel) → CG envelope — real flight-planning math.
+304. **Trade calculators** — `domains/{carpentry,construction,plumbing,hvac,masonry,welding,diy,homeimprovement,landscaping}.js`. Board-foot, takeoff + schedule critical-path, pipe sizing, joint strength — contractor-grade.
+305. **Earth-science calculators** — `domains/{geology,forestry,mining,energy,agriculture,environment,ocean}.js`. Rock classification, timber volume, ore-grade + blast design, solar estimate, crop rotation, wave/salinity.
+306. **k-anonymity / re-identification risk** — `domains/anon.js`. Real privacy math, not a toggle.
+307. **Multi-framework ethical evaluation** — `domains/ethics.js`. Evaluates a dilemma across several ethical frameworks + stakeholder analysis.
+308. **Music-theory + audio analysis** — `domains/music.js`. BPM + key detection via signal analysis, harmony.
+309. **Poetry + linguistics analysis** — `domains/{poetry,linguistics}.js`. Meter/rhyme-scheme/form + readability/morphology.
+310. **Clinical compute** — `domains/{pharmacy,emergencyservices,mentalhealth,healthcare}.js`. Dosage, triage/dispatch, mood tracking, drug interactions.
+311. **Legal compute** — `domains/law.js`. Case analysis, statute lookup, deadline calculation.
+312. **Research compute** — `domains/research.js`. Citation-network analysis + methodology scoring.
+313. **No-code Custom Lens Builder** — `domains/custom.js`. Users compose their *own* lenses (schema/template/validation) — the platform is self-extending by end-users.
+314. **No-code Foundry game-builder** — `domains/foundry.js`. Build whole game-worlds without code.
+315. **Q&A + bounty platforms** — `domains/{answers,bounties}.js`. Stack-Overflow + Gitcoin/HackerOne parity backends.
+316. **Legacy-system tech-debt computation** — `domains/legacy.js`. Quantifies technical debt.
+317. **Day-One-parity journaling + quantified productivity** — `domains/daily.js`.
+318. **Commonsense plausibility reasoning** — `domains/commonsense.js`. Plausibility checks (the "would this actually happen?" layer).
+319. **Orbital mechanics / astrodynamics** — `domains/space.js`. Orbit calc, delta-V budgets, launch windows.
+320. **Urban planning compute** — `domains/urbanplanning.js`. Zoning, walkability, density, traffic models.
+321. **Telecom network planning** — `domains/telecommunications.js`. Link-budget / coverage calculators.
+322. **Veterinary clinical calculators** — `domains/veterinary.js`. Triage, weight-based dosing.
+323. **Voice stack** — `domains/{voice,voice-tts}.js`. Transcript analysis + speaker diarization + ElevenLabs-backed TTS.
+324. **Extended real free-data wires** — `domains/{society,wikipedia-search,scholarly-apis,civic-data-apis}.js`. World Bank societal indicators, Wikipedia full-text, academic APIs — more genuine public sources.
+325. **Critical-path / Gantt temporal analysis** — `domains/timeline.js`. Real CPM scheduling.
+326. **Engineering Standards Library** — `domains/standards.js`. Codified standards lookup surface.
+
+---
+
 ## How this inventory was built (and how to extend it)
 
 Method: a full-tree sweep — mining the leading `//`/`/** */` header comment of every
@@ -403,7 +434,7 @@ append a new lettered group. The realistic ceiling if exhaustively enumerated is
 
 ## Count & honest caveat
 
-**~300 distinct entries** across 33 groups — vs the cartographer's curated ~20. The
+**~326 distinct entries** across 34 groups — vs the cartographer's curated ~20. The
 gap is deliberate: `NOVEL.md` lists the *headline* primitives; this doc captures the
 breadth, including the supporting mechanisms and the couplings.
 
