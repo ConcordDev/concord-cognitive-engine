@@ -106,7 +106,7 @@ function UniversalLensFeatures({ children }: { children: React.ReactNode }) {
       {/* Main lens content — per-lens Suspense boundary.
           LensStateProvider preserves scroll/filter/draft state across
           lens navigation, keyed by the current domain slug. */}
-      <LensStateProvider domain={slug} className="flex-1 min-h-0">
+      <LensStateProvider domain={slug} className="flex-1 min-h-0 lg:pr-16">
         <Suspense
           fallback={
             <div className="space-y-4 p-6">
