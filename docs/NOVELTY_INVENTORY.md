@@ -263,11 +263,45 @@ _Appended by subsequent sweeps; same grounding standard._
 194. **Video generation surface** — `domains/video-gen.js`.
 195. **WebRTC voice signalling relay** — `domains/voice-chat.js`. Peer connections direct; server only relays signalling.
 
+### X. Cross-world economy, the 6th brain, and route-surfaced substrate
+196. **Lattice — the 6th brain, trained only on consented DTUs** — `routes/lattice.js`, `migrations/108_lattice_train_consent.js`. A community/federated brain whose training corpus is strictly opt-in per DTU.
+197. **Walker courier economy** — `routes/concord-link-walkers.js`. Hire a *walker* to physically carry a message between worlds, with journey tracking — couriers as an economy.
+198. **Black market in intercepted messages** — `routes/black-market.js`. "Sael's stall" — buy *intercepted Concord Link messages* with `sparks` via fences; a narrative MITM economy.
+199. **Consensual wagers & duels** — `routes/wagers.js`, `migrations/051_wagers.js`. CC wagers require explicit two-party consent before any money moves.
+200. **Both-sides-confirm trade escrow** — `routes/player-trade.js`, `migrations/069_player_trade.js`. Atomic player-to-player trade with mutual-ready escrow.
+201. **Player scars + avatar drift** — `migrations/160_player_scars_avatar_drift.js`. A visible appearance overlay *derived from cumulative damage/history* — your body records what happened to it.
+202. **Existential-OS qualia channels (Layer 4)** — `migrations/111_qualia_state.js`. Persisted existential/qualia state beneath the embodied layers.
+203. **Survival-sim on the pain substrate** — `migrations/204_survival_sim.js`. Hunger/exposure survival built on Layer-8 pain signals.
+204. **Foundry world-builder** — `migrations/191-192_foundry*.js`. An in-platform tool to author whole worlds.
+205. **Event cascades (bounded parent/child quests)** — `migrations/242_event_cascades.js`. Quest outcomes spawn child quests, depth-bounded + idempotent.
+206. **NPC stress accumulation** — `migrations/152_npc_stress.js`. Stress builds from grudges, war, heir deaths, rituals — and changes behavior.
+207. **Concord Link — cross-world communication** — `routes/concord-link.js`. One universe, many worlds; messages + items + relationships cross between them.
+208. **Plugin trusted-key signing registry + gallery** — `migrations/085_plugin_gallery.js`. Browseable plugins gated by signature against a trusted-key registry.
+209. **Hooks-as-artifacts** — `migrations/172_hook_artifacts.js`. CK3 leverage promoted to first-class, tradeable artifacts.
+210. **Inference cost-attribution traces** — `routes/inference-debug.js`. Per-thread inference trace + cost attribution observability.
+211. **Anthropic-skill import/export for emergent agents** — `routes/skills.js`. The AI residents can load/export skills.
+212. **Universal DTU export/import bridge** — `routes/universal-export.js`. Portable corpus in/out at the HTTP surface.
+213. **Account lifecycle — deletion/export/disputes/ToS** — `routes/account-lifecycle.js`. Full GDPR-shaped lifecycle as substrate.
+214. **Atlas signal-cortex privacy zones + spectrum** — `routes/atlas-signals.js`. Spatial privacy zones over the signal map.
+215. **Stripe webhook-idempotency + Connect treasury** — `migrations/003_economy_stripe.js`, `008_economic_system.js`. Idempotent money-in + a Concord-Coin treasury with royalty cascades.
+
+### Y. More real-compute domains + the free-API wire layer + life-sim depth
+216. **Bioinformatics sequence alignment** — `domains/bio.js`. Real sequence-alignment scoring.
+217. **Pure-compute oceanography** — `domains/ocean.js`. Wave analysis, salinity profiles.
+218. **Carbon-footprint + sustainability compute** — `domains/eco.js`. Deterministic footprint math.
+219. **Element × Material interaction matrix** — `domains/elements.js`. A chemistry interaction table driving crafting/world reactions.
+220. **The "real free-API wire" layer** — `domains/{astronomy-live,pharmacy-live,classroom,gallery,crypto-live,scholarly-apis,civic-data-apis,curated-free-apis,more-free-apis,key-required-live}.js`. Dozens of *genuine* public data sources wired deterministically (FDA drug data, Open Library's ~30M books, Cleveland/Met museums, NASA APOD, CryptoCompare) — real grounding, mostly no-key.
+221. **Meshtastic-parity off-grid mesh lens** — `domains/mesh.js`. A consumer-facing off-grid networking surface over the Concord Mesh.
+222. **Immersive-sim verbs (prop-use + disguise)** — `domains/immersive-sim.js`. Deus-Ex-style systemic interactions.
+223. **Life-sim depth domains** — `domains/{crime,politics,religion,romance,real-estate}.js`. Crime networks, elections, faith, dynasty/marriage, property markets — each a full macro surface.
+224. **Authored-cosmology codex** — `domains/lore.js`. The read surface over Concord's hand-authored canon.
+225. **Realm governance surfaces** — `domains/{realm-access,realm-council}.js`. CK3-style realm council + access control as player-facing macros.
+
 ---
 
 ## Count & honest caveat
 
-**~195 distinct entries** across 23 groups — vs the cartographer's curated ~20. The
+**~225 distinct entries** across 25 groups — vs the cartographer's curated ~20. The
 gap is deliberate: `NOVEL.md` lists the *headline* primitives; this doc captures the
 breadth, including the supporting mechanisms and the couplings.
 
