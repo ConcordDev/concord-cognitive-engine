@@ -319,11 +319,37 @@ _Appended by subsequent sweeps; same grounding standard._
 242. **Kanban workflow analytics** — `domains/board.js`. Burndown + card prioritization math.
 243. **Mortgage / amortization finance math** — `domains/realestate.js`. Real loan amortization formulas.
 
+### AB. MMO / competitive / social-sim substrate (the schema ledger)
+244. **Elo matchmaking + persistent arena queue** — `migrations/{054_player_ratings,055_arena_queue}.js`. Real Elo + a queue that survives restarts.
+245. **Player-organized tournaments** — `migrations/103_tournaments.js`. Bracketed competitive PvP scenes.
+246. **Spectator betting + emergent broadcast** — `migrations/162_spectator_betting.js`. Watch + wager on live emergent events.
+247. **Auction house + EVE-style buy orders** — `migrations/{220_auction_house,227_auction_buy_orders}.js`. Time-bound bidding, buy-now, *and* standing buy-orders with snipe-extension.
+248. **Epidemiology sim** — `migrations/{223_disease_immunity_and_diagnose,228_disease_realism}.js` + `lib/disease-engine.js`. Vector-based contagion, immunity ledger, diagnose-skill XP, world plague thresholds.
+249. **WoW-style async player mail** — `migrations/215_player_mail.js`. Survives logout; COD + attachment transfer in one transaction.
+250. **Achievement catalog + seasonal gating** — `migrations/{216_achievement_catalog,236_achievement_season}.js`. Stamped with season/year at unlock.
+251. **Faction reputation cache + equipped titles** — `migrations/{217_user_active_title,218_player_faction_rep_cache}.js`.
+252. **Party LFG matchmaking + raid variant** — `migrations/219_party_lfg.js`.
+253. **Multi-step crafting chains** — `migrations/180_multi_step_crafts.js`. Recipe trees, not single-step crafts.
+254. **Generational aging + player dynasty** — `migrations/181_aging_dynasty.js`. Characters age; lineage persists.
+255. **Culture/faith friction + marriage** — `migrations/182_culture_marriage.js`. Cross-culture tension as a mechanic.
+256. **Crime depth (gangs/rackets/heists/bounties)** — `migrations/209_crime_depth.js`.
+257. **Climbing routes + Stardew-style farm plots** — `migrations/{244_climbing_routes,247_farm_plots}.js`.
+258. **Tunyan jobs + ration entitlements** — `migrations/179_tunyan_jobs.js`. A planned-economy labor catalog.
+259. **Cross-world population migration** — `migrations/168_population_migration.js`. NPCs move between worlds.
+260. **Skill atrophy** — `lib/skill-atrophy.js` (mig 087). Unused skills decay over time.
+
+### AC. Self-describing codebase & infra primitives
+261. **Codebase-as-DTUs** — `migrations/125_code_artifact_kind.js`. Routes / migrations / modules / macros / economy systems are themselves minted as DTUs — the system represents its own source inside its own knowledge substrate.
+262. **Brain want-engine** — `migrations/009_brain_want_engine.js`. The brain models *wants* that drive autonomous activity.
+263. **Ledger idempotency keys** — `migrations/004_ledger_idempotency.js`. Every money mutation is idempotent by refId (no double-spend on retry).
+264. **External messaging adapters** — `migrations/056_messaging_adapters.js`. Bind external channels (SMS/Discord/etc.) + message log + user-platform linking.
+265. **Learning verification substrate** — `migrations/010_learning_verification.js`. Proof that learning actually occurred.
+
 ---
 
 ## Count & honest caveat
 
-**~243 distinct entries** across 27 groups — vs the cartographer's curated ~20. The
+**~265 distinct entries** across 29 groups — vs the cartographer's curated ~20. The
 gap is deliberate: `NOVEL.md` lists the *headline* primitives; this doc captures the
 breadth, including the supporting mechanisms and the couplings.
 
