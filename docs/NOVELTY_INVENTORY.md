@@ -211,11 +211,25 @@ _Appended by subsequent sweeps; same grounding standard._
 152. **Offline DTU preload + mesh status** — `concord-mobile/src/mesh/{offline-preload,useMeshStatus,mesh-store}.ts`. Works without internet over the mesh.
 153. **Per-platform secure storage** — `concord-mobile/src/.../secure-storage-expo.ts`. iOS Keychain / Android Keystore native, WebCrypto AES-GCM non-extractable key on web.
 
+### S. Agent self-modeling & disclosure substrate (migrations 323–330)
+154. **Agent hard-disclosure** — `migrations/324_agent_disclosure.js`. The *inverse* of hiding: a column that compels an autonomous resident to disclose it IS an agent.
+155. **Unified agent self-model** — `migrations/325_agent_identity.js`. An autonomous resident carries a single coherent identity record.
+156. **Affect-trace temperament** — `migrations/326_affect_trace_temperament.js`. Durable per-agent emotional disposition, not just momentary state.
+157. **Agent reasoning-trace journal** — `migrations/327_agent_reasoning_traces.js`. A durable "what I was thinking" log per agent.
+158. **NPC deception lens** — `migrations/328_npc_deception_lens.js`. Per-NPC deception sensitivities — how prone/able each character is to deceive.
+159. **Legacy death-appraisal** — `migrations/329_legacy_death_appraisal.js`. Death modeled as a *felt, appraised* event, not a flag flip.
+160. **Agent value-drift watch** — `migrations/330_agent_drift_watch.js`. `measureValueDrift` — agents periodically audited for value drift over time.
+
+### T. Sovereign / refusal canon (ethics-as-gameplay)
+161. **The Great Refusal — Sovereign Mass Raid** — `lib/sovereign/raid-event.js`. A world-event that declares a dome-collapse Refusal Field through the glyph algebra.
+162. **Sovereign Refusal Archive** — `lib/sovereign/refusal-archive.js`. A Shadow-DTU collection recording every unique combat-skill DTU a player invents.
+163. **Goddess phase arcs** — `lib/goddess-arcs.js`. Patron/antagonist relationship arcs whose warmth is driven by the player's four-axis ecosystem metrics.
+
 ---
 
 ## Count & honest caveat
 
-**~153 distinct entries** across 18 groups — vs the cartographer's curated ~20. The
+**~163 distinct entries** across 20 groups — vs the cartographer's curated ~20. The
 gap is deliberate: `NOVEL.md` lists the *headline* primitives; this doc captures the
 breadth, including the supporting mechanisms and the couplings.
 
