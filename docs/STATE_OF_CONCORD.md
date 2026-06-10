@@ -65,10 +65,18 @@ behaviorally tested," cite 1.0 / the novelty inventory for "is it real + deep."
 - 1 remaining "critical" renders as `undefined/undefined` under invariant-guardian —
   a detector-output bug to triage (not a confirmed code defect).
 
-## 5. What's genuinely novel (reproduce: `npm run cartograph:static` → NOVEL.md)
+## 5. What's genuinely novel
 
-~20 substrate primitives the cartographer tags high-novelty — things that don't
-exist elsewhere or that Concord composes distinctively:
+> **Full inventory: `docs/NOVELTY_INVENTORY.md` — ~326 distinct novelties across 34
+> groups** (a hand-maintained full-tree sweep). The cartographer's auto-generated
+> `audit/cartograph/NOVEL.md` curates only the ~20 *headline* primitives below; the
+> real surface is ~15× that, and most of the invention is in the **couplings**
+> (drift→quest, pain→XP→buff, citation→royalty, fault→verified-fix→governance). Use
+> the inventory as the build-reference map for "does X already exist / where does it
+> live" before building anything new.
+
+The ~20 cartographer-tagged headline primitives — things that don't exist elsewhere
+or that Concord composes distinctively:
 
 - **DTU substrate** — 4-layer self-compressing knowledge units + auto MEGA→HYPER
   consolidation + citation-cascade royalty economy on top.
