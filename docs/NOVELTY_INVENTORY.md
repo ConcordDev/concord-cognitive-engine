@@ -297,11 +297,33 @@ _Appended by subsequent sweeps; same grounding standard._
 224. **Authored-cosmology codex** — `domains/lore.js`. The read surface over Concord's hand-authored canon.
 225. **Realm governance surfaces** — `domains/{realm-access,realm-council}.js`. CK3-style realm council + access control as player-facing macros.
 
+### Z. The lens-runtime framework (what lets 260 lenses share one substrate)
+226. **Offline-first substrate mirror** — `lib/offline-first/{offline-queue,substrate-cache,db}.ts` + `hooks/useOfflineFirst.ts`. A typed offline action-queue with a sync indicator + a *full substrate cache in IndexedDB* — the app keeps working offline and reconciles on reconnect.
+227. **useYjsDoc — Yjs CRDT bound to Socket.IO rooms** — `lib/useYjsDoc.ts`. A drop-in real-time co-editing primitive any lens can use.
+228. **Declarative lens runtime contract** — `lib/manifest.ts` + `lib/domain-schemas.ts` (per-lens typed entity models) + `lib/automation-bindings.ts` (per-lens trigger→macro). A framework that makes 260 lenses configuration, not 260 bespoke apps.
+229. **Universal lens-hook suite** — `hooks/useLens*.ts`. useLensState (auto-save/restore), useLensDraft (debounced autosave), useLensRealtime (typed lens-scoped sockets), useLensGrounding (a lens's *own* grounding DTUs), useLensIdentity (per-lens CSS-var theming), useLensSession (multi-step workflows), useTilePush (realtime cache-invalidation), useRealtimeRefresh (emit-on-change + slow-poll backstop).
+230. **Headless-domain probe registry** — `lib/headless-probes.ts`. Synthetic-journey self-testing across lenses.
+231. **Console/controller play for a web app** — `hooks/{useGamepad,useConsolePing}.ts`. Standard Gamepad API + device-class detection.
+232. **WebRTC spatial voice + VAD + cross-browser STT** — `hooks/useWorldVoice.ts`, `lib/voice/{vad,mediarecorder-stt}.ts`. Positional voice in the world + a Web-Speech fallback for ConKay.
+233. **Avatar renderer reads scars + worker-driven gait** — `hooks/{useAvatarScars,useAvatarAnimator}.ts`. The body's history (scars/drift) drives the shader; gait is computed off-thread in a worker.
+234. **Global media layer controllable from any lens** — `hooks/useGlobalMedia.ts`. One media surface, addressable everywhere.
+
+### AA. More compute / data / workflow domains
+235. **Derivatives + global-markets engine** — `domains/markets.js`. Options/futures companion to the equity `market` lens.
+236. **Healthcare clinical helpers** — `domains/healthcare.js`. Drug-interaction checks, protocol matching, patient summaries.
+237. **Quantified-self unified health ledger** — `domains/self.js`. Shadows wearable/health data into one personal ledger.
+238. **Privacy/consent management (OneTrust shape)** — `domains/privacy.js`. Consent records + data-privacy controls as substrate.
+239. **Audit / compliance trail + risk scoring** — `domains/audit.js`.
+240. **Multi-step workflow sessions** — `domains/sessions.js` + `hooks/useLensSession.ts`. Resumable multi-step flows across any lens.
+241. **Integration bridge (connection health + data mapping)** — `domains/bridge.js`.
+242. **Kanban workflow analytics** — `domains/board.js`. Burndown + card prioritization math.
+243. **Mortgage / amortization finance math** — `domains/realestate.js`. Real loan amortization formulas.
+
 ---
 
 ## Count & honest caveat
 
-**~225 distinct entries** across 25 groups — vs the cartographer's curated ~20. The
+**~243 distinct entries** across 27 groups — vs the cartographer's curated ~20. The
 gap is deliberate: `NOVEL.md` lists the *headline* primitives; this doc captures the
 breadth, including the supporting mechanisms and the couplings.
 
