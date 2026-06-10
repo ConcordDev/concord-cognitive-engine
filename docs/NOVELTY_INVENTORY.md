@@ -345,11 +345,42 @@ _Appended by subsequent sweeps; same grounding standard._
 264. **External messaging adapters** — `migrations/056_messaging_adapters.js`. Bind external channels (SMS/Discord/etc.) + message log + user-platform linking.
 265. **Learning verification substrate** — `migrations/010_learning_verification.js`. Proof that learning actually occurred.
 
+### AD. Game-system engines (each a real, self-contained mechanic)
+266. **Full Mahjong engine** — `lib/mahjong/*`. Seeded wall, 4 seats, 3 NPC discard AIs, genuine 14-tile decomposition for 9 yaku (not a checkbox).
+267. **Combat subsystem suite** — `lib/combat/*`. damage-calculator, executions, faction-war, flow-recorder (combat *replay*), telegraph-peril, boss-phases, match-chronicle, loadout.
+268. **Skill mastery tiers** — `lib/skills/skill-mastery.js`. novice→grandmaster progression with VFX scaling per tier.
+269. **Programming-puzzle VM** — `lib/programming-puzzle.js`. A real register VM that runs submitted programs against test cases, cycle-capped against infinite loops.
+270. **Hacking terminal puzzle** — `lib/hacking.js`. Filesystem-tree terminal with a server-private solution path (no leak).
+271. **Detective deduction board** — `lib/detective.js`. 2-of-3 lock-in (suspect+weapon+motive) with persistent arrest records.
+272. **Roguelite meta-progression** — `lib/roguelite.js`. Hades-style gem bank that advances even on a wipe.
+273. **Extraction-shooter mode** — `lib/extraction.js`. Loot-or-lose with corpse-drop on death.
+274. **Theme-park tycoon** — `lib/theme-park.js`. Appeal/satisfaction compounding with visits.
+275. **Factory automation** — `lib/factory.js`. Belts + crafters on a per-land-claim grid (no global tile grid).
+276. **Brawl 1v1 (Sifu profile)** — `lib/brawl.js`. Purpose-built fist-combat profile, in-memory ephemeral.
+277. **Restaurant Diner-Dash management** — `lib/restaurant.js`. Time-pressure tipping curve.
+278. **Anthropic-skills adapter** — `lib/skills/anthropic-skills-adapter.js`. Import Claude/Anthropic skills as in-world agent skills.
+
+### AE. Self-verification infrastructure (beyond detectors + cartographer)
+279. **verify-brain-wiring** — `scripts/verify-brain-wiring.mjs`. "Are all five brains wired to their Ollamas?"
+280. **verify-prod-flags** — `scripts/verify-prod-flags.mjs`. Boot-time asserter that prod is in the intended security posture.
+281. **verify-resource-allocation** — `scripts/verify-resource-allocation.mjs`. "Will the brains + Concordia's slice actually FIT on the one Blackwell GPU?"
+282. **audit-wiring (built-but-not-wired)** — `scripts/audit-wiring.js`. Finds engines that exist but were never put on a clock/route.
+283. **cross-branch cartographer audit** — `scripts/cross-branch-audit.js`. Cartographs *every* Claude branch on origin to surface unmerged novelty.
+284. **synthetic-journey probe runner** — `scripts/synthetic-journey-probe.mjs`. Drives synthetic user journeys end-to-end.
+285. **check-doc-claims** — re-runs every numeric claim's reproduction command and fails on drift (keeps the docs honest).
+286. **grade-macro-depth (honest + generous)** — `scripts/grade-macro-depth.mjs`. Behavioral-coverage grader with an explicit anti-gaming `--honest` mode.
+
+### AF. Remaining substrate surfaces
+287. **Foundation Market — physical-layer marketplace** — `lib/foundation-market.js`. Trade in signal-layer/physical goods.
+288. **World Organizations** — `lib/world-organizations.js`. Guilds, parties, mentorship, recruitment as one graph.
+289. **Oracle Engine — multi-phase world-narrative reasoning** — `lib/oracle-engine.js` + `narrative-bridge.js`. Enriches LLM narration with authored canon, structurally omitting NPC secrets.
+290. **World-event auto-scheduler** — `lib/world-event-scheduler.js`. Generates recurring world events on cadence.
+
 ---
 
 ## Count & honest caveat
 
-**~265 distinct entries** across 29 groups — vs the cartographer's curated ~20. The
+**~290 distinct entries** across 32 groups — vs the cartographer's curated ~20. The
 gap is deliberate: `NOVEL.md` lists the *headline* primitives; this doc captures the
 breadth, including the supporting mechanisms and the couplings.
 
