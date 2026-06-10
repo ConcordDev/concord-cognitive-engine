@@ -157,18 +157,16 @@ sequenceDiagram
 
 ## Screenshots
 
-> 📸 Live-instance captures land in `docs/images/`. They require a running deployment
-> (the public site is auth-gated and this build isn't deployed yet), so a ready-to-run
-> Playwright capture script ships at [`scripts/capture-screenshots.mjs`](scripts/capture-screenshots.mjs)
-> — point it at any running instance:
+![Concord landing](docs/images/01-landing.png)
+
+> Captured from a live local instance via [`scripts/capture-screenshots.mjs`](scripts/capture-screenshots.mjs)
+> (Playwright). More in-app lens captures are staged behind an in-progress UI density
+> pass; point the script at any running instance to regenerate `docs/images/*.png`:
 >
 > ```bash
 > CONCORD_URL=https://your-instance CONCORD_USER=you@example.com CONCORD_PASS=… \
->   node scripts/capture-screenshots.mjs   # writes docs/images/*.png
+>   node scripts/capture-screenshots.mjs
 > ```
->
-> Until then, the architecture, moat, and request-flow diagrams above render live on
-> GitHub and are generated from the real system shape.
 
 ---
 
