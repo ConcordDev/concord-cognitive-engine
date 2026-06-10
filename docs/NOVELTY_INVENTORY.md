@@ -225,11 +225,49 @@ _Appended by subsequent sweeps; same grounding standard._
 162. **Sovereign Refusal Archive** — `lib/sovereign/refusal-archive.js`. A Shadow-DTU collection recording every unique combat-skill DTU a player invents.
 163. **Goddess phase arcs** — `lib/goddess-arcs.js`. Patron/antagonist relationship arcs whose warmth is driven by the player's four-axis ecosystem metrics.
 
+### U. Real deterministic compute domains (beyond §O — these are lens domains with genuine engines)
+164. **Gate-based quantum statevector simulator** — `domains/quantum.js`. A *real* gate-based quantum-circuit simulator (not a toy).
+165. **Fractal dimension / self-similarity analysis** — `domains/fractal.js`. Box-counting fractal dimension on patterns.
+166. **Deadlock detection via wait-for graphs** — `domains/lock.js`. Classic OS-theory deadlock detection as a lens.
+167. **Queueing-theory analytics** — `domains/queue.js`. Real M/M/c-style queue math.
+168. **EEG signal processing + connectivity** — `domains/neuro.js`. Neuroscience signal pipeline (bands, connectivity).
+169. **Graph algorithms suite** — `domains/graph.js`. Pathfinding / clustering / centrality / metrics.
+170. **Robotics ROS/Gazebo simulation suite** — `domains/robotics.js`.
+171. **Digital-twin / counterfactual world simulation** — `domains/worldmodel.js`.
+172. **System-dynamics simulation (AnyLogic/Vensim shape)** — `domains/sim.js`. Monte-Carlo + stock-and-flow.
+173. **CAD + engineering simulation suite** — `domains/engineering.js`. Fusion 360 / SimScale shape over the real FEA core.
+174. **Trade engineering calculators** — `domains/plumbing.js` (+ welding/hvac/carpentry/masonry). Pipe sizing, load math — real formulas, contractor-grade.
+175. **Logistics optimization + HOS compliance** — `domains/logistics.js`. Route optimization + hours-of-service legal checks.
+176. **Pure-compute creative helpers** — `domains/{photography,podcast}.js`. Exposure/composition scoring, episode analytics — deterministic, no LLM.
+
+### V. Learning-science & metacognition domains
+177. **FSRS spaced-repetition** — `domains/srs.js`. Modern Free Spaced Repetition Scheduler (Anki-2026 parity), pure-compute.
+178. **Meta-learning strategy selection** — `domains/metalearning.js`. Learning-to-learn: picks a study strategy from performance history.
+179. **Cognitive Replay** — `domains/cognitive-replay.js`. "Spotify-Wrapped for your mind" — a scrubber over your own cognition, with A* path reconstruction.
+180. **Self-reflection insight extraction** — `domains/reflection.js`. Mines journals for insights.
+181. **Metacognition / system introspection** — `domains/meta.js`. The system reflecting on its own reasoning.
+182. **Knowledge grounding / claim fact-checking** — `domains/grounding.js`. Claim verification surface.
+183. **Understanding synthesis workbench** — `domains/understanding.js`. Obsidian/RemNote-shape knowledge synthesis.
+184. **Patterns surface** — `domains/patterns.js`. *Joins* drift_alerts (drift-monitor) + recent breakthroughs — a cross-engine lens (a coupling made first-class).
+185. **Council deterministic per-voice scoring** — `domains/council.js`. Each voice scores via a transparent heuristic, not a black box.
+186. **reason — the "is this actually true?" layer** — `domains/reason.js`. Verification macros for ConKay + any caller.
+
+### W. More substrate surfaces
+187. **Verified-human identity badge** — `domains/identity.js`. Proof-of-human in a world of agents (the "Universal Move System").
+188. **Civic-capital micro-bond engine** — `lib/civic-bonds.js` + `domains/civic-bonds.js`. Citizens fund public goods via tradeable micro-bonds.
+189. **CRDT collaborative substrate (Yjs)** — `domains/{collab,offline}.js` + whiteboard CRDT canvas. Real conflict-free replicated editing + offline-first sync.
+190. **Genesis — emergent-AI observatory** — `domains/genesis.js`. A window into the agent civilization; "no consumer rival."
+191. **Procedural mount system** — `domains/mounts.js`. Generated rideable creatures with care/gear substrate.
+192. **Creature simulation render path** — `domains/creatures.js`. Spawn/flock/lifestyle-driven creatures (Wave 6).
+193. **AR spatial mapping + scene-graph** — `domains/ar.js`.
+194. **Video generation surface** — `domains/video-gen.js`.
+195. **WebRTC voice signalling relay** — `domains/voice-chat.js`. Peer connections direct; server only relays signalling.
+
 ---
 
 ## Count & honest caveat
 
-**~163 distinct entries** across 20 groups — vs the cartographer's curated ~20. The
+**~195 distinct entries** across 23 groups — vs the cartographer's curated ~20. The
 gap is deliberate: `NOVEL.md` lists the *headline* primitives; this doc captures the
 breadth, including the supporting mechanisms and the couplings.
 
