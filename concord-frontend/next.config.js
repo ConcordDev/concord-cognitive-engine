@@ -120,6 +120,13 @@ const nextConfig = {
         tls: false,
       };
     }
+    // three.js's experimental WebGPU renderer (lazy-loaded in ConcordiaScene
+    // only when the user opts in via localStorage 'concordia:renderer'='webgpu')
+    // uses top-level await. Enable webpack's TLA experiment so that chunk
+    // compiles cleanly instead of warning "target does not appear to support
+    // 'async/await'". Modern browsers support async/await; this just tells
+    // webpack to emit it rather than down-level.
+    config.experiments = { ...config.experiments, topLevelAwait: true };
     return config;
   },
 };
