@@ -83,7 +83,7 @@ export function DangerBandHUD() {
     tick();
     const t = setInterval(tick, FRAME_THROTTLE_MS);
     return () => clearInterval(t);
-  }, [grad]);
+  }, [grad, FRAME_THROTTLE_MS]);
 
   if (!view) return null;
   const color = bandColor(view.band);

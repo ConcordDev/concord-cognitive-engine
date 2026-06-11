@@ -159,11 +159,15 @@ export function FirstRunTour({ lensId, force = false, onComplete }: FirstRunTour
       ref={overlayRef}
       className="fixed inset-0 z-[9000] pointer-events-none"
       role="dialog"
-      aria-modal="true"
+      aria-modal={spotlight ? 'true' : undefined}
       aria-label={`${manifest?.label || lensId} first-run guide`}
     >
-      {/* Dim backdrop */}
-      <div className="absolute inset-0 bg-black/40 pointer-events-auto" onClick={() => finish('skipped')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+      {/* Backdrop. Only dim + capture clicks when we're spotlighting a specific
+          element (focus mode). For the common no-target step, stay transparent
+          and pointer-through so the coachmark never covers or blocks the lens. */}
+      {spotlight && (
+        <div className="absolute inset-0 bg-black/40 pointer-events-auto" onClick={() => finish('skipped')} role="button" tabIndex={0} aria-label="Skip tour" onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+      )}
 
       {/* Spotlight halo */}
       {spotlight && (
@@ -180,10 +184,12 @@ export function FirstRunTour({ lensId, force = false, onComplete }: FirstRunTour
         />
       )}
 
-      {/* Coachmark card */}
+      {/* Coachmark card — anchored to the bottom-LEFT corner (out of the content
+          center and clear of the bottom-right action dock) so it never covers
+          the lens's primary surface. */}
       <div
         className={cn(
-          'absolute bottom-8 left-1/2 -translate-x-1/2 max-w-md w-[92vw]',
+          'absolute bottom-6 left-6 max-w-sm w-[88vw] sm:w-[22rem]',
           'rounded-xl border border-amber-500/40 bg-zinc-950 shadow-2xl shadow-black/50',
           'pointer-events-auto',
         )}

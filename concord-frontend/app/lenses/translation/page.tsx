@@ -1,5 +1,7 @@
 'use client';
 
+import { LensShell } from '@/components/lens/LensShell';
+
 // Translation lens — machine translation through Concord's local LLM.
 // Wires the `translation` backend domain (translate / detect / batch /
 // languages). No external API: text never leaves your server.
@@ -87,6 +89,7 @@ export default function TranslationLens() {
   };
 
   return (
+    <LensShell lensId="translation">
     <div style={{ maxWidth: 880, margin: '0 auto', padding: 24 }}>
       <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 4 }}>Translation</h1>
       <p style={{ opacity: 0.7, marginBottom: 20, fontSize: 14 }}>
@@ -153,6 +156,7 @@ export default function TranslationLens() {
         </div>
       )}
     </div>
+    </LensShell>
   );
 }
 

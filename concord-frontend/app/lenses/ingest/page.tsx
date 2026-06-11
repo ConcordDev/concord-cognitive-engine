@@ -82,6 +82,10 @@ interface IngestJob {
   error?: string;
 }
 
+// File extensions we extract text from in batch ingest (binaries are skipped).
+// Module-scoped so it's a stable reference (not re-created per render).
+const TEXT_BATCH_EXT = /\.(txt|md|markdown|json|csv|tsv|log|ya?ml|xml|html)$/i;
+
 export default function IngestLensPage() {
   useLensNav('ingest');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('ingest');
@@ -179,7 +183,6 @@ export default function IngestLensPage() {
   // Batch-ingest: read each text file's content client-side (FileReader) and send it
   // to the real ingest.batch-ingest macro, which creates a DTU per text file. Binaries
   // (images) carry no extractable text here, so they're reported skipped — not faked.
-  const TEXT_BATCH_EXT = /\.(txt|md|markdown|json|csv|tsv|log|ya?ml|xml|html)$/i;
   const handleBatchIngest = useCallback(async () => {
     const input = document.createElement('input');
     input.type = 'file';

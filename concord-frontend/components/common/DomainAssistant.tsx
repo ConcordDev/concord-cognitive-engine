@@ -146,18 +146,16 @@ export default function DomainAssistant({ domain, domainLabel }: DomainAssistant
 
   return (
     <>
-      {/* Toggle button (visible when panel is closed) — positioned above QuickCapture FAB */}
+      {/* Toggle button (visible when panel is closed) — compact round FAB so it
+          stacks neatly in the right action column and never protrudes over content. */}
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-[14rem] right-6 z-40 flex items-center gap-2 px-3 py-2.5 bg-lattice-surface border border-lattice-border text-gray-300 font-medium rounded-full shadow-lg hover:bg-lattice-elevated hover:text-white transition-colors"
+          className="fixed bottom-[14rem] right-6 z-40 w-12 h-12 rounded-full bg-lattice-surface border border-lattice-border text-gray-300 shadow-lg flex items-center justify-center hover:bg-lattice-elevated hover:text-white transition-colors"
           aria-label={`Open ${domainLabel} assistant`}
+          title={`${domainLabel} Assistant (${modKey}+/)`}
         >
           <Bot className="w-5 h-5" />
-          <span className="hidden sm:inline text-sm">{domainLabel} Assistant</span>
-          <kbd className="hidden sm:inline-flex items-center gap-0.5 ml-1 px-1.5 py-0.5 text-[10px] font-mono bg-black/20 rounded">
-            {modKey} /
-          </kbd>
         </button>
       )}
 

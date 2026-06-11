@@ -2594,6 +2594,7 @@ export default function ChatLensPage() {
       cancelEditMessage,
       deleteMessage,
       handleBranchFromMessage,
+      isConKay,
     ]
   );
 
@@ -2952,8 +2953,10 @@ export default function ChatLensPage() {
               />
             </>
           )}
-          <header className={cn('px-4 lg:px-6 py-4 border-b border-lattice-border flex items-center justify-between', isConKay ? 'relative z-10 bg-lattice-surface/40 backdrop-blur-md border-cyan-400/15' : 'bg-lattice-surface')}>
-            <div className="flex items-center gap-3 lg:gap-4">
+          <header className={cn('px-4 lg:px-6 py-4 border-b border-lattice-border flex flex-wrap items-center justify-between gap-y-2', isConKay ? 'relative z-10 bg-lattice-surface/40 backdrop-blur-md border-cyan-400/15' : 'bg-lattice-surface')}>
+            {/* Toolbar row wraps instead of clipping when the secondary pills
+                (Context/Tools/Systems/Projects/Prompts/Schedule/Studio) overflow. */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 lg:gap-x-4 min-w-0">
               {/* Mobile: toggle conversation sidebar */}
               <button
                 onClick={() => setChatSidebarOpen(true)}

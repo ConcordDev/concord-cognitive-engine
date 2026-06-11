@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   MessageSquare, Send, Mic, MicOff, Volume2, VolumeX,
   Radio, Building2, Megaphone, Smile,
@@ -134,7 +134,7 @@ export default function ChatSystem({
   onEmote,
   onVoiceToggle,
 }: ChatSystemProps) {
-  const messages = messagesProp ?? [];
+  const messages = useMemo(() => messagesProp ?? [], [messagesProp]);
   const conversations = conversationsProp ?? [];
   const firmMembers = firmMembersProp ?? [];
 

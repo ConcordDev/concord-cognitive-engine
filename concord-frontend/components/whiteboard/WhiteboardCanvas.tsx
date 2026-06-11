@@ -85,7 +85,6 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syn
   // with the re-fetched remote scene. (Last-write-wins full-scene baseline — Batch G E1.)
   useEffect(() => {
     if (syncSignal && Array.isArray(syncShapesRef.current)) setShapes(syncShapesRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncSignal]);
 
   useEffect(() => {

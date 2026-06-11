@@ -139,10 +139,11 @@ export default function PowerClusterLayer({ worldId, pollMs = 12000, enabled = t
   }, [refresh, pollMs]);
 
   useEffect(() => {
+    const orbs = orbsRef.current; // capture at effect-run time for the cleanup
     return () => {
       const scene = sceneRef.current;
-      if (scene) for (const g of orbsRef.current.values()) disposeGroup(scene, g);
-      orbsRef.current.clear();
+      if (scene) for (const g of orbs.values()) disposeGroup(scene, g);
+      orbs.clear();
     };
   }, [worldId, disposeGroup]);
 

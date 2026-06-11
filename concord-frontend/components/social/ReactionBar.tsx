@@ -97,12 +97,17 @@ export function ReactionBar({ postId, hideWhenEmpty = true, compact = false, cla
         }
         nextReactions[type] = (nextReactions[type] || 0) + 1;
       }
-      queryClient.setQueryData<ReactionsResponse | null>(['social-reactions', postId], {
+      // Use the updater-FUNCTION form: passing a bare object literal to
+      // setQueryData<T> where T is a union (ReactionsResponse | null) trips
+      // TanStack v5's Updater type (it checks the literal against the `undefined`
+      // arm and mis-reports "true not assignable to undefined"). The function
+      // form returns a concrete ReactionsResponse and type-checks cleanly.
+      queryClient.setQueryData<ReactionsResponse | null>(['social-reactions', postId], (): ReactionsResponse => ({
         ok: true,
         reactions: nextReactions,
         userReaction: wasMine ? null : type,
         total: Object.values(nextReactions).reduce((a, b) => a + (b || 0), 0),
-      });
+      }));
       return { prev };
     },
     onError: (_e, _type, ctx) => {

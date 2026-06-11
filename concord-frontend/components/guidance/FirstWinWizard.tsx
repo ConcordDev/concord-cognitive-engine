@@ -228,7 +228,7 @@ function FirstWinWizard() {
     return (
       <button
         onClick={handleResume}
-        className="fixed bottom-4 right-4 z-40 flex items-center gap-1.5 px-3 py-2 rounded-full bg-lattice-surface border border-neon-blue/30 shadow-lg text-xs font-medium text-neon-blue hover:bg-neon-blue/10"
+        className="fixed bottom-6 left-6 z-40 flex items-center gap-1.5 px-3 py-2 rounded-full bg-lattice-surface border border-neon-blue/30 shadow-lg text-xs font-medium text-neon-blue hover:bg-neon-blue/10"
         aria-label="Resume First Cycle"
       >
         <Rocket className="w-3.5 h-3.5" />

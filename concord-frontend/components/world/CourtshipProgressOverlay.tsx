@@ -88,7 +88,7 @@ export function CourtshipProgressOverlay({ npcs = [], playerPosition, enabled = 
     }
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [enabled, npcs, playerPosition, byNpc]);
+  }, [enabled, npcs, playerPosition, byNpc, FRAME_THROTTLE_MS]);
 
   if (!enabled || screenPositions.size === 0) return null;
 

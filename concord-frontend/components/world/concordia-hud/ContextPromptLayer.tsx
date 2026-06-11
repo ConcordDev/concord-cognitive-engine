@@ -88,7 +88,7 @@ export function ContextPromptLayer() {
     }
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [target]);
+  }, [target, FRAME_THROTTLE_MS]);
 
   if (mode !== 'exploration' || !target || !screenPos?.visible) return null;
 

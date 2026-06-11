@@ -141,7 +141,6 @@ export function ShipmentsMap({ shipments, className }: { shipments: Array<{ id: 
 
     if (map.isStyleLoaded()) draw(); else map.once('load', draw);
     return () => { map.remove(); mapRef.current = null; markersRef.current = []; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted, routes]);
 
   if (!mounted) return <div className={className} style={{ background: 'rgba(34, 211, 238, 0.05)' }} />;

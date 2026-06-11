@@ -60,7 +60,7 @@ export function DreamReader() {
     refresh();
     const t = setInterval(refresh, POLL_MS);
     return () => clearInterval(t);
-  }, [refresh]);
+  }, [refresh, POLL_MS]);
 
   // Also refresh on the dream:composed socket event.
   useEffect(() => {

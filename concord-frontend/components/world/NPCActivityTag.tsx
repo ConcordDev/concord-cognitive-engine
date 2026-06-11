@@ -121,7 +121,7 @@ export function NPCActivityTag({ npcs, playerPosition, enabled = true }: NPCActi
     }
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [enabled, npcs, playerPosition]);
+  }, [enabled, npcs, playerPosition, FRAME_THROTTLE_MS]);
 
   if (!enabled || screenPositions.size === 0) return null;
 

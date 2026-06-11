@@ -105,6 +105,18 @@ export interface LensManifest {
 export const LENS_MANIFESTS: LensManifest[] = [
 
   // ═══════════════════════════════════════════════════════════════
+  // UTILITY / ADMIN LENSES — minimal contracts so they mount <LensShell>
+  // with a known lensId (no firstRunGuide/emptyState by design).
+  // ═══════════════════════════════════════════════════════════════
+  { domain: 'careers', label: 'Careers', artifacts: ['job', 'application'], macros: { list: 'lens.careers.list', get: 'lens.careers.get' }, exports: ['json'], actions: ['browse', 'apply'], category: 'lifestyle' },
+  { domain: 'ledger', label: 'Ledger', artifacts: ['entry', 'transaction'], macros: { list: 'lens.ledger.list', get: 'lens.ledger.get' }, exports: ['json', 'csv'], actions: ['view'], category: 'finance' },
+  { domain: 'codex', label: 'Codex', artifacts: ['entry', 'lore'], macros: { list: 'lens.codex.list', get: 'lens.codex.get' }, exports: ['json'], actions: ['read'], category: 'knowledge' },
+  { domain: 'translation', label: 'Translation', artifacts: ['translation'], macros: { list: 'lens.translation.list', get: 'lens.translation.get' }, exports: ['json'], actions: ['translate', 'detect'], category: 'productivity' },
+  { domain: 'repair-telemetry', label: 'Repair Telemetry', artifacts: ['report'], macros: { list: 'lens.repair-telemetry.list', get: 'lens.repair-telemetry.get' }, exports: ['json'], actions: ['view'], category: 'system' },
+  { domain: 'move-builder', label: 'Move Builder', artifacts: ['move', 'recipe'], macros: { list: 'lens.move-builder.list', get: 'lens.move-builder.get' }, exports: ['json'], actions: ['compose', 'mint'], category: 'creative' },
+  { domain: 'civic-bonds', label: 'Civic Bonds', artifacts: ['bond', 'vote'], macros: { list: 'lens.civic-bonds.list', get: 'lens.civic-bonds.get' }, exports: ['json'], actions: ['view', 'vote'], category: 'government' },
+
+  // ═══════════════════════════════════════════════════════════════
   // WORLD LENS (3D City)
   // ═══════════════════════════════════════════════════════════════
 

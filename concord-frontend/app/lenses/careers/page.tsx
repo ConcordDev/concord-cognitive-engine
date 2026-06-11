@@ -1,5 +1,7 @@
 'use client';
 
+import { LensShell } from '@/components/lens/LensShell';
+
 /**
  * Careers lens — the client door into the living-career system (jobs = sports =
  * one engine). Lists the profession taxonomy, lets you PLAY a shift (skill-input
@@ -57,6 +59,7 @@ export default function CareersLens() {
   }, [tracks]);
 
   return (
+    <LensShell lensId="careers">
     <div className="max-w-3xl mx-auto p-6 text-gray-100">
       <header className="flex items-center justify-between mb-4">
         <h1 className="flex items-center gap-2 text-xl font-semibold text-amber-200">
@@ -123,5 +126,6 @@ export default function CareersLens() {
 
       {note && <p className="mt-4 text-xs text-gray-400">{note}</p>}
     </div>
+    </LensShell>
   );
 }
