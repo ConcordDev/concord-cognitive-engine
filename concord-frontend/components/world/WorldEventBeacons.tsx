@@ -144,10 +144,11 @@ export default function WorldEventBeacons({ worldId, pollMs = 15000, enabled = t
 
   // Tear down all beacons on unmount / world change.
   useEffect(() => {
+    const beacons = beaconsRef.current; // capture at effect-run time for the cleanup
     return () => {
       const scene = sceneRef.current;
-      if (scene) for (const g of beaconsRef.current.values()) disposeGroup(scene, g);
-      beaconsRef.current.clear();
+      if (scene) for (const g of beacons.values()) disposeGroup(scene, g);
+      beacons.clear();
     };
   }, [worldId, disposeGroup]);
 

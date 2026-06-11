@@ -1,5 +1,7 @@
 'use client';
 
+import { LensShell } from '@/components/lens/LensShell';
+
 /**
  * Civic Bonds lens — the transparency surface for the micro-bond engine.
  *
@@ -10,7 +12,7 @@
  * return { ok:false, reason:'disabled' } and the lens shows the coming-soon note.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { Landmark, RefreshCw } from 'lucide-react';
 
@@ -67,6 +69,7 @@ export default function CivicBondsLens() {
   }, [refresh]);
 
   return (
+    <LensShell lensId="civic-bonds">
     <div className="max-w-3xl mx-auto p-6 text-gray-100">
       <header className="flex items-center justify-between mb-4">
         <h1 className="flex items-center gap-2 text-xl font-semibold text-amber-200">
@@ -138,5 +141,6 @@ export default function CivicBondsLens() {
         })}
       </ul>
     </div>
+    </LensShell>
   );
 }

@@ -1,5 +1,7 @@
 'use client';
 
+import { LensShell } from '@/components/lens/LensShell';
+
 /**
  * Wave 8b — The Codex: the authored cosmology, finally reachable.
  *
@@ -67,6 +69,7 @@ export default function CodexLensPage() {
   }, [events]);
 
   return (
+    <LensShell lensId="codex">
     <div style={{ maxWidth: 980, margin: '0 auto', padding: '24px 16px', color: '#e8e4dc' }}>
       <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>The Codex</h1>
       <p style={{ opacity: 0.7, marginBottom: 20 }}>
@@ -122,5 +125,6 @@ export default function CodexLensPage() {
         ))
       )}
     </div>
+    </LensShell>
   );
 }

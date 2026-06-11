@@ -1,5 +1,7 @@
 'use client';
 
+import { LensShell } from '@/components/lens/LensShell';
+
 /**
  * Maintenance — the repair-telemetry operator lens. "Query what the world
  * repaired while you slept." Surfaces the autonomic nervous system: the
@@ -45,6 +47,7 @@ export default function RepairTelemetryPage() {
   if (forbidden) return <AdminRequiredState roles={['admin']} />;
 
   return (
+    <LensShell lensId="repair-telemetry">
     <div style={{ maxWidth: 920, margin: '0 auto', padding: '24px 16px', color: '#e8e4dc' }}>
       <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 4 }}>Repair Telemetry</h1>
       <p style={{ opacity: 0.7, marginBottom: 20 }}>What the world repaired — and what it refused to decide — while you were away.</p>
@@ -87,6 +90,7 @@ export default function RepairTelemetryPage() {
         {log.length === 0 && <p style={{ opacity: 0.5 }}>No findings yet — the monitor runs on a slow cadence.</p>}
       </div>
     </div>
+    </LensShell>
   );
 }
 

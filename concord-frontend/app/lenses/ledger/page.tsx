@@ -1,5 +1,7 @@
 'use client';
 
+import { LensShell } from '@/components/lens/LensShell';
+
 /**
  * Ledger lens — the analytical overlay you toggle to see the flows the Curtain
  * hides. Reads ledger.anomalies and renders the managed-parity funding (who funds
@@ -36,6 +38,7 @@ export default function LedgerLensPage() {
   const liens = data?.extractionLiens ?? [];
 
   return (
+    <LensShell lensId="ledger">
     <div className="min-h-screen bg-black text-zinc-200 p-6">
       <header className="mb-6">
         <h1 className="text-xl font-semibold text-emerald-300">The Ledger</h1>
@@ -81,5 +84,6 @@ export default function LedgerLensPage() {
         </section>
       )}
     </div>
+    </LensShell>
   );
 }

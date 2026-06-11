@@ -6,12 +6,15 @@
  * how it animates (resolveMove), and mint. The creation→verb loop, player-facing.
  */
 
+import { LensShell } from '@/components/lens/LensShell';
 import SystemMoveBuilder from '@/components/concordia/SystemMoveBuilder';
 
 export default function MoveBuilderLensPage() {
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px' }}>
-      <SystemMoveBuilder />
-    </div>
+    <LensShell lensId="move-builder">
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px' }}>
+        <SystemMoveBuilder />
+      </div>
+    </LensShell>
   );
 }

@@ -421,7 +421,7 @@ export async function lensRun<T = any>(
  */
 export function isForbidden(x: unknown): boolean {
   if (!x || typeof x !== 'object') return false;
-  const o = x as Record<string, any>;
+  const o = x as { statusCode?: unknown; status?: unknown; response?: { status?: unknown }; code?: unknown; ok?: unknown; error?: unknown };
   if (o.statusCode === 403 || o.status === 403 || o.response?.status === 403) return true;
   if (o.code === 'FORBIDDEN') return true;
   if (o.ok === false && typeof o.error === 'string'
