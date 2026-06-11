@@ -91,7 +91,7 @@ export function PartyCombatHUD() {
       cancelled = true;
       if (tickRef.current) clearInterval(tickRef.current);
     };
-  }, [session?.id, session?.ended_at_ms]);
+  }, [session?.id, session?.ended_at_ms, TICK_MS]);
 
   const setTimeScale = useCallback(async (scale: number) => {
     if (!session) return;

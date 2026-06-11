@@ -2594,6 +2594,7 @@ export default function ChatLensPage() {
       cancelEditMessage,
       deleteMessage,
       handleBranchFromMessage,
+      isConKay,
     ]
   );
 

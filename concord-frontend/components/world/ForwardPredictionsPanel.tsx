@@ -42,7 +42,7 @@ export function ForwardPredictionsPanel() {
     refresh();
     const t = setInterval(refresh, POLL_MS);
     return () => clearInterval(t);
-  }, [refresh]);
+  }, [refresh, POLL_MS]);
 
   // Also react to prediction:realised events to refresh.
   useEffect(() => {

@@ -111,7 +111,7 @@ export function NemesisGlyphLayer({ worldId, playerPosition, enabled = true }: P
     }
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [enabled, rows, playerPosition]);
+  }, [enabled, rows, playerPosition, FRAME_THROTTLE_MS]);
 
   if (mode === 'combat' || mode === 'dialogue' || mode === 'photo') return null;
   if (!enabled || screenPositions.size === 0) return null;

@@ -41,7 +41,7 @@ export function CategoryRulesPanel({ className }: { className?: string }) {
     } finally { setLoading(false); }
   }, [accountId]);
 
-  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { void load(); }, [load]);
 
   const create = useCallback(async () => {
     if (!pattern.trim() || !accountId) return;

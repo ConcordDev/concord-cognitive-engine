@@ -76,7 +76,7 @@ export function FootprintLayer({ enabled = true }: Props) {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [enabled, gated, tracks]);
+  }, [enabled, gated, tracks, FRAME_THROTTLE_MS]);
 
   if (!enabled || gated || positions.size === 0) return null;
 

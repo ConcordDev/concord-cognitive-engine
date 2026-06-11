@@ -52,7 +52,7 @@ function EventStreamPanel({ events = [], connected }: { events?: Array<{ type: s
 
   // Guard: `events` can be undefined before the realtime stream populates (mounting the
   // Live Events tab) — calling .map on it crashed the whole platform lens via ErrorBoundary.
-  const safeEvents = Array.isArray(events) ? events : [];
+  const safeEvents = useMemo(() => (Array.isArray(events) ? events : []), [events]);
   const eventTypes = useMemo(() => {
     const types = new Set(safeEvents.map(e => e.type));
     return Array.from(types).sort();
