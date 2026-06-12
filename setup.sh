@@ -53,6 +53,32 @@ if ! command -v ollama &>/dev/null; then
 fi
 ok "Ollama found at $(command -v ollama)"
 
+# ── 3b. Check / install Z3 (OPTIONAL — the reason.verify proof gate) ─────
+# Z3 is the SMT checker behind the formal-proof gate (server/lib/proof-gate.js).
+# It's OPTIONAL: when absent, reason.verify/reason.prove return verdict:"unavailable"
+# and the rest of verification (citation floor + council) is unaffected. We try a
+# best-effort install but never fail the setup over it.
+info "Checking for Z3 (optional — formal-proof gate)..."
+if command -v z3 &>/dev/null; then
+  ok "Z3 found at $(command -v z3) ($(z3 --version 2>/dev/null | head -1))"
+else
+  warn "Z3 not found — attempting a best-effort install (proof gate is optional)."
+  if command -v apt-get &>/dev/null; then
+    (sudo apt-get update -y && sudo apt-get install -y z3) 2>/dev/null || true
+  elif command -v brew &>/dev/null; then
+    brew install z3 2>/dev/null || true
+  elif command -v pip3 &>/dev/null; then
+    pip3 install --quiet z3-solver 2>/dev/null || true   # provides a `z3` console script
+  fi
+  if command -v z3 &>/dev/null; then
+    ok "Z3 installed at $(command -v z3)."
+  else
+    warn "Z3 still unavailable — reason.verify's formal-proof gate will report"
+    warn "verdict:\"unavailable\". Install later with: apt-get install z3  (or  pip3 install z3-solver)"
+    warn "and optionally set CONCORD_Z3_PATH to the binary."
+  fi
+fi
+
 # ── 4. Install server dependencies ───────────────────────────────────────
 info "Installing server dependencies..."
 (cd server && npm install)
