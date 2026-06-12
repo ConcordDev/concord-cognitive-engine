@@ -39,6 +39,10 @@ export function Sidebar() {
   } = useUIStore();
   const [expandedCore, setExpandedCore] = useState<string | null>(null);
   const [showDestinations, setShowDestinations] = useState(true);
+  // The 15-root sub-lens tree is a power-user surface — tucked behind a toggle
+  // (default collapsed) so the default front door isn't 15 always-on rows deep.
+  // Auto-opens below when the active route is a sub-lens.
+  const [showSubLenses, setShowSubLenses] = useState(false);
   const [showExtensions, setShowExtensions] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => new Set());
@@ -68,6 +72,14 @@ export function Sidebar() {
       }
     }
   }, [pathname, userRole]);
+
+  // Auto-open the Sub-Lenses section when the active route is a sub-lens
+  // (/lenses/<parent>/<child>) so a deep link still reveals where you are.
+  useEffect(() => {
+    if (pathname && /^\/lenses\/[^/]+\/[^/]+/.test(pathname)) {
+      setShowSubLenses(true);
+    }
+  }, [pathname]);
 
   // Close mobile sidebar on escape
   useEffect(() => {
@@ -211,13 +223,21 @@ export function Sidebar() {
             </>
           )}
 
-          {/* Sub-Lens Tree — 234 sub-lenses under 15 roots */}
+          {/* Sub-Lens Tree — 234 sub-lenses under 15 roots. Collapsible (default
+              collapsed) so the default front door stays scannable; auto-opens when
+              the active route is a sub-lens. Lazy: the tree only fetches on expand. */}
           {showLabel && (
             <>
-              <p className="px-3 py-1 text-xs uppercase tracking-widest text-gray-400 font-medium mb-1 mt-3">
-                Sub-Lenses
-              </p>
-              <SubLensTreeSection pathname={pathname} />
+              <button
+                onClick={() => setShowSubLenses((v) => !v)}
+                className="w-full flex items-center gap-2 px-3 py-1 text-xs uppercase tracking-widest text-gray-400 hover:text-gray-300 font-medium mb-1 mt-3 transition-colors"
+                aria-expanded={showSubLenses}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Sub-Lenses</span>
+                <ChevronDown className={cn('w-3 h-3 ml-auto transition-transform', !showSubLenses && '-rotate-90')} />
+              </button>
+              {showSubLenses && <SubLensTreeSection pathname={pathname} />}
             </>
           )}
 
