@@ -451,7 +451,7 @@ describe("timeline — share, albums, profile, memories, notifications, delete",
       params: { content: "with friends", privacy: "public", taggedUserIds: [taggedId] },
     }, author);
     // Tagged user also comments on their own seen post → author gets a 'comment' notif (not tagged).
-    let list = await lensRun("timeline", "notifications-list", {}, tagged);
+    const list = await lensRun("timeline", "notifications-list", {}, tagged);
     assert.ok(list.result.unread >= 1);
     assert.ok(list.result.notifications.some((n) => n.type === "tag" && n.postId === post.result.post.id));
     const mark = await lensRun("timeline", "notifications-mark-read", {}, tagged);

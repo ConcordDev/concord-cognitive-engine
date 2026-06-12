@@ -122,11 +122,21 @@ const nextConfig = {
     }
     // three.js's experimental WebGPU renderer (lazy-loaded in ConcordiaScene
     // only when the user opts in via localStorage 'concordia:renderer'='webgpu')
-    // uses top-level await. Enable webpack's TLA experiment so that chunk
-    // compiles cleanly instead of warning "target does not appear to support
-    // 'async/await'". Modern browsers support async/await; this just tells
-    // webpack to emit it rather than down-level.
+    // uses top-level await. The experiment enables the TLA syntax.
     config.experiments = { ...config.experiments, topLevelAwait: true };
+    // Suppress two known-harmless THIRD-PARTY build warnings (not code defects):
+    //  • three.js's opt-in WebGPU renderer uses top-level await; webpack's
+    //    down-level note ("target may not support async/await") is cosmetic on
+    //    the modern browser target and the path is default-OFF.
+    //  • @opentelemetry/instrumentation (pulled in via @sentry/node) uses a
+    //    dynamic require for auto-instrumentation — the classic "Critical
+    //    dependency: the request of a dependency is an expression" warning,
+    //    harmless by design.
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      { module: /three[\\/]examples[\\/]jsm[\\/](capabilities[\\/]WebGPU|renderers[\\/]webgpu)/ },
+      { module: /@opentelemetry[\\/]instrumentation/ },
+    ];
     return config;
   },
 };
