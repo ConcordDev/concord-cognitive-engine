@@ -344,7 +344,7 @@ describe("cooking — meal-plan get/clear + shopping generate/toggle/clear (shar
     // Clear just breakfast.
     await lensRun("cooking", "meal-plan-clear", { params: { date: "2026-08-01", slot: "breakfast" } }, ctx);
     let got = await lensRun("cooking", "meal-plan-get", { params: { start: "2026-08-01", end: "2026-08-02" } }, ctx);
-    let onDay = got.result.entries.filter((e) => e.date === "2026-08-01");
+    const onDay = got.result.entries.filter((e) => e.date === "2026-08-01");
     assert.equal(onDay.length, 1);
     assert.equal(onDay[0].slot, "dinner");
     // Clear the whole day.

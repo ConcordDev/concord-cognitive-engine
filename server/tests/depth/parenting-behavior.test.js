@@ -65,7 +65,7 @@ describe("parenting — artifact calc contracts (exact computed values)", () => 
     const r = await lensRun("parenting", "growthPercentile", {
       data: { sex: "male", height: 34.2, weight: 12.0, headCirc: 19.2 },
     });
-    const weightPctNum = parseInt(r.result.percentiles.weight);
+    const weightPctNum = parseInt(r.result.percentiles.weight, 10);
     assert.ok(weightPctNum < 5);
     assert.ok(r.result.flags.some((f) => f.includes("Weight below 5th percentile")));
   });

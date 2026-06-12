@@ -253,7 +253,7 @@ describe("tournaments — single-elim bracket play to completion (shared ctx)", 
     assert.equal(st.result.tournament.status, "in_progress");
     // 4 entrants → 2 round-1 matches (no byes).
     let t = st.result.tournament;
-    let r1 = t.matches.filter((m) => m.round === 1 && m.status === "pending");
+    const r1 = t.matches.filter((m) => m.round === 1 && m.status === "pending");
     assert.equal(r1.length, 2);
 
     // Report both round-1 matches: aId wins each.
