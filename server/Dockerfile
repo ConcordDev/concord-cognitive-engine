@@ -6,13 +6,17 @@
 # Then replace the FROM line with: FROM node:20-bookworm-slim@sha256:<digest> AS base
 FROM node:20-bookworm-slim AS base
 
-# Install build tools for native modules (better-sqlite3) and runtime deps
+# Install build tools for native modules (better-sqlite3) and runtime deps.
+# z3 is the SMT checker for reason.verify's formal-proof gate (lib/proof-gate.js);
+# it's optional at runtime (the gate degrades to verdict:"unavailable" without it)
+# but baking it into the image makes the proof gate live out of the box.
 RUN apt-get update && apt-get install -y \
     curl \
     ca-certificates \
     python3 \
     make \
     g++ \
+    z3 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
