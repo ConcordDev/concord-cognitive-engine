@@ -96,16 +96,53 @@ export async function runPeriodicDriftScan({ db: _db, state: _state, tickCount: 
 
       const hlr = await import("./hlr-engine.js").catch(() => null);
       if (hlr?.runHLR) {
+        const conclusions = [];
         for (const a of alerts.slice(0, 3)) {
           try {
-            hlr.runHLR({
+            const r = hlr.runHLR({
               input: `Drift alert: ${a.kind ?? a.type ?? "unknown"}. ${a.summary ?? a.message ?? ""}`,
               mode: "constraint_check",
               tags: ["drift_resolution"],
             });
+            // Collect the chain conclusions + the synthesised conclusion so the
+            // autonomous reasoning can be FORMALLY self-checked below.
+            for (const ch of (r?.chains || [])) if (ch?.conclusion) conclusions.push(ch.conclusion);
+            const synth = r?.output?.synthesizedConclusion;
+            if (synth) conclusions.push(synth);
           } catch (err) {
             try { logger.debug("lattice-orchestrator", "hlr_route_failed", { error: err?.message }); } catch { /* ignore */ }
           }
+        }
+
+        // Autonomous formal-proof pass — the continuous analogue to MOTO's
+        // "verify the research". Proof-amenable conclusions go through the Z3 gate
+        // (subconscious brain formaliser); a sound proven/refuted is recorded +
+        // surfaced. Best-effort, bounded, near-free when Z3 isn't installed.
+        try {
+          const { verifyConclusions } = await import("../lib/proof-gate.js");
+          let brainFn = null;
+          try {
+            const { brainChat } = await import("../lib/byo-router.js");
+            const db = _STATE_REF?.db || globalThis.__concordDb || null;
+            brainFn = async (messages) => {
+              const rr = await brainChat({ db, userId: null, slot: "subconscious", messages });
+              return { text: rr?.text || "" };
+            };
+          } catch { brainFn = null; }
+          const proof = await verifyConclusions(conclusions, { brainFn, max: 3 });
+          if (scan && typeof scan === "object") scan.proof = proof;
+          if (proof.checked > 0) {
+            try {
+              const realtimeMod = await import("./realtime.js").catch(() => null);
+              const emit = realtimeMod?.realtimeEmit || globalThis.REALTIME?.io?.emit?.bind(globalThis.REALTIME.io);
+              for (const res of proof.results) {
+                emit?.("lattice:claim-verified", { verdict: res.verdict, claim: res.claim.slice(0, 200), at: Date.now() });
+              }
+              logger.info?.("lattice-orchestrator", "autonomous_proof_pass", { checked: proof.checked, proven: proof.proven, refuted: proof.refuted });
+            } catch { /* surfacing best-effort */ }
+          }
+        } catch (err) {
+          try { logger.debug("lattice-orchestrator", "proof_pass_unavailable", { error: err?.message }); } catch { /* ignore */ }
         }
       }
     }
