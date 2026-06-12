@@ -51,10 +51,12 @@ function resolveCitations(db, citationIds, requesterId) {
 
 /**
  * @param {object} db
- * @param {{ claim?: string, citationIds?: string[], requesterId?: string|null, useCouncil?: boolean }} opts
+ * @param {{ claim?: string, citationIds?: string[], requesterId?: string|null,
+ *           useCouncil?: boolean, useProof?: boolean,
+ *           proofBrainFn?: Function, proofZ3Runner?: Function }} opts
  * @returns {Promise<object>} verification verdict
  */
-export async function verifyClaim(db, { claim, citationIds = [], requesterId = null, useCouncil = true } = {}) {
+export async function verifyClaim(db, { claim, citationIds = [], requesterId = null, useCouncil = true, useProof = true, proofBrainFn = null, proofZ3Runner = null } = {}) {
   if (!db) return { ok: false, reason: "no_db" };
   const ids = (Array.isArray(citationIds) ? citationIds : []).map(String).filter(Boolean);
   const claimText = String(claim || "").trim();
@@ -104,6 +106,39 @@ export async function verifyClaim(db, { claim, citationIds = [], requesterId = n
     }
   }
 
+  // Formal-proof gate (sound layer) — orthogonal to citation grounding: it answers
+  // "is this claim mathematically VALID?" not "do its sources back it?". Only fires
+  // for proof-amenable claims (cheap deterministic heuristic) and only when Z3 is
+  // installed; otherwise it's a no-op that leaves the verdict above untouched. A
+  // sound `proven`/`refuted` result is stronger than the semantic council, so it
+  // upgrades the top-level verdict; everything else is additive-only.
+  let proof = null;
+  if (useProof && claimText) {
+    try {
+      const { proveClaim, classifyAmenable } = await import("./proof-gate.js");
+      // Skip the brain-wiring cost entirely when the claim isn't proof-amenable.
+      if (classifyAmenable(claimText).amenable) {
+        // Default formaliser = the subconscious brain (the autonomous slot), via the
+        // BYO-aware brainChat router. Injectable for offline tests.
+        let brainFn = proofBrainFn;
+        if (!brainFn) {
+          try {
+            const { brainChat } = await import("./byo-router.js");
+            brainFn = async (messages) => {
+              const r = await brainChat({ db, userId: requesterId, slot: "subconscious", messages });
+              return { text: r?.text || "" };
+            };
+          } catch { brainFn = null; }
+        }
+        proof = await proveClaim({ claim: claimText, brainFn, z3Runner: proofZ3Runner });
+        if (proof?.verdict === "proven") { supported = true; verdict = "proven"; mode = "proof"; confidence = 1; }
+        else if (proof?.verdict === "refuted") { supported = false; verdict = "refuted"; mode = "proof"; confidence = 1; }
+      }
+    } catch (e) {
+      try { logger.debug?.("reason-verify", "proof_gate_unavailable", { error: e?.message }); } catch { /* ignore */ }
+    }
+  }
+
   return {
     ok: true,
     claim: claimText || null,
@@ -116,6 +151,7 @@ export async function verifyClaim(db, { claim, citationIds = [], requesterId = n
     mode,
     verdict,
     council,
+    proof,
   };
 }
 
