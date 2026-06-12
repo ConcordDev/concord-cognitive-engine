@@ -70,6 +70,7 @@ import {
   Key,
   FolderOpen,
   Clock,
+  LayoutGrid,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 // ConKay ("Kay") — Concord's JARVIS-style majordomo, as a voice-native chat MODE.
@@ -518,6 +519,11 @@ export default function ChatLensPage() {
   const [chatSidebarOpen, setChatSidebarOpen] = useState(false);
   const [conversationSearch, setConversationSearch] = useState('');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  // Front-door density: the 8 secondary workspace tools (Context/Tools/Systems/
+  // Projects/Prompts/Schedule/Studio/Search) collapse into one "Workspace" overflow
+  // so the header reads as a chat app, not a cockpit. Primary controls (AI mode,
+  // persona, domain badge, mood) stay inline.
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
@@ -3100,125 +3106,104 @@ export default function ChatLensPage() {
                 </div>
               )}
 
-              {/* View Context button — opens ContextOverlay */}
-              <button
-                onClick={() => setContextOverlayOpen(true)}
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border border-lattice-border rounded-full text-xs text-gray-400 hover:text-neon-cyan hover:border-neon-cyan/30 transition-colors"
-                title="View working set context"
-              >
-                <Eye className="w-3 h-3" />
-                <span>Context</span>
-              </button>
-
-              {/* Pause Concord — toggles initiative delivery server-side
-                  via PUT /api/initiative/settings. When paused, Concord
-                  queues but doesn't double-text until resumed. */}
-              <button
-                onClick={toggleInitiativesPaused}
-                className={cn(
-                  'hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border rounded-full text-xs transition-colors',
-                  initiativesPaused
-                    ? 'border-amber-500/50 text-amber-300'
-                    : 'border-lattice-border text-gray-400 hover:text-amber-300 hover:border-amber-500/30'
-                )}
-                aria-pressed={initiativesPaused}
-                title={initiativesPaused ? 'Concord is paused — resume to allow proactive messages' : 'Pause Concord — stops double-texting'}
-              >
-                {initiativesPaused
-                  ? <PlayCircle className="w-3.5 h-3.5" aria-hidden="true" />
-                  : <PauseCircle className="w-3.5 h-3.5" aria-hidden="true" />}
-                {initiativesPaused ? 'Paused' : 'Active'}
-              </button>
-              {/* Tool palette button — every domain.action across the 200
-                  lens manifests in one searchable surface. */}
-              <button
-                onClick={() => setToolPaletteOpen(true)}
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border border-lattice-border rounded-full text-xs text-gray-400 hover:text-neon-cyan hover:border-neon-cyan/30 transition-colors"
-                title="Open tool palette (Cmd+. or /tool)"
-              >
-                <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-                Tools
-              </button>
-              {/* Systems button — opens the ShieldCard / MeshStatusCard /
-                IntelligenceCard / AtlasPrivacyMonitor / InitiativeChip
-                drawer with live-polling data from shield/mesh/intel
-                macros. */}
-              <button
-                onClick={() => setSystemsPanelOpen((v) => !v)}
-                className={cn(
-                  'hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border rounded-full text-xs transition-colors',
-                  systemsPanelOpen
-                    ? 'border-neon-purple/50 text-neon-purple'
-                    : 'border-lattice-border text-gray-400 hover:text-neon-purple hover:border-neon-purple/30'
-                )}
-                title="System health, mesh, intelligence, privacy, initiatives"
-              >
-                <Activity className="w-3 h-3" />
-                <span>Systems</span>
-              </button>
               {/* Living chat / Layer 4b — the assistant's felt state (a qualeOf mood
                   label), surfaced honestly as a correlate. Renders only when lit. */}
               <AssistantMoodChip />
-              {/* 2026 parity — Projects, Prompts, Scheduled, Search.
-                  Parity with Claude Projects / ChatGPT Projects-Tasks /
-                  Perplexity Spaces. */}
-              <button
-                type="button"
-                onClick={() => setProjectsPanelOpen(true)}
-                className={cn(
-                  'hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border rounded-full text-xs transition-colors',
-                  activeProject
-                    ? 'border-cyan-500/50 text-cyan-300'
-                    : 'border-lattice-border text-gray-400 hover:text-cyan-300 hover:border-cyan-500/30',
-                )}
-                title="Projects (Claude / ChatGPT / Perplexity Spaces parity)"
-              >
-                <FolderOpen className="w-3 h-3" />
-                <span>{activeProject ? activeProject.name.slice(0, 14) : 'Projects'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPromptsPanelOpen(true)}
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border border-lattice-border rounded-full text-xs text-gray-400 hover:text-emerald-300 hover:border-emerald-500/30 transition-colors"
-                title="Saved prompt library"
-              >
-                <BookOpen className="w-3 h-3" />
-                <span>Prompts</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setScheduledPanelOpen(true)}
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border border-lattice-border rounded-full text-xs text-gray-400 hover:text-amber-300 hover:border-amber-500/30 transition-colors"
-                title="Scheduled tasks (recurring prompts)"
-              >
-                <Clock className="w-3 h-3" />
-                <span>Schedule</span>
-              </button>
-              {/* ChatGPT-parity studio — voice, custom GPTs, canvas,
-                  memory, code interpreter, share links, image gen. */}
-              <button
-                type="button"
-                onClick={() => setStudioOpen(true)}
-                className={cn(
-                  'hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border rounded-full text-xs transition-colors',
-                  studioOpen
-                    ? 'border-violet-500/50 text-violet-300'
-                    : 'border-lattice-border text-gray-400 hover:text-violet-300 hover:border-violet-500/30',
-                )}
-                title="Studio — voice, custom GPTs, canvas, memory, code, share, images"
-              >
-                <Sparkles className="w-3 h-3" />
-                <span>Studio</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setThreadSearchOpen(true)}
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border border-lattice-border rounded-full text-xs text-gray-400 hover:text-neon-cyan hover:border-neon-cyan/30 transition-colors"
-                title="Search across all conversations (⌘K)"
-              >
-                <Search className="w-3 h-3" />
-                <span>Search</span>
-              </button>
+
+              {/* Active-project chip — surfaced inline only when one is active, so the
+                  user sees their working space without opening the menu. */}
+              {activeProject && (
+                <button
+                  type="button"
+                  onClick={() => setProjectsPanelOpen(true)}
+                  className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-cyan-500/10 border border-cyan-500/50 rounded-full text-xs text-cyan-300 hover:border-cyan-400 transition-colors"
+                  title="Open active project"
+                >
+                  <FolderOpen className="w-3 h-3" />
+                  <span>{activeProject.name.slice(0, 14)}</span>
+                </button>
+              )}
+
+              {/* Workspace overflow — the 8 secondary tools (Context/Tools/Systems/
+                  Projects/Prompts/Schedule/Studio/Search) live behind ONE button so the
+                  header reads as a chat app, not a cockpit. Active tools show a colored
+                  dot on the trigger so at-a-glance state isn't lost. */}
+              <div className="relative hidden sm:block">
+                <button
+                  type="button"
+                  onClick={() => setWorkspaceMenuOpen((v) => !v)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-2 bg-lattice-bg border rounded-lg text-xs transition-colors',
+                    workspaceMenuOpen
+                      ? 'border-neon-cyan/50 text-neon-cyan'
+                      : 'border-lattice-border text-gray-300 hover:text-white hover:border-gray-500',
+                  )}
+                  aria-haspopup="menu"
+                  aria-expanded={workspaceMenuOpen}
+                  title="Workspace — context, tools, systems, projects, prompts, schedule, studio, search"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                  <span className="font-medium">Workspace</span>
+                  {(initiativesPaused || systemsPanelOpen || activeProject || studioOpen) && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-neon-cyan" aria-hidden="true" />
+                  )}
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                </button>
+
+                <AnimatePresence>
+                  {workspaceMenuOpen && (
+                    <>
+                      {/* click-away backdrop */}
+                      <button
+                        type="button"
+                        aria-hidden="true"
+                        tabIndex={-1}
+                        onClick={() => setWorkspaceMenuOpen(false)}
+                        className="fixed inset-0 z-40 cursor-default"
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        role="menu"
+                        className="absolute top-full right-0 mt-2 w-60 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-50 overflow-hidden py-1"
+                      >
+                        {[
+                          { key: 'context', icon: Eye, label: 'View context', hint: 'working set', onClick: () => setContextOverlayOpen(true) },
+                          { key: 'tools', icon: Sparkles, label: 'Tool palette', hint: '⌘.', onClick: () => setToolPaletteOpen(true) },
+                          { key: 'search', icon: Search, label: 'Search chats', hint: '⌘K', onClick: () => setThreadSearchOpen(true) },
+                          { key: 'projects', icon: FolderOpen, label: 'Projects', active: !!activeProject, dot: 'bg-cyan-400', onClick: () => setProjectsPanelOpen(true) },
+                          { key: 'prompts', icon: BookOpen, label: 'Prompt library', onClick: () => setPromptsPanelOpen(true) },
+                          { key: 'schedule', icon: Clock, label: 'Scheduled tasks', onClick: () => setScheduledPanelOpen(true) },
+                          { key: 'studio', icon: Sparkles, label: 'Studio', active: studioOpen, dot: 'bg-violet-400', onClick: () => setStudioOpen(true) },
+                          { key: 'systems', icon: Activity, label: 'Systems', active: systemsPanelOpen, dot: 'bg-neon-purple', onClick: () => setSystemsPanelOpen((v) => !v) },
+                          { key: 'pause', icon: initiativesPaused ? PlayCircle : PauseCircle, label: initiativesPaused ? 'Resume Concord' : 'Pause Concord', active: initiativesPaused, dot: 'bg-amber-400', onClick: () => toggleInitiativesPaused() },
+                        ].map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <button
+                              key={item.key}
+                              type="button"
+                              role="menuitem"
+                              onClick={() => { item.onClick(); setWorkspaceMenuOpen(false); }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-200 hover:bg-lattice-bg transition-colors"
+                            >
+                              <Icon className={cn('w-4 h-4 flex-shrink-0', item.active ? 'text-white' : 'text-gray-400')} />
+                              <span className="flex-1 text-left">{item.label}</span>
+                              {item.active && item.dot && (
+                                <span className={cn('w-1.5 h-1.5 rounded-full', item.dot)} aria-hidden="true" />
+                              )}
+                              {item.hint && (
+                                <kbd className="text-[10px] text-gray-500">{item.hint}</kbd>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             {/* Cognitive Status Bar */}
