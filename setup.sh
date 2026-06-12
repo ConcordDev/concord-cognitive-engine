@@ -79,6 +79,27 @@ else
   fi
 fi
 
+# ── 3c. Lean 4 (OPT-IN — the deeper proof checker, gigabytes) ────────────
+# Lean handles theorems Z3's first-order SMT returns "unknown" on (induction,
+# higher-order). It's a multi-GB toolchain (elan + Mathlib), so it is NEVER
+# auto-installed — opt in with CONCORD_INSTALL_LEAN=1. Without it, the proof gate
+# simply never escalates past Z3 (verdict stays "unknown"), which is fine.
+if [ "${CONCORD_INSTALL_LEAN:-0}" = "1" ]; then
+  if command -v lean &>/dev/null; then
+    ok "Lean found at $(command -v lean)."
+  else
+    info "CONCORD_INSTALL_LEAN=1 — installing the Lean 4 toolchain via elan (this is large)..."
+    if command -v elan &>/dev/null || curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y 2>/dev/null; then
+      export PATH="$HOME/.elan/bin:$PATH"
+      elan default stable 2>/dev/null || true
+    fi
+    command -v lean &>/dev/null && ok "Lean installed at $(command -v lean)." \
+      || warn "Lean install did not complete — proof gate will stay at the Z3 tier. Set CONCORD_LEAN_PATH if you install it elsewhere."
+  fi
+else
+  info "Skipping Lean 4 (opt in with CONCORD_INSTALL_LEAN=1 for the deeper proof tier)."
+fi
+
 # ── 4. Install server dependencies ───────────────────────────────────────
 info "Installing server dependencies..."
 (cd server && npm install)

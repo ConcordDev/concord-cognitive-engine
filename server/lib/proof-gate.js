@@ -34,6 +34,10 @@
 //     deterministically testable offline — mirrors the connectorFetch fetchImpl seam.
 
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
+import { writeFile, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import logger from "../logger.js";
 
 const DEFAULT_TIMEOUT_MS = 8000;
@@ -198,10 +202,152 @@ export async function proveClaim(opts = {}) {
   const z = await runZ3(f.smt, { runner: opts.z3Runner, z3Path: opts.z3Path, timeoutMs: opts.timeoutMs });
   out.result = z.result;
   out.z3Raw = z.raw;
-  if (z.result === "unsat") out.verdict = "proven";       // negation impossible ⇒ claim valid
-  else if (z.result === "sat") out.verdict = "refuted";   // negation has a model ⇒ counterexample
-  else out.verdict = "unknown";                            // unknown / timeout
+  if (z.result === "unsat") { out.verdict = "proven"; out.verifier = "z3"; return out; }   // negation impossible ⇒ claim valid
+  if (z.result === "sat") { out.verdict = "refuted"; out.verifier = "z3"; return out; }     // negation has a model ⇒ counterexample
+
+  // Z3 said UNKNOWN — first-order SMT can't settle it (induction, higher-order,
+  // nonlinear). Escalate to Lean 4, which CAN express those, as a deeper fallback.
+  // Lean only ever upgrades unknown→proven (a failed Lean proof attempt is NOT a
+  // disproof, so it never produces "refuted"). No-op when Lean isn't installed.
+  out.verdict = "unknown"; out.verifier = "z3";
+  if (opts.useLean !== false) {
+    const lean = await tryLean(claim, opts);
+    if (lean) {
+      out.lean = { attempted: true, available: lean.available, source: lean.source || null };
+      if (lean.verdict === "proven") { out.verdict = "proven"; out.verifier = "lean"; }
+    }
+  }
   return out;
+}
+
+// ── Lean 4 path (deeper checker for what SMT can't express) ──────────────────
+// Lean's model differs from Z3's: the brain must produce a theorem STATEMENT *and*
+// a PROOF; if `lean` type-checks the file, the theorem is proven. A non-compiling
+// file is inconclusive (a bad proof attempt), never a disproof.
+const LEAN_SYSTEM =
+  "You are a Lean 4 theorem prover. Write a SELF-CONTAINED Lean 4 file that states " +
+  "the user's claim as a `theorem` and PROVES it (prefer core/Init + tactics like " +
+  "simp, omega, decide, induction; avoid Mathlib imports unless unavoidable). Output " +
+  "ONLY a single ```lean code block — no prose. If you cannot prove it, output " +
+  "exactly ```lean\\n-- UNPROVABLE\\n```.";
+
+export function extractLean(text) {
+  const raw = String(text || "");
+  const fence = raw.match(/```(?:lean4?|lean)?\s*([\s\S]*?)```/i);
+  let body = (fence ? fence[1] : raw).trim();
+  if (!body || body.length > SMT_MAX_BYTES) return null;
+  if (/--\s*UNPROVABLE/i.test(body)) return null;
+  if (!/\btheorem\b|\bexample\b|\blemma\b/.test(body)) return null;
+  return body;
+}
+
+function locateLean() {
+  return process.env.CONCORD_LEAN_PATH || process.env.LEAN_PATH || "lean";
+}
+
+/**
+ * Type-check a Lean 4 source. Returns { available, ok, raw }. available:false ⇒
+ * no `lean` binary. ok:true ⇒ the file (theorem + proof) type-checks. Injectable
+ * via opts.runner(source) → { available, ok, raw }.
+ */
+export async function runLean(source, opts = {}) {
+  if (typeof opts.runner === "function") {
+    try { return await opts.runner(source); }
+    catch (e) { return { available: false, ok: false, raw: String(e?.message || e) }; }
+  }
+  const lean = opts.leanPath || locateLean();
+  const timeoutMs = opts.timeoutMs || 20000; // Lean elaboration is slower than SMT
+  let dir;
+  try {
+    dir = await mkdtemp(join(tmpdir(), "concord-lean-"));
+    const file = join(dir, "Claim.lean");
+    await writeFile(file, String(source || ""), "utf8");
+    return await new Promise((resolve) => {
+      execFile(lean, [file], { timeout: timeoutMs, maxBuffer: 1_000_000 }, (err, stdout, stderr) => {
+        const raw = `${stdout || ""}${stderr || ""}`.trim();
+        if (err && (err.code === "ENOENT" || /ENOENT|not found/i.test(String(err.message)))) {
+          resolve({ available: false, ok: false, raw });
+          return;
+        }
+        // lean exits 0 with no "error:" diagnostics when the proof type-checks.
+        const ok = !err && !/error:/i.test(raw) && !/sorry|admit/i.test(raw);
+        resolve({ available: true, ok, raw });
+      });
+    });
+  } catch (e) {
+    return { available: false, ok: false, raw: String(e?.message || e) };
+  } finally {
+    if (dir) { try { await rm(dir, { recursive: true, force: true }); } catch { /* ignore */ } }
+  }
+}
+
+async function tryLean(claim, opts = {}) {
+  // Formalise to Lean via the (subconscious) brain.
+  let source = null;
+  try {
+    if (typeof opts.brainFn === "function") {
+      const r = await opts.brainFn([
+        { role: "system", content: LEAN_SYSTEM },
+        { role: "user", content: `Claim: "${String(claim || "").trim()}"` },
+      ]);
+      source = extractLean(String(r?.text ?? r ?? ""));
+    }
+  } catch { source = null; }
+  if (!source) return { attempted: false, available: null, verdict: "unknown" };
+  const res = await runLean(source, { runner: opts.leanRunner, leanPath: opts.leanPath, timeoutMs: opts.leanTimeoutMs });
+  return {
+    attempted: true,
+    available: res.available,
+    source,
+    verdict: res.available && res.ok ? "proven" : "unknown",
+  };
+}
+
+// ── Persist a sound verdict into the DTU substrate ───────────────────────────
+// A machine-checked proof is a durable piece of knowledge — minting it as a
+// `proven_claim` DTU lets it enter the archive + citation/royalty graph like any
+// other DTU. Idempotent: the id is a hash of the claim, so re-proving the same
+// claim is a no-op (a claim's formal status doesn't change). Public-scoped so it
+// is citable. Best-effort + fully guarded — proof-gate must never throw on a DB
+// quirk, and persistence failing must not change the verdict.
+/**
+ * @param {object} db better-sqlite3 handle
+ * @param {{ claim:string, verdict:"proven"|"refuted", smt?:string|null, creatorId?:string|null }} o
+ * @returns {{ ok:boolean, dtuId?:string, created?:boolean, reason?:string }}
+ */
+export function persistProvenClaim(db, { claim, verdict, smt = null, creatorId = null } = {}) {
+  if (!db) return { ok: false, reason: "no_db" };
+  const text = String(claim || "").trim();
+  if (!text || (verdict !== "proven" && verdict !== "refuted")) return { ok: false, reason: "not_sound_verdict" };
+  const dtuId = "dtu_proof_" + createHash("sha256").update(text).digest("hex").slice(0, 24);
+  const author = creatorId || "concord-lattice";
+  const now = new Date().toISOString();
+  const data = JSON.stringify({
+    human: `${verdict === "proven" ? "Proven" : "Refuted"} (Z3): ${text}`,
+    core: { claims: [text], verdict, verifier: "z3" },
+    // The SMT the subconscious brain produced is kept for human audit — the
+    // verdict is sound RELATIVE TO this formalisation (MOTO's "view with scrutiny").
+    machine: { verifier: "z3", verdict, smt: smt || null, checked_at: now },
+    scope: "public",
+  });
+  try {
+    const info = db.prepare(
+      `INSERT INTO dtus (id, creator_id, type, title, data, created_at)
+       VALUES (?, ?, 'proven_claim', ?, ?, ?)
+       ON CONFLICT(id) DO NOTHING`,
+    ).run(dtuId, author, text.slice(0, 160), data, now);
+    return { ok: true, dtuId, created: info.changes > 0 };
+  } catch (e) {
+    // Minimal fallback for a leaner dtus schema (id, creator_id, type, data).
+    try {
+      db.prepare(`INSERT OR IGNORE INTO dtus (id, creator_id, type, data) VALUES (?, ?, 'proven_claim', ?)`)
+        .run(dtuId, author, data);
+      return { ok: true, dtuId, created: true };
+    } catch (e2) {
+      try { logger.debug?.("proof-gate", "persist_failed", { error: e2?.message || e?.message }); } catch { /* ignore */ }
+      return { ok: false, reason: "insert_failed" };
+    }
+  }
 }
 
 // ── Autonomous batch: verify a set of reasoning conclusions ──────────────────
@@ -239,4 +385,4 @@ export async function verifyConclusions(conclusions, opts = {}) {
   return out;
 }
 
-export default { classifyAmenable, extractSmt, runZ3, formaliseClaim, proveClaim, verifyConclusions };
+export default { classifyAmenable, extractSmt, runZ3, formaliseClaim, proveClaim, verifyConclusions, persistProvenClaim, runLean, extractLean };

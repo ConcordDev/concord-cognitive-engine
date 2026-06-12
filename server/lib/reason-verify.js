@@ -133,6 +133,15 @@ export async function verifyClaim(db, { claim, citationIds = [], requesterId = n
         proof = await proveClaim({ claim: claimText, brainFn, z3Runner: proofZ3Runner });
         if (proof?.verdict === "proven") { supported = true; verdict = "proven"; mode = "proof"; confidence = 1; }
         else if (proof?.verdict === "refuted") { supported = false; verdict = "refuted"; mode = "proof"; confidence = 1; }
+        // A sound verdict is durable knowledge — mint it as a citable proven_claim
+        // DTU (idempotent on the claim). Best-effort; never affects the verdict.
+        if (proof?.verdict === "proven" || proof?.verdict === "refuted") {
+          try {
+            const { persistProvenClaim } = await import("./proof-gate.js");
+            const p = persistProvenClaim(db, { claim: claimText, verdict: proof.verdict, smt: proof.smt, creatorId: requesterId });
+            if (p?.ok) proof.dtuId = p.dtuId;
+          } catch { /* persistence best-effort */ }
+        }
       }
     } catch (e) {
       try { logger.debug?.("reason-verify", "proof_gate_unavailable", { error: e?.message }); } catch { /* ignore */ }
