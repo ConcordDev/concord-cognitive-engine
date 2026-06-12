@@ -19,7 +19,7 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 
-import { classifyAmenable, extractSmt, runZ3, proveClaim, verifyConclusions } from "../lib/proof-gate.js";
+import { classifyAmenable, extractSmt, runZ3, proveClaim, verifyConclusions, persistProvenClaim, runLean, extractLean } from "../lib/proof-gate.js";
 import { verifyClaim } from "../lib/reason-verify.js";
 
 // A z3Runner stub: first call is the availability probe "(check-sat)", later the
@@ -178,6 +178,109 @@ describe("verifyConclusions — autonomous batch (lattice-orchestrator path)", (
       z3Runner, max: 2,
     });
     assert.equal(out.checked, 2);
+  });
+});
+
+describe("Lean 4 path — deeper fallback when Z3 says unknown", () => {
+  // A Z3 stub that returns unknown for the real script (probe stays sat).
+  const z3Unknown = async (smt) => /^\s*\(check-sat\)\s*$/.test(smt)
+    ? { available: true, result: "sat" } : { available: true, result: "unknown" };
+  // Brain returns SMT for the SMT prompt and Lean for the Lean prompt.
+  const dualBrain = async (messages) => {
+    const isLean = /Lean 4/.test(messages[0].content);
+    return { text: isLean
+      ? "```lean\ntheorem t (n : Nat) : n + 0 = n := by simp\n```"
+      : "```smt\n(declare-const n Int)\n(assert (not (= (+ n 0) n)))\n(check-sat)\n```" };
+  };
+
+  it("extractLean pulls a theorem block and rejects UNPROVABLE / sorry-free check", () => {
+    assert.match(extractLean("```lean\ntheorem t : True := trivial\n```"), /theorem/);
+    assert.equal(extractLean("```lean\n-- UNPROVABLE\n```"), null);
+    assert.equal(extractLean("just prose"), null);
+  });
+
+  it("Z3-unknown + Lean type-checks → proven (verifier:lean)", async () => {
+    const r = await proveClaim({
+      claim: "for all natural numbers n, n + 0 = n",
+      brainFn: dualBrain,
+      z3Runner: z3Unknown,
+      leanRunner: async () => ({ available: true, ok: true, raw: "" }),
+    });
+    assert.equal(r.verdict, "proven");
+    assert.equal(r.verifier, "lean");
+    assert.equal(r.lean.attempted, true);
+  });
+
+  it("Z3-unknown + Lean fails to compile → stays unknown", async () => {
+    const r = await proveClaim({
+      claim: "for all natural numbers n, n + 0 = n",
+      brainFn: dualBrain,
+      z3Runner: z3Unknown,
+      leanRunner: async () => ({ available: true, ok: false, raw: "error: unsolved goals" }),
+    });
+    assert.equal(r.verdict, "unknown");
+  });
+
+  it("Z3-unknown + no Lean binary → stays unknown (graceful)", async () => {
+    const r = await proveClaim({
+      claim: "for all natural numbers n, n + 0 = n",
+      brainFn: dualBrain,
+      z3Runner: z3Unknown,
+      leanRunner: async () => ({ available: false, ok: false, raw: "ENOENT" }),
+    });
+    assert.equal(r.verdict, "unknown");
+    assert.equal(r.lean.available, false);
+  });
+
+  it("a proof using `sorry` does NOT count as proven", async () => {
+    const r = await runLean("theorem t : False := sorry", {
+      runner: async () => ({ available: true, ok: false, raw: "warning: declaration uses 'sorry'" }),
+    });
+    assert.equal(r.ok, false);
+  });
+
+  it("runLean returns available:false when the binary is missing", async () => {
+    const r = await runLean("theorem t : True := trivial", { leanPath: "/nonexistent/lean-xyz", timeoutMs: 1000 });
+    assert.equal(r.available, false);
+  });
+});
+
+describe("persistProvenClaim — mint a citable proven_claim DTU", () => {
+  function dtuDb() {
+    const db = new Database(":memory:");
+    db.exec(`CREATE TABLE dtus (id TEXT PRIMARY KEY, creator_id TEXT, type TEXT, title TEXT, data TEXT, created_at TEXT);`);
+    return db;
+  }
+  it("mints a proven_claim DTU with the SMT kept for audit", () => {
+    const db = dtuDb();
+    const r = persistProvenClaim(db, { claim: "for all integers n, n + 0 = n", verdict: "proven", smt: "(check-sat)", creatorId: "u1" });
+    assert.equal(r.ok, true);
+    assert.equal(r.created, true);
+    const row = db.prepare("SELECT type, title, data, creator_id FROM dtus WHERE id = ?").get(r.dtuId);
+    assert.equal(row.type, "proven_claim");
+    assert.equal(row.creator_id, "u1");
+    const data = JSON.parse(row.data);
+    assert.equal(data.core.verdict, "proven");
+    assert.equal(data.machine.verifier, "z3");
+    assert.equal(data.machine.smt, "(check-sat)");
+    assert.equal(data.scope, "public");
+  });
+  it("is idempotent on the claim (re-proving doesn't duplicate)", () => {
+    const db = dtuDb();
+    const a = persistProvenClaim(db, { claim: "3 > 2", verdict: "proven" });
+    const b = persistProvenClaim(db, { claim: "3 > 2", verdict: "proven" });
+    assert.equal(a.dtuId, b.dtuId);
+    assert.equal(b.created, false);
+    assert.equal(db.prepare("SELECT COUNT(*) c FROM dtus").get().c, 1);
+  });
+  it("defaults the autonomous author to concord-lattice", () => {
+    const db = dtuDb();
+    const r = persistProvenClaim(db, { claim: "for all n, n*n >= 0", verdict: "proven" });
+    assert.equal(db.prepare("SELECT creator_id FROM dtus WHERE id = ?").get(r.dtuId).creator_id, "concord-lattice");
+  });
+  it("rejects non-sound verdicts / missing db", () => {
+    assert.equal(persistProvenClaim(dtuDb(), { claim: "x", verdict: "unknown" }).ok, false);
+    assert.equal(persistProvenClaim(null, { claim: "x", verdict: "proven" }).ok, false);
   });
 });
 

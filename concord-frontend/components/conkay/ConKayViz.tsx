@@ -12,7 +12,7 @@
 // mapping: structured-output-shape → meaningful visualization, reusing ChartKit.
 
 import { useMemo } from 'react';
-import { BarChart3, Database, Globe, Wrench, Network, Cpu, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { BarChart3, Database, Globe, Wrench, Network, Cpu, ShieldCheck, AlertTriangle, BadgeCheck, XOctagon } from 'lucide-react';
 import { ChartKit } from '@/components/viz/ChartKit';
 
 export interface ConKayReplyFields {
@@ -216,6 +216,24 @@ function ToolCalls({ toolCalls }: { toolCalls: unknown }) {
 // output — the badge IS the verification result, never a guess.
 function VerdictBadge({ verdict }: { verdict: string }) {
   switch (verdict) {
+    case "proven":
+      // The STRONGEST badge: a math/logic claim machine-checked valid by Z3 (the
+      // subconscious brain formalised it; the SMT solver — not the model — ruled).
+      // This is SOUND, not semantic — the only badge that certifies, and only for
+      // the formalisable slice.
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-300 font-medium" title="Machine-checked: the subconscious brain formalised this claim into SMT-LIB and Z3 proved it valid. Sound — not a model's opinion. (Sound relative to the formalisation; the SMT is auditable.)">
+          <BadgeCheck className="h-3 w-3" /> Proven ✓
+        </span>
+      );
+    case "refuted":
+      // Z3 found a counterexample — the claim is provably FALSE. Also sound, and
+      // more useful than a soft "unsupported": don't rely on it, it's wrong.
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] text-rose-400" title="Machine-checked: Z3 found a counterexample — this claim is provably false. Do not rely on it.">
+          <XOctagon className="h-3 w-3" /> Refuted
+        </span>
+      );
     case "pending":
       return (
         <span className="inline-flex items-center gap-1 text-[10px] text-cyan-300/70 ck-shimmer" title="Checking the cited sources against your archive…">

@@ -35,6 +35,17 @@ function newRunId(): string {
   return `ck-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// Cheap client-side mirror of the backend proof-amenability anchors
+// (server/lib/proof-gate.js). Math/logic claims should be sent to reason.verify
+// EVEN WITHOUT citations so the Z3 proof gate can fire and earn the "Proven ✓"
+// badge. This only gates whether we *ask* the backend — the backend re-decides
+// authoritatively and returns "unverified" if it isn't really formalisable.
+const PROVABLE_RE = /[<>]=?|≤|≥|≠|\bfor all\b|\bfor every\b|\bthere exists\b|\bdivisible\b|\bprime\b|\bif and only if\b|\bimplies\b|\b\d+\s*[+\-*/^]\s*\d+\b/i;
+function looksProvable(claim: string): boolean {
+  const t = String(claim || '');
+  return t.length >= 3 && t.length <= 2000 && PROVABLE_RE.test(t);
+}
+
 // The world-tree field is WebGL — load client-only so SSR never touches it.
 const ConKayBackdrop = dynamic(
   () => import('./ConKayBackdrop').then((m) => m.ConKayBackdrop),
@@ -245,7 +256,9 @@ export function ConKayOverlay() {
   // event spine (a runId) like any other macro call; degrades silently to the
   // heuristic badge if the macro is unavailable.
   const verifyMessage = useCallback(async (msgId: string, claim: string, citationIds: string[]) => {
-    if (!citationIds.length) return;
+    // Run when there are citations to check OR when the claim is proof-amenable
+    // (so the Z3 gate can fire and earn "Proven ✓" even for an uncited theorem).
+    if (!citationIds.length && !looksProvable(claim)) return;
     setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, verifyVerdict: 'pending' } : m)));
     try {
       const rid = newRunId();
@@ -351,7 +364,7 @@ export function ConKayOverlay() {
       setStep('render', 'done', 'Done');
       // Phase 1: verify the cited DTUs through the real reason.verify macro.
       const citeIds = (result.dtuRefs || []).map((d) => d.id).filter(Boolean);
-      if (citeIds.length) verifyMessage(aid, result.spoken, citeIds);
+      if (citeIds.length || looksProvable(result.spoken)) verifyMessage(aid, result.spoken, citeIds);
       persistArtifact(`Skill: ${match.skill.label}`, { task: text, skill: match.skill.id, spoken: result.spoken, viz: result.viz ?? null });
       if (result.navigate) { const dest = result.navigate; setTimeout(() => { window.location.href = dest; }, 900); }
     } catch {

@@ -119,11 +119,11 @@ export async function runPeriodicDriftScan({ db: _db, state: _state, tickCount: 
         // (subconscious brain formaliser); a sound proven/refuted is recorded +
         // surfaced. Best-effort, bounded, near-free when Z3 isn't installed.
         try {
-          const { verifyConclusions } = await import("../lib/proof-gate.js");
+          const { verifyConclusions, persistProvenClaim } = await import("../lib/proof-gate.js");
+          const db = _STATE_REF?.db || globalThis.__concordDb || null;
           let brainFn = null;
           try {
             const { brainChat } = await import("../lib/byo-router.js");
-            const db = _STATE_REF?.db || globalThis.__concordDb || null;
             brainFn = async (messages) => {
               const rr = await brainChat({ db, userId: null, slot: "subconscious", messages });
               return { text: rr?.text || "" };
@@ -136,7 +136,10 @@ export async function runPeriodicDriftScan({ db: _db, state: _state, tickCount: 
               const realtimeMod = await import("./realtime.js").catch(() => null);
               const emit = realtimeMod?.realtimeEmit || globalThis.REALTIME?.io?.emit?.bind(globalThis.REALTIME.io);
               for (const res of proof.results) {
-                emit?.("lattice:claim-verified", { verdict: res.verdict, claim: res.claim.slice(0, 200), at: Date.now() });
+                // Mint each sound verdict into the archive (idempotent, system-authored).
+                let dtuId = null;
+                try { dtuId = persistProvenClaim(db, { claim: res.claim, verdict: res.verdict, smt: res.smt, creatorId: "concord-lattice" })?.dtuId || null; } catch { /* best-effort */ }
+                emit?.("lattice:claim-verified", { verdict: res.verdict, claim: res.claim.slice(0, 200), dtuId, at: Date.now() });
               }
               logger.info?.("lattice-orchestrator", "autonomous_proof_pass", { checked: proof.checked, proven: proof.proven, refuted: proof.refuted });
             } catch { /* surfacing best-effort */ }
