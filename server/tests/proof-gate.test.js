@@ -19,7 +19,7 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 
-import { classifyAmenable, extractSmt, runZ3, proveClaim } from "../lib/proof-gate.js";
+import { classifyAmenable, extractSmt, runZ3, proveClaim, verifyConclusions } from "../lib/proof-gate.js";
 import { verifyClaim } from "../lib/reason-verify.js";
 
 // A z3Runner stub: first call is the availability probe "(check-sat)", later the
@@ -131,6 +131,53 @@ describe("runZ3 — graceful when binary absent", () => {
   it("returns available:false instead of throwing when z3 is missing", async () => {
     const r = await runZ3("(check-sat)", { z3Path: "/nonexistent/z3-binary-xyz", timeoutMs: 1000 });
     assert.equal(r.available, false);
+  });
+});
+
+describe("verifyConclusions — autonomous batch (lattice-orchestrator path)", () => {
+  it("checks only proof-amenable conclusions and tallies proven/refuted", async () => {
+    const conclusions = [
+      "The market sentiment is broadly positive",     // not amenable → skipped
+      "for all integers n, n + 0 = n",                // proven
+      "for all integers n, n > 0",                    // refuted
+    ];
+    // Brain returns the right negation SMT per claim; z3 stub maps by content.
+    const brainFn = async (messages) => {
+      const claim = messages[1].content;
+      const smt = /> 0/.test(claim)
+        ? "(declare-const n Int)\n(assert (not (> n 0)))\n(check-sat)"
+        : "(declare-const n Int)\n(assert (not (= (+ n 0) n)))\n(check-sat)";
+      return { text: "```smt\n" + smt + "\n```" };
+    };
+    const z3Runner = async (smt) => {
+      if (/^\s*\(check-sat\)\s*$/.test(smt)) return { available: true, result: "sat" }; // probe
+      return { available: true, result: /> n 0/.test(smt) ? "sat" : "unsat" };
+    };
+    const out = await verifyConclusions(conclusions, { brainFn, z3Runner, max: 5 });
+    assert.equal(out.checked, 2);
+    assert.equal(out.proven, 1);
+    assert.equal(out.refuted, 1);
+  });
+
+  it("stops immediately when Z3 is unavailable (no wasted brain calls)", async () => {
+    let brainCalls = 0;
+    const out = await verifyConclusions(["3 + 4 > 5", "for all n, n = n"], {
+      brainFn: async () => { brainCalls++; return { text: "```smt\n(check-sat)\n```" }; },
+      z3Runner: async () => ({ available: false, result: null }),
+    });
+    assert.equal(out.checked, 0);
+    assert.equal(brainCalls, 0);
+  });
+
+  it("respects the max bound", async () => {
+    const many = Array.from({ length: 8 }, (_, i) => `${i} + 1 > ${i}`);
+    const z3Runner = async (smt) => /^\s*\(check-sat\)\s*$/.test(smt)
+      ? { available: true, result: "sat" } : { available: true, result: "unsat" };
+    const out = await verifyConclusions(many, {
+      brainFn: async () => ({ text: "```smt\n(assert false)\n(check-sat)\n```" }),
+      z3Runner, max: 2,
+    });
+    assert.equal(out.checked, 2);
   });
 });
 

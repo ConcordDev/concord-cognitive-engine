@@ -204,4 +204,39 @@ export async function proveClaim(opts = {}) {
   return out;
 }
 
-export default { classifyAmenable, extractSmt, runZ3, formaliseClaim, proveClaim };
+// ── Autonomous batch: verify a set of reasoning conclusions ──────────────────
+// The autonomous loop (lattice-orchestrator → runHLR) produces conclusions; this
+// runs the proof-amenable ones through the gate so the self-reasoning is formally
+// self-checking — Concord's continuous analogue to MOTO's "verify the research".
+// Bounded by `max` amenable checks so a heartbeat never spends unboundedly; the
+// z3-availability probe inside proveClaim keeps it near-free when Z3 is absent.
+/**
+ * @param {string[]} conclusions
+ * @param {{ brainFn?:Function, z3Runner?:Function, max?:number }} opts
+ * @returns {Promise<{ checked:number, proven:number, refuted:number, results:object[] }>}
+ */
+export async function verifyConclusions(conclusions, opts = {}) {
+  const max = Math.max(1, Math.min(10, opts.max ?? 3));
+  const list = (Array.isArray(conclusions) ? conclusions : [])
+    .map((c) => String(c || "").trim())
+    .filter(Boolean);
+  const out = { checked: 0, proven: 0, refuted: 0, results: [] };
+  for (const claim of list) {
+    if (out.checked >= max) break;
+    if (!classifyAmenable(claim).amenable) continue;
+    let r;
+    try { r = await proveClaim({ claim, brainFn: opts.brainFn, z3Runner: opts.z3Runner }); }
+    catch { continue; }
+    // "unavailable"/"not_amenable" don't count as a real check — only a checker verdict does.
+    if (r.verdict === "unavailable") break; // no Z3 ⇒ stop, the rest would be no-ops too
+    if (r.verdict === "proven" || r.verdict === "refuted" || r.verdict === "unknown") {
+      out.checked++;
+      if (r.verdict === "proven") out.proven++;
+      if (r.verdict === "refuted") out.refuted++;
+      out.results.push({ claim, verdict: r.verdict, smt: r.smt || null });
+    }
+  }
+  return out;
+}
+
+export default { classifyAmenable, extractSmt, runZ3, formaliseClaim, proveClaim, verifyConclusions };
