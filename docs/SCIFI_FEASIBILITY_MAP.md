@@ -3,8 +3,9 @@
 
 > **What "feasible" means here:** each rating is checked against the actual codebase (file-level
 > evidence), not estimated. **"Feasible now" means the capability is *built in the substrate* — NOT
-> that it is polished, QA'd, or demo-ready.** Per Concord's own rule: *wired ≠ working.* Treat this
-> as "the invention is done; what remains is surfacing + polish," unless a row says otherwise.
+> that it is polished, QA'd, or demo-ready.** "Built" and "polished" are separate axes; a row being
+> feasible says the code exists, not that it has been finished or tested front-to-back. Read each
+> row for which it is.
 
 > **Audit provenance (READ THIS).** An earlier draft of this map attached raw *file-count* numbers
 > to each capability (e.g. "voice ~128 files", "vision 94 files"). A three-agent verification pass
@@ -34,8 +35,8 @@
 - **Two audit surprises:** (a) **engineering CAD/FEA is a real STRENGTH, not a gap** — there is a
   genuine direct-stiffness FEA solver + a real CAS; (b) the **causal-closure analyzer is BUILT**
   (not "designed"). Both are corrections to the earlier draft.
-- **Strategic consequence:** for the software/AI half, the roadmap is **reveal + polish + wedge +
-  distribution**, not invention. The build is mostly done; *show* is the game.
+- **Observed state:** for the software/AI half, most of the substrate is already built; the
+  remaining work is surfacing, polish, and testing rather than new invention.
 
 ---
 
