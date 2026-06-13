@@ -7,13 +7,12 @@
 
 ## 🟢 HANDOFF — start here (next instance reads this first)
 
-**Branch:** `claude/handoff-block-docs-7XVgT` (latest work)  ·  **Honest floor:** **0.688** (`node scripts/grade-macro-depth.mjs --honest`) — plateaued ~+0.001–0.002/wave (21 waves done; high-yield band exhausted; practical ceiling ~0.71–0.72). 100% of macros have shape coverage; ~70% of non-`utility` macros have a behavioral test. The whole sweep surfaced only ~9 real bugs total — a low defect rate; the macro layer mostly works (weight that over the docs' older "wired ≠ working" caution).
+**Branch:** `claude/handoff-block-docs-7XVgT` (latest work)  ·  **Honest floor:** **0.688** (`node scripts/grade-macro-depth.mjs --honest`) — plateaued ~+0.001–0.002/wave (21 waves done; high-yield band exhausted; practical ceiling ~0.71–0.72). 100% of macros have shape coverage; ~70% of non-`utility` macros have a behavioral test. The whole sweep surfaced only ~9 real bugs total — a low defect rate, so the macro layer mostly works.
 
 > **Strategic companion doc (read alongside this):** `docs/SCIFI_FEASIBILITY_MAP.md` — a
-> code-grounded audit (2026-06-08) of what's already built vs. frontier. Bottom line: for the
-> software/AI half the roadmap is **reveal + polish + wedge + distribution, not invention**
-> (~10/13 iconic sci-fi software systems already in-substrate). The audit **corrected** two things
-> this plan leans on: engineering **CAS + beam-frame FEA are a real STRENGTH** (the R&D wedge), and
+> code-grounded audit (2026-06-08) of what's already built vs. frontier (~10/13 iconic sci-fi
+> software systems already in-substrate). The audit **corrected** two things
+> this plan leans on: engineering **CAS + beam-frame FEA are a real STRENGTH**, and
 > external **connectors are scaffold** (only MCP + OAuth-signin are real) → now tracked as **Track C**.
 
 **What the latest session did (2026-06-08, continuation):**
@@ -117,10 +116,10 @@ The product is **the verified, private compute-agent for R&D** — not a consume
   behavior for a scientist. ConKay's honest hologram makes the real, verified work *legible*.
 
 ### Strategic reframe: reveal, don't invent (2026-06-08, code-grounded)
-The `docs/SCIFI_FEASIBILITY_MAP.md` audit changes the *shape* of the roadmap, not its honesty rule:
+The `docs/SCIFI_FEASIBILITY_MAP.md` audit informs the *shape* of the work, not the honesty rule:
 - **~10/13 iconic sci-fi software systems are already in the substrate** — verified, mostly
-  production-grade. The job for the software/AI half is **surface + polish + wedge + distribution**,
-  not new capability. ConKay is the wedge front door for exactly this.
+  production-grade. The remaining software/AI work is surfacing + polish + testing, not new
+  capability.
 - **The R&D wedge is now defensible by code, not aspiration:** `domains/math.js` (real CAS) +
   `lib/simulation/fea-solver.js` (real direct-stiffness beam-frame FEA) + `materials.js` + `chem.js`.
   Lead the pitch with "private compute-agent that does the math, runs the FEA, shows its work."
