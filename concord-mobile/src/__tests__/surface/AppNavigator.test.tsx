@@ -26,9 +26,6 @@ jest.mock('../../surface/screens/AtlasScreen', () => ({
 jest.mock('../../surface/screens/SettingsScreen', () => ({
   SettingsScreen: () => 'SettingsScreen',
 }));
-jest.mock('../../surface/screens/BuyCoinsScreen', () => ({
-  BuyCoinsScreen: () => 'BuyCoinsScreen',
-}));
 
 // Track registered screens via the navigator mocks
 const registeredTabScreens: string[] = [];
@@ -142,7 +139,6 @@ describe('AppNavigator', () => {
       'Main',
       'Atlas',
       'Settings',
-      'BuyCoins',
       // Phase Z9 — Phase D sidebar lenses
       'Courtship',
       'Fishing',
@@ -170,14 +166,14 @@ describe('AppNavigator', () => {
     expect(registeredTabScreens).toHaveLength(5);
   });
 
-  it('registers exactly 18 stack screens', () => {
+  it('registers exactly 17 stack screens', () => {
     render(<AppNavigator />);
-    // Main, Atlas, Settings, BuyCoins (4 core) + Courtship, Fishing,
-    // Creatures, Garage, ReasoningTraces (5 Phase Z9 lenses) + DreamReader,
-    // StrategicWarBanner, ForwardPredictions, NPCSchemeOverhear, LFGBoard,
-    // BrawlMatchmaking, Spectator, EmergentEventFeed, PersonalBeat (9
-    // Phase G4.3 HUD wrappers) = 18.
-    expect(registeredStackScreens).toHaveLength(18);
+    // Main, Atlas, Settings (3 core) + Courtship, Fishing, Creatures, Garage,
+    // ReasoningTraces (5 Phase Z9 lenses) + DreamReader, StrategicWarBanner,
+    // ForwardPredictions, NPCSchemeOverhear, LFGBoard, BrawlMatchmaking,
+    // Spectator, EmergentEventFeed, PersonalBeat (9 Phase G4.3 HUD wrappers)
+    // = 17. (BuyCoins removed — coins are purchased on the website.)
+    expect(registeredStackScreens).toHaveLength(17);
   });
 
   it('does not register duplicate screen names in tabs', () => {
@@ -210,7 +206,6 @@ describe('AppNavigator', () => {
       Main: true,
       Atlas: true,
       Settings: true,
-      BuyCoins: true,
       LensDetail: true,
       DTUDetail: true,
       PeerDetail: true,
