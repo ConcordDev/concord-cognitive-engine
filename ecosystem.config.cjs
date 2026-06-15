@@ -45,6 +45,11 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 5050,
         TRUST_PROXY: '1',
+        // libuv thread pool — Node's default is 4, which bottlenecks SQLite
+        // (better-sqlite3 is sync but WAL checkpoints + disk I/O share the pool)
+        // and file-system operations. 16 threads on 28 vCPU is conservative;
+        // raise to 32 under sustained file-write pressure on the artifact store.
+        UV_THREADPOOL_SIZE: '16',
         // All five brain slots point at one on-pod Ollama; the model per slot
         // is what differentiates them. (env_runpod overrides PM2's `env`
         // block which has the docker-compose hostnames.)
@@ -95,12 +100,15 @@ module.exports = {
         BRAIN_REPAIR_URL: 'http://localhost:11434',
         OLLAMA_HOST: 'http://localhost:11434',
       },
-      // Crash-loop detection: stop restarting after 15 rapid failures
-      max_restarts: 15,
-      min_uptime: '10s',
-      restart_delay: 4000,
-      exp_backoff_restart_delay: 100,
-      kill_timeout: 10000,
+      // Crash-loop detection — stop restarting after 10 rapid failures.
+      // Under heavy WebSocket load a fast crash-loop can exhaust FDs + DB
+      // connections before the process exits cleanly; the 5s base + 200ms
+      // backoff gives the OS time to reclaim sockets and DB WAL locks.
+      max_restarts: 10,
+      min_uptime: '30s',              // must be stable 30s before reset; catches fast boot-crash
+      restart_delay: 5000,            // 5s base grace — lets WAL checkpoint + port release
+      exp_backoff_restart_delay: 200, // steeper ramp: 5.2s, 5.4s, 5.6s …
+      kill_timeout: 15000,            // 15s graceful shutdown (flush DB + drain WS)
       wait_ready: true,
       listen_timeout: 60000,
       error_file: 'logs/backend-error.log',
@@ -164,6 +172,38 @@ module.exports = {
       },
       error_file: 'logs/ollama-error.log',
       out_file: 'logs/ollama-out.log',
+      merge_logs: true,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    },
+    {
+      // ── Cloudflare Tunnel (Vector 6 — eliminate tunnel SPOF) ─────────────
+      // PM2 supervises cloudflared so it auto-restarts on crash or hang.
+      // cloudflared already has built-in exponential-backoff reconnect for
+      // transient network drops; PM2 handles hard process death.
+      //
+      // Cloudflare natively supports multiple connectors on the same tunnel:
+      // running startup.sh on a second machine adds a second edge connector
+      // automatically — this is the zero-config HA story (no extra config).
+      //
+      // ACTIVATION: Set CLOUDFLARE_TUNNEL_TOKEN in .env. Without it PM2 will
+      // start this app but cloudflared exits immediately (non-fatal).
+      name: 'concord-tunnel',
+      script: 'cloudflared',
+      args: `tunnel --no-autoupdate run --token ${process.env.CLOUDFLARE_TUNNEL_TOKEN || 'CLOUDFLARE_TUNNEL_TOKEN_NOT_SET'}`,
+      instances: 1,
+      exec_mode: 'fork',
+      watch: false,
+      // Only auto-start when the token is present — prevents a crash-loop
+      // from flooding logs when the user hasn't configured the tunnel yet.
+      autorestart: Boolean(process.env.CLOUDFLARE_TUNNEL_TOKEN),
+      max_restarts: 20,
+      min_uptime: '10s',
+      restart_delay: 5000,
+      exp_backoff_restart_delay: 200,
+      max_memory_restart: '256M',     // cloudflared is lightweight (~50MB RSS)
+      kill_timeout: 5000,
+      error_file: 'logs/cloudflared-error.log',
+      out_file: 'logs/cloudflared-out.log',
       merge_logs: true,
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     },

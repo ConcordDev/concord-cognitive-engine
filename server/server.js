@@ -4902,9 +4902,10 @@ function initDatabase() {
       db.pragma(`mmap_size = ${mmapMb * 1024 * 1024}`);
       db.pragma(`cache_size = -${cacheMb * 1024}`);
       db.pragma("temp_store = MEMORY");       // Temp tables in RAM
-      db.pragma("busy_timeout = 5000");       // Wait up to 5s before SQLITE_BUSY error
+      db.pragma("busy_timeout = 10000");      // 10s retry — burst-safe under concurrent writers
       db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
       db.pragma("page_size = 8192");          // Larger pages amortize I/O on big rows (DTU body_json)
+      db.pragma("optimize");                  // Refresh query-planner stats at boot (idempotent, fast)
     }
 
     // Create tables (writer only — a read-only replica inherits the schema the
