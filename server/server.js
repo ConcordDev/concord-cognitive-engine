@@ -5101,11 +5101,22 @@ const AuthDB = {
   // Users
   createUser(user) {
     if (db) {
-      const stmt = db.prepare(`
-        INSERT INTO users (id, username, email, password_hash, role, scopes, created_at, last_login_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      stmt.run(user.id, user.username, user.email, user.passwordHash, user.role, JSON.stringify(user.scopes), user.createdAt, user.lastLoginAt);
+      // date_of_birth is migration 335 (18+ age gate). Guard against older DBs
+      // that haven't applied it yet so registration never hard-fails on schema.
+      const _hasDob = (() => { try { return db.pragma("table_info(users)").some(c => c.name === "date_of_birth"); } catch { return false; } })();
+      if (_hasDob) {
+        const stmt = db.prepare(`
+          INSERT INTO users (id, username, email, password_hash, role, scopes, created_at, last_login_at, date_of_birth)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        stmt.run(user.id, user.username, user.email, user.passwordHash, user.role, JSON.stringify(user.scopes), user.createdAt, user.lastLoginAt, user.dateOfBirth || null);
+      } else {
+        const stmt = db.prepare(`
+          INSERT INTO users (id, username, email, password_hash, role, scopes, created_at, last_login_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        stmt.run(user.id, user.username, user.email, user.passwordHash, user.role, JSON.stringify(user.scopes), user.createdAt, user.lastLoginAt);
+      }
     }
     AUTH.users.set(user.id, user);
     saveAuthData();
@@ -6585,7 +6596,10 @@ if (z) {
   schemas.userRegister = z.object({
     username: z.string().min(3).max(50).regex(/^[a-zA-Z0-9_-]+$/),
     email: z.string().email(),
-    password: z.string().min(12).max(100)
+    password: z.string().min(12).max(100),
+    // 18+ age gate — Concordia has mature/violent content. The route computes
+    // the age and rejects < 18; here we just require a well-formed ISO date.
+    dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth is required (YYYY-MM-DD)")
   });
 
   schemas.userLogin = z.object({

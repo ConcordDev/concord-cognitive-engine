@@ -16,7 +16,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEST_USER = {
   username: `test_user_${Date.now()}`,
   email: `test_${Date.now()}@example.com`,
-  password: 'TestPassword123!'
+  password: 'TestPassword123!',
+  dateOfBirth: '1990-01-01'
 };
 
 let authToken = null;

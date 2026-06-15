@@ -124,7 +124,29 @@ export default function createAuthRouter({
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/register", authRateLimitMiddleware, validate("userRegister"), (req, res) => {
-    const { username, email, password } = req.validated || req.body;
+    const { username, email, password, dateOfBirth } = req.validated || req.body;
+
+    // ── Age gate (18+) ──────────────────────────────────────────────
+    // Concordia contains mature/violent content, so registration requires the
+    // user to attest to a date of birth and be at least 18. We compute the age
+    // precisely (accounting for whether this year's birthday has passed) and
+    // reject under-18 (and absurd/future dates). The DOB is stored as the
+    // legal-defensibility record that the user attested to being an adult.
+    const MIN_AGE = 18;
+    const dob = new Date(`${dateOfBirth}T00:00:00Z`);
+    if (Number.isNaN(dob.getTime())) {
+      return res.status(400).json({ ok: false, error: "A valid date of birth is required." });
+    }
+    const _now = new Date();
+    let _age = _now.getUTCFullYear() - dob.getUTCFullYear();
+    const _mDiff = _now.getUTCMonth() - dob.getUTCMonth();
+    if (_mDiff < 0 || (_mDiff === 0 && _now.getUTCDate() < dob.getUTCDate())) _age--;
+    if (dob.getTime() > _now.getTime() || _age > 120) {
+      return res.status(400).json({ ok: false, error: "A valid date of birth is required." });
+    }
+    if (_age < MIN_AGE) {
+      return res.status(403).json({ ok: false, error: `You must be at least ${MIN_AGE} years old to create an account.`, code: "AGE_RESTRICTED" });
+    }
 
     // ── Bot prevention: honeypot field ──────────────────────────────
     // Frontend must NOT fill this field; bots auto-fill hidden inputs.
@@ -194,6 +216,7 @@ export default function createAuthRouter({
       role: userCount === 0 ? "owner" : "member",
       scopes: userCount === 0 ? ["*"] : ["read", "write"],
       emailVerified: false,
+      dateOfBirth: dateOfBirth || null,
       createdAt: new Date().toISOString(),
       lastLoginAt: null
     };

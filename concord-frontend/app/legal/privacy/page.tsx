@@ -125,11 +125,12 @@ storage (iOS Keychain / Android Keystore; WebCrypto on web). No system is perfec
 secure; we maintain a [vulnerability-disclosure process](/legal/security) and will
 notify you of breaches as required by law.
 
-## 11. Children
+## 11. Minors
 
-Concord is not directed to children under 13 (or under 16 in the EU). We do not
-knowingly collect their data; if we learn we have, we delete it. Contact
-[privacy@concord-os.org](mailto:privacy@concord-os.org) for parental requests.
+Concord is an adults-only Service (18+) and is not directed to minors. We do not
+knowingly collect data from anyone under 18; if we learn we have, we delete the
+account and its data. Contact
+[privacy@concord-os.org](mailto:privacy@concord-os.org) to report an underage account.
 
 ## 12. Cookies
 

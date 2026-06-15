@@ -14,7 +14,9 @@ Terms and to our [Privacy Policy](/legal/privacy) and
 
 ## 1. Eligibility & accounts
 
-You must be at least 13 (16 in the EU) to use the Service. Provide accurate
+You must be at least 18 years old to use the Service. The Service includes
+Concordia, a 3D world with mature, violent content, and is intended for adults
+only. By registering you attest that you are 18 or older. Provide accurate
 registration information, keep your credentials secure, and you are responsible for
 activity under your account. We may suspend or terminate accounts that violate these
 Terms.

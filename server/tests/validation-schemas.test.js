@@ -47,7 +47,8 @@ schemas.dtuUpdate = z.object({
 schemas.userRegister = z.object({
   username: z.string().min(3).max(50).regex(/^[a-zA-Z0-9_-]+$/),
   email: z.string().email(),
-  password: z.string().min(12).max(100)
+  password: z.string().min(12).max(100),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth is required (YYYY-MM-DD)")
 });
 
 schemas.userLogin = z.object({
@@ -477,9 +478,19 @@ describe("Validation Schemas", () => {
       const r = schemas.userRegister.safeParse({
         username: "testuser",
         email: "test@example.com",
-        password: "securePass123!"
+        password: "securePass123!",
+        dateOfBirth: "1990-01-01"
       });
       assert.ok(r.success);
+    });
+
+    it("rejects registration missing dateOfBirth (18+ gate)", () => {
+      const r = schemas.userRegister.safeParse({
+        username: "testuser",
+        email: "test@example.com",
+        password: "securePass123!"
+      });
+      assert.ok(!r.success);
     });
 
     it("rejects username with special chars", () => {

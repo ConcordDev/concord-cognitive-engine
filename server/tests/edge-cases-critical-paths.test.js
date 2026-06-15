@@ -89,7 +89,7 @@ async function api(method, path, body = null, { token, rawAuth } = {}) {
 let _seq = Date.now();
 async function registerAndLogin() {
   const n = ++_seq;
-  const creds = { username: `edge_user_${n}`, email: `edge_${n}@test.invalid`, password: "TestPass123!" };
+  const creds = { username: `edge_user_${n}`, email: `edge_${n}@test.invalid`, password: "TestPass123!", dateOfBirth: "1990-01-01" };
   const reg = await api("POST", "/api/auth/register", creds);
   if (reg.ok && reg.token) return { token: reg.token, userId: reg.user?.id ?? reg.userId };
   const login = await api("POST", "/api/auth/login", { username: creds.username, password: creds.password });
@@ -140,7 +140,7 @@ describe("Auth — registration validation", () => {
 
   it("duplicate username returns 409 or 400", async () => {
     const n = ++_seq;
-    const creds = { username: `dup_user_${n}`, email: `dup_${n}@test.invalid`, password: "TestPass123!" };
+    const creds = { username: `dup_user_${n}`, email: `dup_${n}@test.invalid`, password: "TestPass123!", dateOfBirth: "1990-01-01" };
     const first = await api("POST", "/api/auth/register", creds);
     if (!first.ok) return; // skip if registration unavailable
     const second = await api("POST", "/api/auth/register", { ...creds, email: `dup2_${n}@test.invalid` });

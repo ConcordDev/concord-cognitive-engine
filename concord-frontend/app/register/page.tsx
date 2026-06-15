@@ -10,6 +10,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -31,6 +32,25 @@ export default function RegisterPage() {
       setError('Password must be at least 12 characters');
       return;
     }
+    // 18+ age gate — Concordia has mature/violent content. Mirror the server
+    // check client-side for an immediate, clear message.
+    if (!dateOfBirth) {
+      setError('Please enter your date of birth');
+      return;
+    }
+    const _dob = new Date(`${dateOfBirth}T00:00:00Z`);
+    const _now = new Date();
+    let _age = _now.getUTCFullYear() - _dob.getUTCFullYear();
+    const _md = _now.getUTCMonth() - _dob.getUTCMonth();
+    if (_md < 0 || (_md === 0 && _now.getUTCDate() < _dob.getUTCDate())) _age--;
+    if (Number.isNaN(_dob.getTime()) || _dob.getTime() > _now.getTime()) {
+      setError('Please enter a valid date of birth');
+      return;
+    }
+    if (_age < 18) {
+      setError('You must be at least 18 years old to create an account.');
+      return;
+    }
 
     setLoading(true);
 
@@ -38,7 +58,7 @@ export default function RegisterPage() {
       // Fetch CSRF token first
       await api.get('/api/auth/csrf-token');
       const res = await api.post('/api/auth/register', {
-        username, email, password,
+        username, email, password, dateOfBirth,
         _t: pageLoadTime.current,
         ...(honeypot && { website: honeypot }),
       });
@@ -146,6 +166,24 @@ export default function RegisterPage() {
             </div>
 
             <div>
+              <label htmlFor="date-of-birth" className="block text-sm font-medium text-gray-300 mb-2">
+                Date of birth
+              </label>
+              <input
+                id="date-of-birth"
+                type="date"
+                value={dateOfBirth}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+                required
+                max={new Date().toISOString().slice(0, 10)}
+                aria-invalid={!!error}
+                aria-describedby="dob-hint"
+                className="w-full px-4 py-3 bg-lattice-deep border border-lattice-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-neon-blue/50 focus:ring-1 focus:ring-neon-blue/30 transition-colors [color-scheme:dark]"
+              />
+              <p id="dob-hint" className="text-gray-400 text-xs mt-1">You must be 18 or older. Concordia contains mature, violent content.</p>
+            </div>
+
+            <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
                 Password
               </label>
@@ -200,7 +238,7 @@ export default function RegisterPage() {
                 className="mt-1 rounded border-lattice-border bg-lattice-deep accent-neon-cyan"
               />
               <span className="text-xs text-gray-400">
-                I agree to the{' '}
+                I confirm I am at least 18 years old and agree to the{' '}
                 <Link href="/legal/terms" target="_blank" className="text-neon-cyan hover:underline">Terms of Service</Link>
                 {' '}and{' '}
                 <Link href="/legal/privacy" target="_blank" className="text-neon-cyan hover:underline">Privacy Policy</Link>
