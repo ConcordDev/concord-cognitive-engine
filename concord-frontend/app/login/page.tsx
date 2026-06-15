@@ -166,11 +166,17 @@ function LoginForm() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-1.5">
             <p className="text-gray-400 text-sm">
               Don&apos;t have an account?{' '}
               <Link href="/register" className="text-neon-cyan hover:text-neon-blue transition-colors font-medium">
                 Create one
+              </Link>
+            </p>
+            <p className="text-gray-500 text-sm">
+              Just curious?{' '}
+              <Link href="/explore" className="text-neon-cyan hover:text-neon-blue transition-colors font-medium">
+                Look around first
               </Link>
             </p>
           </div>

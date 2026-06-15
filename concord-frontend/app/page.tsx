@@ -55,6 +55,16 @@ export default function HomePage() {
             Your thoughts never leave your control.
           </p>
 
+          {/* Primary CTAs — let visitors experience it before committing. */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-12">
+            <a href="/register" className="px-6 py-3 rounded-lg bg-gradient-to-r from-neon-cyan to-neon-blue text-white font-semibold text-center">
+              Create your free account
+            </a>
+            <a href="/explore" className="px-6 py-3 rounded-lg border border-lattice-border text-gray-200 font-semibold hover:border-neon-cyan/50 transition-colors text-center">
+              Look around first — no account needed
+            </a>
+          </div>
+
           {/* Trust Signal */}
           <div className="flex flex-col items-center gap-1.5 mb-12">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm font-semibold">
