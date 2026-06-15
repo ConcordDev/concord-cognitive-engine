@@ -62458,9 +62458,21 @@ try { await initStateSync(STATE); } catch (e) {
 }
 startAllIntervals(structuredLog);
 
-// Sentry error handler — must be registered after all routes but before listen
+// Sentry error handler — must be registered after all routes but before listen.
+// @sentry/node v8+ removed the old `Sentry.Handlers.errorHandler()` middleware
+// in favour of `setupExpressErrorHandler(app)`; calling the old API on v10
+// throws at boot (Handlers is undefined), so use the current one.
 if (globalThis.__sentry) {
-  app.use(globalThis.__sentry.Handlers.errorHandler());
+  try {
+    if (typeof globalThis.__sentry.setupExpressErrorHandler === "function") {
+      globalThis.__sentry.setupExpressErrorHandler(app);
+    } else if (globalThis.__sentry.Handlers?.errorHandler) {
+      // Back-compat for an older SDK if it's ever pinned down.
+      app.use(globalThis.__sentry.Handlers.errorHandler());
+    }
+  } catch (_e) {
+    console.warn("[Sentry] error-handler registration failed:", _e?.message);
+  }
 }
 
 // Listen-suppression for tests. NODE_ENV=test (in-process unit tests
