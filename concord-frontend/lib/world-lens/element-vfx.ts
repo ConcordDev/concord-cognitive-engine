@@ -24,7 +24,8 @@ export type ElementKind =
   | 'poison'
   | 'water'
   | 'energy'
-  | 'physical';
+  | 'physical'
+  | 'bleed';
 
 interface ParticleSpec {
   count:        number;
@@ -46,6 +47,11 @@ const SPECS: Record<ElementKind, ParticleSpec> = {
   water:     { count: 20, lifetimeSec: 0.55, size: 0.26, color: 0x5fbfff, blending: 'additive', gravity:  3.2, spread: 0.95, upwardBias: 1.20, twinkle: 0.15 },
   energy:    { count: 16, lifetimeSec: 0.55, size: 0.40, color: 0xc77bff, blending: 'additive', gravity:  0.0, spread: 0.70, upwardBias: 0.10, twinkle: 0.50 },
   physical:  { count: 12, lifetimeSec: 0.40, size: 0.30, color: 0xb6a079, blending: 'normal',   gravity:  1.8, spread: 0.80, upwardBias: 0.90, twinkle: 0.05 },
+  // Blood spray — crimson droplets that burst outward then fall under gravity.
+  // Spawned on flesh (physical/melee) hits in addition to the impact dust, and
+  // as a heavier burst on lethal blows. Dark arterial red, no twinkle (wet, not
+  // sparkly), normal blending so it reads as opaque droplets, not glow.
+  bleed:     { count: 20, lifetimeSec: 0.70, size: 0.20, color: 0xa01818, blending: 'normal',   gravity:  6.5, spread: 1.05, upwardBias: 1.10, twinkle: 0.0 },
 };
 
 interface ActiveBurst {
