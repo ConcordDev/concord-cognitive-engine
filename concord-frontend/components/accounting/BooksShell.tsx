@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * QBShell — QuickBooks Online-shape sidebar + top-tab chrome.
+ * BooksShell — a books-chrome sidebar + top-tab chrome.
  *
- * The QBO interface anyone who has done SMB books recognises: dark sidebar
+ * The BooksO interface anyone who has done SMB books recognises: dark sidebar
  * on the left with the major nav buckets (Dashboard / Banking / Sales /
  * Expenses / Reports), each with its own sub-tabs. Keeps Concord branding
  * but the shape says "this is your books".
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type QBNav =
+export type BooksNav =
   | 'dashboard'
   | 'banking'
   | 'invoices'
@@ -43,18 +43,18 @@ export type QBNav =
   | 'ratios';
 
 interface NavItem {
-  id: QBNav;
+  id: BooksNav;
   label: string;
   icon: typeof Home;
   group: 'core' | 'sales' | 'expenses' | 'reports';
   badge?: number | string;
 }
 
-export interface QBShellProps {
-  activeNav: QBNav;
-  onNavChange: (next: QBNav) => void;
+export interface BooksShellProps {
+  activeNav: BooksNav;
+  onNavChange: (next: BooksNav) => void;
   /** Counts driven by dashboard-summary backend data. Show in nav as red pills. */
-  badges?: Partial<Record<QBNav, number | string>>;
+  badges?: Partial<Record<BooksNav, number | string>>;
   children: React.ReactNode;
   /** Slot for the JAX-style "Ask anything" bar mounted in the header. */
   askBar?: React.ReactNode;
@@ -93,7 +93,7 @@ const GROUP_LABELS: Record<NavItem['group'], string> = {
   reports: 'Reports',
 };
 
-export function QBShell({ activeNav, onNavChange, badges = {}, children, askBar }: QBShellProps) {
+export function BooksShell({ activeNav, onNavChange, badges = {}, children, askBar }: BooksShellProps) {
   const groups: NavItem['group'][] = ['core', 'sales', 'expenses', 'reports'];
   return (
     <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-[#0d1117] border border-emerald-500/15 rounded-lg overflow-hidden">
@@ -151,4 +151,4 @@ export function QBShell({ activeNav, onNavChange, badges = {}, children, askBar 
   );
 }
 
-export default QBShell;
+export default BooksShell;

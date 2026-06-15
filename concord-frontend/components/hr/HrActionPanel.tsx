@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * HrActionPanel — BambooHR + Gusto-shape people-ops workbench.
+ * HrActionPanel — people-ops workbench.
  * Surfaces compensationBenchmark / turnoverAnalysis / interviewScorecard /
  * ptoBalance + mint/DM/publish/agent.
  */
@@ -174,7 +174,6 @@ export function HrActionPanel() {
       <header className="flex items-center gap-2 border-b border-blue-500/10 pb-2">
         <Users className="h-4 w-4 text-blue-400" />
         <h3 className="text-sm font-semibold text-white">People ops workbench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">bamboohr · gusto</span>
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

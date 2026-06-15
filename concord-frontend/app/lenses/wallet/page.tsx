@@ -149,7 +149,7 @@ function WalletPageInner() {
   const [showTransfer, setShowTransfer] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // ── Main wallet keyboard shortcuts (Coinbase / Phantom-style) ──────
+  // ── Main wallet keyboard shortcuts ────────────────────────────────
   // Single-letter actions for the three core flows + tab navigation.
   // Note: a separate useLensCommand inside TransferFlow handles its
   // own internal step navigation; that one is scoped to the modal.
@@ -1175,7 +1175,7 @@ export default function WalletPage() {
       <WalletMarkets />
     </section>
 
-    {/* Coinbase + Mint-shape wallet workbench: balance / categorize / budget / trend + actions */}
+    {/* wallet workbench: balance / categorize / budget / trend + actions */}
     <PipingProvider>
       <section className="mt-6 mx-auto max-w-7xl">
         <WalletActionPanel />

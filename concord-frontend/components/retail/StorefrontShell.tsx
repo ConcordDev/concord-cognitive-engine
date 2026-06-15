@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * ShopifyShell — Shopify-admin-shape silhouette.
+ * StorefrontShell — a storefront-admin surface.
  *
  * Left-rail nav (Home/Orders/Products/Customers/Analytics) + top metric
  * tiles row + chart placeholder + recent-orders rail. Drop into the
  * retail lens above the existing workbench and the page reads as a
- * Shopify admin inside 200ms.
+ * a familiar storefront admin inside 200ms.
  */
 
 import React from 'react';
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export interface ShopifyOrder {
+export interface StorefrontOrder {
   id: string;
   number: string;
   customer?: string;
@@ -26,16 +26,16 @@ export interface ShopifyOrder {
   timestamp: string;
 }
 
-export interface ShopifyShellProps {
+export interface StorefrontShellProps {
   activeNav?: 'home' | 'orders' | 'products' | 'customers' | 'analytics' | 'discounts' | 'shipping' | 'settings';
-  onNavChange?: (nav: ShopifyShellProps['activeNav']) => void;
+  onNavChange?: (nav: StorefrontShellProps['activeNav']) => void;
   storeName?: string;
   revenueToday: number;
   ordersToday: number;
   conversionRate?: number;
   visitors?: number;
   revenue7dSeries: number[];
-  recentOrders: ShopifyOrder[];
+  recentOrders: StorefrontOrder[];
   className?: string;
 }
 
@@ -56,16 +56,16 @@ function fmtMoney(n: number): string {
   return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export function ShopifyShell({
+export function StorefrontShell({
   activeNav = 'home', onNavChange,
   storeName = 'My Concord Store',
   revenueToday, ordersToday, conversionRate, visitors,
   revenue7dSeries, recentOrders,
   className,
-}: ShopifyShellProps) {
+}: StorefrontShellProps) {
   return (
     <div className={cn('flex bg-[#f6f6f7] text-gray-800 rounded-lg overflow-hidden border border-gray-200', className)} style={{ minHeight: 480 }}>
-      {/* Left rail (Shopify admin nav) */}
+      {/* Left rail (storefront admin nav) */}
       <aside className="w-48 bg-[#1a1a1a] text-gray-200 flex-shrink-0 flex flex-col">
         <div className="px-4 py-3 border-b border-white/10">
           <div className="text-[10px] uppercase tracking-wider text-gray-400">Store</div>
@@ -182,4 +182,4 @@ function RevenueChart({ series }: { series: number[] }) {
   );
 }
 
-export default ShopifyShell;
+export default StorefrontShell;

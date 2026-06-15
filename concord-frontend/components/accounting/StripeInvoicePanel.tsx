@@ -10,11 +10,9 @@
  *   accounting.invoice-mark-paid            — manual mark-paid for non-
  *                                             Stripe payments
  *
- * Per category-leader UX research against QuickBooks, Xero, FreshBooks,
- * Wave, and Stripe Dashboard:
- *   • Status badge system (Draft / Open / Paid / Overdue) with Stripe-
- *     style sub-badges (Past due if dueAt < today)
- *   • Wave-style three-tab grouping (Draft / Unpaid / All)
+ * An invoicing surface.
+ *   • Status badge system (Draft / Open / Paid / Overdue) with sub-badges (Past due if dueAt < today)
+ *   • Three-tab grouping (Draft / Unpaid / All)
  *   • Single-page invoice composer with customer + total + Send-via-
  *     Stripe split-button
  *   • Save-as-DTU on the Stripe hosted invoice URL so a sent invoice

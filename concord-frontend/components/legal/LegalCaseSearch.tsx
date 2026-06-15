@@ -6,8 +6,7 @@
  * (CourtListener REST API v4, federal + state opinions, free with
  * optional COURTLISTENER_API_TOKEN env for higher rate limits).
  *
- * Designed per category-leader UX research against Westlaw, LexisNexis,
- * Bloomberg Law, CourtListener, Casetext / CoCounsel, and Justia:
+ * A legal case-search surface.
  *
  *   • Search box with filter chips (court / date-after / date-before
  *     / natural-language vs terms-and-connectors mode hint)

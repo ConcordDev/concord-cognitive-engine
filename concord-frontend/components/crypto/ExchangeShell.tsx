@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * CoinbaseShell — Coinbase + Phantom 2026-shape sidebar chrome.
+ * ExchangeShell — a wallet-chrome sidebar chrome.
  *
  * Left rail: Portfolio / Watchlist / Recurring / Staking / NFTs /
  * Activity / Tax / Insights / Wallet (existing approvals + addressbook
@@ -43,7 +43,7 @@ const NAV: NavItem[] = [
   { id: 'wallet',    label: 'Wallets & Send', icon: Send },
 ];
 
-export interface CoinbaseShellProps {
+export interface ExchangeShellProps {
   activeNav: CryptoNav;
   onNavChange: (n: CryptoNav) => void;
   badges?: Partial<Record<CryptoNav, number | string>>;
@@ -52,7 +52,7 @@ export interface CoinbaseShellProps {
   children: React.ReactNode;
 }
 
-export function CoinbaseShell({ activeNav, onNavChange, badges = {}, totalValueUsd, unrealizedPnlPct, children }: CoinbaseShellProps) {
+export function ExchangeShell({ activeNav, onNavChange, badges = {}, totalValueUsd, unrealizedPnlPct, children }: ExchangeShellProps) {
   return (
     <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-[#0d1117] border border-blue-500/15 rounded-lg overflow-hidden">
       <aside className="w-48 bg-[#0a0c10] border-r border-white/5 flex flex-col flex-shrink-0">
@@ -105,4 +105,4 @@ export function CoinbaseShell({ activeNav, onNavChange, badges = {}, totalValueU
   );
 }
 
-export default CoinbaseShell;
+export default ExchangeShell;

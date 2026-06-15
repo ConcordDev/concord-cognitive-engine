@@ -257,7 +257,7 @@ export default function ProductivityLensPage() {
         <ProductivityRepos />
       </section>
 
-      {/* Todoist + Things-shape task workbench: create / filter / focus / summary + actions */}
+      {/* task workbench: create / filter / focus / summary + actions */}
       <PipingProvider>
         <section className="mt-6 mx-4">
           <ProductivityActionPanel />

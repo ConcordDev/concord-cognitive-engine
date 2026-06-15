@@ -457,7 +457,7 @@ export default function AnswersLensPage() {
   const [query, setQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Section nav (1-8) — Wolfram / Quora idiom adapted for the answers grid.
+  // Section nav (1-8) — keyboard idiom adapted for the answers grid.
   useLensCommand(
     [
       { id: 'sec-physics',       keys: '1', description: 'Physics',       category: 'navigation', action: () => setActiveSection('physics') },

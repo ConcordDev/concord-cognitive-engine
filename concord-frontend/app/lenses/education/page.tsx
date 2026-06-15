@@ -22,7 +22,7 @@ import CertificatesPanel from '@/components/education/CertificatesPanel';
 import AssignmentsBoard from '@/components/education/AssignmentsBoard';
 import LessonNotes from '@/components/education/LessonNotes';
 import CourseDiscussions from '@/components/education/CourseDiscussions';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { ShellPreview } from '@/components/lens/ShellPreview';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -1340,7 +1340,7 @@ export default function EducationLensPage() {
       <FirstRunTour lensId="education" />
       <DepthBadge lensId="education" size="sm" className="ml-2" />
     <div data-lens-theme="education" className="p-6 space-y-6 bg-gradient-to-b from-amber-950/10 to-transparent">
-      <RivalShapePreview lensId="education" defaultOpen={true} />
+      <ShellPreview lensId="education" defaultOpen={true} />
       <KhanCourseraWorkbenchSection />
       {/* Header */}
       <header className={ds.sectionHeader}>

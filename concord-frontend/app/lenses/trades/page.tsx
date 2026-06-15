@@ -92,7 +92,7 @@ import FieldTrackingPanel from '@/components/trades/FieldTrackingPanel';
 import NotificationsPanel from '@/components/trades/NotificationsPanel';
 import PricebookPanel from '@/components/trades/PricebookPanel';
 import ReportingPanel from '@/components/trades/ReportingPanel';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { ShellPreview } from '@/components/lens/ShellPreview';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -2270,7 +2270,7 @@ export default function TradesLensPage() {
       <FirstRunTour lensId="trades" />
       <DepthBadge lensId="trades" size="sm" className="ml-2" />
     <div className={cn(ds.pageContainer, 'lens-trades')} data-lens-theme="trades">
-      <RivalShapePreview lensId="trades" defaultOpen={true} />
+      <ShellPreview lensId="trades" defaultOpen={true} />
       <ServiceTitanWorkbenchSection />
       {/* Header */}
       <header className={ds.sectionHeader}>

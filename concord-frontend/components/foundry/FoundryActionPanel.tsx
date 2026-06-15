@@ -229,7 +229,6 @@ export function FoundryActionPanel() {
       <header className="flex items-center gap-2 border-b border-orange-500/10 pb-2">
         <Box className="h-4 w-4 text-orange-400" />
         <h3 className="text-sm font-semibold text-white">Foundry workbench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">unity · roblox studio</span>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-2">

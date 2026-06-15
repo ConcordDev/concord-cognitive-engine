@@ -19,7 +19,7 @@ import RouteAdvisor from '@/components/aviation/RouteAdvisor';
 import TrackLogsPanel from '@/components/aviation/TrackLogsPanel';
 import FuelStopsCalc from '@/components/aviation/FuelStopsCalc';
 import LiveFlightsPanel from '@/components/aviation/LiveFlightsPanel';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { ShellPreview } from '@/components/lens/ShellPreview';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1677,7 +1677,7 @@ export default function AviationLensPage() {
       <FirstRunTour lensId="aviation" />
       <DepthBadge lensId="aviation" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
-      <RivalShapePreview lensId="aviation" defaultOpen={true} />
+      <ShellPreview lensId="aviation" defaultOpen={true} />
       <ForeFlightWorkbenchSection />
       {/* Header */}
       <header className={ds.sectionHeader}>

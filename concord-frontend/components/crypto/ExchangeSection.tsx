@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { CoinbaseShell, CryptoNav } from './CoinbaseShell';
+import { ExchangeShell, CryptoNav } from './ExchangeShell';
 import { PortfolioPanel } from './PortfolioPanel';
 import { WatchlistPanel, RecurringBuysPanel, StakingPanel, NFTsPanel, ActivityPanel, TaxPanel, InsightsPanel } from './CryptoPanels';
 import { TradePanel, MarketPanel, WalletsPanel, PerformanceCard } from './CryptoTradePanels';
 
-export function CoinbaseSection() {
+export function ExchangeSection() {
   const [nav, setNav] = useState<CryptoNav>('portfolio');
   const [summary, setSummary] = useState<{ totalValueUsd: number; unrealizedPnlPct: number; activeRecurringBuys: number; activeStakingPositions: number; watchlistSize: number; nftCount: number; priceAlertCount: number } | null>(null);
 
@@ -26,7 +26,7 @@ export function CoinbaseSection() {
   } : {};
 
   return (
-    <CoinbaseShell
+    <ExchangeShell
       activeNav={nav}
       onNavChange={setNav}
       badges={badges}
@@ -54,8 +54,8 @@ export function CoinbaseSection() {
         </div>
       )}
       {nav === 'wallet'    && <WalletsPanel />}
-    </CoinbaseShell>
+    </ExchangeShell>
   );
 }
 
-export default CoinbaseSection;
+export default ExchangeSection;

@@ -94,7 +94,7 @@ import CollectionsPanel from '@/components/retail/CollectionsPanel';
 import InventoryTransfers from '@/components/retail/InventoryTransfers';
 import SalesAnalytics from '@/components/retail/SalesAnalytics';
 import CommerceSuite from '@/components/retail/CommerceSuite';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { ShellPreview } from '@/components/lens/ShellPreview';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -1884,8 +1884,8 @@ export default function RetailLensPage() {
       <FirstRunTour lensId="retail" />
       <DepthBadge lensId="retail" size="sm" className="ml-2" />
     <div data-lens-theme="retail" className={ds.pageContainer}>
-      <RivalShapePreview lensId="retail" defaultOpen={true} />
-      <ShopifyWorkbenchSection />
+      <ShellPreview lensId="retail" defaultOpen={true} />
+      <RetailWorkbenchSection />
       <CommerceSuite />
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -2060,10 +2060,10 @@ export default function RetailLensPage() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Shopify-parity workbench section                                    */
+/*  Retail workbench section                                    */
 /* ------------------------------------------------------------------ */
 
-function ShopifyWorkbenchSection() {
+function RetailWorkbenchSection() {
   const [active, setActive] = useState<'analytics' | 'customers' | 'discounts' | 'abandoned' | 'shipping' | 'gift' | 'refunds' | 'collections' | 'transfers'>('analytics');
   const TABS = [
     { id: 'analytics', label: 'Analytics' },
@@ -2078,7 +2078,7 @@ function ShopifyWorkbenchSection() {
   ] as const;
   return (
     <section className="mt-6 space-y-3">
-      <h2 className="text-sm font-semibold text-emerald-300 uppercase tracking-wider">Shopify-parity workbench</h2>
+      <h2 className="text-sm font-semibold text-emerald-300 uppercase tracking-wider">Retail workbench</h2>
       <nav className="flex items-center gap-1 border-b border-emerald-900/30 pb-2 overflow-x-auto">
         {TABS.map(t => (
           <button

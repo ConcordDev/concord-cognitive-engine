@@ -217,7 +217,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
     firstRunGuide: {
       steps: [
-        { caption: 'Drop code into the editor — the VS Code-shape silhouette gives you file tree, tabs, and a status bar so it reads as your IDE.' },
+        { caption: 'Drop code into the editor — a full workbench shell with file tree, tabs, and a status bar.' },
         { caption: 'Use the action bar to lint, format, or run a review pass. Results stream back as DTUs you can cite from chat.' },
         { caption: 'Repos you connect via GitHub appear in the side panel — code-substrate-refresh keeps them current every 5 ticks.' },
       ],
@@ -723,7 +723,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
     firstRunGuide: {
       steps: [
-        { caption: 'The Bandcamp-shape grid puts creator art up front. Click any tile for provenance + price + license terms.' },
+        { caption: 'The creator grid puts artwork up front. Click any tile for provenance + price + license terms.' },
         { caption: 'Buying mints a license + cascades royalties up the lineage chain (95% to creators, 30% cap to ancestors, seller keeps ≥64.54%).' },
         { caption: 'Selling: hit the "Mint" action on any DTU you own and set a tier price. Citations from your DTU pay you forever.' },
       ],
@@ -931,7 +931,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     dataTier: 'REAL_LIVE',
     emptyState: {
       headline: 'Blank canvas.',
-      caption: 'Drag shapes, connect them, comment. The tldraw-shape silhouette opens by default. extract_decisions distills any board into a DTU.',
+      caption: 'Drag shapes, connect them, comment. The canvas opens by default. extract_decisions distills any board into a DTU.',
       firstActionLabel: 'Drop a shape',
     },
     firstRunGuide: {
@@ -1491,7 +1491,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
     firstRunGuide: {
       steps: [
-        { caption: 'Notion-shape doc surface — the DocsShell silhouette opens by default. Bespoke legal workflow lives below.' },
+        { caption: 'A document surface — the DocsShell opens by default. Bespoke legal workflow lives below.' },
         { caption: 'deadlineCheck + conflictCheck + complianceScore run scheduled passes against your active matters.' },
         { caption: 'Honest tier: this lens is DEMO until we wire a paid case-law feed. The structure works; the data is yours to author.' },
       ],
@@ -2611,12 +2611,12 @@ export const LENS_MANIFESTS: LensManifest[] = [
     realtimeEvents: ['crypto:ticker'],
     emptyState: {
       headline: 'No tracked tokens.',
-      caption: 'Add a token to track price + balance via CoinGecko. The Coinbase-shape wallet silhouette opens by default so you read the lens immediately.',
+      caption: 'Add a token to track price + balance via CoinGecko. The wallet view opens by default so you read the lens immediately.',
       firstActionLabel: 'Track a token',
     },
     firstRunGuide: {
       steps: [
-        { caption: 'The wallet silhouette at the top is the rival shape — Coinbase / Phantom feel without leaving the substrate.' },
+        { caption: 'The wallet view at the top gives you balances and transfers without leaving the substrate.' },
         { caption: 'Live prices via CoinGecko (no key). Tokens you track are persisted server-side; the list survives reload.' },
         { caption: 'Send / receive / swap actions remain stubs unless you wire an actual chain integration — the panel is honest about its DEMO status for those flows.' },
       ],
@@ -2743,7 +2743,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     dataTier: 'REAL_LIVE',
     emptyState: {
       headline: 'No docs yet.',
-      caption: 'Author a document — Notion-shape sidebar tree + page editor. Every save is a DTU; versions are immutable.',
+      caption: 'Author a document — sidebar tree + page editor. Every save is a DTU; versions are immutable.',
       firstActionLabel: 'Create a doc',
     },
     firstRunGuide: {
@@ -4612,7 +4612,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
     firstRunGuide: {
       steps: [
-        { caption: 'Threads list in the left rail; the right pane shows the active conversation in the Gmail-shape silhouette.' },
+        { caption: 'Threads list in the left rail; the right pane shows the active conversation in the inbox view.' },
         { caption: 'Mark as read, archive, or search — all mutations write to the substrate; offline edits queue and replay.' },
         { caption: 'Channels routed through Concord-Mesh fall back to BLE / WiFi-Direct when offline.' },
       ],

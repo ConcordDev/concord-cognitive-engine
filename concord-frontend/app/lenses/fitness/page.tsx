@@ -177,7 +177,7 @@ const MODE_TABS: { id: ModeTab; icon: React.ComponentType<{ className?: string; 
   { id: 'Classes', icon: CalendarDays, defaultType: 'Class' },
   { id: 'Teams', icon: Shield, defaultType: 'Team' },
   { id: 'Recruiting', icon: Medal, defaultType: 'Athlete' },
-  // Parity-sprint personal-fitness surfaces (Strava / Whoop / Apple Fitness+ / Hevy)
+  // Personal-fitness surfaces
   { id: 'Log', icon: Dumbbell, defaultType: 'Workout' },
   { id: 'HRZones', icon: Activity, defaultType: 'Workout' },
   { id: 'Recovery', icon: Activity, defaultType: 'Workout' },
@@ -2231,7 +2231,7 @@ export default function FitnessLensPage() {
           </div>
         )}
       </div>
-      {/* Hevy + Strong-shape workout finisher: progression / HR zones / save / mint / DM / PR publish / next workout */}
+      {/* workout finisher: progression / HR zones / save / mint / DM / PR publish / next workout */}
       <section className="mt-6">
         <WorkoutFinishPanel />
       </section>

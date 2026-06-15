@@ -8,7 +8,7 @@
  *   music.mb-lookup-by-isrc — ISRC → recording metadata
  *
  * Per category-leader UX research against Spotify, MusicBrainz, AllMusic,
- * Apple Music, Discogs, Bandcamp:
+ * an artist-explorer surface:
  *   • Spotify-style hero (name, life-span, country, top tags)
  *   • MusicBrainz disambiguation popover when >1 candidate
  *   • Discogs-style discography grouped by release-group type

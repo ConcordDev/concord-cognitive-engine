@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * BankFeedsInbox — QBO 2026-style transaction inbox with AI bulk-suggest.
+ * BankFeedsInbox — BooksO 2026-style transaction inbox with AI bulk-suggest.
  *
  * Hero workflow:
  *   1. Click "Suggest all" → calls bank-feeds-bulk-suggest → server returns

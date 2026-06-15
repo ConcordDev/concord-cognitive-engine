@@ -5,7 +5,7 @@ import { Eye, Package, DollarSign, Tag, TrendingUp, Loader2, Megaphone } from 'l
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import type { ShopNav } from './EtsyShell';
+import type { ShopNav } from './ShopfrontShell';
 
 interface Summary {
   days: number;

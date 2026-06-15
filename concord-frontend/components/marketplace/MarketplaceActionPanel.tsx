@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * MarketplaceActionPanel — Bandcamp + Gumroad-shape listing workbench.
+ * MarketplaceActionPanel — a creator-listing workbench.
  * Surfaces listingScore / priceOptimize / sellerMetrics macros plus
  * mint/DM/publish/agent.
  */
@@ -182,7 +182,7 @@ export function MarketplaceActionPanel() {
         scoreResult ? `Score ${scoreResult.score} (${scoreResult.band}).` : '',
         priceResult ? `Price optimization suggests $${priceResult.suggestedPrice}.` : '',
         '',
-        'Rewrite the listing title + first sentence of description for maximum conversion in the Bandcamp + Gumroad style.',
+        'Rewrite the listing title + first sentence of description for maximum conversion for a creator marketplace.',
         'Return: new title, new opening sentence, why it converts better. Plain text.',
       ].filter(Boolean).join(' ');
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
@@ -208,7 +208,6 @@ export function MarketplaceActionPanel() {
       <header className="flex items-center gap-2 border-b border-green-500/10 pb-2">
         <ShoppingBag className="h-4 w-4 text-green-400" />
         <h3 className="text-sm font-semibold text-white">Listing workbench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">bandcamp · gumroad</span>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">

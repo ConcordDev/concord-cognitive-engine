@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * WorkoutFinishPanel — Hevy / Strong-shape end-of-workout action surface
+ * WorkoutFinishPanel — an end-of-workout action surface
  * for the fitness lens. Sits below the existing WorkoutLogger; once you
  * finish a workout, this panel turns it into shareable + analysable
  * artifacts.
@@ -268,9 +268,6 @@ export function WorkoutFinishPanel() {
       <header className="flex items-center gap-2 border-b border-orange-500/10 pb-2">
         <Dumbbell className="h-4 w-4 text-orange-400" />
         <h3 className="text-sm font-semibold text-white">Workout finisher</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-          hevy · strong
-        </span>
         <span className="ml-auto text-[10px] text-zinc-400 font-mono">
           {totalSets} sets · {Math.round(totalVolume)} kg
         </span>

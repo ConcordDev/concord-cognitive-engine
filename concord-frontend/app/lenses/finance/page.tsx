@@ -37,7 +37,7 @@ import CreditScoreMonitor from '@/components/finance/CreditScoreMonitor';
 import CashFlowSankey from '@/components/finance/CashFlowSankey';
 import BillReminders from '@/components/finance/BillReminders';
 import RolloverRules from '@/components/finance/RolloverRules';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { ShellPreview } from '@/components/lens/ShellPreview';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { useTilePush } from '@/hooks/useTilePush';
@@ -1832,7 +1832,7 @@ export default function FinanceLensPage() {
       <FirstRunTour lensId="finance" />
       <DepthBadge lensId="finance" size="sm" className="ml-2" />
     <div data-lens-theme="finance" className="p-6 space-y-6 bg-[#0c0f14] font-mono">
-      <RivalShapePreview lensId="finance" defaultOpen={true} />
+      <ShellPreview lensId="finance" defaultOpen={true} />
       {/* Phase 4 (sixth wave) — REAL World Bank country indicators. */}
       <WorldBankPanel domain="finance" />
       {/* REAL FRED economic time series (FRED_API_KEY-gated; honest empty/no-key states). */}
@@ -2490,7 +2490,7 @@ export default function FinanceLensPage() {
         <MarketsPulse />
       </section>
 
-      {/* Robinhood + YNAB-shape money workbench: net-worth / envelopes / tax / retirement-MC + actions */}
+      {/* Money workbench: net-worth / envelopes / tax / retirement-MC + actions */}
       <PipingProvider>
         <section className="mt-6">
           <FinanceActionPanel />

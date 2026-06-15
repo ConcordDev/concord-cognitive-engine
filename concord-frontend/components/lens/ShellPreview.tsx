@@ -1,11 +1,11 @@
 'use client';
 
 /**
- * RivalShapePreview — collapsible accordion that renders the lens's
- * rival-shape shell hydrated with the signed-in user's REAL data
+ * ShellPreview — collapsible accordion that renders the lens's
+ * full-shell view hydrated with the signed-in user's REAL data
  * (per the "everything must be real" directive — no seed/fake data).
  *
- *   <RivalShapePreview lensId="finance" />
+ *   <ShellPreview lensId="finance" />
  *
  * Each *Preview fetches via `/api/lens/run` on mount. When the user
  * has no data yet, the shell renders in its empty state. There is no
@@ -21,7 +21,7 @@ import { WalletShell } from '@/components/crypto/WalletShell';
 import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
 import { FinanceShell } from '@/components/finance/FinanceShell';
 import { RealtorShell } from '@/components/realestate/RealtorShell';
-import { ShopifyShell } from '@/components/retail/ShopifyShell';
+import { StorefrontShell } from '@/components/retail/StorefrontShell';
 import { ClassroomShell } from '@/components/education/ClassroomShell';
 import { DispatchShell } from '@/components/trades/DispatchShell';
 import { TmsShell } from '@/components/logistics/TmsShell';
@@ -55,13 +55,13 @@ const SHELL_TITLES: Record<SupportedLens, string> = {
   environment: 'Emissions',
 };
 
-export interface RivalShapePreviewProps {
+export interface ShellPreviewProps {
   lensId: string;
   defaultOpen?: boolean;
   className?: string;
 }
 
-export function RivalShapePreview({ lensId, defaultOpen = true, className }: RivalShapePreviewProps) {
+export function ShellPreview({ lensId, defaultOpen = true, className }: ShellPreviewProps) {
   const [open, setOpen] = useState(defaultOpen);
   const supported = (['code', 'crypto', 'legal', 'message', 'whiteboard', 'healthcare', 'finance', 'realestate', 'retail', 'education', 'trades', 'logistics', 'agriculture', 'studio', 'aviation', 'government', 'environment'] as const).includes(lensId as SupportedLens);
   if (!supported) return null;
@@ -94,7 +94,7 @@ export function RivalShapePreview({ lensId, defaultOpen = true, className }: Riv
 
 function PreviewBody({ lensId }: { lensId: SupportedLens }) {
   switch (lensId) {
-    case 'code': return <EmptyShellPlaceholder label="VS Code — open the workbench below to load your repository." />;
+    case 'code': return <EmptyShellPlaceholder label="Open the workbench below to load your repository." />;
     case 'crypto': return <CryptoPreview />;
     case 'legal': return <EmptyShellPlaceholder label="Docs — author or open a contract from the workbench below." />;
     case 'message': return <EmptyShellPlaceholder label="Inbox — incoming messages and royalty notifications will appear here." />;
@@ -290,7 +290,7 @@ function RetailPreview() {
   }, []);
   if (loading) return <PreviewLoading />;
   return (
-    <ShopifyShell
+    <StorefrontShell
       activeNav={nav}
       onNavChange={(n) => n && setNav(n)}
       storeName="My Concord Store"
@@ -733,4 +733,4 @@ function EnvironmentPreview() {
   );
 }
 
-export default RivalShapePreview;
+export default ShellPreview;

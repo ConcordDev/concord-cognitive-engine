@@ -4,7 +4,7 @@
  * MarketsQuoteDetail — bespoke quote-research surface for the markets lens.
  *
  * Designed per category-leader UX research (TradingView, Yahoo Finance,
- * Bloomberg, Robinhood, Webull, Google Finance):
+ * a quote-detail surface):
  *
  *   • Single hero panel: [Symbol] [Last] [Δ abs] [Δ%] above a
  *     lightweight-charts line series, faded pre/after-hours second row

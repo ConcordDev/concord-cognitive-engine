@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * WalletShell — Coinbase / Phantom-shape wallet silhouette.
+ * WalletShell — a wallet surface.
  *
  * Big balance up top with hide/show, send/receive/swap action triple,
  * portfolio breakdown by asset, transaction history rail. Drop-in for

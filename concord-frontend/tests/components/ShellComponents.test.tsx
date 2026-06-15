@@ -18,13 +18,13 @@ vi.mock('lucide-react', async (importOriginal) => {
   return { ...actual, ...o };
 });
 
-import { VSCodeShell, type FileTreeNode, type OpenTab } from '@/components/code/VSCodeShell';
+import { CodeEditorShell, type FileTreeNode, type OpenTab } from '@/components/code/CodeEditorShell';
 import { WalletShell, type WalletAsset, type WalletTx } from '@/components/crypto/WalletShell';
 import { DocsShell, type DocNode } from '@/components/legal/DocsShell';
 import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
 import { EHRShell, type EHRPatient, type VitalSet } from '@/components/healthcare/EHRShell';
 
-describe('VSCodeShell', () => {
+describe('CodeEditorShell', () => {
   const files: FileTreeNode[] = [
     { id: 'a', name: 'app.tsx', kind: 'file' },
     { id: 'b', name: 'lib', kind: 'folder', children: [
@@ -38,9 +38,9 @@ describe('VSCodeShell', () => {
 
   it('renders open tabs and editor children', () => {
     render(
-      <VSCodeShell files={files} openTabs={openTabs} activeTabId="a">
+      <CodeEditorShell files={files} openTabs={openTabs} activeTabId="a">
         <div data-testid="editor">code goes here</div>
-      </VSCodeShell>
+      </CodeEditorShell>
     );
     expect(screen.getAllByText('app.tsx').length).toBeGreaterThan(0);
     expect(screen.getAllByText('util.ts').length).toBeGreaterThan(0);
@@ -50,9 +50,9 @@ describe('VSCodeShell', () => {
   it('calls onSelectTab when a tab strip entry is clicked', () => {
     const onSelectTab = vi.fn();
     render(
-      <VSCodeShell files={files} openTabs={openTabs} activeTabId="a" onSelectTab={onSelectTab}>
+      <CodeEditorShell files={files} openTabs={openTabs} activeTabId="a" onSelectTab={onSelectTab}>
         <div />
-      </VSCodeShell>
+      </CodeEditorShell>
     );
     // Tab strip entry is a clickable div (not a button) — find it via the close-button aria.
     const closeBtn = screen.getByLabelText('Close util.ts');

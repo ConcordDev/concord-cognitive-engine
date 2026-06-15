@@ -2,7 +2,7 @@
 
 /**
  * ProductivityFocusPanel — Pomodoro focus logging, the Eisenhower
- * matrix and a Todoist-style karma score.
+ * matrix and a karma score.
  */
 
 import { useCallback, useEffect, useState } from 'react';

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ProductivityActionPanel — Todoist + Things-shape task workbench.
+ * ProductivityActionPanel — task workbench.
  * Self-contained; runs the 4 new productivity.* macros plus mint/DM/
  * publish/agent.
  */
@@ -283,7 +283,6 @@ export function ProductivityActionPanel() {
       <header className="flex items-center gap-2 border-b border-cyan-500/10 pb-2">
         <CheckSquare className="h-4 w-4 text-cyan-400" />
         <h3 className="text-sm font-semibold text-white">Task workbench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">todoist · things</span>
         <span className="ml-auto text-[10px] text-zinc-400 font-mono">{tasks.filter(t => !t.completed).length}/{tasks.length} open</span>
       </header>
 

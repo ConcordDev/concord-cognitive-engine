@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { EtsyShell, ShopNav } from './EtsyShell';
+import { ShopfrontShell, ShopNav } from './ShopfrontShell';
 import { ShopDashboard } from './ShopDashboard';
 import { ListingsPanel } from './ListingsPanel';
 import { OrdersPanel } from './OrdersPanel';
@@ -20,7 +20,7 @@ import { InventoryAlertsPanel } from './InventoryAlertsPanel';
 
 interface Shop { id: string; name: string; currency: string }
 
-export function EtsySection() {
+export function ShopfrontSection() {
   const [nav, setNav] = useState<ShopNav>('home');
   const [shop, setShop] = useState<Shop | null>(null);
   const [badges, setBadges] = useState<Partial<Record<ShopNav, number>>>({});
@@ -58,7 +58,7 @@ export function EtsySection() {
   }
 
   return (
-    <EtsyShell
+    <ShopfrontShell
       activeNav={nav}
       onNavChange={setNav}
       badges={badges}
@@ -85,8 +85,8 @@ export function EtsySection() {
         </div>
       )}
       {nav === 'shop'       && <ShopSettingsPanel onUpdated={setShop} />}
-    </EtsyShell>
+    </ShopfrontShell>
   );
 }
 
-export default EtsySection;
+export default ShopfrontSection;

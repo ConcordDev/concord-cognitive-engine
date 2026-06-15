@@ -248,7 +248,7 @@ export function StakingPanel() {
           <button onClick={() => setRewardFor(null)} className="col-span-2 px-2 py-1.5 text-xs rounded text-gray-300 hover:bg-white/[0.05]">Cancel</button>
         </div>
       )}
-      {loading ? <Loading /> : list.length === 0 ? <Empty label="No staking positions. SOL ~5-7% APR, ETH ~3-4% APR via Phantom 2026." /> : (
+      {loading ? <Loading /> : list.length === 0 ? <Empty label="No staking positions. SOL ~5-7% APR, ETH ~3-4% APR." /> : (
         <ul className="divide-y divide-white/5">
           {list.map(p => (
             <li key={p.id} className="px-4 py-2.5 hover:bg-white/[0.02] flex items-center gap-3">

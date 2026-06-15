@@ -145,8 +145,7 @@ export default function ArtLensPage() {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Lens-scoped keyboard commands. Procreate / Photoshop / Midjourney
-  // idiom: g (gallery), c (canvas), m (marketplace), u upload, l list,
+  // Lens-scoped keyboard commands: g (gallery), c (canvas), m (marketplace), u upload, l list,
   // / focus search.
   useLensCommand(
     [

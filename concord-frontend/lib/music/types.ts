@@ -397,7 +397,7 @@ export type MusicLensView =
   | 'queue'
   | 'revenue'
   | 'marketplace'
-  | 'session';   // Ableton-shape session view: clip-launching grid
+  | 'session';   // Session view: clip-launching grid
 
 // ---------- Marketplace types ----------
 
