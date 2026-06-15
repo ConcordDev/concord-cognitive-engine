@@ -11,6 +11,7 @@ import { OperatorErrorBanner } from '@/components/common/OperatorErrorBanner';
 import { SystemStatus } from '@/components/common/SystemStatus';
 import { SystemGuidePanel } from '@/components/guidance/SystemGuidePanel';
 import { FirstWinWizard } from '@/components/guidance/FirstWinWizard';
+import { HelpButton } from '@/components/help/HelpButton';
 import { LensErrorBoundary } from '@/components/common/LensErrorBoundary';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { CookieConsent } from '@/components/common/CookieConsent';
@@ -178,8 +179,14 @@ export function AppShell({ children }: AppShellProps) {
       <SystemStatus />
       <SystemGuidePanel />
       <FirstWinWizard />
+      <HelpButton />
       <OnboardingWizard
-        isOpen={onboardingOpen}
+        // Don't hijack the world lens with the abstract platform tour — a new
+        // player who just built their character landed here to PLAY. The
+        // game's own FirstWinWizard (Cook → Eat → Fight → Commune) is the right
+        // first-run surface in-world; the platform tour still appears the moment
+        // they visit the dashboard or a workspace lens.
+        isOpen={onboardingOpen && pathname !== '/lenses/world'}
         onClose={dismissOnboarding}
         onComplete={completeOnboarding}
         onAction={(action) => {
