@@ -6005,7 +6005,10 @@ function csrfMiddleware(req, res, next) {
   if (safeMethods.includes(req.method)) return next();
 
   // Skip for public endpoints and core API paths (chat, lens operations)
-  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens"];
+  // /api/stripe/webhook is authenticated by Stripe's request SIGNATURE (verified
+  // in handleWebhook), not a cookie/CSRF token — Stripe can't send one. It must
+  // be CSRF-exempt or every webhook 403s and paid coins never mint.
+  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook"];
   if (csrfExempt.some(p => req.path.startsWith(p))) return next();
 
   // In AUTH_MODE=public, skip CSRF — anonymous users have no session to protect
@@ -6145,8 +6148,10 @@ function authMiddleware(req, res, next) {
     return next();
   }
 
-  // Skip auth for always-public endpoints (any method)
-  const alwaysPublic = ["/health", "/ready", "/metrics", "/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/csrf-token", "/api/auth/google", "/api/auth/apple", "/api/auth/providers", "/api/docs", "/api/status", "/api/chat", "/api/brain/conscious"];
+  // Skip auth for always-public endpoints (any method). /api/stripe/webhook is
+  // authenticated by Stripe's signature (verified in handleWebhook), never a
+  // cookie/JWT — it must skip auth or webhooks are rejected and coins never mint.
+  const alwaysPublic = ["/health", "/ready", "/metrics", "/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/csrf-token", "/api/auth/google", "/api/auth/apple", "/api/auth/providers", "/api/docs", "/api/status", "/api/chat", "/api/brain/conscious", "/api/stripe/webhook"];
   if (alwaysPublic.some(p => req.path.startsWith(p))) return next();
 
   // Sovereign-only route protection
@@ -6514,7 +6519,10 @@ function requireRole(...roles) {
 // /api/lens were removed (H1 + its follow-up): anonymous POST to them is an unauthenticated
 // write/LLM-cost surface. AUTH_MODE=public deploys still allow anonymous writes — the gate
 // skips entirely in that mode — so local-first/demo setups are unaffected.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics"];
+// /api/stripe/webhook is signature-authenticated by Stripe (no cookie/JWT), so
+// it must bypass the production write-auth gate or every webhook 401s and paid
+// coins never mint. handleWebhook verifies the Stripe signature before any write.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook"];
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -53316,6 +53324,67 @@ app.post("/api/economy/buy", requireAuth(), asyncHandler(async (req, res) => {
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+}));
+
+// POST /api/economy/buy/checkout — alias of /api/economy/buy.
+// The frontend billing page (apiHelpers.economy.createCheckout) posts here;
+// without this route it 404s and the "Buy Coins" button is dead. Same handler
+// as /api/economy/buy: creates a Stripe Checkout session via the production
+// createCheckoutSession (metadata userId/tokens), which the /api/stripe/webhook
+// handler below matches when minting. Idempotent at the Stripe layer.
+app.post("/api/economy/buy/checkout", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  const tokens = Math.floor(Number(req.body?.tokens) || 0);
+  if (!userId) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (tokens < 1 || tokens > 1_000_000) {
+    return res.status(400).json({ ok: false, error: "tokens must be between 1 and 1,000,000" });
+  }
+  try {
+    const { createCheckoutSession, STRIPE_ENABLED } = await import("./economy/stripe.js");
+    if (!STRIPE_ENABLED) {
+      return res.status(503).json({ ok: false, error: "payments_not_configured", hint: "Set STRIPE_SECRET_KEY in .env to enable token purchases" });
+    }
+    const result = await createCheckoutSession(db, { userId, tokens, requestId: req.id || undefined, ip: req.ip });
+    if (!result?.ok) return res.status(503).json({ ok: false, error: result?.error || "checkout_failed" });
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+}));
+
+// POST /api/stripe/webhook — production Stripe webhook (mints coins on payment).
+// CRITICAL money path: without this, a successful Stripe payment never credits
+// the user's wallet (the buyer pays and gets nothing). Uses the production
+// handleWebhook (idempotent via stripe_events_processed, ledger mint + treasury
+// 1:1 peg) and reads req.rawBody (captured for this path in middleware/index.js
+// so the signature verifies against the unparsed bytes). Point your Stripe
+// dashboard webhook at https://concord-os.org/api/stripe/webhook and set
+// STRIPE_WEBHOOK_SECRET. No auth gate — Stripe authenticates via the signature.
+app.post("/api/stripe/webhook", asyncHandler(async (req, res) => {
+  try {
+    const { handleWebhook, STRIPE_ENABLED } = await import("./economy/stripe.js");
+    if (!STRIPE_ENABLED) return res.status(503).json({ ok: false, error: "payments_not_configured" });
+    if (!req.rawBody) {
+      // rawBody is only captured for whitelisted paths in middleware/index.js;
+      // if it's missing the signature can't be verified — fail closed.
+      structuredLog?.("error", "stripe_webhook_no_raw_body", { url: req.originalUrl });
+      return res.status(400).json({ ok: false, error: "missing_raw_body" });
+    }
+    const result = await handleWebhook(db, {
+      rawBody: req.rawBody,
+      signature: req.headers["stripe-signature"],
+      requestId: req.id || undefined,
+      ip: req.ip,
+    });
+    // Stripe expects a 2xx to mark the event delivered; on a verification or
+    // processing failure return 400 so Stripe retries (the handler is
+    // idempotent, so retries are safe).
+    if (!result?.ok) return res.status(400).json({ ok: false, error: result?.error || "webhook_failed" });
+    res.json({ ok: true, received: true });
+  } catch (e) {
+    structuredLog?.("error", "stripe_webhook_exception", { error: String(e?.message || e) });
+    res.status(400).json({ ok: false, error: String(e?.message || e) });
   }
 }));
 
