@@ -264,6 +264,29 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
       || log "WARNING: Could not install health-check cron — add it manually: $CRON_JOB"
   fi
 
+  # ── DB backup watchdog (Vector — data durability) ─────────────────────────
+  # 6-hourly WAL-safe SQLite snapshot to a PERSISTENT location. CONCORD_BACKUP_DIR
+  # MUST point at the network volume (e.g. /workspace/concord/backups) or the
+  # backups die with the container on a pod reclaim. Idempotent install.
+  if command -v crontab &>/dev/null; then
+    mkdir -p logs
+    BACKUP_CRON="0 */6 * * * cd $SCRIPT_DIR && DB_PATH='${DB_PATH:-}' DATA_DIR='${DATA_DIR:-}' CONCORD_BACKUP_DIR='${CONCORD_BACKUP_DIR:-}' CONCORD_BACKUP_REMOTE='${CONCORD_BACKUP_REMOTE:-}' bash scripts/db-backup.sh >> $SCRIPT_DIR/logs/backup.log 2>&1"
+    ( crontab -l 2>/dev/null | grep -v "db-backup\.sh" ; echo "$BACKUP_CRON" ) | crontab - 2>/dev/null \
+      && log "DB backup cron installed (every 6 hours → ${CONCORD_BACKUP_DIR:-<DATA_DIR>/backups})" \
+      || log "WARNING: Could not install backup cron — add it manually: $BACKUP_CRON"
+    # Durability guard: warn loudly if the DB or backups are NOT on a volume.
+    case "${DB_PATH:-${DATA_DIR:-}}" in
+      /workspace*|/runpod-volume*|/data/*) : ;;  # likely persistent
+      *) log "⚠️  DB_PATH='${DB_PATH:-unset}' may be on the EPHEMERAL container disk."
+         log "    Point DB_PATH + CONCORD_BACKUP_DIR at your network volume (e.g."
+         log "    /workspace/concord/db/concord.db) or a pod reclaim = total data loss." ;;
+    esac
+    # Take one backup right now so there's always at least one on disk.
+    DB_PATH="${DB_PATH:-}" DATA_DIR="${DATA_DIR:-}" CONCORD_BACKUP_DIR="${CONCORD_BACKUP_DIR:-}" \
+      bash scripts/db-backup.sh >> logs/backup.log 2>&1 \
+      && log "Initial DB backup taken" || log "NOTE: initial backup skipped (DB not found yet — cron will catch the next one)"
+  fi
+
   # ── pm2 startup (survive pod reboot) ──────────────────────────────────────
   # Save PM2 process list so it auto-restarts after a pod reboot.
   # `pm2 startup` prints a command to run as root to register the init script;
