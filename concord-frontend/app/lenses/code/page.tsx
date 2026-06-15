@@ -11,7 +11,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import LensAgentFab from '@/components/lens/LensAgentFab';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { ShellPreview } from '@/components/lens/ShellPreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { CodeWorkbenchSection } from '@/components/code/CodeWorkbenchSection';
 import { CodeAdvancedPanel } from '@/components/code/CodeAdvancedPanel';
@@ -612,7 +612,7 @@ export default function CodeLensPage() {
   const paletteInputRef = useRef<HTMLInputElement>(null);
 
   // ── Find in files (⌘⇧F) ────────────────────────────────────────
-  // VSCode-shape grep across every open tab AND every saved script.
+  // Grep across every open tab AND every saved script.
   // Keeps a 60-line context window, highlights matches, click jumps
   // to the matching tab and scrolls Monaco to the match line.
   const [findOpen, setFindOpen] = useState(false);
@@ -1338,7 +1338,7 @@ export default function CodeLensPage() {
       <FirstRunTour lensId="code" />
       <ManifestActionBar />
       <DepthBadge lensId="code" size="sm" className="ml-2" />
-      <RivalShapePreview lensId="code" defaultOpen={true} />
+      <ShellPreview lensId="code" defaultOpen={true} />
       <div className="px-4 mt-3">
         <CodeWorkbenchSection />
       </div>
@@ -1684,7 +1684,7 @@ export default function CodeLensPage() {
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* VSCode-style activity bar — selects which sidebar panel renders */}
+        {/* Activity bar — selects which sidebar panel renders */}
         <ActivityBar
           active={activity}
           onChange={(a) => {
@@ -2613,7 +2613,7 @@ export default function CodeLensPage() {
       <GithubTrending />
     </section>
 
-    {/* VS Code-shape code review workbench: complexity / deps / coverage / snippet + actions */}
+    {/* Code review workbench: complexity / deps / coverage / snippet + actions */}
     <PipingProvider>
       <section className="mt-6 mx-4">
         <CodeActionPanel />
@@ -2624,7 +2624,7 @@ export default function CodeLensPage() {
           <AutoActionStrip domain="code" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="code" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
           {/* Phase 12 (Item 5) — mobile thumb-reachable activity bar.
-              Surfaces the most-used VS Code-style activities on touch. */}
+              Surfaces the most-used activities on touch. */}
           <MobileTabBar
             tabs={[
               { id: 'files',         label: 'Files',   icon: MTabFiles },

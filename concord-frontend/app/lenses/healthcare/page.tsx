@@ -17,7 +17,7 @@ import { ProviderDirectory } from '@/components/healthcare/ProviderDirectory';
 import { HealthcareActionPanel } from '@/components/healthcare/HealthcareActionPanel';
 import { ImmunizationsPanel } from '@/components/healthcare/ImmunizationsPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { ShellPreview } from '@/components/lens/ShellPreview';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1499,7 +1499,7 @@ export default function HealthcareLensPage() {
     <LensShell lensId="healthcare" asMain={false}>
       <FirstRunTour lensId="healthcare" />
       <DepthBadge lensId="healthcare" size="sm" className="ml-2" />
-      <RivalShapePreview lensId="healthcare" defaultOpen={true} />
+      <ShellPreview lensId="healthcare" defaultOpen={true} />
       <div className="px-4 mt-3">
         <EpicSection />
       </div>

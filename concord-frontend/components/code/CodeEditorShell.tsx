@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * VSCodeShell — IDE silhouette: activity bar + file tree + tab strip +
+ * CodeEditorShell — IDE silhouette: activity bar + file tree + tab strip +
  * editor pane + status bar.
  *
  * Drop-in for /lenses/code (and any code-like lens — repos, debug,
  * scripts). Ships the visual structure every IDE shares so the lens
- * reads as VS Code in 200ms; the actual editor / file-tree contents
+ * reads as a familiar IDE in 200ms; the actual editor / file-tree contents
  * are passed as children so callers stay in control of behaviour.
  */
 
@@ -33,7 +33,7 @@ export interface OpenTab {
 
 export type ActivityIcon = 'files' | 'search' | 'git' | 'debug' | 'settings';
 
-export interface VSCodeShellProps {
+export interface CodeEditorShellProps {
   files: FileTreeNode[];
   openTabs: OpenTab[];
   activeTabId?: string;
@@ -63,7 +63,7 @@ const ACTIVITY_ICONS: Array<{ id: ActivityIcon; icon: typeof FileText; label: st
   { id: 'settings', icon: Settings,  label: 'Settings' },
 ];
 
-export function VSCodeShell({
+export function CodeEditorShell({
   files,
   openTabs,
   activeTabId,
@@ -75,7 +75,7 @@ export function VSCodeShell({
   onActivityChange,
   statusBar,
   className,
-}: VSCodeShellProps) {
+}: CodeEditorShellProps) {
   return (
     <div className={cn('flex h-full bg-[#1e1e1e] text-[#d4d4d4] font-mono text-sm', className)}>
       {/* Activity bar */}
@@ -235,4 +235,4 @@ function FileNode({ node, depth, onSelectFile }: FileNodeProps) {
   );
 }
 
-export default VSCodeShell;
+export default CodeEditorShell;

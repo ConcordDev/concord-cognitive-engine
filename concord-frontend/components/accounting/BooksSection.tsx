@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * QBSection — top-level QuickBooks-shape workbench for the accounting lens.
+ * BooksSection — top-level workbench for the accounting lens.
  *
  * Owns the nav-state and mounts the right panel per nav. Wires the
  * dashboard's "jump-to" shortcuts and the JAX-style ask bar to the
@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { QBShell, QBNav } from './QBShell';
+import { BooksShell, BooksNav } from './BooksShell';
 import { AccountingAskBar } from './AccountingAskBar';
 import { AccountingDashboard } from './AccountingDashboard';
 import { BankFeedsInbox } from './BankFeedsInbox';
@@ -32,9 +32,9 @@ import { AcSalesTaxPanel } from './AcSalesTaxPanel';
 import { AcPurchaseOrdersPanel } from './AcPurchaseOrdersPanel';
 import { AcRatiosPanel } from './AcRatiosPanel';
 
-export function QBSection() {
-  const [nav, setNav] = useState<QBNav>('dashboard');
-  const [badges, setBadges] = useState<Partial<Record<QBNav, number>>>({});
+export function BooksSection() {
+  const [nav, setNav] = useState<BooksNav>('dashboard');
+  const [badges, setBadges] = useState<Partial<Record<BooksNav, number>>>({});
 
   useEffect(() => { refreshBadges(); }, [nav]);
 
@@ -53,13 +53,13 @@ export function QBSection() {
   }
 
   return (
-    <QBShell
+    <BooksShell
       activeNav={nav}
       onNavChange={setNav}
       badges={badges}
       askBar={<AccountingAskBar />}
     >
-      {nav === 'dashboard' && <AccountingDashboard onJumpTo={(n) => setNav(n as QBNav)} />}
+      {nav === 'dashboard' && <AccountingDashboard onJumpTo={(n) => setNav(n as BooksNav)} />}
       {nav === 'banking'   && <BankFeedsInbox />}
       {nav === 'invoices'  && <InvoicesPlaceholder />}
       {nav === 'estimates' && <EstimatesPanel />}
@@ -82,7 +82,7 @@ export function QBSection() {
       {nav === 'salestax'  && <AcSalesTaxPanel />}
       {nav === 'purchaseorders' && <AcPurchaseOrdersPanel />}
       {nav === 'ratios'    && <AcRatiosPanel />}
-    </QBShell>
+    </BooksShell>
   );
 }
 
@@ -118,4 +118,4 @@ function CoaHint() {
   );
 }
 
-export default QBSection;
+export default BooksSection;

@@ -102,7 +102,6 @@ export function NonprofitWorkbench() {
       <div className="flex items-center gap-2 mb-3">
         <Users className="w-4 h-4 text-rose-400" />
         <h3 className="text-sm font-bold text-zinc-100">Fundraising Workbench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">bloomerang · givebutter</span>
       </div>
 
       <nav className="flex items-center gap-1 flex-wrap border-b border-zinc-800 pb-2 mb-3">

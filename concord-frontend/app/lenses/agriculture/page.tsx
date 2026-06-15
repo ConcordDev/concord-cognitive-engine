@@ -72,7 +72,7 @@ import GrainBinsPanel from '@/components/agriculture/GrainBinsPanel';
 import ZonesPanel from '@/components/agriculture/ZonesPanel';
 import TankMixesPanel from '@/components/agriculture/TankMixesPanel';
 import PrecisionAgPanel from '@/components/agriculture/PrecisionAgPanel';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { ShellPreview } from '@/components/lens/ShellPreview';
 import { PipingProvider } from '@/components/panel-polish';
 
 // ---------------------------------------------------------------------------
@@ -1468,7 +1468,7 @@ export default function AgricultureLensPage() {
       <FirstRunTour lensId="agriculture" />
       <DepthBadge lensId="agriculture" size="sm" className="ml-2" />
     <div data-lens-theme="agriculture" className={ds.pageContainer}>
-      <RivalShapePreview lensId="agriculture" defaultOpen={true} />
+      <ShellPreview lensId="agriculture" defaultOpen={true} />
       <DeereWorkbenchSection />
       <PrecisionAgPanel />
       <header className={ds.sectionHeader}>

@@ -11,8 +11,8 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { WhiteboardRepos } from '@/components/whiteboard/WhiteboardRepos';
 import { WhiteboardActionPanel } from '@/components/whiteboard/WhiteboardActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
-import { MiroSection } from '@/components/whiteboard/MiroSection';
+import { ShellPreview } from '@/components/lens/ShellPreview';
+import { CollabBoardSection } from '@/components/whiteboard/CollabBoardSection';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -539,7 +539,7 @@ export default function WhiteboardLensPage() {
   // Vector export — produces an SVG of the current board.  Vector form
   // scales without aliasing, opens in Figma / Illustrator / Inkscape, and
   // is the gold-standard "I want my drawing again later" format that
-  // Miro / FigJam ship.  Rasters (PNG) lose information; SVG keeps the
+  // vector editors. Rasters (PNG) lose information; SVG keeps the
   // primitives addressable.  Renders rectangles, ellipses, lines,
   // arrows, freehand strokes, text, and labelled cards/sections; image
   // pins reference their source URL via `<image href>` so the SVG
@@ -835,7 +835,7 @@ export default function WhiteboardLensPage() {
     setSelectedElement(copy);
   }, [selectedElement, pushUndo]);
 
-  /* ---------- keyboard shortcuts (Figma / Excalidraw idiom) ---------- */
+  /* ---------- keyboard shortcuts (canvas idiom) ---------- */
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -951,9 +951,9 @@ export default function WhiteboardLensPage() {
     <LensShell lensId="whiteboard" asMain={false}>
       <FirstRunTour lensId="whiteboard" />
       <DepthBadge lensId="whiteboard" size="sm" className="ml-2" />
-      <RivalShapePreview lensId="whiteboard" defaultOpen={true} />
+      <ShellPreview lensId="whiteboard" defaultOpen={true} />
       <div className="px-4 mt-3">
-        <MiroSection />
+        <CollabBoardSection />
       </div>
     <div className="h-full flex bg-lattice-bg">
       {/* ===== Sidebar ===== */}
@@ -1693,7 +1693,7 @@ export default function WhiteboardLensPage() {
       <WhiteboardRepos />
     </section>
 
-    {/* Excalidraw + Miro-shape session workbench: template / save / vote / share + actions */}
+    {/* session workbench: template / save / vote / share + actions */}
     <PipingProvider>
       <section className="mt-6 mx-auto max-w-7xl">
         <WhiteboardActionPanel />

@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * EtsyShell — Etsy Shop Manager-shape sidebar chrome.
+ * ShopfrontShell — the storefront Shop Manager-shape sidebar chrome.
  *
- * Top nav (Etsy's): Home / Listings / Orders / Stats / Marketing /
+ * Top nav (the storefront's): Home / Listings / Orders / Stats / Marketing /
  * Finances / Tools. Includes a header strip with the user's shop name
  * + currency for quick context.
  */
@@ -38,7 +38,7 @@ const NAV: NavItem[] = [
   { id: 'shop',       label: 'Shop settings', icon: Store },
 ];
 
-export interface EtsyShellProps {
+export interface ShopfrontShellProps {
   activeNav: ShopNav;
   onNavChange: (n: ShopNav) => void;
   badges?: Partial<Record<ShopNav, number | string>>;
@@ -47,7 +47,7 @@ export interface EtsyShellProps {
   children: React.ReactNode;
 }
 
-export function EtsyShell({ activeNav, onNavChange, badges = {}, shopName, currency, children }: EtsyShellProps) {
+export function ShopfrontShell({ activeNav, onNavChange, badges = {}, shopName, currency, children }: ShopfrontShellProps) {
   return (
     <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
       <aside className="w-48 bg-[#0a0c10] border-r border-white/5 flex flex-col flex-shrink-0">
@@ -93,4 +93,4 @@ export function EtsyShell({ activeNav, onNavChange, badges = {}, shopName, curre
   );
 }
 
-export default EtsyShell;
+export default ShopfrontShell;

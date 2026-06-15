@@ -28,7 +28,7 @@ import QuantizePanel from '@/components/studio/QuantizePanel';
 import RecordingPanel from '@/components/studio/RecordingPanel';
 import ProjectIOPanel from '@/components/studio/ProjectIOPanel';
 import CollabPanel from '@/components/studio/CollabPanel';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { ShellPreview } from '@/components/lens/ShellPreview';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   Grid3x3 as MTabSess, LineChart as MTabArr, SlidersHorizontal as MTabMix,
@@ -377,9 +377,8 @@ export default function StudioLensPage() {
   const queryClient = useQueryClient();
 
   // ---- State ----
-  // Default to Ableton-style Session view per canonical DAW research
-  // (Ableton Session View / GarageBand Live Loops are the iconic
-  // distinctive surface). Other views are still reachable via the
+  // Default to the Session view (clip-launching grid) — the iconic DAW
+  // surface. Other views are still reachable via the
   // toolbar — they're the per-clip / per-track editors. localStorage-
   // sticky so power users who pin a different default keep it.
   const [studioView, setStudioView] = useState<StudioViewType>(() => {
@@ -799,7 +798,7 @@ export default function StudioLensPage() {
     }
   }, [recordedUrl]);
 
-  // ── DAW transport shortcuts (Logic / Ableton idiom) ──────────────
+  // ── DAW transport shortcuts ──────────────────────────────────────
   // Space toggles play/pause, R records, . stops, Enter rewinds.
   useLensCommand(
     [
@@ -1614,7 +1613,7 @@ export default function StudioLensPage() {
       <FirstRunTour lensId="studio" />
       <DepthBadge lensId="studio" size="sm" className="ml-2" />
       <div className="px-4 mt-2">
-        <RivalShapePreview lensId="studio" defaultOpen={true} />
+        <ShellPreview lensId="studio" defaultOpen={true} />
         <DawWorkbenchSection />
       </div>
     <div
@@ -1801,7 +1800,7 @@ export default function StudioLensPage() {
         {/* Primary view */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {studioView === 'session' && (
-            // Ableton-style hero — clip grid + browser left + inspector
+            // Session hero — clip grid + browser left + inspector
             // right + mixer peek strip below. Composed in
             // components/studio/SessionWorkspace.tsx per the canonical
             // DAW research blueprint.
@@ -2707,7 +2706,7 @@ export default function StudioLensPage() {
         <StudioRepos />
       </section>
 
-      {/* Ableton Live-shape session workbench: project / track / effect / render + actions */}
+      {/* Session workbench: project / track / effect / render + actions */}
       <PipingProvider>
         <section className="mt-6 mx-auto max-w-7xl">
           <StudioActionPanel />
@@ -2735,7 +2734,7 @@ export default function StudioLensPage() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Logic / Ableton-parity workbench section                            */
+/*  Session workbench section                                          */
 /* ------------------------------------------------------------------ */
 
 type WorkbenchTab =
@@ -2768,7 +2767,7 @@ function DawWorkbenchSection() {
   ];
   return (
     <section className="mt-6 space-y-3">
-      <h2 className="text-sm font-semibold text-violet-300 uppercase tracking-wider">Logic/Ableton-parity workbench</h2>
+      <h2 className="text-sm font-semibold text-violet-300 uppercase tracking-wider">Session workbench</h2>
       <div className="grid grid-cols-3 gap-2 text-xs">
         <input value={projectId} onChange={e => setProjId(e.target.value)} placeholder="Project ID (paste from project list)" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
         <input value={trackId} onChange={e => setTrackId(e.target.value)} placeholder="Track ID" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white font-mono" />

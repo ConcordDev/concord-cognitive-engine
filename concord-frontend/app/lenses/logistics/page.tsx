@@ -22,7 +22,7 @@ import LoadBoardPanel from '@/components/logistics/LoadBoardPanel';
 import DeliveryProofPanel from '@/components/logistics/DeliveryProofPanel';
 import ShipmentEventsTimeline from '@/components/logistics/ShipmentEventsTimeline';
 import { VisibilityTower } from '@/components/logistics/VisibilityTower';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { ShellPreview } from '@/components/lens/ShellPreview';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   Truck as MTabTruck, Users as MTabDriver, Package as MTabShip,
@@ -2114,7 +2114,7 @@ export default function LogisticsLensPage() {
       <FirstRunTour lensId="logistics" />
       <DepthBadge lensId="logistics" size="sm" className="ml-2" />
       <div className="px-4 mt-2">
-        <RivalShapePreview lensId="logistics" defaultOpen={true} />
+        <ShellPreview lensId="logistics" defaultOpen={true} />
         <TmsWorkbenchSection />
         <VisibilityTower />
       </div>

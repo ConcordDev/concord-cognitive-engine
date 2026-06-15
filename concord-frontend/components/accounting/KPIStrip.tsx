@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * KPIStrip — QuickBooks-shape financial dashboard at a glance.
+ * KPIStrip — financial dashboard at a glance.
  *
  * The horizontal strip of high-density numeric tiles every accounting
  * tool ships above the ledger. Numbers go big, deltas go small with

@@ -95,7 +95,7 @@ import PreApprovalFlow from '@/components/realestate/PreApprovalFlow';
 import SavedSearchAlerts from '@/components/realestate/SavedSearchAlerts';
 import PropertyDetailPanel from '@/components/realestate/PropertyDetailPanel';
 import ContactAgentForm from '@/components/realestate/ContactAgentForm';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { ShellPreview } from '@/components/lens/ShellPreview';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -940,7 +940,7 @@ export default function RealEstateLensPage() {
       <FirstRunTour lensId="realestate" />
       <DepthBadge lensId="realestate" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
-      <RivalShapePreview lensId="realestate" defaultOpen={true} />
+      <ShellPreview lensId="realestate" defaultOpen={true} />
       <RealtorWorkbenchSection />
       {/* Header */}
       <header className={ds.sectionHeader}>

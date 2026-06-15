@@ -3,7 +3,7 @@
 /**
  * TaxRatesPanel — surfaces the retail lens's tax-rate table (the retail.tax-rates-*
  * macros existed backend-side but had no UI). Set a sales-tax rate per region,
- * list, delete. A Shopify-core feature. tax-rates-set returns the full updated list.
+ * list, delete. A core commerce feature. tax-rates-set returns the full updated list.
  */
 
 import { useCallback, useEffect, useState } from 'react';

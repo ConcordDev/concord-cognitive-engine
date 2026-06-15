@@ -25,7 +25,7 @@ const TABS: { id: SuiteTab; label: string }[] = [
 ];
 
 /**
- * CommerceSuite — the Shopify-parity backlog surface. Bundles the
+ * CommerceSuite — the commerce-suite surface. Bundles the
  * buyer-facing storefront, order fulfillment, carrier labels, marketing
  * campaigns, multi-channel listing, product reviews and staff accounts
  * into one tabbed workbench. Each panel is real CRUD over the retail

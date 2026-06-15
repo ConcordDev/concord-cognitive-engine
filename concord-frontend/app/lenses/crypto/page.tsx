@@ -13,8 +13,8 @@ import { CryptoActionPanel } from '@/components/crypto/CryptoActionPanel';
 import { AddressBookPanel } from '@/components/crypto/AddressBookPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { SwapRoutePanel } from '@/components/crypto-explorer/SwapRoutePanel';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
-import { CoinbaseSection } from '@/components/crypto/CoinbaseSection';
+import { ShellPreview } from '@/components/lens/ShellPreview';
+import { ExchangeSection } from '@/components/crypto/ExchangeSection';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useTilePush } from '@/hooks/useTilePush';
@@ -220,7 +220,7 @@ export default function CryptoLensPage() {
     return () => { cancelled = true; };
   }, [activeTab, chartTokenId, chartDays]);
 
-  // Lens-scoped keyboard commands. Coinbase / Binance idiom: single-
+  // Lens-scoped keyboard commands. keyboard idiom: single-
   // letter tab jumps and a balance-blur toggle (privacy hotkey).
   useLensCommand(
     [
@@ -605,9 +605,9 @@ export default function CryptoLensPage() {
       <FirstRunTour lensId="crypto" />
       <ManifestActionBar />
       <DepthBadge lensId="crypto" size="sm" className="ml-2" />
-      <RivalShapePreview lensId="crypto" defaultOpen={true} />
+      <ShellPreview lensId="crypto" defaultOpen={true} />
       <div className="px-4 mt-3">
-        <CoinbaseSection />
+        <ExchangeSection />
       </div>
     <div data-lens-theme="crypto" className="p-6 space-y-6">
       <header className="flex items-center justify-between">

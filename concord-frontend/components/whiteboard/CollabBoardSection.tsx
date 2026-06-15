@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * MiroSection — full Miro / FigJam 2026 workbench.
+ * CollabBoardSection — full collaborative whiteboard workbench.
  *
  * Boards rail (left) + interactive WhiteboardCanvas (center) +
  * AI sidebar (right, collapsible). Persists every shape change through
@@ -31,7 +31,7 @@ const TEMPLATE_KINDS = [
   { id: 'swot',         label: 'SWOT' },
 ] as const;
 
-export function MiroSection() {
+export function CollabBoardSection() {
   const [boards, setBoards] = useState<BoardMeta[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeShapes, setActiveShapes] = useState<Shape[]>([]);
@@ -65,7 +65,7 @@ export function MiroSection() {
       if (Array.isArray(els)) {
         setSyncShapes(els);
         setSyncSignal((s) => s + 1); // tells the canvas to replace its scene
-        setActiveShapes(els);        // keep MiroSection's copy in sync (no dirty → no save echo)
+        setActiveShapes(els);        // keep CollabBoardSection's copy in sync (no dirty → no save echo)
       }
     }
   }, [collab.remoteSceneUpdateCount, collab.remoteScene]);
@@ -94,7 +94,7 @@ export function MiroSection() {
       const list = (r.data?.result?.boards || []) as BoardMeta[];
       setBoards(list);
       if (!activeId && list.length > 0) openBoard(list[0].id);
-    } catch (e) { console.error('[Miro] boards', e); }
+    } catch (e) { console.error('[Board] boards', e); }
     finally { setLoading(false); }
   }
 
@@ -110,7 +110,7 @@ export function MiroSection() {
       setClusters(null);
       setSummary(null);
       await refreshComments(id);
-    } catch (e) { console.error('[Miro] load', e); }
+    } catch (e) { console.error('[Board] load', e); }
   }
 
   async function createBoard() {
@@ -121,7 +121,7 @@ export function MiroSection() {
       } });
       const id = r.data?.result?.board?.id;
       if (id) { await refreshBoards(); openBoard(id); }
-    } catch (e) { console.error('[Miro] create', e); }
+    } catch (e) { console.error('[Board] create', e); }
   }
 
   async function deleteBoard(id: string) {
@@ -130,7 +130,7 @@ export function MiroSection() {
       await lensRun({ domain: 'whiteboard', action: 'board-delete', input: { id } });
       if (activeId === id) { setActiveId(null); setActiveShapes([]); setActiveTitle(''); }
       await refreshBoards();
-    } catch (e) { console.error('[Miro] delete', e); }
+    } catch (e) { console.error('[Board] delete', e); }
   }
 
   async function duplicateBoard() {
@@ -140,7 +140,7 @@ export function MiroSection() {
       const r = await lensRun({ domain: 'whiteboard', action: 'board-duplicate', input: { id: activeId } });
       const newId = r.data?.result?.board?.id;
       if (newId) { await refreshBoards(); openBoard(newId); }
-    } catch (e) { console.error('[Miro] duplicate', e); }
+    } catch (e) { console.error('[Board] duplicate', e); }
   }
 
   async function save() {
@@ -153,7 +153,7 @@ export function MiroSection() {
         scene: { elements: activeShapes, appState: {} },
       } });
       setDirty(false);
-    } catch (e) { console.error('[Miro] save', e); }
+    } catch (e) { console.error('[Board] save', e); }
     finally { setSaving(false); }
   }
 
@@ -179,7 +179,7 @@ export function MiroSection() {
     try {
       const r = await lensRun({ domain: 'whiteboard', action: 'ai-cluster-stickies', input: { boardId: activeId } });
       setClusters((r.data?.result?.clusters || []) as Cluster[]);
-    } catch (e) { console.error('[Miro] cluster', e); }
+    } catch (e) { console.error('[Board] cluster', e); }
     finally { setClustering(false); }
   }
 
@@ -191,7 +191,7 @@ export function MiroSection() {
     try {
       const r = await lensRun({ domain: 'whiteboard', action: 'ai-summarize-board', input: { boardId: activeId } });
       setSummary(r.data?.result as SummaryResult);
-    } catch (e) { console.error('[Miro] summarize', e); }
+    } catch (e) { console.error('[Board] summarize', e); }
     finally { setSummarizing(false); }
   }
 
@@ -212,7 +212,7 @@ export function MiroSection() {
       setGenPrompt('');
       await refreshBoards();
       if (newId) openBoard(newId);
-    } catch (e) { console.error('[Miro] generate', e); }
+    } catch (e) { console.error('[Board] generate', e); }
     finally { setGenerating(false); }
   }
 
@@ -226,7 +226,7 @@ export function MiroSection() {
       a.href = URL.createObjectURL(blob);
       a.download = `${(activeTitle || 'board').replace(/\s+/g, '-')}.concord-whiteboard.json`;
       a.click();
-    } catch (e) { console.error('[Miro] export', e); }
+    } catch (e) { console.error('[Board] export', e); }
   }
 
   // ── Comments ──────────────────────────────────────────────────
@@ -235,7 +235,7 @@ export function MiroSection() {
     try {
       const r = await lensRun({ domain: 'whiteboard', action: 'comments-list', input: { boardId: id } });
       setComments((r.data?.result?.comments as Record<string, Comment[]>) || {});
-    } catch (e) { console.error('[Miro] comments', e); }
+    } catch (e) { console.error('[Board] comments', e); }
   }
 
   async function addComment(elementId: string, body: string) {
@@ -243,7 +243,7 @@ export function MiroSection() {
     try {
       await lensRun({ domain: 'whiteboard', action: 'comments-add', input: { boardId: activeId, elementId, body: body.trim() } });
       await refreshComments(activeId);
-    } catch (e) { console.error('[Miro] add comment', e); }
+    } catch (e) { console.error('[Board] add comment', e); }
   }
 
   async function resolveComment(id: string) {
@@ -251,7 +251,7 @@ export function MiroSection() {
     try {
       await lensRun({ domain: 'whiteboard', action: 'comments-resolve', input: { boardId: activeId, id } });
       await refreshComments(activeId);
-    } catch (e) { console.error('[Miro] resolve', e); }
+    } catch (e) { console.error('[Board] resolve', e); }
   }
 
   const totalOpenComments = useMemo(() => Object.values(comments).reduce((s, arr) => s + arr.filter(c => !c.resolved).length, 0), [comments]);
@@ -584,4 +584,4 @@ function CommentsTab({ activeId, shapes, comments, onAdd, onResolve }: { activeI
   );
 }
 
-export default MiroSection;
+export default CollabBoardSection;

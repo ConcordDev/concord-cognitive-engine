@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * AdvancedAccountingPanel — 2026 QuickBooks-parity features:
+ * AdvancedAccountingPanel — advanced accounting features:
  * live bank feeds, multi-currency FX, dimensional tagging, payroll
  * tax e-filing + ACH, recurring bills, receipt OCR, edit audit log,
  * and 1099/W-2 IRS FIRE export. All data is real user input or

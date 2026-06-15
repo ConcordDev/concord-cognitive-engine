@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * WhiteboardCanvas — tldraw / Miro / Excalidraw shape: infinite-feeling
+ * WhiteboardCanvas — an infinite-feeling
  * canvas + floating tool palette + zoom controls + zoomable presence
  * grid background.
  *

@@ -239,7 +239,6 @@ export function StudioActionPanel() {
       <header className="flex items-center gap-2 border-b border-purple-500/10 pb-2">
         <Music className="h-4 w-4 text-purple-400" />
         <h3 className="text-sm font-semibold text-white">Studio session</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">ableton live</span>
         {currentProjectId && <span className="ml-auto text-[10px] text-purple-300 font-mono">▶ {currentProjectId.slice(0, 8)}</span>}
       </header>
 

@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * BandcampGrid — Bandcamp-shape cover-grid feed.
+ * CreatorGrid — a cover-grid feed that puts creator art up front.
  *
  * The visual signature of a creator-economy storefront where the
  * artist gets paid: chunky cover-art grid, audio preview on hover /
  * tap, "name your price" minimum + suggested, "support the creator"
  * CTA in the artist's own colour. Concord's marketplace is already
  * 95/5 to creators, so this grid is the *honest* version of what
- * Bandcamp implies but Spotify hides.
+ * a creator-first marketplace surfaces.
  *
  * Drop-in for the marketplace lens browse tab. Each tile carries
  * audio preview, royalty-aware pricing, and the creator chip.
@@ -18,7 +18,7 @@ import React, { useRef, useState } from 'react';
 import { Play, Pause, Coins, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export interface BandcampItem {
+export interface CreatorGridItem {
   id: string;
   title: string;
   creator: string;
@@ -38,10 +38,10 @@ export interface BandcampItem {
   tags?: string[];
 }
 
-export interface BandcampGridProps {
-  items: BandcampItem[];
-  onSupport?: (item: BandcampItem, priceCc: number) => void;
-  onOpen?: (item: BandcampItem) => void;
+export interface CreatorGridProps {
+  items: CreatorGridItem[];
+  onSupport?: (item: CreatorGridItem, priceCc: number) => void;
+  onOpen?: (item: CreatorGridItem) => void;
   /** Optional grid density override. */
   columns?: 2 | 3 | 4 | 5;
   className?: string;
@@ -55,7 +55,7 @@ function gradientFor(seed: string): string {
   return `linear-gradient(135deg, hsl(${h1} 70% 28%), hsl(${h2} 70% 18%))`;
 }
 
-export function BandcampGrid({ items, onSupport, onOpen, columns = 3, className }: BandcampGridProps) {
+export function CreatorGrid({ items, onSupport, onOpen, columns = 3, className }: CreatorGridProps) {
   if (items.length === 0) return null;
   const gridCols =
     columns === 5 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
@@ -65,19 +65,19 @@ export function BandcampGrid({ items, onSupport, onOpen, columns = 3, className 
   return (
     <div className={cn('grid gap-4', gridCols, className)}>
       {items.map((item) => (
-        <BandcampTile key={item.id} item={item} onSupport={onSupport} onOpen={onOpen} />
+        <CreatorTile key={item.id} item={item} onSupport={onSupport} onOpen={onOpen} />
       ))}
     </div>
   );
 }
 
-interface BandcampTileProps {
-  item: BandcampItem;
-  onSupport?: (item: BandcampItem, priceCc: number) => void;
-  onOpen?: (item: BandcampItem) => void;
+interface CreatorTileProps {
+  item: CreatorGridItem;
+  onSupport?: (item: CreatorGridItem, priceCc: number) => void;
+  onOpen?: (item: CreatorGridItem) => void;
 }
 
-function BandcampTile({ item, onSupport, onOpen }: BandcampTileProps) {
+function CreatorTile({ item, onSupport, onOpen }: CreatorTileProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [price, setPrice] = useState(item.suggestedPriceCc ?? item.minPriceCc);
@@ -101,7 +101,7 @@ function BandcampTile({ item, onSupport, onOpen }: BandcampTileProps) {
   return (
     <article
       className="group rounded-lg overflow-hidden border border-white/10 bg-black/40 hover:border-amber-500/40 transition-colors"
-      data-bandcamp-tile
+      data-creator-tile
     >
       <button
         type="button"
@@ -164,7 +164,7 @@ function BandcampTile({ item, onSupport, onOpen }: BandcampTileProps) {
           </ul>
         )}
 
-        {/* Name-your-price row — Bandcamp's signature interaction. */}
+        {/* Name-your-price row. */}
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-gray-400 uppercase tracking-wider">name your price</span>
           {item.suggestedPriceCc !== undefined && (
@@ -206,4 +206,4 @@ function BandcampTile({ item, onSupport, onOpen }: BandcampTileProps) {
   );
 }
 
-export default BandcampGrid;
+export default CreatorGrid;

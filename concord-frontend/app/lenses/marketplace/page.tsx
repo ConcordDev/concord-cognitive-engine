@@ -12,7 +12,7 @@ import { TrendingListings } from '@/components/marketplace/TrendingListings';
 import { MarketplaceActionPanel } from '@/components/marketplace/MarketplaceActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import LensAgentFab from '@/components/lens/LensAgentFab';
-import { EtsySection } from '@/components/marketplace/EtsySection';
+import { ShopfrontSection } from '@/components/marketplace/ShopfrontSection';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -710,7 +710,7 @@ export default function MarketplaceLensPage() {
 
   // Watchlist — listings the user starred for later.  Persisted in
   // localStorage keyed by dtuId so it survives reloads without a
-  // backend round-trip.  Bandcamp / OpenSea / Etsy all expect this.
+  // backend round-trip — the standard marketplace pattern.
   const WATCHLIST_KEY = 'concord_marketplace_watchlist';
   const [watchlist, setWatchlist] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set();
@@ -731,7 +731,7 @@ export default function MarketplaceLensPage() {
     });
   }, [persistWatchlist]);
 
-  // Lens-scoped keyboard commands. Etsy / Bandcamp idiom: single-letter
+  // Lens-scoped keyboard commands: single-letter
   // tab jumps; v swaps grid/list; n opens the new-listing composer.
   useLensCommand(
     [
@@ -747,7 +747,7 @@ export default function MarketplaceLensPage() {
     { lensId: 'marketplace' }
   );
 
-  // ── ⌘K palette state — Bandcamp-shape search across every listing ──
+  // ── ⌘K palette state — search across every listing ──────────────
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState('');
   const [paletteIdx, setPaletteIdx] = useState(0);
@@ -1311,7 +1311,7 @@ export default function MarketplaceLensPage() {
       <FirstRunTour lensId="marketplace" />
       <DepthBadge lensId="marketplace" size="sm" className="ml-2" />
       <div className="px-4 mt-3">
-        <EtsySection />
+        <ShopfrontSection />
       </div>
     <div className="lens-marketplace space-y-6 pb-24" data-lens-theme="marketplace">
       {/* ---- Header ---- */}
@@ -2779,7 +2779,7 @@ export default function MarketplaceLensPage() {
     </div>
 
     {/* ── ⌘K palette: search every listing across templates / components /
-        datasets / art / music. Bandcamp-style discovery shortcut. ── */}
+        datasets / art / music. Discovery shortcut. ── */}
     {paletteOpen && (() => {
       const q = paletteQuery.trim().toLowerCase();
       const creatorName = (c: CreatorInfo | string | undefined): string => {
@@ -2885,7 +2885,7 @@ export default function MarketplaceLensPage() {
       <TrendingListings />
     </section>
 
-    {/* Bandcamp + Gumroad-shape listing workbench: score / price / metrics + actions */}
+    {/* Listing workbench: score / price / metrics + actions */}
     <PipingProvider>
       <section className="mt-6 mx-auto max-w-7xl">
         <MarketplaceActionPanel />

@@ -4,7 +4,7 @@
  * CategoryRulesPanel — surfaces accounting's transaction auto-categorization rules
  * (the accounting.category-rules-* macros existed backend-side but had no UI). A
  * rule maps a description pattern → a chart-of-accounts account, so bank-feed
- * transactions get categorized automatically (a QuickBooks-core feature).
+ * transactions get categorized automatically (a core accounting feature).
  */
 
 import { useCallback, useEffect, useState } from 'react';

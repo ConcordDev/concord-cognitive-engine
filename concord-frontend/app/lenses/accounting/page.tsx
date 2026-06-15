@@ -40,7 +40,7 @@ import {
   PiggyBank as MTabPig, Building2 as MTabBldg, Calculator as MTabCalc,
 } from 'lucide-react';
 import AccountingWorkbench from '@/components/accounting/AccountingWorkbench';
-import { QBSection } from '@/components/accounting/QBSection';
+import { BooksSection } from '@/components/accounting/BooksSection';
 import { AccountingActionPanel } from '@/components/accounting/AccountingActionPanel';
 import { CategoryRulesPanel } from '@/components/accounting/CategoryRulesPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -173,7 +173,7 @@ export default function AccountingLensPage() {
   const [ledgerSubType, setLedgerSubType] = useState<'Account' | 'Transaction'>('Account');
   const [showFeatures, setShowFeatures] = useState(true);
 
-  // Lens-scoped keyboard commands. QuickBooks-style mode switching;
+  // Lens-scoped keyboard commands. mode switching;
   // n opens the editor; / focuses the search box.
   const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
@@ -2006,7 +2006,7 @@ export default function AccountingLensPage() {
 
   const renderDashboard = () => (
     <div className="space-y-6">
-      {/* QuickBooks-shape KPI strip — horizontal numeric tile rail with
+      {/* KPI strip — horizontal numeric tile rail with
           delta arrows. Reads as financial software in 200ms. */}
       <KPIStrip
         periodLabel={periodType === 'monthly' ? 'This month' : periodType === 'quarterly' ? 'This quarter' : periodType === 'annual' ? 'YTD' : 'Period'}
@@ -2683,7 +2683,7 @@ export default function AccountingLensPage() {
       <FirstRunTour lensId="accounting" />
       <DepthBadge lensId="accounting" size="sm" className="ml-2" />
       <div className="px-4 mt-3">
-        <QBSection />
+        <BooksSection />
       </div>
     <div data-lens-theme="accounting" className={ds.pageContainer}>
       {/* Header */}
@@ -2711,7 +2711,7 @@ export default function AccountingLensPage() {
             type="button"
             onClick={() => setWorkbenchOpen(true)}
             className={cn(ds.btnSecondary, 'border-emerald-500/30 text-emerald-200 hover:brightness-110')}
-            title="Live accounting workbench — QuickBooks/Xero/FreshBooks parity"
+            title="Live accounting workbench"
           >
             <Calculator className="w-4 h-4" /> Workbench
           </button>
@@ -2720,7 +2720,7 @@ export default function AccountingLensPage() {
 
 
       {/* HERO: Wallet position + Action Queue. Per canonical accounting
-          UI research (QuickBooks, Xero, Bench, Wave, FreshBooks): the
+          UI research: the
           lens entry-point is "your money + what's waiting on you",
           NOT a chart wall. Charts are macro context below. */}
       {(() => {

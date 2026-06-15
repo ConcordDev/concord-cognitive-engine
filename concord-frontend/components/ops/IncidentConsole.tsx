@@ -237,7 +237,6 @@ export function IncidentConsole() {
       <header className="flex flex-wrap items-center gap-3 border-b border-rose-500/10 pb-3">
         <Radio className="h-5 w-5 text-rose-400" />
         <h2 className="text-base font-semibold text-white">Incident Management</h2>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">pagerduty parity</span>
         <div className="ml-auto flex items-center gap-3 text-xs">
           <span className="rounded bg-rose-500/15 px-2 py-1 text-rose-300">{open.length} open</span>
           <span className="rounded bg-zinc-800 px-2 py-1 text-zinc-300">

@@ -3,9 +3,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
- * Worldmodel Lens — digital-twin / counterfactual-simulation surface.
- * Category leader: Palantir Foundry — entity-graph world model with
- * counterfactual simulation over a modeled system.
+ * Worldmodel Lens — digital-twin / counterfactual-simulation surface:
+ * an entity-graph world model with counterfactual simulation over a
+ * modeled system.
  *
  * Every panel here is wired to a real `worldmodel.*` domain macro. There
  * is no mock / seed / demo data: each rendered value comes from a macro

@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
- * SymbolicWorkbench — Wolfram-Alpha-shape CAS surface for the math lens.
+ * SymbolicWorkbench — a CAS surface for the math lens.
  * Six purpose-built panels, each wired to a real backend macro in
  * server/domains/math.js: symbolicCompute, stepSolve, naturalQuery,
  * plotFunction, unitConvert, numberTheory. No mock data — every number
@@ -50,7 +50,7 @@ export function SymbolicWorkbench() {
         <FunctionSquare className="h-4 w-4 text-indigo-400" />
         <h3 className="text-sm font-semibold text-white">Computational Math Engine</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-          CAS · wolfram-shape
+          CAS
         </span>
       </header>
 

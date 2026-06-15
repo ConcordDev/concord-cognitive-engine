@@ -502,7 +502,7 @@ export interface TempoAutomation {
 // ============================================================================
 
 export type StudioViewType =
-  | 'session'      // Default Ableton-style clip-grid hero (browser left + inspector right + mixer peek)
+  | 'session'      // Default clip-grid hero (browser left + inspector right + mixer peek)
   | 'arrange'
   | 'mixer'
   | 'pianoRoll'

@@ -20,7 +20,7 @@ import { LegalCaseSearch } from '@/components/legal/LegalCaseSearch';
 import { IntakeFormsPanel } from '@/components/legal/IntakeFormsPanel';
 import { ReportsPanel } from '@/components/legal/ReportsPanel';
 import LensAgentFab from '@/components/lens/LensAgentFab';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { ShellPreview } from '@/components/lens/ShellPreview';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -3078,7 +3078,7 @@ export default function LegalLensPage() {
     <LensShell lensId="legal" asMain={false} disableAgentFab={true}>
       <FirstRunTour lensId="legal" />
       <DepthBadge lensId="legal" size="sm" className="ml-2" />
-      <RivalShapePreview lensId="legal" defaultOpen={true} />
+      <ShellPreview lensId="legal" defaultOpen={true} />
       <div className="px-4 mt-3">
         <ClioSection />
       </div>
@@ -3387,7 +3387,7 @@ export default function LegalLensPage() {
         )}
       </div>
 
-      {/* Westlaw + CourtListener-shape legal workbench: deadlines / renewals / conflicts / audit + actions */}
+      {/* legal workbench: deadlines / renewals / conflicts / audit + actions */}
       <PipingProvider>
         <section className="mt-6">
           <LegalActionPanel />

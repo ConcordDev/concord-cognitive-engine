@@ -2540,7 +2540,7 @@ export default function ReasoningLensPage() {
           </div>
         )}
       </div>
-      {/* Wolfram-shape argument workbench: validate / map / fallacy / premise + actions */}
+      {/* argument workbench: validate / map / fallacy / premise + actions */}
       <section className="mt-6">
         <ArgumentWorkbench />
       </section>

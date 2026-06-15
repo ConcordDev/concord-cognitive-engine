@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * MathActionPanel — Wolfram + Desmos-shape math workbench. Surfaces
+ * MathActionPanel — math workbench. Surfaces
  * statisticalAnalysis / matrixOperations / polynomialAnalysis /
  * regressionFit + mint/DM/publish/agent.
  */
@@ -169,7 +169,6 @@ export function MathActionPanel() {
       <header className="flex items-center gap-2 border-b border-indigo-500/10 pb-2">
         <Sigma className="h-4 w-4 text-indigo-400" />
         <h3 className="text-sm font-semibold text-white">Math workbench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">wolfram · desmos</span>
       </header>
 
       <input type="text" value={problem} onChange={(e) => setProblem(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Problem statement (for mint / agent)" />

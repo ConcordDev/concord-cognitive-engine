@@ -1170,7 +1170,7 @@ export default function MathLensPage() {
         <MathStackFeed />
       </section>
 
-      {/* Wolfram + Desmos-shape math workbench: stats / matrix / polynomial / regression + actions */}
+      {/* math workbench: stats / matrix / polynomial / regression + actions */}
       <PipingProvider>
         <section className="mt-6">
           <MathActionPanel />

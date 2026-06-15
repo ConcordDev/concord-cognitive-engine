@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * WhiteboardActionPanel — Excalidraw + Miro-shape session workbench.
+ * WhiteboardActionPanel — session workbench.
  * Surfaces the board / vote / template / share macros plus mint/DM/
  * publish/agent. Designed to sit below the existing whiteboard canvas
  * as a session controls strip.
@@ -256,7 +256,6 @@ export function WhiteboardActionPanel() {
       <header className="flex items-center gap-2 border-b border-violet-500/10 pb-2">
         <Palette className="h-4 w-4 text-violet-400" />
         <h3 className="text-sm font-semibold text-white">Whiteboard session</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">excalidraw · miro</span>
         {templates.length > 0 && <span className="ml-auto text-[10px] text-zinc-400">{templates.length} templates · {boards.length} boards</span>}
       </header>
 

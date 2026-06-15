@@ -163,7 +163,6 @@ export function MusicActionPanel() {
       <header className="flex items-center gap-2 border-b border-purple-500/10 pb-2">
         <Music className="h-4 w-4 text-purple-400" />
         <h3 className="text-sm font-semibold text-white">Music workbench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">spotify · ableton</span>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">

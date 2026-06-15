@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * FinanceShell — Robinhood / Monarch Money-shape silhouette.
+ * FinanceShell — a portfolio surface.
  *
  * Dominant net-worth header with hide toggle and time-range chips,
  * portfolio sparkline, Trade / Transfer / Budget action triple,
@@ -244,7 +244,7 @@ export function FinanceShell({
 
       {/* Two-column: holdings + watchlist */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Holdings (Robinhood-shape rows with mini-sparklines) */}
+        {/* Holdings (rows with mini-sparklines) */}
         <section className="lg:col-span-2">
           <header className="flex items-center justify-between mb-2">
             <h2 className="text-xs uppercase tracking-wider text-gray-400">Holdings</h2>

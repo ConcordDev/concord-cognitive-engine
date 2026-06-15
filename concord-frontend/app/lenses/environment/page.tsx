@@ -22,7 +22,7 @@ import InventoryReportBuilder from '@/components/environment/InventoryReportBuil
 import ActivityImportPanel from '@/components/environment/ActivityImportPanel';
 import ScenarioModeler from '@/components/environment/ScenarioModeler';
 import AuditTrailPanel from '@/components/environment/AuditTrailPanel';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { ShellPreview } from '@/components/lens/ShellPreview';
 import { GbifPanel } from '@/components/environment/GbifPanel';
 import { AirQualityPanel } from '@/components/environment/AirQualityPanel';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
@@ -3351,7 +3351,7 @@ export default function EnvironmentLensPage() {
       <FirstRunTour lensId="environment" />
       <DepthBadge lensId="environment" size="sm" className="ml-2" />
       <div className="px-4 mt-2">
-        <RivalShapePreview lensId="environment" defaultOpen={true} />
+        <ShellPreview lensId="environment" defaultOpen={true} />
         <CarbonWorkbenchSection />
       </div>
     <LensPageShell

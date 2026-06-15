@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * HrWorkdaySection — Workday + BambooHR 2026-shape HRIS workbench.
+ * HrHrisSection — an HRIS workbench.
  * Tab chrome owns nav state; panels hydrate via lensRun().
  */
 
@@ -44,7 +44,7 @@ const TABS: { id: TabId; label: string; icon: typeof Users }[] = [
   { id: 'self', label: 'Self-Service', icon: UserCog },
 ];
 
-export function HrWorkdaySection() {
+export function HrHrisSection() {
   const [tab, setTab] = useState<TabId>('people');
   const [dash, setDash] = useState<Dash | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,7 +62,7 @@ export function HrWorkdaySection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-emerald-600/15 to-transparent">
         <Users className="w-5 h-5 text-emerald-400" />
         <h2 className="text-sm font-bold text-zinc-100">People Hub</h2>
-        <span className="text-[11px] text-zinc-400">Workday + BambooHR shape — HRIS</span>
+        <span className="text-[11px] text-zinc-400">HRIS</span>
       </header>
 
       {loading ? (

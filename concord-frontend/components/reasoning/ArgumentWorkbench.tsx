@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ArgumentWorkbench — Wolfram / step-by-step-calc-shape action surface
+ * ArgumentWorkbench — a step-by-step argument-analysis surface
  * for the reasoning lens. Takes a free-text argument or statement,
  * runs the 4 reasoning macros that previously had no UI, and exposes
  * the standard mint/DM/publish/agent quartet on top.
@@ -253,7 +253,7 @@ export function ArgumentWorkbench() {
         <Brain className="h-4 w-4 text-purple-400" />
         <h3 className="text-sm font-semibold text-white">Argument workbench</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-          wolfram-style · step-by-step
+          step-by-step
         </span>
       </header>
 

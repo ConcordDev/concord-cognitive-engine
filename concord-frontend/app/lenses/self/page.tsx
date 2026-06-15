@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Unified Self Lens — quantified-self surface shadowing Apple Health /
- * Gyroscope. A real metric ledger (server/domains/self.js) powers
+ * Unified Self Lens — a quantified-self surface. A real metric ledger
+ * (server/domains/self.js) powers
  * customizable overview tiles, trend charts, cross-metric correlation,
  * goals + progress rings, daily/weekly digest, streaks, and wearable
  * import. The legacy aggregator tabs (fitness/sleep/mood/journal/

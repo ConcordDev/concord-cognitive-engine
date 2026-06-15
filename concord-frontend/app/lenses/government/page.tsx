@@ -20,7 +20,7 @@ import ServiceRequestReporter from '@/components/government/ServiceRequestReport
 import AdvocacyPanel from '@/components/government/AdvocacyPanel';
 import DocumentLibraryPanel from '@/components/government/DocumentLibraryPanel';
 import NotificationsPanel from '@/components/government/NotificationsPanel';
-import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
+import { ShellPreview } from '@/components/lens/ShellPreview';
 import { PipingProvider } from '@/components/panel-polish';
 import RepresentativeFinder from '@/components/government/RepresentativeFinder';
 import BillTracker from '@/components/government/BillTracker';
@@ -3203,7 +3203,7 @@ export default function GovernmentLensPage() {
       <FirstRunTour lensId="government" />
       <DepthBadge lensId="government" size="sm" className="ml-2" />
     <div data-lens-theme="government" className={ds.pageContainer}>
-      <RivalShapePreview lensId="government" defaultOpen={true} />
+      <ShellPreview lensId="government" defaultOpen={true} />
       <CivicWorkbenchSection />
       {/* Header */}
       <header className={ds.sectionHeader}>

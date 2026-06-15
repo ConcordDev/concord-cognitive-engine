@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * WhiteboardCollabPanel — surfaces the 2026 Miro/FigJam parity backlog:
+ * WhiteboardCollabPanel — surfaces the collaboration backlog:
  * frames + presentation mode, connectors with auto-routing, embeds,
  * raster (PNG/SVG/PDF) export planning, and reactions / live cursors.
  *

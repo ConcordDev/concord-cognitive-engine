@@ -83,7 +83,7 @@ export function EnvelopeBudget({ monthlyIncome = 0 }: EnvelopeBudgetProps) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Wallet className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Envelope budgets</span>
-        <span className="ml-auto text-[10px] text-gray-400">YNAB-style zero-based</span>
+        <span className="ml-auto text-[10px] text-gray-400">zero-based</span>
         <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white" title="New envelope">
           <Plus className="w-4 h-4" />
         </button>
