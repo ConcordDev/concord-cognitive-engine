@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-06-09T12:37:49.378Z",
+  "generatedAt": "2026-06-19T23:31:44.483Z",
   "totals": {
     "critical": 0,
-    "high": 18,
+    "high": 0,
     "medium": 53,
     "low": 21,
-    "info": 30,
-    "total": 122
+    "info": 31,
+    "total": 105
   },
   "detectorCount": 30,
   "fingerprints": {
@@ -33,7 +33,15 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "835 macros · 0 dead · 411 single-caller · 1 popular · 350 dispatcher-reach (0 runtime-live, 350 retirement-candidates)"
+      "message": "835 macros · 0 dead · 411 single-caller · 1 popular · 350 dispatcher-reach (1 runtime-live, 349 retirement-candidates)"
+    },
+    "c862d63d8e4a71b1": {
+      "detector": "macro-usage",
+      "id": "macro_runtime_live",
+      "severity": "info",
+      "kind": "semantic",
+      "location": "server/server.js:74109",
+      "message": "Macro refusal.composition fired 39 time(s) at runtime — live"
     },
     "9c6176383f6bf175": {
       "detector": "macro-usage",
@@ -89,7 +97,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 7286 files; flagged 0"
+      "message": "Scanned 7291 files; flagged 0"
     },
     "6954d635fa3b8074": {
       "detector": "performance-hotspot",
@@ -97,7 +105,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3499 server files"
+      "message": "Scanned 3504 server files"
     },
     "3033f27d19bfc5f6": {
       "detector": "performance-hotspot",
@@ -147,30 +155,6 @@
       "location": "server/emergent/agent-marathon-cycle.js:19",
       "message": "Module-level Map / Set with no eviction path (architectural review)"
     },
-    "e5b0feb0a0f3bca2": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/causal-closure.js:399",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
-    "6651db95854ea076": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/causal-closure.js:409",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
-    "589e7bd768cdbcd4": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/causal-closure.js:411",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
     "2d3023f19a095a2d": {
       "detector": "performance-hotspot",
       "id": "perf_unbounded_cache_growth",
@@ -195,46 +179,6 @@
       "location": "server/lib/detectors/command-injection-detector.js:110",
       "message": "Module-level Map / Set with no eviction path (architectural review)"
     },
-    "cce250875f13661d": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/detectors/maintenance-gates-detector.js:66",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
-    "19c046e9ef428766": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/disease-engine.js:36",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
-    "f5cbbe0b3bdfabad": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/ensure-runtime-tables.js:61",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
-    "5584bcfff4817f12": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/ensure-runtime-tables.js:136",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
-    "97a505d407049493": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/farming.js:23",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
     "d0d0564f6b17f3b2": {
       "detector": "performance-hotspot",
       "id": "perf_unbounded_cache_growth",
@@ -243,29 +187,21 @@
       "location": "server/lib/feed-manager.js:83",
       "message": "Module-level Map / Set with no eviction path (architectural review)"
     },
-    "1bd77c7b30a4aa32": {
+    "8ec1f9652280bd10": {
       "detector": "performance-hotspot",
       "id": "perf_select_star_hot",
       "severity": "low",
       "kind": "static",
-      "location": "server/lib/festivals.js:89",
+      "location": "server/lib/festivals.js:90",
       "message": "SELECT * full-scan or JOIN — project explicit columns"
     },
-    "0282e23461e97b78": {
+    "cf05c669e1f6c36d": {
       "detector": "performance-hotspot",
       "id": "perf_select_star_hot",
       "severity": "low",
       "kind": "static",
-      "location": "server/lib/festivals.js:105",
+      "location": "server/lib/festivals.js:106",
       "message": "SELECT * full-scan or JOIN — project explicit columns"
-    },
-    "65270257a45a0073": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/festivals.js:53",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
     },
     "ea6c8c6532160853": {
       "detector": "performance-hotspot",
@@ -275,77 +211,13 @@
       "location": "server/lib/foundry/builder-extras.js:166",
       "message": "Module-level Map / Set with no eviction path (architectural review)"
     },
-    "d00ae85a22639549": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/foundry/templates.js:27",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
-    "e1c8dbb093311a38": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/foundry-publisher.js:62",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
-    "8a2978ae04e49fdc": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/foundry-publisher.js:128",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
-    "323d812ba10a95cf": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/route-inventory.js:30",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
-    "2dfbf3105f04190f": {
+    "e6f8de8ca09b5088": {
       "detector": "performance-hotspot",
       "id": "perf_unbounded_cache_growth",
       "severity": "low",
       "kind": "static",
-      "location": "server/lib/route-inventory.js:98",
+      "location": "server/lib/route-inventory.js:99",
       "message": "Module-level Map / Set with no eviction path (architectural review)"
-    },
-    "0de935552c1d896d": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/world-flavor.js:120",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
-    "ed19bdb10a2a25c6": {
-      "detector": "performance-hotspot",
-      "id": "perf_sync_fs_in_handler",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/world-flavor.js:122",
-      "message": "Synchronous fs call (readFileSync / writeFileSync) inside async path"
-    },
-    "f73e90bece290029": {
-      "detector": "performance-hotspot",
-      "id": "perf_uncaught_sql_loop",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/world-snapshot.js:41",
-      "message": "Likely N+1 — db.prepare(...).get/all inside a for/while loop"
-    },
-    "c4fefe48854dde63": {
-      "detector": "performance-hotspot",
-      "id": "perf_uncaught_sql_loop",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/lib/world-snapshot.js:69",
-      "message": "Likely N+1 — db.prepare(...).get/all inside a for/while loop"
     },
     "9c41a8e4d5c0c975": {
       "detector": "performance-hotspot",
@@ -354,14 +226,6 @@
       "kind": "static",
       "location": "server/workers/heartbeat-executor.js:40",
       "message": "Module-level Map / Set with no eviction path (architectural review)"
-    },
-    "b17107929f680b74": {
-      "detector": "performance-hotspot",
-      "id": "perf_uncaught_sql_loop",
-      "severity": "high",
-      "kind": "static",
-      "location": "server/workers/heartbeat-pool.js:239",
-      "message": "Likely N+1 — db.prepare(...).get/all inside a for/while loop"
     },
     "3b5cf89535467e0d": {
       "detector": "historical-trend",
@@ -385,7 +249,7 @@
       "severity": "info",
       "kind": "architectural",
       "location": null,
-      "message": "Scanned 3499 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
+      "message": "Scanned 3504 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
     },
     "8124c3bcdf890d24": {
       "detector": "architectural-hub",
@@ -401,7 +265,7 @@
       "severity": "info",
       "kind": "architectural",
       "location": "server/logger.js",
-      "message": "Module server/logger.js fan-in=300 fan-out=0 (leaf utility — wide use is by design)"
+      "message": "Module server/logger.js fan-in=301 fan-out=0 (leaf utility — wide use is by design)"
     },
     "55fcddcaefdaec56": {
       "detector": "fake-data",
@@ -587,12 +451,12 @@
       "location": "concord-frontend/lib/stripe/load-stripe-js.ts:67",
       "message": "addEventListener('error', ...) has no matching removeEventListener in this file."
     },
-    "8b3e5d15f635b2dc": {
+    "01f7f012eb8d2396": {
       "detector": "resource-leak",
       "id": "db_prepare_in_loop",
       "severity": "medium",
       "kind": "static",
-      "location": "server/lib/world-snapshot.js:75",
+      "location": "server/lib/world-snapshot.js:77",
       "message": "db.prepare(...) inside a loop with DYNAMIC SQL — statement cache grows unbounded."
     },
     "22b43c5826138c16": {
@@ -803,12 +667,12 @@
       "location": "concord-frontend/components/world/AwakeningToast.tsx:35",
       "message": "CustomEvent 'concordia:awakening-offered' is dispatched but no addEventListener / useEventListener subscribes to it — the dispatch is a no-op (ghost event)."
     },
-    "f2e981a4184f812a": {
+    "ee696705b5f82d66": {
       "detector": "dead-event-listener",
       "id": "dead_event_dispatch",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/world/CombatVFXBridge.tsx:193",
+      "location": "concord-frontend/components/world/CombatVFXBridge.tsx:212",
       "message": "CustomEvent 'concordia:perfect-defense' is dispatched but no addEventListener / useEventListener subscribes to it — the dispatch is a no-op (ghost event)."
     },
     "8d4a2e00460ede22": {
@@ -827,12 +691,12 @@
       "location": "concord-frontend/components/world/PhotoMode.tsx:66",
       "message": "CustomEvent 'concordia:freecam' is dispatched but no addEventListener / useEventListener subscribes to it — the dispatch is a no-op (ghost event)."
     },
-    "720809d9834268b3": {
+    "4b715d1aca842517": {
       "detector": "dead-event-listener",
       "id": "dead_event_dispatch",
       "severity": "medium",
       "kind": "static",
-      "location": "concord-frontend/components/world/PowerClusterLayer.tsx:166",
+      "location": "concord-frontend/components/world/PowerClusterLayer.tsx:167",
       "message": "CustomEvent 'concordia:power-cluster-claimed' is dispatched but no addEventListener / useEventListener subscribes to it — the dispatch is a no-op (ghost event)."
     },
     "6be0e1863762f19c": {
@@ -961,7 +825,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 28 child_process-importing file(s) of 7334; flagged 1"
+      "message": "Scanned 29 child_process-importing file(s) of 7341; flagged 1"
     },
     "161565490a9c5dd9": {
       "detector": "command-injection",
@@ -985,7 +849,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "server/server.js: global write-auth gate present (mount line 6538); 634 mutating route(s) behind it; 6 bypass path(s)"
+      "message": "server/server.js: global write-auth gate present (mount line 6558); 636 mutating route(s) behind it; 7 bypass path(s)"
     }
   }
 }

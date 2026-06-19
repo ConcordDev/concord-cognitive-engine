@@ -1,3 +1,5 @@
+// @sync-fs-ok: explicit admin/backup snapshot op, not a request handler. Sync fs in this file is intentional and not on the user request path (audited 2026-06).
+// @sql-loop-ok: snapshot/restore loops iterate the fixed PER_WORLD_WRITE_TABLES list (one query per table, restore inside a transaction) — bounded admin/backup op, NOT a row-level N+1.
 // server/lib/world-snapshot.js
 //
 // Axis D — persistence & irreversibility. In a creator economy where players own

@@ -1,3 +1,5 @@
+// @sync-fs-ok: worker side-effect replay, off the main request/event path. Sync fs in this file is intentional and not on the user request path (audited 2026-06).
+// @sql-loop-ok: bounded worker side-effect replay batch applied on the main thread, off the request path — NOT a row-level N+1.
 /**
  * Heartbeat Worker Pool — runs `worker:true` heartbeat modules off the main
  * thread so a heavy tick (faction-strategy, lattice-quest, embodied-dream,

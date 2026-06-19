@@ -1,3 +1,4 @@
+// @sync-fs-ok: audit-log appendFileSync of a single line via lazily-imported fs; not on the request hot path. Sync fs in this file is intentional and not on the user request path (audited 2026-06).
 // server/lib/causal-closure.js
 //
 // Causal-closure / residual analysis — "is the in-basis (functional) state a

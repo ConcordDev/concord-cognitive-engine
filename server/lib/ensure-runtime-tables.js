@@ -1,3 +1,4 @@
+// @sync-fs-ok: boot-time runtime-table provisioning scan. Sync fs in this file is intentional and not on the user request path (audited 2026-06).
 // server/lib/ensure-runtime-tables.js
 //
 // #F1 — lazy-table fresh-install hazard.

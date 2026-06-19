@@ -1,3 +1,4 @@
+// @sync-fs-ok: publish-time output-directory ensure (low-frequency admin op). Sync fs in this file is intentional and not on the user request path (audited 2026-06).
 // server/lib/foundry-publisher.js
 //
 // Phase Q — UGC worlds. Users author a sub-world via the Foundry lens;

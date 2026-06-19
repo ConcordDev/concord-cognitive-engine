@@ -1,3 +1,4 @@
+// @sync-fs-ok: detector runs in CI/audit context, never the server runtime. Sync fs in this file is intentional and not on the user request path (audited 2026-06).
 // server/lib/detectors/maintenance-gates-detector.js
 //
 // Maintenance B — wire the new SENSES into the immune loop. The schema-drift +

@@ -1,3 +1,4 @@
+// @sync-fs-ok: one-time disease-content catalog load at init. Sync fs in this file is intentional and not on the user request path (audited 2026-06).
 // server/lib/disease-engine.js
 //
 // Phase W — disease engine.

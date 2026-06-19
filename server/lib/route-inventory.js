@@ -1,3 +1,4 @@
+// @sync-fs-ok: audit/cartographer tooling, never the server runtime. Sync fs in this file is intentional and not on the user request path (audited 2026-06).
 // server/lib/route-inventory.js
 //
 // Static-parse every HTTP route registration in server.js + routes/*.js

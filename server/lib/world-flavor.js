@@ -1,3 +1,4 @@
+// @sync-fs-ok: world-flavor content load, cached per world. Sync fs in this file is intentional and not on the user request path (audited 2026-06).
 // server/lib/world-flavor.js
 //
 // Phase G — per-world flavor. Each sub-world declares which simulation

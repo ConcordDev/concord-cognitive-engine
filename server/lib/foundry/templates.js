@@ -1,3 +1,4 @@
+// @sync-fs-ok: template parse at publish/admin time, not the request hot path. Sync fs in this file is intentional and not on the user request path (audited 2026-06).
 // server/lib/foundry/templates.js
 //
 // Foundry — game templates (Phase 6).
