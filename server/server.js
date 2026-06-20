@@ -75618,6 +75618,52 @@ register("world", "gatherings", async (_ctx, input = {}) => {
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Spontaneous co-presence gatherings (clusters of nearby players)." });
 
+// Firm/org chat (migration 336). `firm.chat` resolves the CALLER's org (reverse
+// lookup over org membership), its roster (online = has live presence), and
+// recent messages. `firm.post` appends a message, gated by membership. Backs
+// the ChatSystem "Firm" channel. firm = null when the caller isn't in an org.
+function _firmActorId(ctx) { return ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId || null; }
+register("firm", "chat", async (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = _firmActorId(ctx);
+  if (!userId) return { ok: false, reason: "unauthenticated" };
+  try {
+    const orgLib = await import("./lib/world-organizations.js");
+    const orgs = orgLib.getOrgsForUser(userId);
+    if (!orgs.length) return { ok: true, firm: null };
+    const orgId = orgs[0].orgId;
+    const org = orgLib.getOrganization(orgId);
+    const cp = await import("./lib/city-presence.js");
+    const members = orgLib.getOrgMembers(orgId).map((m) => ({
+      id: m.userId,
+      name: m.userId,
+      online: !!cp.getUserPosition(m.userId),
+    }));
+    const ocLib = await import("./lib/org-chat.js");
+    const messages = ocLib.listOrgChat(db, orgId, { limit: 30 });
+    return { ok: true, firm: { orgId, orgName: org?.name || orgId, members, messages } };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Caller's firm/org chat context: roster + recent messages." });
+
+register("firm", "post", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = _firmActorId(ctx);
+  if (!userId) return { ok: false, reason: "unauthenticated" };
+  try {
+    const orgLib = await import("./lib/world-organizations.js");
+    const orgs = orgLib.getOrgsForUser(userId);
+    if (!orgs.length) return { ok: false, error: "not_in_org" };
+    const orgId = orgs[0].orgId;
+    const ocLib = await import("./lib/org-chat.js");
+    return ocLib.postToOrgChat(db, {
+      orgId,
+      userId,
+      body: input?.body,
+      isMember: (u) => orgLib.getOrgMembers(orgId).some((m) => m.userId === u),
+    });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Post a message to the caller's firm/org chat." });
+
 // #11 Goddess broadcast.
 register("goddess", "compose_now", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };

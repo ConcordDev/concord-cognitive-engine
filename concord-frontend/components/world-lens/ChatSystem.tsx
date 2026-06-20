@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { lensRun } from '@/lib/api/client';
 import {
   MessageSquare, Send, Mic, MicOff, Volume2, VolumeX,
   Radio, Building2, Megaphone, Smile,
@@ -109,6 +110,35 @@ function adaptAmbient(m: Record<string, unknown>): ChatMessage {
   };
 }
 
+// Format either an ISO string (DM createdAt) or unix-seconds (org created_at).
+function fmtTime(v: unknown): string {
+  if (!v) return '';
+  const d = typeof v === 'number' ? new Date(v * 1000) : new Date(String(v));
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+// social.* DM message → ChatMessage. Shape: { id, from, body, createdAt(ISO) }.
+function adaptDm(m: Record<string, unknown>): ChatMessage {
+  return {
+    id: String(m.id ?? ''),
+    sender: String(m.from ?? 'Player'),
+    senderId: String(m.from ?? ''),
+    content: String(m.body ?? ''),
+    timestamp: fmtTime(m.createdAt),
+  };
+}
+
+// org_chat message → ChatMessage. Shape: { id, user_id, body, created_at(sec) }.
+function adaptOrg(m: Record<string, unknown>): ChatMessage {
+  return {
+    id: String(m.id ?? ''),
+    sender: String(m.user_id ?? 'Player'),
+    senderId: String(m.user_id ?? ''),
+    content: String(m.body ?? ''),
+    timestamp: fmtTime(m.created_at),
+  };
+}
+
 const DEFAULT_CHANNELS: ChannelData[] = [
   { type: 'proximity', unreadCount: 0 },
   { type: 'direct', unreadCount: 0 },
@@ -124,11 +154,11 @@ export default function ChatSystem({
   districtId,
   channels = DEFAULT_CHANNELS,
   currentChannel: initialChannel = 'proximity',
-  // The District + Proximity channels are wired to real ambient-chat backends
-  // (District = same-district feed; Proximity = players physically near your
-  // avatar, via window.__concordiaPlayerPos). Direct messages live in the social
-  // DM surface (/api/social/dm/*) and "firm" (org) chat needs its own substrate —
-  // those two stay honest-empty here. `messages` may still be supplied via props.
+  // All four channels are wired to real backends: District (ambient-chat, same
+  // district), Proximity (players near your avatar via window.__concordiaPlayerPos),
+  // Direct (social.* DMs — inbox / conversation / sendMessage), and Firm (org
+  // chat — firm.chat / firm.post scoped to your organization). `messages` may
+  // still be supplied via props (previews/tests).
   messages: messagesProp,
   conversations: conversationsProp,
   firmMembers: firmMembersProp,
@@ -137,8 +167,13 @@ export default function ChatSystem({
   onVoiceToggle,
 }: ChatSystemProps) {
   const messages = useMemo(() => messagesProp ?? [], [messagesProp]);
-  const conversations = conversationsProp ?? [];
-  const firmMembers = firmMembersProp ?? [];
+  // Direct + Firm channel state (real backends; a caller prop always wins).
+  const [directConversations, setDirectConversations] = useState<Conversation[]>([]);
+  const [threadMessages, setThreadMessages] = useState<ChatMessage[]>([]);
+  const [firmContext, setFirmContext] = useState<{ members: FirmMember[]; messages: ChatMessage[]; orgName: string } | null>(null);
+  const conversations = conversationsProp ?? directConversations;
+  const firmMembers = firmMembersProp ?? (firmContext?.members ?? []);
+  const firmMessages = firmContext?.messages ?? [];
 
   // District channel: real ambient-chat backend.
   const [districtMessages, setDistrictMessages] = useState<ChatMessage[]>([]);
@@ -198,10 +233,80 @@ export default function ChatSystem({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, activeChannel]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    onSend?.(activeChannel, input.trim());
+  // Direct messages — real social.* backend (inbox / conversation / sendMessage).
+  const loadInbox = useCallback(async () => {
+    try {
+      const r = await lensRun<{ threads?: Array<Record<string, unknown>> }>('social', 'inbox', {});
+      const threads = r.data?.ok ? r.data.result?.threads : null;
+      if (Array.isArray(threads)) {
+        setDirectConversations(threads.map((t) => {
+          const lm = (t.lastMessage ?? {}) as Record<string, unknown>;
+          return {
+            id: String(t.threadKey ?? ''),
+            participantName: String(t.with ?? ''),
+            participantId: String(t.with ?? ''),
+            lastMessage: String(lm.body ?? ''),
+            lastTimestamp: fmtTime(lm.createdAt),
+            unreadCount: Number(t.unread ?? 0),
+            online: false,
+          };
+        }));
+      }
+    } catch { /* keep current */ }
+  }, []);
+  useEffect(() => { if (!conversationsProp) loadInbox(); }, [conversationsProp, loadInbox]);
+
+  // Load a thread's full message history when a conversation is opened.
+  useEffect(() => {
+    if (!selectedConvo) { setThreadMessages([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun<{ messages?: Array<Record<string, unknown>> }>('social', 'conversation', { threadKey: selectedConvo.id });
+        const msgs = r.data?.ok ? r.data.result?.messages : null;
+        if (!cancelled && Array.isArray(msgs)) setThreadMessages(msgs.map(adaptDm));
+      } catch { if (!cancelled) setThreadMessages([]); }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedConvo]);
+
+  // Firm/org chat — firm.chat resolves the caller's org roster + recent messages.
+  const loadFirm = useCallback(async () => {
+    try {
+      const r = await lensRun<{ firm?: { members?: Array<Record<string, unknown>>; messages?: Array<Record<string, unknown>>; orgName?: string } | null }>('firm', 'chat', {});
+      const firm = r.data?.ok ? r.data.result?.firm : null;
+      if (firm) {
+        setFirmContext({
+          orgName: String(firm.orgName ?? ''),
+          members: (firm.members ?? []).map((m) => ({ id: String(m.id ?? ''), name: String(m.name ?? ''), online: Boolean(m.online) })),
+          messages: (firm.messages ?? []).map(adaptOrg),
+        });
+      } else { setFirmContext(null); }
+    } catch { /* keep current */ }
+  }, []);
+  useEffect(() => { if (!firmMembersProp) loadFirm(); }, [firmMembersProp, loadFirm]);
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text) return;
     setInput('');
+    // Channels with a real in-panel backend send directly; others defer to onSend.
+    try {
+      if (activeChannel === 'direct' && selectedConvo) {
+        await lensRun('social', 'sendMessage', { to: selectedConvo.participantId, body: text });
+        const r = await lensRun<{ messages?: Array<Record<string, unknown>> }>('social', 'conversation', { threadKey: selectedConvo.id });
+        const msgs = r.data?.ok ? r.data.result?.messages : null;
+        if (Array.isArray(msgs)) setThreadMessages(msgs.map(adaptDm));
+        loadInbox();
+        return;
+      }
+      if (activeChannel === 'firm') {
+        await lensRun('firm', 'post', { body: text });
+        loadFirm();
+        return;
+      }
+    } catch { /* fall through to the onSend handler below */ }
+    onSend?.(activeChannel, text);
   };
 
   const handleEmote = (emote: EmoteName) => {
@@ -293,12 +398,17 @@ export default function ChatSystem({
             <span className="text-sm text-white font-medium">{selectedConvo.participantName}</span>
             {selectedConvo.online && <Circle size={8} className="fill-green-400 text-green-400" />}
           </div>
-          <div className="bg-white/5 rounded-lg px-3 py-2">
-            <p className="text-sm text-white/80">{selectedConvo.lastMessage}</p>
-            <div className="flex items-center gap-1 mt-1">
-              <span className="text-[10px] text-white/30">{selectedConvo.lastTimestamp}</span>
-              <CheckCheck size={10} className="text-blue-400" />
-            </div>
+          <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+            {threadMessages.length === 0 && (
+              <p className="text-center text-white/30 text-xs py-4">No messages yet</p>
+            )}
+            {threadMessages.map(msg => (
+              <div key={msg.id} className="bg-white/5 rounded-lg px-3 py-2">
+                <span className="text-xs font-medium text-cyan-400">{msg.sender}</span>
+                <p className="text-sm text-white/80 mt-0.5">{msg.content}</p>
+                <span className="text-[10px] text-white/30 mt-1 block">{msg.timestamp}</span>
+              </div>
+            ))}
           </div>
           <div ref={bottomRef} />
         </div>
@@ -315,7 +425,7 @@ export default function ChatSystem({
           {firmMembers.filter(m => m.online).length}/{firmMembers.length} online
         </span>
       </div>
-      {firmMembers.length === 0 && messages.length === 0 && (
+      {firmMembers.length === 0 && firmMessages.length === 0 && (
         <p className="text-center text-white/30 text-xs py-6">No firm activity</p>
       )}
       <div className="flex gap-1 mb-2">
@@ -328,7 +438,7 @@ export default function ChatSystem({
           </div>
         ))}
       </div>
-      {messages.slice(0, 3).map(msg => (
+      {firmMessages.slice(0, 8).map(msg => (
         <div key={msg.id} className="flex gap-2 items-start">
           <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white/60 shrink-0">
             {msg.sender.charAt(0)}
