@@ -636,6 +636,38 @@ export function getPlayersInCell(worldId, cellX, cellZ, cellSize = 50) {
   return out;
 }
 
+// Spontaneous gatherings — cluster the world's currently-present players into
+// `cellSize`-metre cells; any cell with >= minCount players is a "gathering".
+// Reads live in-memory presence (freshest), bounded by the number of online
+// users. Returns the Gathering shape the EventsGatherings panel renders.
+export function spontaneousGatherings(worldId, { cellSize = 50, minCount = 2, limit = 20 } = {}) {
+  if (!worldId) return [];
+  const cells = new Map(); // "cx:cz" -> { count, district, cx, cz }
+  for (const [, pos] of _userPositions) {
+    if (pos.worldId !== worldId) continue;
+    const cx = Math.floor((Number(pos.x) || 0) / cellSize);
+    const cz = Math.floor((Number(pos.z) || 0) / cellSize);
+    const key = `${cx}:${cz}`;
+    const cur = cells.get(key) || { count: 0, district: pos.districtId || null, cx, cz };
+    cur.count += 1;
+    if (!cur.district && pos.districtId) cur.district = pos.districtId;
+    cells.set(key, cur);
+  }
+  const out = [];
+  for (const [key, c] of cells) {
+    if (c.count < minCount) continue;
+    const location = c.district || `area ${c.cx},${c.cz}`;
+    out.push({
+      id: `gather_${worldId}_${key}`,
+      location,
+      playerCount: c.count,
+      description: `${c.count} players gathering at ${location}`,
+    });
+  }
+  out.sort((a, b) => b.playerCount - a.playerCount);
+  return out.slice(0, limit);
+}
+
 /**
  * Remove a user from the presence system (on disconnect / leave).
  * Persists their final position to SQLite before dropping them from

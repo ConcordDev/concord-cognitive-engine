@@ -124,9 +124,12 @@ export default function ChatSystem({
   districtId,
   channels = DEFAULT_CHANNELS,
   currentChannel: initialChannel = 'proximity',
-  // Proximity / direct / firm have no world-lens backend surface yet — start
-  // EMPTY (honest empty-state), never seed fabricated chatter.
-  // TODO: wire proximity/direct/firm channels to backend when an API exists.
+  // The District channel is wired to the real ambient-chat backend (below).
+  // Proximity needs the player's live position threaded into this panel; direct
+  // messages live in the social DM surface (/api/social/dm/*); "firm" (org) chat
+  // needs its own substrate. Those three are deferred, so they stay honest-empty
+  // here rather than mirror the district feed. `messages` may still be supplied
+  // via props (previews/tests).
   messages: messagesProp,
   conversations: conversationsProp,
   firmMembers: firmMembersProp,

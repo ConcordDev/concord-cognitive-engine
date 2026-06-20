@@ -75548,6 +75548,62 @@ register("spectator", "list_for_world", async (_ctx, input = {}) => {
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Active spectators on a world." });
 
+// World build-replay: assemble a ReplayRecording from the event_timeline_log
+// (migration 169), which the realtime emit pipeline auto-populates. Backs the
+// ReplaySpectator panel's timeline (the spectator COUNT is the macro above).
+register("replay", "recording_for_world", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId, limit = 200 } = input || {};
+  if (!worldId) return { ok: false, reason: "missing_worldId" };
+  try {
+    const CHANNELS = ["build", "place", "destroy", "weather", "disaster", "milestone", "validate"];
+    const ph = CHANNELS.map(() => "?").join(",");
+    const rows = db.prepare(
+      `SELECT channel, actor_id, payload_json, created_at
+         FROM event_timeline_log
+        WHERE world_id = ? AND channel IN (${ph})
+        ORDER BY created_at ASC
+        LIMIT ?`
+    ).all(worldId, ...CHANNELS, Math.min(Number(limit) || 200, 1000));
+    if (!rows.length) return { ok: true, worldId, recording: null };
+    const events = rows.map((r) => {
+      let payload = {};
+      try { payload = r.payload_json ? JSON.parse(r.payload_json) : {}; } catch { /* tolerate bad json */ }
+      const ev = {
+        timestamp: (r.created_at || 0) * 1000,
+        type: CHANNELS.includes(r.channel) ? r.channel : "milestone",
+        actorId: r.actor_id || "",
+        description: String(payload.summary || payload.description || payload.message || r.channel),
+      };
+      if (payload.position && typeof payload.position === "object") ev.position = payload.position;
+      return ev;
+    });
+    const first = rows[0].created_at || 0;
+    const last = rows[rows.length - 1].created_at || first;
+    const recording = {
+      id: `rec_${worldId}_${first}`,
+      worldId,
+      startTime: new Date(first * 1000).toISOString(),
+      endTime: new Date(last * 1000).toISOString(),
+      events,
+      duration: Math.max(0, (last - first) * 1000),
+    };
+    return { ok: true, worldId, recording };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "World build-replay recording assembled from event_timeline_log." });
+
+// Spontaneous gatherings: clusters of nearby currently-present players in a
+// world (>= 2 in a 50m cell). Backs the EventsGatherings panel's gatherings
+// section. Honest-empty when nobody's clustered.
+register("world", "gatherings", async (_ctx, input = {}) => {
+  const { worldId } = input || {};
+  if (!worldId) return { ok: false, reason: "missing_worldId" };
+  try {
+    const cp = await import("./lib/city-presence.js");
+    return { ok: true, worldId, gatherings: cp.spontaneousGatherings(worldId, {}) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Spontaneous co-presence gatherings (clusters of nearby players)." });
+
 // #11 Goddess broadcast.
 register("goddess", "compose_now", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };

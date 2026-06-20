@@ -45,11 +45,11 @@ interface ReplaySpectatorProps {
 }
 
 // ── Constants ──────────────────────────────────────────────────────
-// NOTE: There is no world build-replay/recording backend (no `replay` domain
-// or recorded-event-stream macro). The live spectator COUNT is real
-// (`spectator.list_for_world`); the replay timeline itself has no source, so
-// it stays empty until a recording backend exists.
-// TODO: wire the replay recording to backend once a world-replay domain exists.
+// The live spectator COUNT comes from `spectator.list_for_world`; the replay
+// timeline comes from `replay.recording_for_world`, which assembles a recording
+// from the event_timeline_log (build/place/destroy/weather/disaster/milestone).
+// Both are real backend reads; the timeline is honest-empty until the world has
+// logged build events.
 
 const SPEED_OPTIONS = [0.5, 1, 2, 4, 8];
 
@@ -96,8 +96,26 @@ export default function ReplaySpectator({
     return () => { cancelled = true; };
   }, [spectatorCountProp]);
 
-  // No replay-recording backend → null means "no replay available".
-  const activeReplay = replay;
+  // Real build-replay recording assembled from event_timeline_log
+  // (replay.recording_for_world). A caller-supplied `replay` prop always wins;
+  // otherwise we fetch. null = no recording yet (honest "no replay available").
+  const [fetchedReplay, setFetchedReplay] = useState<ReplayRecording | null>(null);
+  useEffect(() => {
+    if (replay) return; // caller supplied it
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun<{ recording?: ReplayRecording | null }>('replay', 'recording_for_world', { worldId: DEFAULT_WORLD_ID });
+        if (cancelled) return;
+        setFetchedReplay(r.data?.ok ? (r.data.result?.recording ?? null) : null);
+      } catch {
+        if (!cancelled) setFetchedReplay(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [replay]);
+
+  const activeReplay = replay ?? fetchedReplay;
   const duration = activeReplay?.duration ?? 0;
 
   const handlePlayPause = useCallback(() => {
