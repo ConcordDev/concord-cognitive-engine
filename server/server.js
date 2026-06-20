@@ -75634,14 +75634,18 @@ register("firm", "chat", async (ctx, _input = {}) => {
     const orgId = orgs[0].orgId;
     const org = orgLib.getOrganization(orgId);
     const cp = await import("./lib/city-presence.js");
-    const members = orgLib.getOrgMembers(orgId).map((m) => ({
-      id: m.userId,
-      name: m.userId,
-      online: !!cp.getUserPosition(m.userId),
-    }));
     const ocLib = await import("./lib/org-chat.js");
+    const rawMembers = orgLib.getOrgMembers(orgId);
     const messages = ocLib.listOrgChat(db, orgId, { limit: 30 });
-    return { ok: true, firm: { orgId, orgName: org?.name || orgId, members, messages } };
+    // Resolve display names for the roster + message authors in one lookup, so
+    // the panel shows "Marcus the Healer", not a raw user id.
+    const fp = await import("./lib/friend-presence.js");
+    const ids = [...new Set([...rawMembers.map((m) => m.userId), ...messages.map((m) => m.user_id)])];
+    const display = fp.resolveUserDisplay(db, ids);
+    const nameOf = (id) => display[id]?.displayName || id;
+    const members = rawMembers.map((m) => ({ id: m.userId, name: nameOf(m.userId), online: !!cp.getUserPosition(m.userId) }));
+    const msgs = messages.map((m) => ({ ...m, user_name: nameOf(m.user_id) }));
+    return { ok: true, firm: { orgId, orgName: org?.name || orgId, members, messages: msgs } };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Caller's firm/org chat context: roster + recent messages." });
 

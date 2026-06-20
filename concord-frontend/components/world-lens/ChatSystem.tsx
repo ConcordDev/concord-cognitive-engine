@@ -121,7 +121,7 @@ function fmtTime(v: unknown): string {
 function adaptDm(m: Record<string, unknown>): ChatMessage {
   return {
     id: String(m.id ?? ''),
-    sender: String(m.from ?? 'Player'),
+    sender: String(m.fromName ?? m.from ?? 'Player'),
     senderId: String(m.from ?? ''),
     content: String(m.body ?? ''),
     timestamp: fmtTime(m.createdAt),
@@ -132,7 +132,7 @@ function adaptDm(m: Record<string, unknown>): ChatMessage {
 function adaptOrg(m: Record<string, unknown>): ChatMessage {
   return {
     id: String(m.id ?? ''),
-    sender: String(m.user_id ?? 'Player'),
+    sender: String(m.user_name ?? m.user_id ?? 'Player'),
     senderId: String(m.user_id ?? ''),
     content: String(m.body ?? ''),
     timestamp: fmtTime(m.created_at),
@@ -243,7 +243,7 @@ export default function ChatSystem({
           const lm = (t.lastMessage ?? {}) as Record<string, unknown>;
           return {
             id: String(t.threadKey ?? ''),
-            participantName: String(t.with ?? ''),
+            participantName: String(t.withName ?? t.with ?? ''),
             participantId: String(t.with ?? ''),
             lastMessage: String(lm.body ?? ''),
             lastTimestamp: fmtTime(lm.createdAt),
