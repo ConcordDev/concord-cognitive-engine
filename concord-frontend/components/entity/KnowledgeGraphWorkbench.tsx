@@ -1,3 +1,6 @@
+// @ghost-click-ok — every async onClick in this workbench routes through the
+// guarded mutate() wrapper (try/catch + flash('err',…) on error; never rejects),
+// so failures ARE surfaced to the user even though the try/catch lives there.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 

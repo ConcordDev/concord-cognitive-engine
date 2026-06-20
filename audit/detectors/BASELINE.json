@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-06-19T23:31:44.483Z",
+  "generatedAt": "2026-06-20T13:44:36.056Z",
   "totals": {
     "critical": 0,
     "high": 0,
-    "medium": 53,
-    "low": 21,
+    "medium": 41,
+    "low": 15,
     "info": 31,
-    "total": 105
+    "total": 87
   },
   "detectorCount": 30,
   "fingerprints": {
@@ -33,7 +33,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "835 macros · 0 dead · 411 single-caller · 1 popular · 350 dispatcher-reach (1 runtime-live, 349 retirement-candidates)"
+      "message": "837 macros · 0 dead · 411 single-caller · 1 popular · 352 dispatcher-reach (1 runtime-live, 351 retirement-candidates)"
     },
     "c862d63d8e4a71b1": {
       "detector": "macro-usage",
@@ -97,7 +97,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 7291 files; flagged 0"
+      "message": "Scanned 7292 files; flagged 0"
     },
     "6954d635fa3b8074": {
       "detector": "performance-hotspot",
@@ -105,7 +105,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3504 server files"
+      "message": "Scanned 3505 server files"
     },
     "3033f27d19bfc5f6": {
       "detector": "performance-hotspot",
@@ -249,7 +249,7 @@
       "severity": "info",
       "kind": "architectural",
       "location": null,
-      "message": "Scanned 3504 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
+      "message": "Scanned 3505 server modules · 0 hubs · 0 hub-of-hubs · 0 cycles"
     },
     "8124c3bcdf890d24": {
       "detector": "architectural-hub",
@@ -299,54 +299,6 @@
       "location": "concord-frontend/components/studio/MixerPeekStrip.tsx:130",
       "message": "Production reference to identifier suggesting fake data: fakeLevel"
     },
-    "22991ca68622d91d": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "concord-frontend/components/world-lens/ChatSystem.tsx:129",
-      "message": "TODO marker in production: wire proximity/direct/firm channels to backend when an API exists."
-    },
-    "048c4499f2633edb": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "concord-frontend/components/world-lens/DigitalTwinDashboard.tsx:452",
-      "message": "TODO marker in production: populate from a real building/DTU list macro */}"
-    },
-    "64fd8f22f11b4e33": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "concord-frontend/components/world-lens/EventsGatherings.tsx:145",
-      "message": "TODO marker in production: wire spontaneous gatherings to backend (no co-presence cluster API exists yet)"
-    },
-    "2435dba302dff58e": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "concord-frontend/components/world-lens/FederationPanel.tsx:252",
-      "message": "TODO marker in production: wire to backend (no federation cross-instance search macro exists)."
-    },
-    "68cb43d5c01a0d07": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "concord-frontend/components/world-lens/PlayerProfile.tsx:96",
-      "message": "TODO marker in production: wire to backend — no player-profile macro/route currently returns the"
-    },
-    "60820685fd837911": {
-      "detector": "fake-data",
-      "id": "todo_in_production",
-      "severity": "low",
-      "kind": "static",
-      "location": "concord-frontend/components/world-lens/ReplaySpectator.tsx:52",
-      "message": "TODO marker in production: wire the replay recording to backend once a world-replay domain exists."
-    },
     "e8ca0dab4cb5f073": {
       "detector": "fake-data",
       "id": "fake_data_summary",
@@ -379,14 +331,6 @@
       "location": "concord-frontend/components/common/MapView.tsx:76",
       "message": "addEventListener('click', ...) has no matching removeEventListener in this file."
     },
-    "855baae8e73ff27a": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/observe/ObservePlatform.tsx:577",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
-    },
     "ecb36442fb396cb9": {
       "detector": "resource-leak",
       "id": "listener_without_remove",
@@ -394,14 +338,6 @@
       "kind": "static",
       "location": "concord-frontend/components/offline/ServiceWorkerPanel.tsx:91",
       "message": "addEventListener('message', ...) has no matching removeEventListener in this file."
-    },
-    "6538149a821e0079": {
-      "detector": "resource-leak",
-      "id": "setinterval_without_clear",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/sentinel/SentinelMonitors.tsx:170",
-      "message": "setInterval call without any clearInterval in the same file — under load this leaks the timer + closure."
     },
     "f87fb53706b5c488": {
       "detector": "resource-leak",
@@ -587,54 +523,6 @@
       "location": "concord-frontend/components/space/VisiblePassPredictor.tsx:81",
       "message": "Magic timeout 10000ms — consider env-driven"
     },
-    "54a4e092c1c86795": {
-      "detector": "frontend-ghost-click",
-      "id": "click_handler_no_error_path",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/entity/KnowledgeGraphWorkbench.tsx:267",
-      "message": "Async onClick issues a request without try/catch or .catch() — a server error is silently swallowed; the button looks dead."
-    },
-    "2cea4103b8a65fd9": {
-      "detector": "frontend-ghost-click",
-      "id": "click_handler_no_error_path",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/entity/KnowledgeGraphWorkbench.tsx:300",
-      "message": "Async onClick issues a request without try/catch or .catch() — a server error is silently swallowed; the button looks dead."
-    },
-    "c731c44614309f8c": {
-      "detector": "frontend-ghost-click",
-      "id": "click_handler_no_error_path",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/entity/KnowledgeGraphWorkbench.tsx:403",
-      "message": "Async onClick issues a request without try/catch or .catch() — a server error is silently swallowed; the button looks dead."
-    },
-    "26038bae00884967": {
-      "detector": "frontend-ghost-click",
-      "id": "click_handler_no_error_path",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/entity/KnowledgeGraphWorkbench.tsx:529",
-      "message": "Async onClick issues a request without try/catch or .catch() — a server error is silently swallowed; the button looks dead."
-    },
-    "1780fd37f14f3fad": {
-      "detector": "frontend-ghost-click",
-      "id": "click_handler_no_error_path",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/entity/KnowledgeGraphWorkbench.tsx:691",
-      "message": "Async onClick issues a request without try/catch or .catch() — a server error is silently swallowed; the button looks dead."
-    },
-    "582e6d3d1a6519bc": {
-      "detector": "frontend-ghost-click",
-      "id": "click_handler_no_error_path",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/entity/KnowledgeGraphWorkbench.tsx:736",
-      "message": "Async onClick issues a request without try/catch or .catch() — a server error is silently swallowed; the button looks dead."
-    },
     "f126c7fc84fc13b1": {
       "detector": "dead-event-listener",
       "id": "dead_event_dispatch",
@@ -787,45 +675,13 @@
       "location": "concord-frontend/app/lenses/ux-suite/page.tsx:136",
       "message": "Lens page returns null with no <EmptyState> / <Skeleton> / <ErrorBoundary> / loading guard — user lands on a blank screen."
     },
-    "970f65dded6b785f": {
-      "detector": "ux-modal-no-escape",
-      "id": "modal_no_escape",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/desert/page.tsx:307",
-      "message": "<TerrainOverlay> has no onClose / onOpenChange / onDismiss / Esc-handler — opening it traps the user."
-    },
-    "ad4773c0556640e3": {
-      "detector": "ux-modal-no-escape",
-      "id": "modal_no_escape",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/layout.tsx:165",
-      "message": "<ConKayOverlay> has no onClose / onOpenChange / onDismiss / Esc-handler — opening it traps the user."
-    },
-    "a8e66c75bf49de6a": {
-      "detector": "ux-modal-no-escape",
-      "id": "modal_no_escape",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/sandbox/page.tsx:309",
-      "message": "<TelemetryOverlay> has no onClose / onOpenChange / onDismiss / Esc-handler — opening it traps the user."
-    },
-    "c1b76a7b048be39e": {
-      "detector": "ux-modal-no-escape",
-      "id": "modal_no_escape",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/landscaping/GardenStudio.tsx:135",
-      "message": "<PhotoOverlay> has no onClose / onOpenChange / onDismiss / Esc-handler — opening it traps the user."
-    },
     "54bf106d12062895": {
       "detector": "command-injection",
       "id": "command_injection_summary",
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 29 child_process-importing file(s) of 7341; flagged 1"
+      "message": "Scanned 29 child_process-importing file(s) of 7342; flagged 1"
     },
     "161565490a9c5dd9": {
       "detector": "command-injection",
