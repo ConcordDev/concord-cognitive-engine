@@ -539,7 +539,7 @@ function SyntheticsTab() {
   const [url, setUrl] = useState('https://');
   const [name, setName] = useState('');
   const [expectStatus, setExpectStatus] = useState('200');
-  const [interval, setInterval] = useState('5');
+  const [intervalMin, setIntervalMin] = useState('5');
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
@@ -552,7 +552,7 @@ function SyntheticsTab() {
   const save = async () => {
     if (!/^https?:\/\/.+/.test(url)) { setNotice({ kind: 'err', text: 'Valid URL required.' }); return; }
     setBusy('save');
-    const d = await run('syntheticSave', { url: url.trim(), name: name.trim() || url.trim(), expectStatus: parseInt(expectStatus, 10) || 200, intervalMinutes: parseInt(interval, 10) || 5 });
+    const d = await run('syntheticSave', { url: url.trim(), name: name.trim() || url.trim(), expectStatus: parseInt(expectStatus, 10) || 200, intervalMinutes: parseInt(intervalMin, 10) || 5 });
     setBusy(null);
     if (d.ok) { setNotice({ kind: 'ok', text: 'Check created.' }); setName(''); refresh(); }
     else setNotice({ kind: 'err', text: d.error || 'save failed' });
@@ -574,7 +574,7 @@ function SyntheticsTab() {
           <input className={`${inputCls} flex-1 min-w-[200px]`} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/health" />
           <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="name (optional)" />
           <input className={`${inputCls} w-20`} value={expectStatus} onChange={(e) => setExpectStatus(e.target.value)} placeholder="status" />
-          <input className={`${inputCls} w-24`} value={interval} onChange={(e) => setInterval(e.target.value)} placeholder="interval(m)" />
+          <input className={`${inputCls} w-24`} value={intervalMin} onChange={(e) => setIntervalMin(e.target.value)} placeholder="interval(m)" />
           <button className={btnCls} disabled={busy === 'save'} onClick={save}><Plus className="w-3 h-3" /> Create</button>
         </div>
         <Notice n={notice} />

@@ -56,7 +56,7 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
 
   const [name, setName] = useState('');
   const [minSeverity, setMinSeverity] = useState<(typeof SEVERITIES)[number]>('medium');
-  const [interval, setInterval] = useState(60);
+  const [intervalMin, setIntervalMin] = useState(60);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,7 +80,7 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
     await lensRun('sentinel', 'monitor.create', {
       name: name.trim(),
       minSeverity,
-      intervalMinutes: interval,
+      intervalMinutes: intervalMin,
     });
     setName('');
     await load();
@@ -166,8 +166,8 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
                   type="number"
                   min={5}
                   max={1440}
-                  value={interval}
-                  onChange={(e) => setInterval(Number(e.target.value))}
+                  value={intervalMin}
+                  onChange={(e) => setIntervalMin(Number(e.target.value))}
                   className="mt-1 w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
                 />
               </label>

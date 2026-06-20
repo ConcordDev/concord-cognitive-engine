@@ -162,6 +162,7 @@ export default function LensLayout({ children }: { children: React.ReactNode }) 
       <CommandPalette />
       {/* ConKay — summonable on ANY lens (⌘/Ctrl+J), operates the host lens'
           real macros. The cross-lens "take over and operate" surface. */}
+      {/* @modal-escape-ok: ConKayOverlay manages its own Escape-to-close (ConKayOverlay.tsx:168). */}
       <ConKayOverlay />
       {/* GlobalPanelHost — summon ANY registered panel as a modal over any lens
           (lib/panel-dispatcher openPanel + command palette). The ad-hoc half of

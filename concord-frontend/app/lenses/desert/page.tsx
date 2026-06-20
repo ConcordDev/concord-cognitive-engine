@@ -304,6 +304,7 @@ export default function DesertLensPage() {
       {activeMode === 'Heat & UV' && <HeatUvAlerts />}
       {activeMode === 'Resource Map' && <ResourceNodeMap />}
       {activeMode === 'Solar' && <SolarCalculator />}
+      {/* @modal-escape-ok: TerrainOverlay is an in-page map view selected by activeMode, not a trapping modal dialog. */}
       {activeMode === 'Terrain' && <TerrainOverlay />}
       {activeMode === 'Survival Kit' && <SurvivalKit />}
 

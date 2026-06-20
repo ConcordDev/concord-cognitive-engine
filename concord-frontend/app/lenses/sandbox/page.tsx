@@ -306,6 +306,7 @@ function CombatSandboxInner() {
       <div className="absolute bottom-3 left-3 top-14 z-10 w-72 space-y-3 overflow-y-auto pr-1">
         <LoadoutPicker onApply={setLoadout} />
         <DummyPresetPanel onApply={applyDummyConfig} />
+        {/* @modal-escape-ok: TelemetryOverlay is a HUD on the control rail, not a trapping modal dialog. */}
         <TelemetryOverlay />
         <ReplayPanel controllerRef={replayController} onPlayFrame={onPlayFrame} />
       </div>

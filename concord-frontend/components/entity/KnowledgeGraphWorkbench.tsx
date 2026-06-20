@@ -78,6 +78,12 @@ export function KnowledgeGraphWorkbench() {
   }, []);
 
   // Generic mutation wrapper: run macro → refresh → flash.
+  // @ghost-click-ok — every async onClick in this workbench routes its request
+  // through this guarded wrapper: try/catch + flash('err', …) on both an error
+  // response and a network throw, and it never rejects (always returns boolean).
+  // So the handlers DO surface failures to the user even though the try/catch
+  // lives here rather than inline. The ghost-click detector flags `onClick={async}`
+  // without an inline try/catch and can't trace into the wrapper — this attests it.
   const mutate = useCallback(async (
     name: string,
     params: Record<string, unknown>,
