@@ -2,7 +2,7 @@
 // helper behind the world.gatherings macro / EventsGatherings panel.
 import { test } from "node:test";
 import assert from "node:assert";
-import { updateUserPosition, spontaneousGatherings } from "../lib/city-presence.js";
+import { updateUserPosition, spontaneousGatherings, getPlayersNear } from "../lib/city-presence.js";
 
 test("spontaneousGatherings clusters nearby present players (>=2 in a 50m cell)", () => {
   const W = `test-gather-world-${Date.now()}`;
@@ -28,4 +28,16 @@ test("spontaneousGatherings clusters nearby present players (>=2 in a 50m cell)"
 test("spontaneousGatherings is honest-empty for an empty / unknown world", () => {
   assert.deepEqual(spontaneousGatherings(`nobody-here-${Date.now()}`, {}), []);
   assert.deepEqual(spontaneousGatherings("", {}), []);
+});
+
+test("getPlayersNear returns players within the cell window, excludes far ones", () => {
+  const W = `test-near-world-${Date.now()}`;
+  updateUserPosition("n_u1", { worldId: W, x: 100, y: 0, z: 100 });    // cell (2,2)
+  updateUserPosition("n_u2", { worldId: W, x: 140, y: 0, z: 90 });     // cell (2,1) — adjacent
+  updateUserPosition("n_u3", { worldId: W, x: 1000, y: 0, z: 1000 });  // cell (20,20) — far
+  const near = getPlayersNear(W, 110, 110, { radiusCells: 1 });        // around cell (2,2)
+  assert.ok(near.includes("n_u1"), "same-cell player is near");
+  assert.ok(near.includes("n_u2"), "adjacent-cell player is near");
+  assert.ok(!near.includes("n_u3"), "far player is excluded");
+  assert.deepEqual(getPlayersNear("", 0, 0), [], "no world → empty");
 });

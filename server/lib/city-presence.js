@@ -668,6 +668,23 @@ export function spontaneousGatherings(worldId, { cellSize = 50, minCount = 2, li
   return out.slice(0, limit);
 }
 
+// Proximity — userIds of currently-present players within `radiusCells` of the
+// point (x,z) in a world. radiusCells=1 over 50m cells = a 3×3 window (~150m).
+// Powers proximity chat: "who is physically near me right now."
+export function getPlayersNear(worldId, x, z, { cellSize = 50, radiusCells = 1 } = {}) {
+  if (!worldId) return [];
+  const ccx = Math.floor((Number(x) || 0) / cellSize);
+  const ccz = Math.floor((Number(z) || 0) / cellSize);
+  const out = [];
+  for (const [userId, pos] of _userPositions) {
+    if (pos.worldId !== worldId) continue;
+    const px = Math.floor((Number(pos.x) || 0) / cellSize);
+    const pz = Math.floor((Number(pos.z) || 0) / cellSize);
+    if (Math.abs(px - ccx) <= radiusCells && Math.abs(pz - ccz) <= radiusCells) out.push(userId);
+  }
+  return out;
+}
+
 /**
  * Remove a user from the presence system (on disconnect / leave).
  * Persists their final position to SQLite before dropping them from

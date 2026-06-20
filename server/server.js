@@ -49958,6 +49958,20 @@ app.get("/api/ambient-chat/list", asyncHandler(async (req, res) => {
   res.json({ ok: true, messages: listRecentInDistrict(db, worldId, districtId, { limit: Number(req.query.limit) || 15 }) });
 }));
 
+// Proximity chat — recent chatter from players PHYSICALLY near the caller (a
+// 3×3 50m-cell window, ~150m, around their live position), regardless of
+// district. The client passes its avatar's x/z (window.__concordiaPlayerPos).
+app.get("/api/ambient-chat/proximity", asyncHandler(async (req, res) => {
+  const worldId = String(req.query.worldId || "");
+  if (!worldId) return res.status(400).json({ ok: false, error: "worldId_required" });
+  const x = Number(req.query.x) || 0;
+  const z = Number(req.query.z) || 0;
+  const { listRecentByUsers } = await import("./lib/ambient-chat.js");
+  const cp = await import("./lib/city-presence.js");
+  const nearby = cp.getPlayersNear(worldId, x, z, { radiusCells: 1 });
+  res.json({ ok: true, messages: listRecentByUsers(db, worldId, nearby, { limit: Number(req.query.limit) || 20 }) });
+}));
+
 // ── Phase BA1 — player housing (wire land_claims → building → rooms) ───
 
 app.post("/api/housing/claim", requireAuth(), asyncHandler(async (req, res) => {

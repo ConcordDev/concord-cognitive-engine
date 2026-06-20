@@ -70,6 +70,26 @@ export function listRecentInDistrict(db, worldId, districtId, opts = {}) {
   } catch { return []; }
 }
 
+// Recent ambient messages authored by a given set of users in a world — across
+// districts. Powers proximity chat: the caller resolves who is physically
+// nearby (city-presence#getPlayersNear) and asks for their recent chatter.
+export function listRecentByUsers(db, worldId, userIds, opts = {}) {
+  if (!db || !worldId || !Array.isArray(userIds) || userIds.length === 0) return [];
+  try {
+    const limit = Math.max(1, Math.min(100, opts.limit || 20));
+    const ids = userIds.slice(0, 200); // bound the IN-list
+    const now = Math.floor(Date.now() / 1000);
+    const ph = ids.map(() => "?").join(",");
+    return db.prepare(`
+      SELECT id, user_id, body, posted_at, district_id
+      FROM ambient_chat_messages
+      WHERE world_id = ? AND expires_at > ? AND user_id IN (${ph})
+      ORDER BY posted_at DESC, rowid DESC
+      LIMIT ?
+    `).all(worldId, now, ...ids, limit);
+  } catch { return []; }
+}
+
 export function sweepExpiredAmbientChat(db) {
   if (!db) return { ok: false };
   try {

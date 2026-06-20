@@ -124,12 +124,11 @@ export default function ChatSystem({
   districtId,
   channels = DEFAULT_CHANNELS,
   currentChannel: initialChannel = 'proximity',
-  // The District channel is wired to the real ambient-chat backend (below).
-  // Proximity needs the player's live position threaded into this panel; direct
-  // messages live in the social DM surface (/api/social/dm/*); "firm" (org) chat
-  // needs its own substrate. Those three are deferred, so they stay honest-empty
-  // here rather than mirror the district feed. `messages` may still be supplied
-  // via props (previews/tests).
+  // The District + Proximity channels are wired to real ambient-chat backends
+  // (District = same-district feed; Proximity = players physically near your
+  // avatar, via window.__concordiaPlayerPos). Direct messages live in the social
+  // DM surface (/api/social/dm/*) and "firm" (org) chat needs its own substrate —
+  // those two stay honest-empty here. `messages` may still be supplied via props.
   messages: messagesProp,
   conversations: conversationsProp,
   firmMembers: firmMembersProp,
@@ -159,6 +158,32 @@ export default function ChatSystem({
     })();
     return () => { cancelled = true; };
   }, [worldId, districtId]);
+
+  // Proximity channel: chatter from players PHYSICALLY near the avatar. Reads the
+  // live position (window.__concordiaPlayerPos, set by AvatarSystem3D) and polls
+  // the proximity endpoint as the player moves. Honest-empty when alone.
+  const [proximityMessages, setProximityMessages] = useState<ChatMessage[]>([]);
+  useEffect(() => {
+    if (messagesProp) return; // caller supplied messages — respect them
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const wid = worldId || 'concordia-hub';
+        const pos = (typeof window !== 'undefined'
+          ? (window as { __concordiaPlayerPos?: { x: number; z: number } }).__concordiaPlayerPos
+          : null) || { x: 0, z: 0 };
+        const r = await fetch(
+          `/api/ambient-chat/proximity?worldId=${encodeURIComponent(wid)}&x=${pos.x}&z=${pos.z}`,
+          { credentials: 'include' },
+        ).then((res) => (res.ok ? res.json() : null)).catch(() => null);
+        const rows = Array.isArray(r?.messages) ? r.messages : [];
+        if (!cancelled) setProximityMessages(rows.map(adaptAmbient));
+      } catch { if (!cancelled) setProximityMessages([]); }
+    };
+    tick();
+    const id = window.setInterval(tick, 6000);
+    return () => { cancelled = true; window.clearInterval(id); };
+  }, [worldId, messagesProp]);
 
   const [activeChannel, setActiveChannel] = useState<ChannelType>(initialChannel);
   const [input, setInput] = useState('');
@@ -200,10 +225,10 @@ export default function ChatSystem({
         <Radio size={12} />
         <span>~15 tile radius</span>
       </div>
-      {messages.length === 0 && (
+      {proximityMessages.length === 0 && (
         <p className="text-center text-white/30 text-xs py-6">No one is talking nearby</p>
       )}
-      {messages.map(msg => (
+      {proximityMessages.map(msg => (
         <div key={msg.id} className="flex gap-2 items-start">
           <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white/60 shrink-0">
             {msg.sender.charAt(0)}
