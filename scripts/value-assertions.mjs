@@ -22,7 +22,7 @@ const eqSet=(a,b)=>Array.isArray(a)&&a.length===b.length&&[...a].sort((x,y)=>x-y
 let cookie = '';
 async function auth() {
   const u = 'va' + Date.now().toString().slice(-8);
-  const cred = { username: u, email: `${u}@example.com`, password: 'ValueAssert!2026' };
+  const cred = { username: u, email: `${u}@example.com`, password: 'ValueAssert!2026', dateOfBirth: '1990-01-01' };
   const h = { 'content-type':'application/json', 'user-agent':UA, 'origin':BASE };
   const reg = await fetch(`${BASE}/api/auth/register`, { method:'POST', headers:h, body:JSON.stringify(cred) });
   const setC = (resp) => { const sc = resp.headers.get('set-cookie'); if (sc) cookie = sc.split(',').map(s=>s.split(';')[0].trim()).filter(c=>/concord_(auth|refresh)/.test(c)).join('; ') || cookie; };

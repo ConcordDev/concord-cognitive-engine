@@ -109,7 +109,7 @@ function seedCreatures(worlds, perWorld) {
 
 async function registerBot(i) {
   const s = Date.now().toString(36) + i;
-  const r = await jfetch("/api/auth/register", { method: "POST", body: JSON.stringify({ email: `wb_${s}@ex.com`, password: "WorldBot1234!", username: `wb_${s}`.slice(0, 20) }) });
+  const r = await jfetch("/api/auth/register", { method: "POST", body: JSON.stringify({ email: `wb_${s}@ex.com`, password: "WorldBot1234!", username: `wb_${s}`.slice(0, 20), dateOfBirth: "1990-01-01" }) });
   return r.json?.token || null;
 }
 

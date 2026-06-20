@@ -35,7 +35,7 @@ async function api(method, path, body, token) {
 async function register() {
   const u = `playtest_${Date.now()}_${Math.floor(Math.random() * 1e4)}`;
   // Real public endpoint is /api/auth/register (not /signup).
-  const r = await api("POST", "/api/auth/register", { username: u, password: "Playtest-pw-123!", email: `${u}@playtest.local` });
+  const r = await api("POST", "/api/auth/register", { username: u, password: "Playtest-pw-123!", email: `${u}@playtest.local`, dateOfBirth: "1990-01-01" });
   return r.token || r.accessToken || r.user?.token || r.data?.token || null;
 }
 

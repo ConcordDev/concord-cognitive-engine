@@ -33,8 +33,8 @@ const API_TIMEOUT_MS = 60_000;
 // Unique test data per run
 const TS = Date.now();
 const TEST_USERS = [
-  { username: `parity_a_${TS}`, email: `parity_a_${TS}@test.local`, password: 'ParityTest_12345!' },
-  { username: `parity_b_${TS}`, email: `parity_b_${TS}@test.local`, password: 'ParityTest_67890!' },
+  { username: `parity_a_${TS}`, email: `parity_a_${TS}@test.local`, password: 'ParityTest_12345!', dateOfBirth: '1990-01-01' },
+  { username: `parity_b_${TS}`, email: `parity_b_${TS}@test.local`, password: 'ParityTest_67890!', dateOfBirth: '1990-01-01' },
 ];
 
 async function startServer() {
@@ -213,6 +213,7 @@ describe('Storage Parity: Auth Operations', () => {
         username: `concurrent_${TS}_${i}`,
         email: `concurrent_${TS}_${i}@test.local`,
         password: 'ConcurrentTest_123!',
+        dateOfBirth: '1990-01-01',
       };
       return api('POST', '/api/auth/register', user);
     });

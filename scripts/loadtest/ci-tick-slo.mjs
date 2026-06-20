@@ -56,7 +56,7 @@ async function metrics() {
 
 async function register(i) {
   const s = Date.now().toString(36) + i;
-  const r = await jfetch("/api/auth/register", { method: "POST", body: JSON.stringify({ email: `slo_${s}@ex.com`, password: "CiTickSlo1234!", username: `slo_${s}`.slice(0, 20) }) });
+  const r = await jfetch("/api/auth/register", { method: "POST", body: JSON.stringify({ email: `slo_${s}@ex.com`, password: "CiTickSlo1234!", username: `slo_${s}`.slice(0, 20), dateOfBirth: "1990-01-01" }) });
   return r.json?.token || null;
 }
 

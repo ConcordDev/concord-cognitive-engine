@@ -47,7 +47,8 @@ async function provisionOne(i) {
   const password = `LoadTest!${RUN}${i}aA`;
 
   // Try register; if the username/email already exists, fall back to login.
-  let r = await post('/api/auth/register', { username, email, password });
+  // dateOfBirth is required by the 18+ age gate — use a fixed adult date.
+  let r = await post('/api/auth/register', { username, email, password, dateOfBirth: '1990-01-01' });
   let token = r.json?.token;
   if (!token) {
     const l = await post('/api/auth/login', { email, password });

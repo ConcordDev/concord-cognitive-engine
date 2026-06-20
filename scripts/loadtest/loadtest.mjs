@@ -66,7 +66,7 @@ async function registerUser(i) {
   const stamp = Date.now().toString(36) + i;
   const r = await timedFetch("/api/auth/register", {
     method: "POST",
-    body: JSON.stringify({ email: `lt_${stamp}@ex.com`, password: "LoadTest1234!", username: `lt_${stamp}`.slice(0, 20) }),
+    body: JSON.stringify({ email: `lt_${stamp}@ex.com`, password: "LoadTest1234!", username: `lt_${stamp}`.slice(0, 20), dateOfBirth: "1990-01-01" }),
   });
   try { const j = JSON.parse(r.body); return j?.token || null; } catch { return null; }
 }

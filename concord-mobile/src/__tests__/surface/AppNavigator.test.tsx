@@ -227,6 +227,7 @@ describe('AppNavigator', () => {
       EmergentEventFeed: true,
       PersonalBeat: true,
     };
-    expect(Object.keys(stackKeys)).toHaveLength(22);
+    // 21 after BuyCoins was removed (in-app purchasing stripped for App Store).
+    expect(Object.keys(stackKeys)).toHaveLength(21);
   });
 });

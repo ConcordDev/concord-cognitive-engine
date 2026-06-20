@@ -386,8 +386,11 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
   const entry = {
     cityId,
     // Phase M — track per-world presence so getWorldUserCount /
-    // getPlayersInCell / soft-cap pooling can scope correctly.
-    worldId: worldId ?? prev?.worldId ?? null,
+    // getPlayersInCell / soft-cap pooling can scope correctly. Movement paths
+    // (server.js / routes/world.js) pass cityId but not worldId, so fall back to
+    // cityId — in Concordia the city id IS the world id (e.g. "concordia-hub").
+    // Without this, getPlayersNear / spontaneousGatherings filter out everyone.
+    worldId: worldId ?? prev?.worldId ?? cityId ?? null,
     districtId: districtId ?? prev?.districtId ?? null,
     x,
     y,
