@@ -152,6 +152,25 @@ export default function DigitalTwinDashboard() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Populate the "Source DTU" picker from the user's own DTUs (the entities a
+  // twin can mirror) via the dtu.list macro. Honest-empty if none / not signed in.
+  const [sourceOptions, setSourceOptions] = useState<Array<{ id: string; label: string }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await lensRun<{ dtus?: Array<{ id?: string; title?: string }> }>('dtu', 'list', { limit: 50, mine: true });
+      if (cancelled) return;
+      const rows = res.data?.result?.dtus;
+      if (Array.isArray(rows)) {
+        setSourceOptions(
+          rows.map((d) => ({ id: String(d.id ?? ''), label: String(d.title ?? d.id ?? 'DTU').slice(0, 60) }))
+            .filter((o) => o.id),
+        );
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [selectedTwinId, setSelectedTwinId] = useState<string | null>(null);
   const [view, setView] = useState<'grid' | 'detail' | 'create'>('grid');
   const [createForm, setCreateForm] = useState({
@@ -449,7 +468,9 @@ export default function DigitalTwinDashboard() {
             className="w-full px-3 py-2 text-xs bg-white/5 border border-white/10 rounded-lg outline-none focus:border-cyan-500/50"
           >
             <option value="">Select a DTU...</option>
-            {/* TODO: populate from a real building/DTU list macro */}
+            {sourceOptions.map((o) => (
+              <option key={o.id} value={o.id}>{o.label}</option>
+            ))}
           </select>
         </div>
 
