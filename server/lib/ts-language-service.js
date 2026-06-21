@@ -258,10 +258,24 @@ export function outline(files, path) {
   if (!svc) return null;
   try {
     const content = files.get(path)?.content || "";
+    const lines = String(content).split("\n");
     const items = svc.ls.getNavigationBarItems(path);
     const symbols = [];
     const seen = new Set();
-    const KIND_MAP = { method: "function", function: "function", class: "class", interface: "interface", type: "type", enum: "enum", const: "variable", let: "variable", var: "variable", property: "property", "local class": "class", module: "module", alias: "type" };
+    // Methods/accessors keep their `method` kind (an editor shows the method
+    // icon, not the plain function icon). A `const`/`let`/`var` bound to an
+    // arrow or function expression is a callable, so report it as a function;
+    // otherwise it's a variable.
+    const KIND_MAP = { method: "method", getter: "method", setter: "method", function: "function", class: "class", interface: "interface", type: "type", enum: "enum", const: "variable", let: "variable", var: "variable", property: "property", "local class": "class", module: "module", alias: "type" };
+    const ARROW_OR_FN_INIT = /=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>|=\s*(?:async\s+)?function\b/;
+    const refineKind = (n, line) => {
+      const mapped = KIND_MAP[n.kind] || n.kind || "symbol";
+      if (mapped === "variable") {
+        const text = lines[line - 1] || "";
+        if (ARROW_OR_FN_INIT.test(text)) return "function";
+      }
+      return mapped;
+    };
     const walk = (nodes, depth) => {
       for (const n of nodes || []) {
         if (n.text === "<global>") { walk(n.childItems, depth); continue; }
@@ -270,7 +284,7 @@ export function outline(files, path) {
         const key = `${n.text}:${lc.line}`;
         if (!seen.has(key)) {
           seen.add(key);
-          symbols.push({ name: n.text, kind: KIND_MAP[n.kind] || n.kind || "symbol", line: lc.line, depth });
+          symbols.push({ name: n.text, kind: refineKind(n, lc.line), line: lc.line, depth });
         }
         if (n.childItems && depth < 4) walk(n.childItems, depth + 1);
       }

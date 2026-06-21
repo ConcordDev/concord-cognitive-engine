@@ -1639,9 +1639,24 @@ Rules:
       // Style heuristics (debugger/console/var/eqeqeq/brackets) ALWAYS run; for
       // TS/JS we layer real tsc semantic + syntactic diagnostics (type errors,
       // undefined symbols, etc.) on top.
-      for (const p of analyzeFile(path, files.get(path).content)) problems.push(p);
+      const heuristic = analyzeFile(path, files.get(path).content);
+      for (const p of heuristic) problems.push(p);
       const tsd = tsLang.tsAvailable(path) ? tsLang.diagnostics(files, path) : null;
-      if (tsd) for (const p of tsd.problems) problems.push(p);
+      if (tsd) {
+        // The heuristic owns bracket-balance: when it already flagged an
+        // unbalanced/unclosed bracket, suppress the TS syntactic "'X' expected"
+        // errors that describe the SAME unbalanced punctuation (a missing
+        // }, ), or ]) so the defect isn't double-counted. Genuine TS
+        // syntactic/semantic errors (type mismatches, undefined symbols, …)
+        // still surface.
+        const hasBracketBalance = heuristic.some((p) => p.rule === "bracket-balance");
+        const isDuplicateBracketErr = (p) =>
+          hasBracketBalance && /^['"][}\])]['"]\s+expected\.?$/.test(String(p.message || ""));
+        for (const p of tsd.problems) {
+          if (isDuplicateBracketErr(p)) continue;
+          problems.push(p);
+        }
+      }
     }
     const bySeverity = { error: 0, warning: 0, info: 0 };
     for (const p of problems) bySeverity[p.severity] = (bySeverity[p.severity] || 0) + 1;
