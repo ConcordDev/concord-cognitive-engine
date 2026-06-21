@@ -647,7 +647,11 @@ export function spontaneousGatherings(worldId, { cellSize = 50, minCount = 2, li
   if (!worldId) return [];
   const cells = new Map(); // "cx:cz" -> { count, district, cx, cz }
   for (const [, pos] of _userPositions) {
-    if (pos.worldId !== worldId) continue;
+    // Movement paths (server.js / routes/world.js) set cityId, not worldId, so
+    // pos.worldId falls back to cityId. Match on either so a client that scopes
+    // by cityId still surfaces — otherwise the panel reads empty even with
+    // co-located players (PR review on this helper).
+    if (pos.worldId !== worldId && pos.cityId !== worldId) continue;
     const cx = Math.floor((Number(pos.x) || 0) / cellSize);
     const cz = Math.floor((Number(pos.z) || 0) / cellSize);
     const key = `${cx}:${cz}`;
@@ -680,7 +684,9 @@ export function getPlayersNear(worldId, x, z, { cellSize = 50, radiusCells = 1 }
   const ccz = Math.floor((Number(z) || 0) / cellSize);
   const out = [];
   for (const [userId, pos] of _userPositions) {
-    if (pos.worldId !== worldId) continue;
+    // See spontaneousGatherings: match worldId OR cityId so the movement-path
+    // cityId fallback doesn't strand co-located players in proximity chat.
+    if (pos.worldId !== worldId && pos.cityId !== worldId) continue;
     const px = Math.floor((Number(pos.x) || 0) / cellSize);
     const pz = Math.floor((Number(pos.z) || 0) / cellSize);
     if (Math.abs(px - ccx) <= radiusCells && Math.abs(pz - ccz) <= radiusCells) out.push(userId);
