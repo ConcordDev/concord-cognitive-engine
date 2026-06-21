@@ -60,6 +60,12 @@ async function runSuite(npmScript, minPass) {
     const pass = lastInt(/# pass (\d+)/g, buf);
     const hasNotOk = /(^|\n)\s*not ok \d+/.test(buf);
     const hasTimeout = /testTimeoutFailure|test timed out/i.test(buf);
+    // Capture the failing test NAMES so a CI failure is self-diagnosing from the
+    // log tail (node:test prints `not ok N - <name>` per failure, but they're
+    // scattered mid-log where a tail truncates them). Dedupe + cap.
+    const notOkLines = [...new Set(
+      (buf.match(/^\s*not ok \d+ - .+$/gm) || []).map((l) => l.trim()),
+    )].slice(0, 40);
     // A completed node:test run always prints a `# tests`/`# pass` summary.
     // Its absence means the process was aborted mid-run (the V8 crash) — there
     // is no verdict to evaluate, so re-run rather than judge it.
@@ -73,7 +79,7 @@ async function runSuite(npmScript, minPass) {
         );
         continue;
       }
-      return { ok: false, npmScript, code, reason: "crash-loop", fail, cancelled, pass, hasNotOk, hasTimeout };
+      return { ok: false, npmScript, code, reason: "crash-loop", fail, cancelled, pass, hasNotOk, hasTimeout, notOkLines };
     }
 
     // Ran to completion with a non-zero exit → apply the strict verdict.
@@ -88,7 +94,7 @@ async function runSuite(npmScript, minPass) {
       return { ok: true, tolerated: true, npmScript, cancelled };
     }
     // Real failure (fail > 0) / too many cancels / partial run → do NOT retry.
-    return { ok: false, npmScript, code, fail, cancelled, pass, hasNotOk, hasTimeout };
+    return { ok: false, npmScript, code, fail, cancelled, pass, hasNotOk, hasTimeout, notOkLines };
   }
   return { ok: false, npmScript, reason: "exhausted" };
 }
@@ -116,5 +122,10 @@ for (const r of failed) {
     `::error::[ci-tolerant] ${r.npmScript} FAILED (exit ${r.code ?? "?"}${r.reason ? `, ${r.reason}` : ""}): ` +
     `fail=${r.fail} cancelled=${r.cancelled} pass=${r.pass} notOk=${r.hasNotOk} timeout=${r.hasTimeout}`,
   );
+  // Echo the failing test names into the tail so CI is self-diagnosing.
+  if (r.notOkLines?.length) {
+    console.error(`[ci-tolerant] ${r.npmScript} failing tests (${r.notOkLines.length} shown):`);
+    for (const line of r.notOkLines) console.error(`  ${line}`);
+  }
 }
 process.exit(1);
