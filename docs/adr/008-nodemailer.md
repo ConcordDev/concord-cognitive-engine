@@ -25,9 +25,13 @@ surfaced during the production deploy-readiness audit.
 
 ## Decision
 
-Add `nodemailer` (`^6.10.1`) as a **server runtime dependency** and rely on the
+Add `nodemailer` (`^9.0.1`) as a **server runtime dependency** and rely on the
 existing `email-service.js` wiring (no code rewrite — the dynamic import simply
-now resolves). The operator points it at any SMTP relay via the documented
+now resolves; the service uses only the version-stable
+`createTransport`/`sendMail`/`verify` surface). Pinned to `^9.0.1` rather than the
+older `6.x` because the entire `<=9.0.0` range carries high-severity SMTP
+command-injection / CRLF-injection advisories (GHSA-c7w3-x93f-qmm8,
+GHSA-vvjj-xcjg-gr5g, et al.) that are patched in 9.0.1. The operator points it at any SMTP relay via the documented
 `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`SMTP_FROM` env vars
 (SendGrid / AWS SES / Postmark / Mailgun all work); `preflight-production.sh`
 warns when SMTP is unconfigured.

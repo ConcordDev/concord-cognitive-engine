@@ -9,14 +9,17 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(path.resolve(__dirname, '..', rel), 'utf8');
 
-describe('QuestPanel — real quests, demo only as fallback', () => {
+describe('QuestPanel — real quests, honest empty state (no demo seed)', () => {
   const src = read('components/world-lens/QuestPanel.tsx');
   it('fetches the real quest endpoint', () => {
     expect(src).toMatch(/\/api\/worlds\/\$\{encodeURIComponent\(wid\)\}\/quests\?status=/);
   });
-  it('adapts backend rows defensively + only falls back to demo when empty', () => {
+  it('adapts backend rows defensively + renders empty (never fake demo data)', () => {
     expect(src).toMatch(/function adaptQuest/);
-    expect(src).toMatch(/if \(!cancelled && rows\.length\) setQuests/);
+    // Maps real backend rows; starts EMPTY and stays empty on error — no
+    // fabricated demo quests are ever seeded as the default.
+    expect(src).toMatch(/if \(!cancelled\) setQuests\(rows\.map\(adaptQuest\)\)/);
+    expect(src).toMatch(/useState<Quest\[\]>\(questsProp \?\? \[\]\)/);
   });
   it('is mounted with a worldId', () => {
     expect(read('app/lenses/world/page.tsx')).toMatch(/<QuestPanel worldId=/);

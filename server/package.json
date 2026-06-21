@@ -68,7 +68,7 @@
     "http-signature": "^1.4.0",
     "jsmidgen": "^0.1.8",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^6.10.1",
+    "nodemailer": "^9.0.1",
     "pdfkit": "^0.17.2",
     "playwright": "^1.59.1",
     "prom-client": "^15.1.0",

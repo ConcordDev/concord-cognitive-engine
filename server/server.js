@@ -5212,6 +5212,47 @@ const AuthDB = {
     return AUTH.users.size;
   },
 
+  // Age gate (18+, migration 335). OAuth sign-ups can't attest a DOB at the
+  // provider callback, so they land with date_of_birth = NULL and must
+  // confirm it before the account is usable. These two helpers read/write
+  // that single column, guarding older DBs that predate the migration.
+  getUserDateOfBirth(userId) {
+    if (db) {
+      const _hasDob = (() => { try { return db.pragma("table_info(users)").some(c => c.name === "date_of_birth"); } catch { return false; } })();
+      if (!_hasDob) return null;
+      try {
+        const row = db.prepare("SELECT date_of_birth FROM users WHERE id = ? AND is_active = 1").get(userId);
+        return row ? (row.date_of_birth || null) : null;
+      } catch { return null; }
+    }
+    const user = AUTH.users.get(userId);
+    return user ? (user.dateOfBirth || null) : null;
+  },
+
+  setUserDateOfBirth(userId, dob) {
+    if (db) {
+      const _hasDob = (() => { try { return db.pragma("table_info(users)").some(c => c.name === "date_of_birth"); } catch { return false; } })();
+      if (_hasDob) {
+        db.prepare("UPDATE users SET date_of_birth = ? WHERE id = ?").run(dob || null, userId);
+      }
+    }
+    const user = AUTH.users.get(userId);
+    if (user) { user.dateOfBirth = dob || null; }
+    saveAuthData();
+    return true;
+  },
+
+  // Soft-delete a user (is_active = 0). Used by the OAuth age gate to bar an
+  // account that attests to being under 18 at the post-signup DOB step.
+  deactivateUser(userId) {
+    if (db) {
+      try { db.prepare("UPDATE users SET is_active = 0 WHERE id = ?").run(userId); } catch { /* schema-tolerant */ }
+    }
+    AUTH.users.delete(userId);
+    saveAuthData();
+    return true;
+  },
+
   // API Keys
   createApiKey(keyData) {
     if (db) {

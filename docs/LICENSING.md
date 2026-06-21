@@ -64,6 +64,7 @@ silently.
 | `ffmpeg-static` | GPL-3.0 | separate subprocess, not linked, not distributed (SaaS) — §1 |
 | `@img/sharp-libvips-*`, `sharp` | LGPL-3.0 | dynamically-loaded native lib, unmodified — §1 |
 | `caniuse-lite` | CC-BY-4.0 | build-time tooling, not shipped as content — §1 |
+| `gsap` | Standard "no charge" license (non-SPDX) | Free for commercial use under Webflow ([gsap.com/standard-license](https://gsap.com/standard-license)); dynamically-linked frontend animation lib, unmodified, not redistributed as source. |
 
 `react-leaflet`/`llava-vicuna` are **not** on the allowlist — they were removed, so the
 gate stays strict against them returning.
