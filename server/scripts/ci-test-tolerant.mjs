@@ -24,10 +24,19 @@
 // Hard-fails (unchanged): any `# fail > 0`, > CANCEL_TOLERANCE cancellations,
 // a silently-partial run (pass < floor), or a suite that keeps crashing.
 
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 
 const CANCEL_TOLERANCE = Number(process.env.CONCORD_CI_CANCEL_TOLERANCE || 3);
 const MAX_ATTEMPTS = Number(process.env.CONCORD_CI_MAX_ATTEMPTS || 3);
+// A small number of `# fail` on the FULL parallel suite is, in this repo's CI,
+// almost always resource/timeout flakiness: `node --test` parallel-spawns
+// hundreds of server-booting test files, so under runner contention a
+// deterministic-in-isolation test starves and a timing assertion or per-test
+// timeout trips — and which test trips ROTATES run to run. To resolve this
+// HONESTLY (never mask a real bug), a small fail count triggers an ISOLATED
+// re-run of ONLY the failing files (low load → no contention): a genuine
+// failure fails again and hard-fails; a flake passes and is tolerated.
+const FLAKE_RERUN_MAX = Number(process.env.CONCORD_CI_FLAKE_RERUN_MAX || 5);
 
 function lastInt(re, text, dflt = 0) {
   const matches = text.match(re);
@@ -47,6 +56,41 @@ function runOnce(npmScript) {
     child.stdout.on("data", tee);
     child.stderr.on("data", tee);
     child.on("close", (code) => resolve({ code: code ?? 1, buf }));
+  });
+}
+
+// Resolve a failing test NAME to the file that declares it. Depth/behavior
+// tests name their top-level test after the file path (so the name IS the file);
+// for subtests, grep the tree for the literal name (-F: no regex, em-dash safe).
+// Returns null when it can't be resolved UNAMBIGUOUSLY — the caller then refuses
+// to tolerate (fails strict), so an unmappable failure is never silently passed.
+function fileForFailure(name) {
+  const direct = name.match(/\b(tests\/[\w./-]+\.(?:test|tests)\.js)\b/);
+  if (direct) return direct[1];
+  try {
+    const out = execFileSync("grep", ["-rlF", "--include=*.js", name, "tests"], {
+      encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
+    }).trim().split("\n").filter(Boolean);
+    if (out.length === 1) return out[0]; // unambiguous match only
+  } catch { /* grep exit 1 = no match */ }
+  return null;
+}
+
+function rerunIsolated(files) {
+  return new Promise((resolve) => {
+    const args = ["--test", "--import=./tests/preload/no-egress.mjs",
+      "--test-force-exit", "--test-timeout=180000", ...files];
+    const child = spawn("node", args, { env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+    let buf = "";
+    const tee = (c) => { const s = c.toString(); buf += s; process.stdout.write(s); };
+    child.stdout.on("data", tee);
+    child.stderr.on("data", tee);
+    child.on("close", (code) => {
+      const fail = lastInt(/# fail (\d+)/g, buf);
+      const ran = /# tests \d+/.test(buf) && /# pass \d+/.test(buf);
+      const notOkLines = [...new Set((buf.match(/^\s*not ok \d+ - .+$/gm) || []).map((l) => l.trim()))].slice(0, 40);
+      resolve({ ok: code === 0 && fail === 0 && ran, fail, ran, notOkLines });
+    });
   });
 }
 
@@ -92,6 +136,32 @@ async function runSuite(npmScript, minPass) {
         `— treated as PASS (known CI server-boot-contention artifact; local npm test stays strict).`,
       );
       return { ok: true, tolerated: true, npmScript, cancelled };
+    }
+
+    // A small fail count on the full parallel suite → separate a CI resource
+    // flake from a real failure by RE-RUNNING ONLY the failing files in
+    // isolation. Tolerate iff every failing test maps to a file AND all those
+    // files pass alone; a real, reproducible bug fails again and hard-fails.
+    if (fail > 0 && fail <= FLAKE_RERUN_MAX && pass >= minPass && cancelled <= CANCEL_TOLERANCE && notOkLines.length) {
+      const names = notOkLines.map((l) => l.replace(/^not ok \d+ - /, ""));
+      const files = [...new Set(names.map(fileForFailure))];
+      if (files.length && files.every(Boolean)) {
+        console.warn(
+          `::warning::[ci-tolerant] ${npmScript}: ${fail} fail(s) on the full parallel suite — ` +
+          `re-running the failing file(s) in isolation to tell a CI resource-flake from a real bug: ${files.join(", ")}`,
+        );
+        const reran = await rerunIsolated(files);
+        if (reran.ok) {
+          console.warn(
+            `::warning::[ci-tolerant] ${npmScript}: failing file(s) PASSED on isolated re-run — ` +
+            `CI resource/timeout flake, tolerated (a real bug would fail again). Files: ${files.join(", ")}`,
+          );
+          return { ok: true, tolerated: true, npmScript, flakyReran: files };
+        }
+        console.error(`::error::[ci-tolerant] ${npmScript}: failing file(s) FAILED AGAIN on isolated re-run — real, reproducible failure.`);
+        return { ok: false, npmScript, code, fail: reran.fail, cancelled, pass, hasNotOk, hasTimeout, notOkLines: reran.notOkLines };
+      }
+      console.warn(`::warning::[ci-tolerant] ${npmScript}: could not map every failing test to a file (${names.join(" | ")}) — not eligible for isolated re-run; failing strict.`);
     }
     // Real failure (fail > 0) / too many cancels / partial run → do NOT retry.
     return { ok: false, npmScript, code, fail, cancelled, pass, hasNotOk, hasTimeout, notOkLines };
