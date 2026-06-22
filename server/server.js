@@ -248,6 +248,15 @@ registerHeartbeat("cognitive-fingerprint-cycle", {
   handler: ({ db } = {}) => runCognitiveFingerprintCycle({ db }),
 });
 
+// Long-Horizon Planner (#14) — sweep overdue milestones + fire contingencies.
+// Kill-switch CONCORD_PLAN_HORIZON_CYCLE=0.
+import { runPlanHorizonCycle } from "./emergent/plan-horizon-cycle.js";
+registerHeartbeat("plan-horizon-cycle", {
+  frequency: 240,
+  scope: "global",
+  handler: ({ db } = {}) => runPlanHorizonCycle({ db }),
+});
+
 // Living Society Phase 3 — sparks-flow payday. Pay moves along employment edges;
 // skim diverts to collectors (corruption); unpaid flow deepens grievances.
 import { runPayCycle } from "./emergent/pay-cycle.js";
@@ -25459,6 +25468,10 @@ registerMetacogMacros(register);
 // status rolls up as leaves complete. The plan scaffold for the R&D engine.
 import registerDecompMacros from "./domains/decomp.js";
 registerDecompMacros(register);
+
+// Long-Horizon Planner (#14) — schedule + contingency layer on the goal tree.
+import registerPlannerMacros from "./domains/planner.js";
+registerPlannerMacros(register);
 
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
