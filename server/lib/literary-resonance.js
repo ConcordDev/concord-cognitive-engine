@@ -104,4 +104,29 @@ export function getResonanceEdges(db, literaryDtuId, limit = 10) {
   }
 }
 
-export default { computeResonanceForDtu, getResonanceEdges };
+/**
+ * Resonance salience for a literary DTU in [0,1] — how strongly it bridges other
+ * domains (#8): saturating breadth (distinct cross-domain edges) blended with the
+ * average bridge strength. This is the signal a MEGA/HYPER consolidation pass
+ * should prefer (high-resonance DTUs make better cluster seeds) and that
+ * literary.crystallize ranks by. Pure read; 0 when no edges / table absent.
+ */
+export function salienceFrom(edgeCount, avgScore) {
+  const n = Number(edgeCount) || 0;
+  if (n <= 0) return 0;
+  const breadth = 1 - Math.exp(-n / 3); // ~0.28 at 1 edge → ~0.95 at 9
+  return Math.min(1, breadth * 0.6 + (Number(avgScore) || 0) * 0.4);
+}
+
+export function resonanceSalience(db, literaryDtuId) {
+  try {
+    const r = db.prepare(
+      "SELECT COUNT(*) AS n, AVG(score) AS avg FROM literary_resonance_edges WHERE literary_dtu_id = ?"
+    ).get(literaryDtuId);
+    return salienceFrom(r?.n, r?.avg);
+  } catch {
+    return 0;
+  }
+}
+
+export default { computeResonanceForDtu, getResonanceEdges, resonanceSalience, salienceFrom };

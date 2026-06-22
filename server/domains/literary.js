@@ -15,7 +15,7 @@
 // registerLiteraryMacros(register);`
 
 import { embed, cosineSimilarity } from "../embeddings.js";
-import { getResonanceEdges } from "../lib/literary-resonance.js";
+import { getResonanceEdges, resonanceSalience, salienceFrom } from "../lib/literary-resonance.js";
 import { searchVec } from "../lib/literary-vec.js";
 import { createDTU } from "../economy/dtu-pipeline.js";
 import { rerankHits } from "../lib/literary-rerank.js";
@@ -309,8 +309,22 @@ export default function registerLiteraryMacros(register) {
         LIMIT ?
       `).all(limit);
     } catch { crystals = []; }
+    // #8 — rank by resonance salience (breadth + strength), computed inline from
+    // the already-fetched edgeCount/avgScore (no extra query). This is the signal
+    // a MEGA/HYPER consolidation pass should prefer as cluster seeds.
+    for (const c of crystals) c.salience = salienceFrom(c.edgeCount, c.avgScore);
+    crystals.sort((a, b) => b.salience - a.salience);
     return { ok: true, crystals };
-  }, { note: "most-bridged passages — crystallization candidates for tier promotion" });
+  }, { note: "most-bridged passages ranked by resonance salience — consolidation/promotion candidates (#8)" });
+
+  // #8 — resonance salience [0,1] for one literary DTU: the consolidation-seed
+  // signal (how strongly it bridges other domains).
+  register("literary", "salience", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!input.dtuId) return { ok: false, reason: "missing_dtuId" };
+    return { ok: true, dtuId: String(input.dtuId), salience: resonanceSalience(db, String(input.dtuId)) };
+  }, { note: "resonance salience [0,1] for a literary DTU — consolidation seed signal (#8)" });
 
   // Tier-1 LRL-as-hub: unified resonance + citation force-graph for GraphView
   // (#46 generative art / #35 royalty viz). Composes cross-domain resonance edges

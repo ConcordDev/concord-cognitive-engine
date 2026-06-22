@@ -156,6 +156,38 @@ function buildVocation(npcId, db) {
   }
 }
 
+// LRL-as-hub (#30): a resonant public-domain literary passage that echoes this
+// NPC's goal/theme so dialogue can be grounded in humanity's canon (the spec's
+// "literary grounding for lore"). Best-effort + SECRET-SAFE — the literary corpus
+// is public-domain and carries no NPC secrets; returns null when no corpus exists.
+export function buildLiteraryEcho(npc, db) {
+  if (!db || !npc) return null;
+  const theme = String(
+    npc.narrative_context?.current_goal || npc.backstory || (npc.personality_traits || []).join(" ") || ""
+  ).toLowerCase();
+  const toks = theme.match(/[a-z]{4,}/g);
+  if (!toks || !toks.length) return null;
+  const match = [...new Set(toks)].slice(0, 6).map((t) => `"${t}"`).join(" OR ");
+  try {
+    const row = db.prepare(`
+      SELECT c.content, s.title, s.author
+      FROM literary_chunks_fts f
+      JOIN literary_chunks c ON c.id = f.chunk_id
+      JOIN literary_sources s ON s.id = c.source_id
+      WHERE literary_chunks_fts MATCH ?
+      ORDER BY bm25(literary_chunks_fts) LIMIT 1
+    `).get(match);
+    if (!row) return null;
+    return {
+      quote: String(row.content || "").replace(/\s+/g, " ").trim().slice(0, 200),
+      source: row.title,
+      author: row.author || null,
+    };
+  } catch {
+    return null; // literary corpus tables not present in this build
+  }
+}
+
 export function buildNPCTraits(npcId, db = null, opts = {}) {
   const npc = getAuthoredNPC(npcId);
   if (!npc) {
@@ -217,6 +249,9 @@ export function buildNPCTraits(npcId, db = null, opts = {}) {
     // happened recently. Pre-this, NPC A and NPC B could independently
     // generate contradictory claims about the same event.
     worldFacts: buildWorldFacts(npc, db),
+    // LRL-as-hub (#30): a resonant public-domain literary passage echoing this
+    // NPC's goal — grounds dialogue in humanity's canon. Null without a corpus.
+    literaryEcho: buildLiteraryEcho(npc, db),
     // Phase 2: NPC asymmetry. Three structured fields injected into the
     // dialogue prompt so the LLM physically cannot drift into
     // generic-NPC mode. opts.userId + opts.playerMetrics let the desire
