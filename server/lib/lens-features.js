@@ -102,7 +102,7 @@ const _FEATURES = {
 
   literary: {
     lensId: "literary",
-    lensNumber: 125,
+    lensNumber: 128,
     category: "KNOWLEDGE",
     features: [
       f("hybrid_search", "Hybrid Literary Search", "BM25 + dense embedding retrieval fused with Reciprocal Rank Fusion over the public-domain corpus; keyword fallback when offline", "intelligence", ["dtu"]),
