@@ -15,6 +15,7 @@
 // registerLiteraryMacros(register);`
 
 import { embed, cosineSimilarity } from "../embeddings.js";
+import { getResonanceEdges } from "../lib/literary-resonance.js";
 
 const RRF_K = 60; // standard Reciprocal Rank Fusion constant
 const DENSE_SCAN_CAP = Number(process.env.LRL_DENSE_SCAN_CAP || 4000); // bound the MVP full-scan; sqlite-vec is the scale path
@@ -213,6 +214,20 @@ export default function registerLiteraryMacros(register) {
     }
     return { ok: true, nodes, edges, semantic: res?.semantic ?? false };
   }, { note: "resonance graph for GraphView — nodes = top hits, edges by shared work/author" });
+
+  // Cross-domain resonance edges for a literary chunk/DTU (Phase 2). Resolves a
+  // chunkId → its DTU, then returns the recorded bridges into other lenses.
+  register("literary", "resonance", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    let dtuId = input.dtuId || null;
+    if (!dtuId && input.chunkId) {
+      const row = db.prepare("SELECT dtu_id FROM literary_chunks WHERE id = ?").get(String(input.chunkId));
+      dtuId = row?.dtu_id || null;
+    }
+    if (!dtuId) return { ok: false, reason: "not_found" };
+    return { ok: true, dtuId, edges: getResonanceEdges(db, dtuId, input.limit) };
+  }, { note: "cross-domain resonance edges (literary → other lenses) for a chunk/dtu" });
 
   register("literary", "stats", async (ctx) => {
     const db = ctx?.db;

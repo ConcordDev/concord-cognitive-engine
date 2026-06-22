@@ -15,7 +15,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { GraphView, type GraphNode, type GraphEdge } from '@/components/atlas/GraphView';
 import { lensRun } from '@/lib/api/client';
-import { BookOpen, Search, Network, ShieldCheck, FileText, Loader2 } from 'lucide-react';
+import { BookOpen, Search, Network, ShieldCheck, FileText, Loader2, Sparkles } from 'lucide-react';
 
 interface Provenance {
   sourceId: string; dtuId: string; title: string; author?: string;
@@ -29,6 +29,8 @@ interface Hit {
 interface SearchPayload { ok: boolean; results: Hit[]; count: number; semantic: boolean }
 interface GraphPayload { ok: boolean; nodes: GraphNode[]; edges: GraphEdge[]; semantic: boolean }
 interface Stats { ok: boolean; sources: number; chunks: number; embedded: number }
+interface ResonanceEdge { dtuId: string; domain?: string; title?: string; score: number; kind?: string }
+interface ResonancePayload { ok: boolean; dtuId: string; edges: ResonanceEdge[] }
 
 export default function LiteraryLensPage() {
   const [query, setQuery] = useState('');
@@ -39,12 +41,23 @@ export default function LiteraryLensPage() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [resonance, setResonance] = useState<ResonanceEdge[]>([]);
 
   useEffect(() => {
     lensRun<Stats>('literary', 'stats', {}).then((r) => {
       if (r.data?.result) setStats(r.data.result);
     }).catch(() => {});
   }, []);
+
+  // Phase 2 — pull cross-domain resonance bridges for the selected passage.
+  useEffect(() => {
+    if (!selected) { setResonance([]); return; }
+    let live = true;
+    lensRun<ResonancePayload>('literary', 'resonance', { chunkId: selected, limit: 6 })
+      .then((r) => { if (live) setResonance(r.data?.result?.edges || []); })
+      .catch(() => { if (live) setResonance([]); });
+    return () => { live = false; };
+  }, [selected]);
 
   const runSearch = useCallback(async () => {
     const q = query.trim();
@@ -210,6 +223,26 @@ export default function LiteraryLensPage() {
                       Full text ↗
                     </a>
                   )}
+                </div>
+              )}
+
+              {/* Phase 2 — cross-domain resonance bridges */}
+              {selectedHit && resonance.length > 0 && (
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 space-y-2">
+                  <h3 className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Cross-domain resonance
+                  </h3>
+                  <ul className="space-y-1.5">
+                    {resonance.map((e) => (
+                      <li key={e.dtuId} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="truncate text-zinc-200">{e.title || e.dtuId}</span>
+                        <span className="flex items-center gap-1.5 flex-shrink-0">
+                          {e.domain && <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-[10px] uppercase tracking-wider text-zinc-400">{e.domain}</span>}
+                          <span className="text-[10px] text-amber-300/80 font-mono">{e.score.toFixed(2)}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </aside>

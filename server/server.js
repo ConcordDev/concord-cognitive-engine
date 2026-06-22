@@ -211,6 +211,16 @@ registerHeartbeat("economy-anomaly-cycle", {
   handler: ({ db } = {}) => runEconomyAnomalyCycle({ db }),
 });
 
+// LRL Phase 2 — literary cross-domain resonance. Crystallizes embedding-near
+// bridges from literary chunk-DTUs into other lenses (lib/literary-resonance.js).
+// Bounded per pass, try/catch isolated. Kill-switch CONCORD_LITERARY_RESONANCE=0.
+import { runLiteraryResonanceCycle } from "./emergent/literary-resonance-cycle.js";
+registerHeartbeat("literary-resonance-cycle", {
+  frequency: 200,
+  scope: "global",
+  handler: ({ db } = {}) => runLiteraryResonanceCycle({ db }),
+});
+
 // Living Society Phase 3 — sparks-flow payday. Pay moves along employment edges;
 // skim diverts to collectors (corruption); unpaid flow deepens grievances.
 import { runPayCycle } from "./emergent/pay-cycle.js";
