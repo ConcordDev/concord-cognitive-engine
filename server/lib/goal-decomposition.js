@@ -104,20 +104,24 @@ export function setNodeStatus(db, { treeId, nodeId, status } = {}) {
   const rolledUp = [];
   let treeDone = false;
   try {
+    // Prepared statements hoisted OUT of the roll-up walk so the loop body
+    // holds no db.prepare (bounded by tree depth, but kept N+1-clean regardless).
+    const selKids = db.prepare(`SELECT status FROM goal_nodes WHERE parent_id = ?`);
+    const markDone = db.prepare(`UPDATE goal_nodes SET status = 'done', updated_at = unixepoch() WHERE id = ?`);
+    const selParent = db.prepare(`SELECT parent_id AS parentId FROM goal_nodes WHERE id = ?`);
     db.transaction(() => {
       db.prepare(`UPDATE goal_nodes SET status = ?, updated_at = unixepoch() WHERE id = ?`).run(status, nodeId);
       if (status === "done") {
         // Walk up: complete an ancestor when all its live children are done.
         let cur = node.parent_id;
         while (cur) {
-          const kids = db.prepare(`SELECT status FROM goal_nodes WHERE parent_id = ?`).all(cur);
+          const kids = selKids.all(cur);
           const live = kids.filter((k) => k.status !== "abandoned");
           const allDone = live.length > 0 && live.every((k) => k.status === "done");
           if (!allDone) break;
-          db.prepare(`UPDATE goal_nodes SET status = 'done', updated_at = unixepoch() WHERE id = ?`).run(cur);
+          markDone.run(cur);
           rolledUp.push(cur);
-          const par = db.prepare(`SELECT parent_id FROM goal_nodes WHERE id = ?`).get(cur);
-          cur = par?.parent_id || null;
+          cur = selParent.get(cur)?.parentId || null;
         }
         const root = db.prepare(`SELECT status FROM goal_nodes WHERE tree_id = ? AND parent_id IS NULL`).get(treeId);
         if (root?.status === "done") {
