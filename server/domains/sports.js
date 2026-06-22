@@ -251,7 +251,12 @@ export default function registerSportsActions(registerLensAction) {
 
   registerLensAction("sports", "team-news-list", (ctx, _a, params = {}) => {
     const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    let news = [...(s.teamNews.get(spAid(ctx)) || [])];
+    // Reverse the insertion-ordered list first: when two items share a
+    // millisecond-precision createdAt (rapid back-to-back adds), the stable
+    // sort below would otherwise keep insertion order (oldest-first) for the
+    // tie. Reversing makes the newest-inserted win ties — deterministic
+    // newest-first ordering regardless of timestamp collisions.
+    let news = [...(s.teamNews.get(spAid(ctx)) || [])].reverse();
     if (params.team) news = news.filter((n) => n.team === params.team);
     news.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return { ok: true, result: { news, count: news.length } };
