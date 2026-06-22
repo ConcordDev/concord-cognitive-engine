@@ -142,13 +142,13 @@ function ActivityChart() {
           <div className="m-2 rounded-xl border border-dashed border-lattice-border px-4 py-10 text-center">
             <Sparkles className="mx-auto mb-2 h-5 w-5 text-fuchsia-300/70" />
             <div className="text-[13px] text-zinc-300">No thoughts minted yet</div>
-            <div className="mt-1 text-[11px] text-zinc-400">
+            <div className="mt-1 text-[11px] text-zinc-500">
               Your creation rhythm shows up here. <Link href="/lenses/studio" className="text-neon-purple hover:underline">Mint your first thought</Link>.
             </div>
           </div>
         ) : (
           <>
-            <div className="px-2 pb-1 text-[11px] text-zinc-400">{total} thoughts minted · your creation rhythm</div>
+            <div className="px-2 pb-1 text-[11px] text-zinc-500">{total} thoughts minted · your creation rhythm</div>
             <ChartKit kind="area" data={chartData} xKey="bucket"
               series={[{ key: 'count', label: 'DTUs', color: '#a855f7' }]} height={220} />
           </>
@@ -172,7 +172,7 @@ function ConcordiaEvents() {
       <CardHead title="Concordia Events" action={<Link href="/lenses/world" className="text-[11px] text-neon-purple hover:underline">Enter world</Link>} />
       <div className="px-3 pb-3">
         {events.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-lattice-border px-3 py-6 text-center text-[12px] text-zinc-400">
+          <div className="rounded-xl border border-dashed border-lattice-border px-3 py-6 text-center text-[12px] text-zinc-500">
             No live events right now — <Link href="/lenses/world" className="text-neon-purple hover:underline">start one</Link> in Concordia.
           </div>
         ) : (
@@ -182,7 +182,7 @@ function ConcordiaEvents() {
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-neon-purple/10 text-fuchsia-300"><CalendarClock className="h-4 w-4" /></span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[13px] font-medium text-zinc-100">{e.name || e.title || 'World event'}</div>
-                  <div className="truncate text-[11px] text-zinc-400">{e.type || 'event'}{typeof e.participant_count === 'number' ? ` · ${e.participant_count} joined` : ''}</div>
+                  <div className="truncate text-[11px] text-zinc-500">{e.type || 'event'}{typeof e.participant_count === 'number' ? ` · ${e.participant_count} joined` : ''}</div>
                 </div>
                 <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300">Active</span>
               </li>
@@ -211,12 +211,12 @@ function PresenceCard() {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <div className="text-sm font-semibold text-zinc-100">Who’s around</div>
-          <div className="text-[11px] text-zinc-400">{users.length} active in the commons</div>
+          <div className="text-[11px] text-zinc-500">{users.length} active in the commons</div>
         </div>
         <Link href="/lenses/chat" className="rounded-lg bg-neon-purple/20 px-2.5 py-1 text-[11px] font-medium text-fuchsia-200 hover:bg-neon-purple/30">Ask Concord</Link>
       </div>
       {users.length === 0
-        ? <div className="text-[12px] text-zinc-400">Quiet right now. You could be the spark.</div>
+        ? <div className="text-[12px] text-zinc-500">Quiet right now. You could be the spark.</div>
         : <PresenceIndicator users={users} maxVisible={6} />}
     </Card>
   );
@@ -236,7 +236,7 @@ function MessagesCard() {
       <CardHead title="Messages" action={<Link href="/lenses/message" className="text-[11px] text-neon-purple hover:underline">Open</Link>} />
       <div className="px-2 pb-2">
         {convos.length === 0 ? (
-          <div className="px-2 py-4 text-[12px] text-zinc-400">No messages yet.</div>
+          <div className="px-2 py-4 text-[12px] text-zinc-500">No messages yet.</div>
         ) : (
           <ul>
             {convos.map((c, i) => (
@@ -247,7 +247,7 @@ function MessagesCard() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[12px] font-medium text-zinc-200">{c.withName || c.otherName || c.displayName || 'Direct message'}</span>
-                    <span className="block truncate text-[11px] text-zinc-400">{c.lastMessage || c.preview || '—'}</span>
+                    <span className="block truncate text-[11px] text-zinc-500">{c.lastMessage || c.preview || '—'}</span>
                   </span>
                   {!!c.unread && <span className="shrink-0 rounded-full bg-rose-500/80 px-1.5 text-[10px] font-semibold text-white">{c.unread}</span>}
                 </Link>
@@ -274,7 +274,7 @@ function NewsCard() {
       <CardHead title="Update News" action={<Radio className="h-3.5 w-3.5 text-zinc-500" />} />
       <div className="px-3 pb-3">
         {items.length === 0 ? (
-          <div className="text-[12px] text-zinc-400">All quiet on the substrate.</div>
+          <div className="text-[12px] text-zinc-500">All quiet on the substrate.</div>
         ) : (
           <ul className="space-y-2">
             {items.map((n, i) => (
@@ -310,7 +310,7 @@ function Customize({ prefs, isVisible, toggle, setClassic, reset, onClose }:
         ))}
       </div>
       <div className="mt-2 flex items-center justify-between border-t border-lattice-border pt-2">
-        <button onClick={reset} className="text-[11px] text-zinc-400 hover:text-zinc-300">Reset</button>
+        <button onClick={reset} className="text-[11px] text-zinc-500 hover:text-zinc-300">Reset</button>
         <button onClick={() => setClassic(!prefs.classic)} className="text-[11px] text-neon-purple hover:underline">
           {prefs.classic ? 'New view' : 'Classic view'}
         </button>
@@ -337,7 +337,7 @@ export function MyDashboard({ dash: dashProp }: { dash?: ReturnType<typeof useDa
       <div className="relative mb-5 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-zinc-50">My Dashboard</h1>
-          <p className="text-[12px] text-zinc-400">{greeting}{name} — here’s your corner of the universe.</p>
+          <p className="text-[12px] text-zinc-500">{greeting}{name} — here’s your corner of the universe.</p>
         </div>
         <div className="relative flex items-center gap-2">
           <Link href="/lenses/world" className="hidden items-center gap-1.5 rounded-xl border border-lattice-border bg-lattice-surface px-3 py-1.5 text-[12px] text-zinc-300 hover:border-neon-purple/40 sm:flex">
@@ -371,7 +371,7 @@ export function MyDashboard({ dash: dashProp }: { dash?: ReturnType<typeof useDa
           {isVisible('presence') && <PresenceCard />}
           {isVisible('messages') && <MessagesCard />}
           {isVisible('news') && (
-            <div className="flex items-center gap-1.5 px-1 pt-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+            <div className="flex items-center gap-1.5 px-1 pt-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-600">
               <Newspaper className="h-3 w-3" /> Latest
             </div>
           )}
@@ -381,7 +381,7 @@ export function MyDashboard({ dash: dashProp }: { dash?: ReturnType<typeof useDa
               <div className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-zinc-200">
                 <MessageSquare className="h-3.5 w-3.5 text-emerald-300" /> Share something
               </div>
-              {user?.id ? <QuickPostComposer currentUserId={user.id} /> : <div className="text-[12px] text-zinc-400">Sign in to post.</div>}
+              {user?.id ? <QuickPostComposer currentUserId={user.id} /> : <div className="text-[12px] text-zinc-500">Sign in to post.</div>}
             </Card>
           )}
         </div>

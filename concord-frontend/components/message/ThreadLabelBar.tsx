@@ -80,7 +80,7 @@ export function ThreadLabelBar({ threadId, className }: { threadId: string; clas
           </button>
         </span>
       ))}
-      {applied.length === 0 && <span className="text-[11px] text-gray-400">No labels</span>}
+      {applied.length === 0 && <span className="text-[11px] text-gray-500">No labels</span>}
 
       <div className="relative" ref={pickRef}>
         <button type="button" onClick={() => setPicking((p) => !p)} disabled={busy || available.length === 0}

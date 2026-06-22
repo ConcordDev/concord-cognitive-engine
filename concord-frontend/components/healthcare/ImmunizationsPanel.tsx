@@ -96,7 +96,7 @@ export function ImmunizationsPanel({ className }: { className?: string }) {
       </div>
 
       <div className="space-y-1.5 mb-3">
-        {records.length === 0 && !loading && <p className="text-xs text-zinc-400">No immunizations recorded for this patient.</p>}
+        {records.length === 0 && !loading && <p className="text-xs text-zinc-500">No immunizations recorded for this patient.</p>}
         {records.map((r) => (
           <div key={r.id} className="flex items-center gap-2 text-xs">
             <span className="text-zinc-100 font-medium flex-1">{r.vaccine}</span>

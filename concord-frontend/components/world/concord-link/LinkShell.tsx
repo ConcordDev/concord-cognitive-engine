@@ -97,7 +97,7 @@ export function LinkShell({ worldId = 'concordia-hub', open: openProp }: { world
               <Bar label="Bio-power" cur={bars.bio_power} max={bars.max_bio_power} />
               <Bar label="Perception" cur={bars.perception} max={bars.max_perception} />
             </>
-          ) : <p className="text-xs text-zinc-400">No vitals yet.</p>}
+          ) : <p className="text-xs text-zinc-500">No vitals yet.</p>}
         </div>
       )}
       {mode === 'inventory' && (
@@ -106,7 +106,7 @@ export function LinkShell({ worldId = 'concordia-hub', open: openProp }: { world
             <li key={it.id} className="flex justify-between rounded border border-zinc-800 bg-zinc-900/50 px-2 py-1 text-xs">
               <span className="text-zinc-200 truncate">{it.item_name}</span><span className="text-zinc-500">×{it.quantity}</span>
             </li>
-          )) : <p className="text-xs text-zinc-400">Empty in this world.</p>}
+          )) : <p className="text-xs text-zinc-500">Empty in this world.</p>}
         </ul>
       )}
       {mode === 'effects' && (
@@ -115,7 +115,7 @@ export function LinkShell({ worldId = 'concordia-hub', open: openProp }: { world
             <li key={e.effect_id} className={`rounded border px-2 py-1 text-xs ${e.kind === 'buff' ? 'border-emerald-600/40 text-emerald-300' : 'border-red-600/40 text-red-300'}`}>
               {e.effect_id} <span className="text-zinc-500">×{e.magnitude}</span>
             </li>
-          )) : <p className="text-xs text-zinc-400">No active effects.</p>}
+          )) : <p className="text-xs text-zinc-500">No active effects.</p>}
         </ul>
       )}
     </div>

@@ -97,7 +97,7 @@ export default function ExplorePage() {
               </span>
               Live in the world right now
             </h2>
-            {worlds != null && <span className="text-xs text-gray-400">{worlds} world{worlds === 1 ? '' : 's'} active</span>}
+            {worlds != null && <span className="text-xs text-gray-500">{worlds} world{worlds === 1 ? '' : 's'} active</span>}
           </div>
           <div className="bg-lattice-surface border border-lattice-border rounded-xl divide-y divide-lattice-border max-h-80 overflow-y-auto">
             {loading ? (
@@ -108,7 +108,7 @@ export default function ExplorePage() {
                   <span className="mt-0.5 text-neon-blue shrink-0"><Globe className="w-4 h-4" /></span>
                   <div className="min-w-0">
                     <p className="text-sm text-gray-200">{e.summary}</p>
-                    {e.kind && <span className="text-[11px] text-gray-400">{e.kind.replace(/[:_-]/g, ' ')}</span>}
+                    {e.kind && <span className="text-[11px] text-gray-500">{e.kind.replace(/[:_-]/g, ' ')}</span>}
                   </div>
                 </div>
               ))
@@ -153,7 +153,7 @@ export default function ExplorePage() {
           <Link href="/register" className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-gradient-to-r from-neon-cyan to-neon-blue text-white font-semibold hover:shadow-lg hover:shadow-neon-cyan/25 transition-all">
             Create your free account <ArrowRight className="w-4 h-4" />
           </Link>
-          <p className="mt-4 text-xs text-gray-400">
+          <p className="mt-4 text-xs text-gray-500">
             Already have one? <Link href="/login" className="text-neon-cyan hover:underline">Sign in</Link>
           </p>
         </section>

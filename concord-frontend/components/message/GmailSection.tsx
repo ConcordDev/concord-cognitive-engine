@@ -154,7 +154,7 @@ export function GmailSection() {
       >
         <Mail className="w-4 h-4 text-rose-400" />
         <span className="font-medium">Gmail</span>
-        <span className="text-xs text-gray-400">— real inbox (connect to load)</span>
+        <span className="text-xs text-gray-500">— real inbox (connect to load)</span>
       </button>
     );
   }
@@ -195,7 +195,7 @@ export function GmailSection() {
         <div className="p-6 text-center space-y-3">
           <Mail className="w-8 h-8 text-rose-400/60 mx-auto" />
           <p className="text-sm text-gray-300">Connect your Gmail to read and send mail here.</p>
-          <p className="text-xs text-gray-400">Concord requests read + send access; tokens are encrypted at rest and used only for your inbox.</p>
+          <p className="text-xs text-gray-500">Concord requests read + send access; tokens are encrypted at rest and used only for your inbox.</p>
           <button onClick={() => void connect()} className="px-4 py-2 rounded bg-rose-500/30 text-rose-200 text-sm hover:bg-rose-500/40">
             Connect Gmail
           </button>
@@ -228,7 +228,7 @@ export function GmailSection() {
                 <li className="flex items-center gap-2 px-4 py-6 text-amber-300 text-xs"><AlertCircle className="w-4 h-4" /> {error}</li>
               )}
               {!loading && !error && messages.length === 0 && (
-                <li className="flex flex-col items-center justify-center py-10 text-gray-400 text-xs gap-2"><Inbox className="w-6 h-6" /> No messages</li>
+                <li className="flex flex-col items-center justify-center py-10 text-gray-500 text-xs gap-2"><Inbox className="w-6 h-6" /> No messages</li>
               )}
               {messages.map((m) => (
                 <li
@@ -242,10 +242,10 @@ export function GmailSection() {
                       <Star className={cn('w-3.5 h-3.5', m.starred ? 'fill-amber-400 text-amber-400' : 'text-gray-600 hover:text-gray-400')} />
                     </button>
                     <span className={cn('flex-1 truncate text-xs', m.unread ? 'font-semibold text-white' : 'text-gray-300')}>{senderName(m.from)}</span>
-                    <span className="text-[10px] text-gray-400 shrink-0">{fmtDate(m.date)}</span>
+                    <span className="text-[10px] text-gray-500 shrink-0">{fmtDate(m.date)}</span>
                   </div>
                   <div className={cn('truncate text-xs mt-0.5', m.unread ? 'text-gray-100' : 'text-gray-400')}>{m.subject}</div>
-                  <div className="truncate text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
+                  <div className="truncate text-[11px] text-gray-500 mt-0.5 flex items-center gap-1">
                     <span className="flex-1 truncate">{m.snippet}</span>
                     <span className="opacity-0 group-hover:opacity-100 flex items-center gap-1">
                       <button aria-label="Archive" onClick={(e) => void act(m, 'archive', e)} className="p-0.5 hover:text-gray-200"><Archive className="w-3 h-3" /></button>

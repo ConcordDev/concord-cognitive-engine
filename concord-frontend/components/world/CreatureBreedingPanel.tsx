@@ -74,7 +74,7 @@ export function CreatureBreedingPanel({ building, onClose, worldId }: OverlayPro
     >
       <div className="space-y-3">
         {pops.length === 0 ? (
-          <p className="py-4 text-center text-xs text-zinc-400">No creature populations in this world yet.</p>
+          <p className="py-4 text-center text-xs text-zinc-500">No creature populations in this world yet.</p>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-2">

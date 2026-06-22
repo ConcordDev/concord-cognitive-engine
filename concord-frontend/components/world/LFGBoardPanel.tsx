@@ -121,7 +121,7 @@ export function LFGBoardPanel() {
         </div>
 
         <div className="mb-3 max-h-72 space-y-1 overflow-y-auto">
-          {requests.length === 0 && <p className="text-center text-xs text-zinc-400">No open requests in this world.</p>}
+          {requests.length === 0 && <p className="text-center text-xs text-zinc-500">No open requests in this world.</p>}
           {requests.map((req) => (
             <div key={req.id} className="flex items-center justify-between rounded border border-emerald-500/20 bg-emerald-950/20 p-2 text-xs">
               <div>

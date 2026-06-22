@@ -85,7 +85,7 @@ export function CategoryRulesPanel({ className }: { className?: string }) {
 
       <div className="space-y-1.5 mb-3">
         {rules.length === 0 && !loading && (
-          <p className="text-xs text-zinc-400">No rules yet — transactions matching a pattern will auto-post to the chosen account.</p>
+          <p className="text-xs text-zinc-500">No rules yet — transactions matching a pattern will auto-post to the chosen account.</p>
         )}
         {rules.map((r) => (
           <div key={r.id} className="flex items-center gap-2 text-xs group">
@@ -100,10 +100,10 @@ export function CategoryRulesPanel({ className }: { className?: string }) {
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); void create(); }} className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-zinc-400">If contains</span>
+        <span className="text-xs text-zinc-500">If contains</span>
         <input value={pattern} onChange={(e) => setPattern(e.target.value)} placeholder="e.g. AMAZON" maxLength={60}
           className="w-32 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:border-emerald-500 focus:outline-none" />
-        <span className="text-xs text-zinc-400">post to</span>
+        <span className="text-xs text-zinc-500">post to</span>
         <select value={accountId} onChange={(e) => setAccountId(e.target.value)}
           className="flex-1 min-w-[10rem] bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:outline-none">
           {accounts.map((a) => <option key={a.id} value={a.id}>{a.code ? `${a.code} · ` : ''}{a.name}</option>)}

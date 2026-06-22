@@ -67,7 +67,7 @@ export function FunnelsPanel({ className }: { className?: string }) {
       )}
 
       <div className="space-y-2 mb-3">
-        {funnels.length === 0 && !loading && <p className="text-xs text-zinc-400">No funnels defined yet.</p>}
+        {funnels.length === 0 && !loading && <p className="text-xs text-zinc-500">No funnels defined yet.</p>}
         {funnels.map((f) => (
           <div key={f.id} className="group">
             <div className="flex items-center gap-2">

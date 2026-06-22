@@ -174,7 +174,7 @@ export default function OpsTelemetryPage() {
             </div>
           )}
           {lastRefresh && (
-            <div className="mx-auto mt-1 max-w-screen-2xl text-[10px] text-slate-400">last refreshed {lastRefresh.toLocaleTimeString()}</div>
+            <div className="mx-auto mt-1 max-w-screen-2xl text-[10px] text-slate-500">last refreshed {lastRefresh.toLocaleTimeString()}</div>
           )}
         </header>
 
@@ -202,7 +202,7 @@ export default function OpsTelemetryPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-[11px] text-slate-400">No inference recorded in the window — the village is living on instinct.</p>
+              <p className="text-[11px] text-slate-500">No inference recorded in the window — the village is living on instinct.</p>
             )}
           </div>
 
@@ -287,7 +287,7 @@ export default function OpsTelemetryPage() {
                   </ul>
                 </div>
               ))}
-              {brains.length === 0 && <p className="text-[11px] text-slate-400">no endpoints loaded</p>}
+              {brains.length === 0 && <p className="text-[11px] text-slate-500">no endpoints loaded</p>}
             </div>
           </div>
 
@@ -295,7 +295,7 @@ export default function OpsTelemetryPage() {
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
             <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-cyan-300">
               <Activity className="h-4 w-4" /> Brain activity
-              <span className="ml-1 text-[10px] font-normal normal-case text-slate-400">who&apos;s pulling their weight (counts only)</span>
+              <span className="ml-1 text-[10px] font-normal normal-case text-slate-500">who&apos;s pulling their weight (counts only)</span>
             </h2>
             <div className="space-y-1.5">
               {brainActivity.map((b) => {
@@ -305,7 +305,7 @@ export default function OpsTelemetryPage() {
                     <div className="min-w-0">
                       <span className="font-mono font-semibold text-slate-200">{b.brain}</span>
                       <span className="ml-2 text-slate-400">{b.role}</span>
-                      <div className="text-[10px] text-slate-400">{b.model}{!b.enabled && ' · offline'}</div>
+                      <div className="text-[10px] text-slate-500">{b.model}{!b.enabled && ' · offline'}</div>
                     </div>
                     <div className="flex items-center gap-3 text-right tabular-nums">
                       <span className="text-cyan-300" title="total requests">{b.requests}<span className="text-slate-500"> req</span></span>
@@ -318,7 +318,7 @@ export default function OpsTelemetryPage() {
                   </div>
                 );
               })}
-              {brainActivity.length === 0 && <p className="text-[11px] text-slate-400">no brain activity loaded</p>}
+              {brainActivity.length === 0 && <p className="text-[11px] text-slate-500">no brain activity loaded</p>}
             </div>
           </div>
 
@@ -378,7 +378,7 @@ export default function OpsTelemetryPage() {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-slate-400">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
       <div className="mt-0.5 text-sm font-semibold tabular-nums text-slate-100">{value}</div>
     </div>
   );
@@ -402,7 +402,7 @@ function PoolCard({ title, icon: Icon, stats }: { title: string; icon: React.Com
           <Stat label="avg ms" value={`${stats.metrics.avgLatencyMs}`} />
         </div>
       ) : (
-        <p className="text-[11px] text-slate-400">pool stats unavailable</p>
+        <p className="text-[11px] text-slate-500">pool stats unavailable</p>
       )}
     </div>
   );

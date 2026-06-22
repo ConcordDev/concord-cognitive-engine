@@ -86,7 +86,7 @@ export default function NarrativeWalkLensPage() {
               <h1 className="text-base font-semibold tracking-tight sm:text-lg">Narrative trail</h1>
               <p className="mt-0.5 truncate text-xs text-slate-400">Authored story beats. Walk through the world as a film.</p>
             </div>
-            <span className="text-[10px] text-slate-400">{watched.size} / {catalog.length} watched</span>
+            <span className="text-[10px] text-slate-500">{watched.size} / {catalog.length} watched</span>
             <button onClick={clearWatched} aria-label="Clear watched" className="rounded-full border border-violet-500/30 bg-violet-500/10 p-1.5 text-violet-300 hover:bg-violet-500/20">
               <RefreshCcw className="h-3.5 w-3.5" />
             </button>
@@ -95,7 +95,7 @@ export default function NarrativeWalkLensPage() {
 
         <section className="mx-auto max-w-screen-2xl px-4 py-5 sm:px-6">
           {catalog.length === 0 ? (
-            <p className="py-12 text-center text-[12px] text-slate-400">Cinematic library loading…</p>
+            <p className="py-12 text-center text-[12px] text-slate-500">Cinematic library loading…</p>
           ) : (
             <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {catalog.map((c, idx) => {

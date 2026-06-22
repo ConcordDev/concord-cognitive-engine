@@ -93,7 +93,7 @@ export default function TrainingRoomPage() {
                 {[0, 1, 2].map((i) => <div key={i} className="h-10 animate-pulse rounded-lg border border-white/5 bg-white/5" />)}
               </div>
             ) : skills.length === 0 ? (
-              <p className="py-4 text-center text-[12px] text-slate-400">
+              <p className="py-4 text-center text-[12px] text-slate-500">
                 Acquire a skill first — try a few combats, then come back.
               </p>
             ) : (
@@ -118,7 +118,7 @@ export default function TrainingRoomPage() {
 
           <div className="lg:col-span-2 rounded-xl border border-cyan-500/20 bg-zinc-950/60 p-4">
             {!frameData ? (
-              <div className="py-12 text-center text-[12px] text-slate-400">
+              <div className="py-12 text-center text-[12px] text-slate-500">
                 Select a skill to see its frame data.
               </div>
             ) : (

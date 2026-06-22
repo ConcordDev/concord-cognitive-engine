@@ -78,7 +78,7 @@ export function LivenessPanel() {
       <div className="flex items-center gap-2">
         <Database className="w-4 h-4 text-cyan-400" />
         <h2 className="text-sm font-semibold text-white">Substrate Liveness</h2>
-        <span className="text-xs text-zinc-400">— is real data accumulating + are people retained</span>
+        <span className="text-xs text-zinc-500">— is real data accumulating + are people retained</span>
       </div>
 
       {off && (

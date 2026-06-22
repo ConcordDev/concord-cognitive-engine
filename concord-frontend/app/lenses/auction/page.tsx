@@ -233,7 +233,7 @@ export default function AuctionLensPage() {
               <div key={i} className="h-28 animate-pulse rounded-xl border border-white/5 bg-white/5" />
             ))}
             {!loading && auctions.length === 0 && (
-              <p className="col-span-full px-4 py-8 text-center text-[12px] text-slate-400">No active auctions. Post one yourself.</p>
+              <p className="col-span-full px-4 py-8 text-center text-[12px] text-slate-500">No active auctions. Post one yourself.</p>
             )}
             {auctions.map((a) => {
               const timeLeft = fmtTime(a.endsAt);
@@ -276,7 +276,7 @@ export default function AuctionLensPage() {
             <div className="lg:col-span-2 rounded-xl border border-amber-500/20 bg-zinc-950/60 p-3">
               <h3 className="mb-2 text-[11px] uppercase tracking-wider text-amber-300/60">Open buy orders</h3>
               {buyOrders.length === 0 ? (
-                <p className="py-6 text-center text-[12px] text-slate-400">No open buy orders yet.</p>
+                <p className="py-6 text-center text-[12px] text-slate-500">No open buy orders yet.</p>
               ) : (
                 <table className="w-full text-[11px]">
                   <thead>

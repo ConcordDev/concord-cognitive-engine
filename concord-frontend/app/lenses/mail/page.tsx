@@ -188,7 +188,7 @@ export default function MailLensPage() {
               {/* Mail list */}
               <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-2">
                 {rows.length === 0 && (
-                  <p className="px-2 py-4 text-center text-[11px] text-slate-400">
+                  <p className="px-2 py-4 text-center text-[11px] text-slate-500">
                     {tab === 'inbox' ? 'No mail. Friends can send you mail from the friends panel.' : 'Nothing sent yet.'}
                   </p>
                 )}
@@ -227,7 +227,7 @@ export default function MailLensPage() {
               {/* Detail */}
               <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
                 {!selected ? (
-                  <p className="text-[11px] text-slate-400">Select a piece of mail.</p>
+                  <p className="text-[11px] text-slate-500">Select a piece of mail.</p>
                 ) : (
                   <div>
                     <header className="mb-3 flex items-start justify-between gap-3">

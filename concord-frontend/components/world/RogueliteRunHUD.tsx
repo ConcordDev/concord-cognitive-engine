@@ -125,7 +125,7 @@ export function RogueliteUnlockShop() {
         {flash && <div className="mb-2 rounded bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-200">{flash}</div>}
         <ul className="space-y-2">
           {unlocks.length === 0 && (
-            <li className="py-4 text-center text-[12px] text-zinc-400">No unlocks loaded.</li>
+            <li className="py-4 text-center text-[12px] text-zinc-500">No unlocks loaded.</li>
           )}
           {unlocks.map((u) => {
             const isOwned = owned.has(u.id);

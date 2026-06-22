@@ -66,7 +66,7 @@ export function SavedSearchesPanel({ className, onRun }: { className?: string; o
       )}
 
       <div className="space-y-1.5 mb-3">
-        {searches.length === 0 && !loading && <p className="text-xs text-zinc-400">No saved searches yet.</p>}
+        {searches.length === 0 && !loading && <p className="text-xs text-zinc-500">No saved searches yet.</p>}
         {searches.map((s) => (
           <div key={s.id} className="flex items-center gap-2 text-xs group">
             <button type="button" onClick={() => onRun?.(s)} className="text-violet-300 font-medium hover:underline text-left flex-1 truncate" title={s.query || ''}>

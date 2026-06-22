@@ -84,7 +84,7 @@ export default function FishingLensPage() {
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-cyan-300">Fish catalog · {worldId}</h2>
           <div className="space-y-1">
-            {catalog.length === 0 && <p className="text-xs text-zinc-400">No fish defined for this world.</p>}
+            {catalog.length === 0 && <p className="text-xs text-zinc-500">No fish defined for this world.</p>}
             {catalog.map((f) => (
               <div key={f.id} className="flex items-center justify-between rounded border border-cyan-500/20 bg-zinc-900/40 p-2 text-xs">
                 <div>
@@ -111,7 +111,7 @@ export default function FishingLensPage() {
             <Trophy size={14} /> Catch log
           </h2>
           <div className="space-y-1">
-            {catches.length === 0 && <p className="text-xs text-zinc-400">No catches yet.</p>}
+            {catches.length === 0 && <p className="text-xs text-zinc-500">No catches yet.</p>}
             {catches.map((c) => (
               <div key={c.id} className="flex items-center justify-between rounded border border-amber-500/20 bg-amber-950/20 p-2 text-xs">
                 <span className="text-amber-100">{c.item_name || c.item_id}</span>

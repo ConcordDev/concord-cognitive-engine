@@ -434,7 +434,7 @@ export default function ARLensPage() {
                     <Glasses className="w-3.5 h-3.5" /> Enter AR
                   </button>
                 ) : (
-                  <span className="text-xs text-gray-400 ml-auto" title="immersive-ar requires an AR-capable device (ARCore/ARKit) over HTTPS">Inline preview · immersive-ar unavailable on this device</span>
+                  <span className="text-xs text-gray-500 ml-auto" title="immersive-ar requires an AR-capable device (ARCore/ARKit) over HTTPS">Inline preview · immersive-ar unavailable on this device</span>
                 )
               )}
               {!renderPlan && <span className="text-xs text-gray-400 ml-auto">Move pointer to orbit</span>}

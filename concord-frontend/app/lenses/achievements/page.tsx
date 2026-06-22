@@ -160,7 +160,7 @@ export default function AchievementsLensPage() {
             })}
           </div>
           {visible.length === 0 && (
-            <p className="px-2 py-8 text-center text-[12px] text-slate-400">No achievements in this category yet.</p>
+            <p className="px-2 py-8 text-center text-[12px] text-slate-500">No achievements in this category yet.</p>
           )}
         </section>
       </main>

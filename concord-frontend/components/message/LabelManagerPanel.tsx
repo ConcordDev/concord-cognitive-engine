@@ -84,7 +84,7 @@ export function LabelManagerPanel({ className }: { className?: string }) {
       {/* Existing labels */}
       <div className="flex flex-wrap gap-1.5 mb-3 min-h-[1.5rem]">
         {labels.length === 0 && !loading && (
-          <span className="text-xs text-zinc-400">No labels yet — create one below.</span>
+          <span className="text-xs text-zinc-500">No labels yet — create one below.</span>
         )}
         {labels.map((l) => (
           <span

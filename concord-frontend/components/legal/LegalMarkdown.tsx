@@ -18,7 +18,7 @@ export function LegalMarkdown({ title, updated, children }: {
   return (
     <article className="max-w-none">
       <h1 className="mb-1 text-2xl font-semibold text-zinc-100">{title}</h1>
-      {updated && <p className="mb-6 text-xs text-zinc-400">Last updated: {updated}</p>}
+      {updated && <p className="mb-6 text-xs text-zinc-500">Last updated: {updated}</p>}
       <div className="legal-prose space-y-4 text-sm leading-relaxed text-zinc-300
         [&_h2]:mt-8 [&_h2]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-zinc-100
         [&_h3]:mt-5 [&_h3]:mb-1.5 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-zinc-200

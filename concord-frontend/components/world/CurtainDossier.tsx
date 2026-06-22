@@ -61,7 +61,7 @@ export default function CurtainDossier({ worldId }: { worldId?: string }) {
         <h2 className="text-sm font-semibold text-zinc-200">The Curtain — Classified Record</h2>
         <button onClick={() => setOpen(false)} className="text-zinc-500 hover:text-zinc-200" aria-label="Close">✕</button>
       </div>
-      <p className="mb-3 text-xs text-zinc-400">
+      <p className="mb-3 text-xs text-zinc-500">
         {cat?.declassified ?? 0} of {cat?.total ?? entries.length} files declassified. Everything else is on the record — you simply have not read it whole yet.
       </p>
       <ul className="space-y-2">
@@ -69,7 +69,7 @@ export default function CurtainDossier({ worldId }: { worldId?: string }) {
           <li key={e.id} className={`rounded border p-2 text-xs ${e.discovered ? 'border-emerald-600/40 bg-emerald-500/5' : 'border-zinc-700/50 bg-zinc-900/40'}`}>
             <div className="flex items-center justify-between">
               <span className="text-zinc-300">{e.holderNpcId} · <span className="text-zinc-500">{e.kind}</span></span>
-              <span className="text-[10px] uppercase tracking-wider text-zinc-400">cls-{e.difficulty}</span>
+              <span className="text-[10px] uppercase tracking-wider text-zinc-600">cls-{e.difficulty}</span>
             </div>
             {e.discovered ? (
               <div className="mt-1 text-emerald-200/90">{e.body}</div>

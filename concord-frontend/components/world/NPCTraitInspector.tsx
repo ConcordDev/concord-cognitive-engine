@@ -70,7 +70,7 @@ export function NPCTraitInspector() {
             <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
               <Eye size={14} /> Inspect traits
             </h2>
-            <p className="text-[10px] text-zinc-400 font-mono">{npcId}</p>
+            <p className="text-[10px] text-zinc-500 font-mono">{npcId}</p>
           </div>
           <button aria-label="Close" onClick={close} className="rounded p-1 text-zinc-400 hover:bg-zinc-800">
             <X size={14} />
@@ -80,7 +80,7 @@ export function NPCTraitInspector() {
         {pending ? (
           <div className="py-10 text-center"><Loader2 className="mx-auto animate-spin text-zinc-400" size={20} /></div>
         ) : !asym ? (
-          <p className="py-6 text-center text-xs text-zinc-400">No asymmetry data.</p>
+          <p className="py-6 text-center text-xs text-zinc-500">No asymmetry data.</p>
         ) : (
           <div className="space-y-2">
             {/* Wave 7 / E6 — the felt life behind the face: current emotional state
@@ -101,12 +101,12 @@ export function NPCTraitInspector() {
             <TraitRow icon={<Flame size={14} />} label="Current preoccupation" color="amber" t={asym.preoccupation} />
             <TraitRow icon={<Heart size={14} />} label="Asymmetric desire (toward you)" color="pink" t={asym.desire} />
             {!asym.grudge && !asym.preoccupation && !asym.desire && (
-              <p className="text-center text-xs text-zinc-400">This NPC has neutral feelings toward you.</p>
+              <p className="text-center text-xs text-zinc-500">This NPC has neutral feelings toward you.</p>
             )}
 
             {(hooks?.playerHolds || hooks?.npcHolds) && (
               <div className="mt-3 space-y-2 border-t border-zinc-700 pt-3">
-                <p className="text-[10px] uppercase tracking-wider text-zinc-400">Leverage</p>
+                <p className="text-[10px] uppercase tracking-wider text-zinc-500">Leverage</p>
                 {hooks?.playerHolds && (
                   <div className="rounded border border-emerald-500/40 bg-emerald-950/30 p-2 text-emerald-200">
                     <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider opacity-70">

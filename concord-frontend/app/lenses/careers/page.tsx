@@ -97,7 +97,7 @@ export default function CareersLens() {
             <h2 className="text-sm font-semibold text-amber-100 mb-2">Professions</h2>
             {Object.entries(byCategory).map(([cat, ts]) => (
               <div key={cat} className="mb-2">
-                <div className="text-xs uppercase tracking-wide text-gray-400">{cat}</div>
+                <div className="text-xs uppercase tracking-wide text-gray-500">{cat}</div>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {ts.map((t) => <span key={t.id} className="text-xs bg-white/5 border border-white/10 rounded px-2 py-0.5">{t.id}</span>)}
                 </div>
@@ -109,7 +109,7 @@ export default function CareersLens() {
           <section>
             <h2 className="text-sm font-semibold text-amber-100 mb-2">My contracts ({contracts.length})</h2>
             {contracts.length === 0 ? (
-              <p className="text-gray-400 text-xs">No active contracts. Negotiate one to lock in a wage.</p>
+              <p className="text-gray-500 text-xs">No active contracts. Negotiate one to lock in a wage.</p>
             ) : (
               <ul className="space-y-1 text-xs">
                 {contracts.map((c) => (

@@ -62,7 +62,7 @@ export function GlobalPanelHost() {
         <header className="flex items-center justify-between px-4 py-2 border-b border-zinc-800">
           <div className="min-w-0">
             <h2 className="text-sm font-bold text-zinc-100 truncate">{entry.label}</h2>
-            <p className="text-[10px] text-zinc-400 truncate">{entry.id} · cross-lens panel</p>
+            <p className="text-[10px] text-zinc-500 truncate">{entry.id} · cross-lens panel</p>
           </div>
           <button
             type="button"

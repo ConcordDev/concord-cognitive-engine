@@ -1153,7 +1153,7 @@ function SharedDebugTerminalTile({ code }: { code: string }) {
             <div key={i} className={line.kind === 'in' ? 'text-cyan-300' : 'text-gray-200'}>
               <span className="text-gray-400 mr-1">{line.kind === 'in' ? '›' : '·'}</span>
               <span>{line.data.replace(/\n$/, '')}</span>
-              <span className="text-gray-400 ml-2 text-[9px]">{line.from}</span>
+              <span className="text-gray-500 ml-2 text-[9px]">{line.from}</span>
             </div>
           ))
         )}

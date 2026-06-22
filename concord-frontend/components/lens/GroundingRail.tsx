@@ -26,7 +26,7 @@ export function GroundingRail({ lens, query, limit = 12 }: { lens: string; query
           {items.map((d) => (
             <li key={d.id} className="rounded-md border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5">
               <div className="text-xs font-medium text-zinc-200 truncate">{d.title}</div>
-              {d.snippet && <div className="text-[11px] text-zinc-400 line-clamp-2">{d.snippet}</div>}
+              {d.snippet && <div className="text-[11px] text-zinc-500 line-clamp-2">{d.snippet}</div>}
             </li>
           ))}
         </ul>

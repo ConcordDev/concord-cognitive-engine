@@ -126,10 +126,10 @@ export function VillageGossipFeed({ worldId }: VillageGossipFeedProps) {
                     {e.relationship_kind === 'rival' && <Skull size={10} />}
                     {e.relationship_kind.replace(/_/g, ' ')}
                   </span>
-                  <span className="text-[10px] text-zinc-400">{timeAgo(e.ts)}</span>
+                  <span className="text-[10px] text-zinc-500">{timeAgo(e.ts)}</span>
                 </div>
                 <div className="mt-1 text-zinc-300">{e.summary}</div>
-                <div className="mt-1 text-[10px] text-zinc-400">
+                <div className="mt-1 text-[10px] text-zinc-500">
                   {e.npc_a_id} ↔ {e.npc_b_id}
                 </div>
               </div>

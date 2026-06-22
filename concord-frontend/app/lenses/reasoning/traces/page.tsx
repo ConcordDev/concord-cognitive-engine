@@ -81,7 +81,7 @@ export default function ReasoningTracesPage() {
 
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-1">
-          {filtered.length === 0 && <p className="text-xs text-zinc-400">No traces match.</p>}
+          {filtered.length === 0 && <p className="text-xs text-zinc-500">No traces match.</p>}
           {filtered.map((t) => (
             <button
               key={t.id}
@@ -96,7 +96,7 @@ export default function ReasoningTracesPage() {
                 <span className="text-[10px] text-amber-300/70">conf {Math.round((t.confidence || 0) * 100)}%</span>
               </div>
               {t.input_summary && <div className="text-[10px] text-zinc-400">{t.input_summary.slice(0, 80)}</div>}
-              <div className="text-[9px] text-zinc-400">chains: {t.chain_count ?? '?'}</div>
+              <div className="text-[9px] text-zinc-500">chains: {t.chain_count ?? '?'}</div>
             </button>
           ))}
         </div>
@@ -125,7 +125,7 @@ export default function ReasoningTracesPage() {
         </header>
 
         {agentTraces.length === 0 ? (
-          <p className="text-xs text-zinc-400">No agent deliberations recorded — the agent is on instinct (or none deployed). Set CONCORD_AWARENESS_LOOP=1 + deploy an agent.</p>
+          <p className="text-xs text-zinc-500">No agent deliberations recorded — the agent is on instinct (or none deployed). Set CONCORD_AWARENESS_LOOP=1 + deploy an agent.</p>
         ) : (
           <>
             <AwarenessCurve traces={agentTraces} />

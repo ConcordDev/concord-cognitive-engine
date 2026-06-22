@@ -97,7 +97,7 @@ export default function GarageLensPage() {
       </div>
 
       <div className="grid gap-2 md:grid-cols-2">
-        {vehicles.length === 0 && <p className="col-span-2 text-center text-xs text-zinc-400">No vehicles.</p>}
+        {vehicles.length === 0 && <p className="col-span-2 text-center text-xs text-zinc-500">No vehicles.</p>}
         {vehicles.map((v) => (
           <div key={v.id} className="rounded border border-amber-500/20 bg-zinc-900/40 p-3">
             <div className="flex items-center justify-between">
@@ -107,7 +107,7 @@ export default function GarageLensPage() {
                   {v.owner_kind}{v.owner_id ? `:${v.owner_id.slice(0, 10)}` : ''} · cap {v.capacity} · fare {v.fare_cc} cc
                 </div>
                 {v.pos_x != null && (
-                  <div className="text-[9px] font-mono text-zinc-400">@ ({v.pos_x.toFixed(1)}, {v.pos_z?.toFixed(1) ?? 0})</div>
+                  <div className="text-[9px] font-mono text-zinc-500">@ ({v.pos_x.toFixed(1)}, {v.pos_z?.toFixed(1) ?? 0})</div>
                 )}
               </div>
             </div>

@@ -82,7 +82,7 @@ export default function DetectiveLensPage() {
           <aside className="rounded-xl border border-amber-500/20 bg-zinc-950/60 p-3">
             <h2 className="mb-2 text-[11px] uppercase tracking-wider text-amber-300/60">Open cases</h2>
             {crimes.length === 0 ? (
-              <p className="py-4 text-center text-[12px] text-slate-400">No open cases.</p>
+              <p className="py-4 text-center text-[12px] text-slate-500">No open cases.</p>
             ) : (
               <ul className="space-y-1">
                 {crimes.map((c) => (
@@ -90,7 +90,7 @@ export default function DetectiveLensPage() {
                     <button onClick={() => { setSelected(c.id); setResult(null); }}
                       className={`w-full rounded px-2 py-1 text-left text-[12px] ${selected === c.id ? 'bg-amber-500/20 text-amber-100' : 'text-slate-300 hover:bg-slate-800/50'}`}>
                       <div className="font-medium">{c.crime_type}</div>
-                      <div className="text-[10px] text-slate-400">@ {c.location_id}</div>
+                      <div className="text-[10px] text-slate-500">@ {c.location_id}</div>
                     </button>
                   </li>
                 ))}
@@ -100,12 +100,12 @@ export default function DetectiveLensPage() {
 
           <div className="lg:col-span-2 rounded-xl border border-amber-500/20 bg-zinc-950/60 p-4">
             {!selected ? (
-              <p className="py-12 text-center text-[12px] text-slate-400">Select a case from the left.</p>
+              <p className="py-12 text-center text-[12px] text-slate-500">Select a case from the left.</p>
             ) : (
               <>
                 <h2 className="mb-3 text-sm font-semibold text-amber-100">Evidence</h2>
                 {evidence.length === 0 ? (
-                  <p className="text-[12px] text-slate-400">No evidence collected yet.</p>
+                  <p className="text-[12px] text-slate-500">No evidence collected yet.</p>
                 ) : (
                   <ul className="mb-4 space-y-1.5">
                     {evidence.map((e) => (

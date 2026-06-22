@@ -190,16 +190,16 @@ export function MutualAidPactsPanel({ className }: { className?: string }) {
 
       <div className="grid md:grid-cols-2 gap-4">
         <div>
-          <h4 className="text-[11px] uppercase tracking-wider text-zinc-400 mb-1.5">Pacts you wrote</h4>
+          <h4 className="text-[11px] uppercase tracking-wider text-zinc-500 mb-1.5">Pacts you wrote</h4>
           <div className="space-y-2">
-            {written.length === 0 && !loading && <p className="text-xs text-zinc-400">None yet.</p>}
+            {written.length === 0 && !loading && <p className="text-xs text-zinc-500">None yet.</p>}
             {written.map((p) => renderPact(p, false))}
           </div>
         </div>
         <div>
-          <h4 className="text-[11px] uppercase tracking-wider text-zinc-400 mb-1.5">You're a beneficiary</h4>
+          <h4 className="text-[11px] uppercase tracking-wider text-zinc-500 mb-1.5">You're a beneficiary</h4>
           <div className="space-y-2">
-            {beneficiaryOf.length === 0 && !loading && <p className="text-xs text-zinc-400">None yet.</p>}
+            {beneficiaryOf.length === 0 && !loading && <p className="text-xs text-zinc-500">None yet.</p>}
             {beneficiaryOf.map((p) => renderPact(p, true))}
           </div>
         </div>
@@ -207,7 +207,7 @@ export function MutualAidPactsPanel({ className }: { className?: string }) {
 
       {(payouts.paidOut.length > 0 || payouts.received.length > 0) && (
         <div className="mt-4 border-t border-zinc-800 pt-3">
-          <h4 className="text-[11px] uppercase tracking-wider text-zinc-400 mb-1.5 inline-flex items-center gap-1"><History className="w-3 h-3" /> Payout history</h4>
+          <h4 className="text-[11px] uppercase tracking-wider text-zinc-500 mb-1.5 inline-flex items-center gap-1"><History className="w-3 h-3" /> Payout history</h4>
           <div className="space-y-1">
             {payouts.received.map((po) => (
               <div key={po.id} className="text-[11px] text-emerald-300">Received {po.mySparks} sparks — {po.cause} ({new Date(po.firedAt).toLocaleDateString()})</div>

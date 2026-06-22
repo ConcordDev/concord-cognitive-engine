@@ -251,7 +251,7 @@ export default function ConcordiaHub({ onDistrictSelect, onNavigateToLens }: Con
         </div>
         <div className="space-y-2 max-h-48 overflow-y-auto">
           {feed.length === 0 && (
-            <p className="text-[10px] text-gray-400 italic py-2">No recent activity.</p>
+            <p className="text-[10px] text-gray-500 italic py-2">No recent activity.</p>
           )}
           {feed.map(event => (
             <div key={event.id} className="flex items-start gap-2 text-[10px]">

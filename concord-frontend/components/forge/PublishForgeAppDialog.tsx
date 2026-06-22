@@ -121,11 +121,11 @@ export function PublishForgeAppDialog({
           <h2 className="text-sm font-semibold tracking-wide uppercase text-zinc-300">
             Publish forge app
           </h2>
-          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200 text-xs">close</button>
+          <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-200 text-xs">close</button>
         </div>
 
         <div className="space-y-3">
-          <p className="text-[11px] leading-tight text-zinc-400">
+          <p className="text-[11px] leading-tight text-zinc-500">
             Mints your generated single-file app as a DTU. Royalty cascade
             ensures the template author receives a perpetual share of
             every downstream sale, automatically.

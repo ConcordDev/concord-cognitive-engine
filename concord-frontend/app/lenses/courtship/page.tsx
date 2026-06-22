@@ -102,7 +102,7 @@ export default function CourtshipLensPage() {
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-pink-300">Active courtships ({courtships.length})</h2>
         {courtships.length === 0 ? (
-          <p className="text-xs text-zinc-400">No active courtships. Initiate one via an NPC's context menu.</p>
+          <p className="text-xs text-zinc-500">No active courtships. Initiate one via an NPC's context menu.</p>
         ) : (
           <div className="space-y-2">
             {courtships.map((c) => {
@@ -146,7 +146,7 @@ export default function CourtshipLensPage() {
       <section className="space-y-2">
         <h2 className="flex items-center gap-1 text-sm font-semibold text-amber-300"><Crown size={14} /> Marriages ({marriages.length})</h2>
         {marriages.length === 0 ? (
-          <p className="text-xs text-zinc-400">No active marriages.</p>
+          <p className="text-xs text-zinc-500">No active marriages.</p>
         ) : (
           <div className="space-y-1">
             {marriages.map((m) => (
@@ -162,7 +162,7 @@ export default function CourtshipLensPage() {
       <section className="space-y-2">
         <h2 className="flex items-center gap-1 text-sm font-semibold text-emerald-300"><Baby size={14} /> Children ({children.length})</h2>
         {children.length === 0 ? (
-          <p className="text-xs text-zinc-400">No children.</p>
+          <p className="text-xs text-zinc-500">No children.</p>
         ) : (
           <div className="space-y-1">
             {children.map((c) => (

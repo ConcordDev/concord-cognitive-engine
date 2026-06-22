@@ -130,7 +130,7 @@ export function RestaurantDashboard({ building, onClose, worldId }: OverlayProps
 
         <div className="space-y-1.5">
           {orders.length === 0 && (
-            <div className="rounded border border-zinc-800 bg-zinc-900/50 p-4 text-center text-xs text-zinc-400">
+            <div className="rounded border border-zinc-800 bg-zinc-900/50 p-4 text-center text-xs text-zinc-500">
               <ChefHat className="mx-auto mb-1 opacity-40" size={20} />
               no pending orders — service is quiet
             </div>

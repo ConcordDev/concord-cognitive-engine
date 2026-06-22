@@ -59,7 +59,7 @@ export function StationOverlayShell({ title, subtitle, onClose, children, accent
         <header className="mb-3 flex items-center justify-between border-b border-zinc-800 pb-2">
           <div>
             <h2 className={`text-sm font-semibold ${tone.text}`}>{title}</h2>
-            {subtitle && <p className="text-[10px] text-zinc-400">{subtitle}</p>}
+            {subtitle && <p className="text-[10px] text-zinc-500">{subtitle}</p>}
           </div>
           <button onClick={closeWithSfx} aria-label="Close" className="rounded p-1 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100">
             <X size={14} />
