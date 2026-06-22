@@ -19,6 +19,45 @@ This doc is the map. Each tier names the existing files to reuse and the genuine
 
 ---
 
+## 🟢 Build progress (live — branch `claude/concord-50-capabilities`)
+
+The connective core has been BUILT, not just specced. Each item below shipped with
+a migration/lib/domain + offline tests, and the global gates stay green
+(`check-doc-claims` 13/13, `schema-drift` 0 violations, detector ratchet PASS):
+
+- **#21 Private R&D Engine (Tier-2 flagship) — DONE.** `domains/rnd.js` chains the
+  previously-unreachable FEA solver + CAS + causal-closure + hypothesis engine with
+  LRL grounding into one verifiable loop (`rnd.run`). Wires Tier-0 #16/#17/#18/#19.
+  `emergent/hypothesis-cycle.js` gives the hypothesis engine a clock.
+- **Tier-1 LRL-as-hub — DONE.** Unified resonance+citation graph for GraphView
+  (#46/#35, `literary.resonance_graph`), narrative grounding (#30, `narrative-bridge`
+  literary echo), resonance salience feeding consolidation (#8, `literary.salience`).
+- **#5 Cognitive Fingerprint — DONE.** `lib/cognitive-fingerprint.js` +
+  `metacog.fingerprint[_history]` + snapshot heartbeat (mig 339). Thinking-style
+  profile from real activity only.
+- **#3 Cognitive Replay — DONE.** `lib/cognitive-replay.js` + `metacog.replay` —
+  grounded "thinking Wrapped" over real `agent_reasoning_traces`.
+- **#10 Persistent Goal Decomposition — DONE.** `lib/goal-decomposition.js` +
+  `domains/decomp.js` + mig 340. Durable subgoal tree; root mints a DTU; status
+  rolls up as leaves complete.
+- **#14 Long-Horizon Planner — DONE.** `lib/long-horizon-planner.js` +
+  `domains/planner.js` + mig 341 + `plan-horizon-cycle` heartbeat. Time-phased
+  milestones + contingencies on the goal tree.
+- **#12 Shadow Reasoning Council — DONE.** `lib/shadow-council.js` + `reason.council`
+  — five-voice deliberation that mints a citable `shadow_reasoning` DTU preserving
+  the dissent a flat vote discards.
+- **#36 Contribution Quests — DONE.** `lib/contribution-quests.js` +
+  `domains/contrib.js` + mig 342. Completion MEASURED from real authored DTUs;
+  reward mints through the earned-CC path, idempotent.
+
+**Remaining (specs in the tiers below):** #37 license revocation (economy-core,
+needs care), #43 Music Resonance (clone LRL ingest for an audio corpus), #9 swarm
+orchestration, #20 invariant viz, #40 HDC/VSA upgrade, #41 governance sim, #45 style
+transfer, #49 holocron agent, #38 federated brain, #15 voice+affect fusion. Tier-5
+hardware/external (#23/#29/#44/#27) stays deferred.
+
+---
+
 ## Audit matrix — all 50 (verdict · file · wired? · LRL link)
 
 Legend: ✅ EXISTS+wired · ⚙️ BUILT-but-DEAD/lib-only (wire-the-unwired win) · 🟡 PARTIAL · ❌ MISSING
