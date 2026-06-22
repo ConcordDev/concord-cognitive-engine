@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-06-01T22:32:38.147Z",
-  "tablesModelled": 698,
-  "migrationsApplied": 322,
-  "sourceFiles": 1715,
+  "generatedAt": "2026-06-22T22:40:29.261Z",
+  "tablesModelled": 734,
+  "migrationsApplied": 342,
+  "sourceFiles": 1803,
   "floor": 0,
   "violationCount": 0,
   "violations": []

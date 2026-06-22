@@ -230,6 +230,33 @@ registerHeartbeat("literary-license-audit-cycle", {
   handler: ({ db } = {}) => runLiteraryLicenseAuditCycle({ db }),
 });
 
+// Tier-0 wire-the-unwired — gives the Hypothesis Engine (#17) a clock so
+// confidence/age auto-transitions fire. Kill-switch CONCORD_HYPOTHESIS_CYCLE=0.
+import { runHypothesisCycle } from "./emergent/hypothesis-cycle.js";
+registerHeartbeat("hypothesis-cycle", {
+  frequency: 120,
+  scope: "global",
+  handler: () => runHypothesisCycle(),
+});
+
+// Cognitive Fingerprint (#5) — snapshot each active author's thinking-style
+// profile for trend tracking. Kill-switch CONCORD_COGNITIVE_FINGERPRINT=0.
+import { runCognitiveFingerprintCycle } from "./emergent/cognitive-fingerprint-cycle.js";
+registerHeartbeat("cognitive-fingerprint-cycle", {
+  frequency: 360,
+  scope: "global",
+  handler: ({ db } = {}) => runCognitiveFingerprintCycle({ db }),
+});
+
+// Long-Horizon Planner (#14) — sweep overdue milestones + fire contingencies.
+// Kill-switch CONCORD_PLAN_HORIZON_CYCLE=0.
+import { runPlanHorizonCycle } from "./emergent/plan-horizon-cycle.js";
+registerHeartbeat("plan-horizon-cycle", {
+  frequency: 240,
+  scope: "global",
+  handler: ({ db } = {}) => runPlanHorizonCycle({ db }),
+});
+
 // Living Society Phase 3 — sparks-flow payday. Pay moves along employment edges;
 // skim diverts to collectors (corruption); unpaid flow deepens grievances.
 import { runPayCycle } from "./emergent/pay-cycle.js";
@@ -25426,6 +25453,36 @@ registerReasonMacros(register);
 // schema: migration 337. Every hit carries provenance (source DTU + license).
 import registerLiteraryMacros from "./domains/literary.js";
 registerLiteraryMacros(register);
+
+// Private R&D Engine (#21) + Tier-0 wire-the-unwired: reaches the previously
+// unreachable FEA solver, causal-closure analyzer, and hypothesis engine, and
+// chains them with LRL grounding into one verifiable research loop (rnd.run).
+import registerRndMacros from "./domains/rnd.js";
+registerRndMacros(register);
+
+// Cognitive Fingerprint (#5) — thinking-style profile from real activity.
+import registerMetacogMacros from "./domains/metacog.js";
+registerMetacogMacros(register);
+
+// Persistent Goal Decomposition (#10) — durable subgoal tree; root mints a DTU,
+// status rolls up as leaves complete. The plan scaffold for the R&D engine.
+import registerDecompMacros from "./domains/decomp.js";
+registerDecompMacros(register);
+
+// Long-Horizon Planner (#14) — schedule + contingency layer on the goal tree.
+import registerPlannerMacros from "./domains/planner.js";
+registerPlannerMacros(register);
+
+// Contribution Quests (#36) — verifiable-contribution quests (author N DTUs in a
+// target lens); reward mints through the earned-CC path, idempotent.
+import registerContribMacros from "./domains/contrib.js";
+registerContribMacros(register);
+
+// Music Resonance (#43) — the second corpus on the Literary Resonance Lattice;
+// hybrid search + cross-domain bridge from a lyric to the literary passage it
+// resonates with. User-authored / PD / CC content only.
+import registerMusicResMacros from "./domains/musicres.js";
+registerMusicResMacros(register);
 
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
