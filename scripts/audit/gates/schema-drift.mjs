@@ -371,7 +371,11 @@ for (const n of sourceCreateNames) knownTables.add(n);
 //  - schema_migrations: created by the migration RUNNER, not a migration up().
 //  - creative_artifact_listings: an optional "v2" table the marketplace probes
 //    and falls back to v1 when absent — the playtester verified + excluded it.
-for (const n of ["schema_migrations", "creative_artifact_listings"]) knownTables.add(n);
+//  - literary_vec: a sqlite-vec `vec0` VIRTUAL TABLE created at runtime by
+//    server/lib/literary-vec.js#ensureVec() (needs the loadable sqlite-vec
+//    extension this in-memory gate DB lacks, so its CREATE can't be exec'd here).
+//    LRL degrades gracefully when it's absent — ADR 009.
+for (const n of ["schema_migrations", "creative_artifact_listings", "literary_vec"]) knownTables.add(n);
 
 const violations = [];
 

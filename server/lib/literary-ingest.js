@@ -193,6 +193,9 @@ export async function ingestWork(db, meta, fullText, opts = {}) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const insFts = db.prepare("INSERT INTO literary_chunks_fts (chunk_id, content) VALUES (?, ?)");
+  // Public-domain content is public by construction (citable + discoverable).
+  // Prepared once here, not per chunk, to avoid an N+1 prepare in the loop.
+  const setPublic = db.prepare("UPDATE dtus SET visibility = 'public' WHERE id = ?");
 
   let made = 0;
   const embedJobs = [];
@@ -222,10 +225,9 @@ export async function ingestWork(db, meta, fullText, opts = {}) {
         },
       });
       if (res && res.ok) dtuId = res.dtu?.id || res.dtuId || null;
-      // Public-domain content is public by construction — makes the chunk DTU
-      // discoverable cross-lens and citable (annotation crystallization, Phase 4).
+      // Makes the chunk DTU discoverable cross-lens and citable (Phase 4).
       if (dtuId) {
-        try { db.prepare("UPDATE dtus SET visibility = 'public' WHERE id = ?").run(dtuId); } catch { /* column optional */ }
+        try { setPublic.run(dtuId); } catch { /* column optional */ }
       }
     } catch {
       // Minting one chunk must never abort the whole work.
