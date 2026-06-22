@@ -14,6 +14,7 @@
 // and the chunk is still keyword-searchable (the existing substrate rule).
 
 import { createDTU } from "../economy/dtu-pipeline.js";
+import { upsertVec } from "./literary-vec.js";
 
 // embeddings.js is import-side-effectful (opens its own state); import lazily so
 // a pure chunkText() caller (e.g. unit tests) doesn't pull the whole stack.
@@ -221,6 +222,11 @@ export async function ingestWork(db, meta, fullText, opts = {}) {
         },
       });
       if (res && res.ok) dtuId = res.dtu?.id || res.dtuId || null;
+      // Public-domain content is public by construction — makes the chunk DTU
+      // discoverable cross-lens and citable (annotation crystallization, Phase 4).
+      if (dtuId) {
+        try { db.prepare("UPDATE dtus SET visibility = 'public' WHERE id = ?").run(dtuId); } catch { /* column optional */ }
+      }
     } catch {
       // Minting one chunk must never abort the whole work.
       dtuId = null;
@@ -240,7 +246,11 @@ export async function ingestWork(db, meta, fullText, opts = {}) {
     for (const job of embedJobs) {
       try {
         const vec = await _embed(job.content);
-        if (vec) { _storeEmbedding(job.dtuId, vec); embedded += 1; }
+        if (vec) {
+          _storeEmbedding(job.dtuId, vec);
+          try { upsertVec(db, job.dtuId, vec); } catch { /* sqlite-vec optional */ }
+          embedded += 1;
+        }
       } catch { /* graceful — keyword path still works */ }
     }
   }

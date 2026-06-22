@@ -15,7 +15,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { GraphView, type GraphNode, type GraphEdge } from '@/components/atlas/GraphView';
 import { lensRun } from '@/lib/api/client';
-import { BookOpen, Search, Network, ShieldCheck, FileText, Loader2, Sparkles } from 'lucide-react';
+import { BookOpen, Search, Network, ShieldCheck, FileText, Loader2, Sparkles, PenLine } from 'lucide-react';
 
 interface Provenance {
   sourceId: string; dtuId: string; title: string; author?: string;
@@ -42,6 +42,8 @@ export default function LiteraryLensPage() {
   const [searched, setSearched] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [resonance, setResonance] = useState<ResonanceEdge[]>([]);
+  const [note, setNote] = useState('');
+  const [noteStatus, setNoteStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
     lensRun<Stats>('literary', 'stats', {}).then((r) => {
@@ -79,6 +81,21 @@ export default function LiteraryLensPage() {
       setLoading(false);
     }
   }, [query]);
+
+  // Reset the note editor when the selection changes.
+  useEffect(() => { setNote(''); setNoteStatus('idle'); }, [selected]);
+
+  const saveNote = useCallback(async () => {
+    if (!selected || !note.trim()) return;
+    setNoteStatus('saving');
+    try {
+      const r = await lensRun('literary', 'annotate', { chunkId: selected, note: note.trim() });
+      setNoteStatus(r.data?.result?.ok ? 'saved' : 'error');
+      if (r.data?.result?.ok) setNote('');
+    } catch {
+      setNoteStatus('error');
+    }
+  }, [selected, note]);
 
   const selectedHit = hits.find((h) => h.chunkId === selected) || null;
   const corpusEmpty = stats != null && stats.chunks === 0;
@@ -243,6 +260,37 @@ export default function LiteraryLensPage() {
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* Phase 4 — annotation crystallization: a note becomes a new DTU
+                  citing this passage, growing the lattice from engagement. */}
+              {selectedHit && (
+                <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 space-y-2">
+                  <h3 className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
+                    <PenLine className="w-3.5 h-3.5 text-sky-300" /> Annotate
+                  </h3>
+                  <textarea
+                    value={note}
+                    onChange={(e) => { setNote(e.target.value); setNoteStatus('idle'); }}
+                    rows={3}
+                    placeholder="Your reading — becomes a DTU citing this passage…"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs resize-none focus:border-sky-500/50 outline-none placeholder:text-zinc-600"
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-zinc-500">
+                      {noteStatus === 'saved' && <span className="text-emerald-400">Saved — DTU minted</span>}
+                      {noteStatus === 'error' && <span className="text-rose-400">Could not save</span>}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={saveNote}
+                      disabled={!note.trim() || noteStatus === 'saving'}
+                      className="px-2.5 py-1 rounded bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-xs font-medium"
+                    >
+                      {noteStatus === 'saving' ? 'Saving…' : 'Save note'}
+                    </button>
+                  </div>
                 </div>
               )}
             </aside>

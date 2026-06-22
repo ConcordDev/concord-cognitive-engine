@@ -16,6 +16,9 @@
 
 import { embed, cosineSimilarity } from "../embeddings.js";
 import { getResonanceEdges } from "../lib/literary-resonance.js";
+import { searchVec } from "../lib/literary-vec.js";
+import { createDTU } from "../economy/dtu-pipeline.js";
+import { rerankHits } from "../lib/literary-rerank.js";
 
 const RRF_K = 60; // standard Reciprocal Rank Fusion constant
 const DENSE_SCAN_CAP = Number(process.env.LRL_DENSE_SCAN_CAP || 4000); // bound the MVP full-scan; sqlite-vec is the scale path
@@ -89,23 +92,40 @@ async function searchLiterary(db, input = {}) {
   let qvec = null;
   try { qvec = input.keyword === true ? null : await embed(query); } catch { qvec = null; }
   if (qvec) {
-    let rows = [];
-    try {
-      rows = db.prepare(`
-        SELECT c.id AS chunkId, e.embedding AS emb
-        FROM literary_chunks c
-        JOIN embedding_cache e ON e.dtu_id = c.dtu_id
-        LIMIT ?
-      `).all(DENSE_SCAN_CAP);
-    } catch { rows = []; } // embedding_cache created by embeddings.js init; absent → no dense
-    const scored = [];
-    for (const r of rows) {
-      const v = decodeVec(r.emb);
-      if (v && v.length === qvec.length) scored.push([r.chunkId, cosineSimilarity(qvec, v)]);
+    // Prefer the sqlite-vec ANN index (corpus scale); it returns DTU ids, which
+    // we map back to chunk ids for fusion. Fall back to the in-memory cosine
+    // scan over embedding_cache when sqlite-vec is unavailable.
+    const vecHits = searchVec(db, qvec, candidateK);
+    if (vecHits && vecHits.length) {
+      const ids = vecHits.map((h) => h.dtuId);
+      const map = new Map();
+      try {
+        const placeholders = ids.map(() => "?").join(",");
+        for (const r of db.prepare(`SELECT id, dtu_id FROM literary_chunks WHERE dtu_id IN (${placeholders})`).all(...ids)) {
+          map.set(r.dtu_id, r.id);
+        }
+      } catch { /* fall through to whatever mapped */ }
+      denseIds = vecHits.map((h) => map.get(h.dtuId)).filter(Boolean);
+      semantic = denseIds.length > 0;
+    } else {
+      let rows = [];
+      try {
+        rows = db.prepare(`
+          SELECT c.id AS chunkId, e.embedding AS emb
+          FROM literary_chunks c
+          JOIN embedding_cache e ON e.dtu_id = c.dtu_id
+          LIMIT ?
+        `).all(DENSE_SCAN_CAP);
+      } catch { rows = []; } // embedding_cache created by embeddings.js init; absent → no dense
+      const scored = [];
+      for (const r of rows) {
+        const v = decodeVec(r.emb);
+        if (v && v.length === qvec.length) scored.push([r.chunkId, cosineSimilarity(qvec, v)]);
+      }
+      scored.sort((a, b) => b[1] - a[1]);
+      denseIds = scored.slice(0, candidateK).map((x) => x[0]);
+      semantic = scored.length > 0;
     }
-    scored.sort((a, b) => b[1] - a[1]);
-    denseIds = scored.slice(0, candidateK).map((x) => x[0]);
-    semantic = scored.length > 0;
   }
 
   // Fuse. If only one list has results, RRF degrades to that list's order.
@@ -134,7 +154,9 @@ async function searchLiterary(db, input = {}) {
     };
   }).filter(Boolean);
 
-  return { ok: true, results, count: results.length, semantic, fusion: "rrf" };
+  // Final precision pass — lexical rerank over the fused candidates.
+  const reranked = rerankHits(query, results);
+  return { ok: true, results: reranked, count: reranked.length, semantic, fusion: "rrf+lexrerank" };
 }
 
 export default function registerLiteraryMacros(register) {
@@ -228,6 +250,67 @@ export default function registerLiteraryMacros(register) {
     if (!dtuId) return { ok: false, reason: "not_found" };
     return { ok: true, dtuId, edges: getResonanceEdges(db, dtuId, input.limit) };
   }, { note: "cross-domain resonance edges (literary → other lenses) for a chunk/dtu" });
+
+  // Phase 4 — annotation crystallization. A reader's highlight + note becomes a
+  // NEW derivative DTU that cites the source passage, so the lattice self-grows
+  // from human engagement (and the royalty cascade tracks the lineage).
+  register("literary", "annotate", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const chunkId = String(input.chunkId || "");
+    const note = String(input.note || "").trim();
+    const quote = String(input.quote || "").trim();
+    if (!chunkId || !note) return { ok: false, reason: "missing_input" };
+    const chunk = db.prepare(`
+      SELECT c.dtu_id AS dtuId, s.title, s.author
+      FROM literary_chunks c JOIN literary_sources s ON s.id = c.source_id
+      WHERE c.id = ?
+    `).get(chunkId);
+    if (!chunk || !chunk.dtuId) return { ok: false, reason: "not_found" };
+    const userId = ctx?.actor?.userId || "anon";
+    const content = `Annotation on "${chunk.title}"${chunk.author ? ` by ${chunk.author}` : ""}:\n\n${quote ? `> ${quote}\n\n` : ""}${note}`;
+    try {
+      const res = createDTU(db, {
+        creatorId: userId,
+        title: `Note: ${chunk.title}`.slice(0, 160),
+        content,
+        contentType: "text",
+        lensId: "literary",
+        tier: "REGULAR",
+        tags: ["literary", "annotation", chunk.author].filter(Boolean).map((t) => String(t).toLowerCase()),
+        citationMode: "derivative",
+        citations: [{ parentId: chunk.dtuId, parentCreatorId: "system", generation: 1 }],
+        metadata: { via: "literary-annotation", sourceChunkId: chunkId, sourceTitle: chunk.title },
+      });
+      if (!res || !res.ok) return { ok: false, reason: res?.error || "create_failed" };
+      return { ok: true, dtuId: res.dtu?.id, citedChunkId: chunkId };
+    } catch (e) {
+      return { ok: false, reason: String(e?.message || e) };
+    }
+  }, { note: "reader annotation → derivative DTU citing the source passage (self-growing lattice)" });
+
+  // Phase 4 — crystallization candidates: the passages bridging the most other
+  // domains (highest resonance edge count). These are what a consolidation pass
+  // would promote toward MEGA/HYPER tiers.
+  register("literary", "crystallize", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const limit = Math.min(Math.max(Number(input.limit) || 10, 1), 50);
+    let crystals = [];
+    try {
+      crystals = db.prepare(`
+        SELECT c.id AS chunkId, c.dtu_id AS dtuId, c.heading, s.title, s.author,
+               COUNT(r.id) AS edgeCount, ROUND(AVG(r.score), 4) AS avgScore
+        FROM literary_resonance_edges r
+        JOIN literary_chunks c ON c.dtu_id = r.literary_dtu_id
+        JOIN literary_sources s ON s.id = c.source_id
+        GROUP BY r.literary_dtu_id
+        ORDER BY edgeCount DESC, avgScore DESC
+        LIMIT ?
+      `).all(limit);
+    } catch { crystals = []; }
+    return { ok: true, crystals };
+  }, { note: "most-bridged passages — crystallization candidates for tier promotion" });
 
   register("literary", "stats", async (ctx) => {
     const db = ctx?.db;

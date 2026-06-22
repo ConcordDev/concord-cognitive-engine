@@ -221,6 +221,15 @@ registerHeartbeat("literary-resonance-cycle", {
   handler: ({ db } = {}) => runLiteraryResonanceCycle({ db }),
 });
 
+// LRL Phase 3 — literary license-compliance audit. Flags non-PD/unverified
+// sources for review. Kill-switch CONCORD_LITERARY_LICENSE_AUDIT=0.
+import { runLiteraryLicenseAuditCycle } from "./emergent/literary-license-audit-cycle.js";
+registerHeartbeat("literary-license-audit-cycle", {
+  frequency: 480,
+  scope: "global",
+  handler: ({ db } = {}) => runLiteraryLicenseAuditCycle({ db }),
+});
+
 // Living Society Phase 3 — sparks-flow payday. Pay moves along employment edges;
 // skim diverts to collectors (corruption); unpaid flow deepens grievances.
 import { runPayCycle } from "./emergent/pay-cycle.js";
