@@ -230,6 +230,15 @@ registerHeartbeat("literary-license-audit-cycle", {
   handler: ({ db } = {}) => runLiteraryLicenseAuditCycle({ db }),
 });
 
+// Tier-0 wire-the-unwired — gives the Hypothesis Engine (#17) a clock so
+// confidence/age auto-transitions fire. Kill-switch CONCORD_HYPOTHESIS_CYCLE=0.
+import { runHypothesisCycle } from "./emergent/hypothesis-cycle.js";
+registerHeartbeat("hypothesis-cycle", {
+  frequency: 120,
+  scope: "global",
+  handler: () => runHypothesisCycle(),
+});
+
 // Living Society Phase 3 — sparks-flow payday. Pay moves along employment edges;
 // skim diverts to collectors (corruption); unpaid flow deepens grievances.
 import { runPayCycle } from "./emergent/pay-cycle.js";
@@ -25426,6 +25435,12 @@ registerReasonMacros(register);
 // schema: migration 337. Every hit carries provenance (source DTU + license).
 import registerLiteraryMacros from "./domains/literary.js";
 registerLiteraryMacros(register);
+
+// Private R&D Engine (#21) + Tier-0 wire-the-unwired: reaches the previously
+// unreachable FEA solver, causal-closure analyzer, and hypothesis engine, and
+// chains them with LRL grounding into one verifiable research loop (rnd.run).
+import registerRndMacros from "./domains/rnd.js";
+registerRndMacros(register);
 
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
