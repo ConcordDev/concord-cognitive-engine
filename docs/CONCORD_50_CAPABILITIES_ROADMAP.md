@@ -49,12 +49,17 @@ a migration/lib/domain + offline tests, and the global gates stay green
 - **#36 Contribution Quests — DONE.** `lib/contribution-quests.js` +
   `domains/contrib.js` + mig 342. Completion MEASURED from real authored DTUs;
   reward mints through the earned-CC path, idempotent.
+- **#43 Music Resonance (Tier-1 second corpus) — DONE.** `lib/music-resonance.js`
+  + `domains/musicres.js` + mig 343. "Music as a literary corpus": ingest
+  user-authored/PD/CC tracks (DTU per section + FTS5), hybrid-search them with the
+  same BM25+dense pipeline as the literary lattice (honest `semantic` flag), and
+  `musicres.bridge` cross-links a lyric to the public-domain passage it resonates
+  with — making the LRL genuinely cross-domain (two corpora bridged).
 
 **Remaining (specs in the tiers below):** #37 license revocation (economy-core,
-needs care), #43 Music Resonance (clone LRL ingest for an audio corpus), #9 swarm
-orchestration, #20 invariant viz, #40 HDC/VSA upgrade, #41 governance sim, #45 style
-transfer, #49 holocron agent, #38 federated brain, #15 voice+affect fusion. Tier-5
-hardware/external (#23/#29/#44/#27) stays deferred.
+needs care), #9 swarm orchestration, #20 invariant viz, #40 HDC/VSA upgrade, #41
+governance sim, #45 style transfer, #49 holocron agent, #38 federated brain, #15
+voice+affect fusion. Tier-5 hardware/external (#23/#29/#44/#27) stays deferred.
 
 ---
 

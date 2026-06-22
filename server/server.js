@@ -25478,6 +25478,12 @@ registerPlannerMacros(register);
 import registerContribMacros from "./domains/contrib.js";
 registerContribMacros(register);
 
+// Music Resonance (#43) — the second corpus on the Literary Resonance Lattice;
+// hybrid search + cross-domain bridge from a lyric to the literary passage it
+// resonates with. User-authored / PD / CC content only.
+import registerMusicResMacros from "./domains/musicres.js";
+registerMusicResMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
