@@ -130,7 +130,7 @@ The server requires `JWT_SECRET` in production. Without it, the boot log prints 
 ## Architecture
 
 ### The monolith: `server/server.js`
-**76,683 lines** (`wc -l server/server.js`, re-verified 2026-06-22). All routes, middleware, startup, and tick logic live here. It is intentionally monolithic (comment in code: "for IP protection"). Adding new routes means adding them directly to this file. It imports from `server/lib/`, `server/emergent/`, `server/domains/`, and `server/routes/`.
+**76,698 lines** (`wc -l server/server.js`, re-verified 2026-06-22). All routes, middleware, startup, and tick logic live here. It is intentionally monolithic (comment in code: "for IP protection"). Adding new routes means adding them directly to this file. It imports from `server/lib/`, `server/emergent/`, `server/domains/`, and `server/routes/`.
 
 **Boot-order TDZ hazard.** `const app = express()` is at `server.js:27554` and `const LENS_ACTIONS = new Map()` is at `server.js:36537` — code at the top of the file that references either at module-eval time hits a temporal-dead-zone ReferenceError. Two mount blocks (`mountChatAgentStream`, `mountMcpServer`) sat ~4k–13k lines too early and silently dead-mounted `/api/chat-agent/stream` + `/mcp` for months until commit `7e83685` moved them to right after `LENS_ACTIONS`. Sprint 18.5 had deferred the `__concordLensActions` globalThis assignment for the same reason. **New code that references `app` or `LENS_ACTIONS` at top-level must sit after their declaration, or be wrapped in a function that runs post-boot.**
 
@@ -150,7 +150,7 @@ Wiring-wise (verifier at HEAD `21c8f34`): every lens but 4 reaches a registered 
 
 ### Heartbeat tick (every 15s)
 `governorTick()` in `server.js` drives all emergent simulation. Two registration patterns coexist:
-- **Per-entity inline ticks** (**216** module files in `server/emergent/*.js` — `ls server/emergent/*.js | wc -l`) running at varying frequencies (every tick, every 5th, every 20th, etc.).
+- **Per-entity inline ticks** (**217** module files in `server/emergent/*.js` — `ls server/emergent/*.js | wc -l`) running at varying frequencies (every tick, every 5th, every 20th, etc.).
 - **Singleton periodic modules** registered via `registerHeartbeat(name, { frequency, handler })`. **127 unique heartbeats** (re-verified 2026-06-07; was 68 at the Phase-12 audit — the count keeps growing with each sprint, so re-count with the grep below, don't trust a stale snapshot) — `grep -rohE "registerHeartbeat\\(['\"][a-z0-9-]+['\"]" server/ | sort -u | wc -l`. The game-plan-completion T-series added `scheme-overhear-cycle` (8), `world-zone-hazard-cycle` (5), and `population-migration-cycle` (30, the T2.4 orphan that was wired). **Dispatcher wire (Phase 12 fix)**: registrations build a registry, but they don't run until `_startGovernorHeartbeat()` is called — which schedules `governorTick()` on a 15s `setInterval`, which calls `tickAllRegistered()` to dispatch each module whose tick is due. Wired at `server.js:29105` (boot+50s setTimeout). Prior to the Phase 12 audit this call was missing and all 68 registry-style heartbeats silently never fired. Highlights: social-npc-bridge (5), npc-knowledge-bridge (10), metrics-decay (20), fauna-spawner (30), creature-flock-cycle (4), signal-propagation-cycle (3), eco-expiry-sweep (5), refusal-field-sweep (1), corpse-cleanup (10), repair-cycle (20), environment-sensor (5), embodied-dream-cycle (80), forward-sim-cycle (100), faction-strategy-cycle (200), lattice-{drift-scan,breakthrough-pass,federation-poll,quest-cycle}, npc-{conversation-initiator,routine-cycle,economy-cycle,marketplace-cycle,skill-evolve-cycle}, npc-perception-snapshot (8), npc-scheme-cycle (30, Sprint D A4), kingdom-decree-cycle (16, Sprint D D2), procgen-settlement-cycle, personal-beat-scheduler, season-cycle, land-claims-cycle, mount-care-cycle, player-signs-cleanup (240), combat-recovery-cycle, code-substrate-refresh, detectors-sweep, procedural-npc-spawner, reflex-{architectural-drift,dependency-entropy,scaling-pressure,unsafe-expansion}, understanding-evolve, brain-daily-refresh, brain-outcome-resolver, scheduled-posts (4), affect-tick, qualia-persist, culture-drift-pass, forgetting-health-check, presence-stale-sweep, environment-sense.
 
 Always wrap new heartbeat additions in `try/catch` — a module crash must never stop the tick. Counter `concord_heartbeat_ticks_total` (server.js:6263, alert `ConcordHeartbeatStopped` in `monitoring/prometheus/alerts.yml:60`) increments per tick; rate==0 for >60s indicates the loop has frozen. Skipped ticks (when a previous tick is still running) are NOT counted — observable gap.
@@ -212,12 +212,12 @@ Direct-grep counts **re-verified 2026-06-02** (via `npm run check-doc-claims`, w
 |---|---|---|
 | Frontend lens directories | **261** | `ls -d concord-frontend/app/lenses/*/ \| wc -l` |
 | Lens backend wiring | **256 WIRED / 0 broken / 2 by-design** (re-run 2026-06-07) | `node scripts/verify-lens-backends.mjs` |
-| Backend domain files | **367** | `ls server/domains/*.js \| wc -l` |
+| Backend domain files | **368** | `ls server/domains/*.js \| wc -l` |
 | Numbered migrations | **337 files** (highest number `338`) | `ls server/migrations/[0-9]*.js \| wc -l` |
 | Route files | **132** | `ls server/routes/*.js \| wc -l` |
-| Emergent modules | **216** | `ls server/emergent/*.js \| wc -l` |
+| Emergent modules | **217** | `ls server/emergent/*.js \| wc -l` |
 | Lib modules | **587** top-level (`ls server/lib/*.js \| wc -l`) · **882** recursive (`find server/lib -name "*.js" \| wc -l`) | — |
-| `server/server.js` line count | **76,683** | `wc -l server/server.js` |
+| `server/server.js` line count | **76,698** | `wc -l server/server.js` |
 | HTTP routes (server.js + routes/*.js) | **~3,353 total** (1,397 + 1,956) | `grep -cE "^\\s*(app\|router)\\.(get\|post\|put\|delete\|patch\|all)\\(['\"]/" …` |
 | Unique macro domains | **478** (verifier `macroDomains`) | see "macro system" section above |
 | Unique `(domain, macro)` pairs | **9,623** | `grep -rhoE "\\b(register\|registerLensAction)\\(['\"][a-zA-Z0-9_.\\-]+['\"]\\s*,\\s*['\"][a-zA-Z0-9_.\\-]+['\"]" server/ \| sed ... \| sort -u \| wc -l` |
