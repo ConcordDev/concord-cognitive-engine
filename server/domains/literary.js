@@ -312,6 +312,60 @@ export default function registerLiteraryMacros(register) {
     return { ok: true, crystals };
   }, { note: "most-bridged passages — crystallization candidates for tier promotion" });
 
+  // Tier-1 LRL-as-hub: unified resonance + citation force-graph for GraphView
+  // (#46 generative art / #35 royalty viz). Composes cross-domain resonance edges
+  // (literary_resonance_edges) ∪ citation ancestry (royalty_lineage). N+1-free:
+  // edges first, then one batched IN-query for node titles.
+  register("literary", "resonance_graph", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const limit = Math.min(Math.max(Number(input.limit) || 120, 10), 500);
+    const focus = input.dtuId ? String(input.dtuId) : null;
+    const edges = [];
+    const ids = new Set();
+
+    if (input.includeResonance !== false) {
+      try {
+        const rows = focus
+          ? db.prepare("SELECT literary_dtu_id AS src, target_dtu_id AS tgt, score FROM literary_resonance_edges WHERE literary_dtu_id = ? OR target_dtu_id = ? ORDER BY score DESC LIMIT ?").all(focus, focus, limit)
+          : db.prepare("SELECT literary_dtu_id AS src, target_dtu_id AS tgt, score FROM literary_resonance_edges ORDER BY score DESC LIMIT ?").all(limit);
+        for (const r of rows) { edges.push({ source: r.src, target: r.tgt, kind: "resonance", weight: Math.round((r.score || 0) * 1e3) / 1e3 }); ids.add(r.src); ids.add(r.tgt); }
+      } catch { /* table absent → skip */ }
+    }
+    if (input.includeCitations !== false) {
+      try {
+        const rows = focus
+          ? db.prepare("SELECT parent_id AS src, child_id AS tgt, generation FROM royalty_lineage WHERE parent_id = ? OR child_id = ? ORDER BY created_at DESC LIMIT ?").all(focus, focus, limit)
+          : db.prepare("SELECT parent_id AS src, child_id AS tgt, generation FROM royalty_lineage ORDER BY created_at DESC LIMIT ?").all(limit);
+        for (const r of rows) { edges.push({ source: r.src, target: r.tgt, kind: "citation", weight: 1 / (1 + (r.generation || 0)) }); ids.add(r.src); ids.add(r.tgt); }
+      } catch { /* table absent → skip */ }
+    }
+
+    const nodes = [];
+    if (ids.size) {
+      const arr = [...ids];
+      const meta = new Map();
+      try {
+        const ph = arr.map(() => "?").join(",");
+        for (const row of db.prepare(`SELECT id, title, lens_id FROM dtus WHERE id IN (${ph})`).all(...arr)) meta.set(row.id, row);
+      } catch { /* dtus present, stay safe */ }
+      for (const id of arr) {
+        const m = meta.get(id);
+        nodes.push({ id, label: String(m?.title || id).slice(0, 60), group: m?.lens_id || "dtu", weight: id === focus ? 1 : 0.4 });
+      }
+    }
+    return { ok: true, nodes, edges, focus, counts: { nodes: nodes.length, edges: edges.length } };
+  }, { note: "unified resonance + citation force-graph (GraphView shape)" });
+
+  register("literary", "resonance_stats", async (ctx) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    let resonance = 0, citations = 0;
+    try { resonance = db.prepare("SELECT COUNT(*) n FROM literary_resonance_edges").get().n; } catch { /* absent */ }
+    try { citations = db.prepare("SELECT COUNT(*) n FROM royalty_lineage").get().n; } catch { /* absent */ }
+    return { ok: true, resonance, citations };
+  }, { note: "edge counts: resonance bridges + citation lineage" });
+
   register("literary", "stats", async (ctx) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
