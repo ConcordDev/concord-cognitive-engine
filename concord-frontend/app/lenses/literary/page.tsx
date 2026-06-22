@@ -36,6 +36,7 @@ export default function LiteraryLensPage() {
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<Hit[]>([]);
   const [graph, setGraph] = useState<{ nodes: GraphNode[]; edges: GraphEdge[] }>({ nodes: [], edges: [] });
+  const [lattice, setLattice] = useState<{ nodes: GraphNode[]; edges: GraphEdge[] }>({ nodes: [], edges: [] });
   const [semantic, setSemantic] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,6 +50,10 @@ export default function LiteraryLensPage() {
     lensRun<Stats>('literary', 'stats', {}).then((r) => {
       if (r.data?.result) setStats(r.data.result);
     }).catch(() => {});
+    // The cross-domain resonance lattice — bridges (resonance) + citations.
+    lensRun<{ ok: boolean; nodes: GraphNode[]; edges: GraphEdge[] }>('literary', 'resonance_graph', { limit: 120 })
+      .then((r) => { const g = r.data?.result; if (g?.nodes?.length) setLattice({ nodes: g.nodes, edges: g.edges || [] }); })
+      .catch(() => {});
   }, []);
 
   // Phase 2 — pull cross-domain resonance bridges for the selected passage.
@@ -303,6 +308,18 @@ export default function LiteraryLensPage() {
             first-class DTU — results are grounded, traceable to their source work and license, and bridge into the
             rest of the lattice.
           </p>
+        )}
+
+        {/* Resonance lattice — the cross-domain hub graph (resonance bridges + citation
+            ancestry). Generative art from real DTU resonance (#46) + royalty viz (#35). */}
+        {!searched && lattice.nodes.length > 0 && (
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden">
+            <h3 className="flex items-center gap-2 px-4 py-2 border-b border-zinc-800 text-sm font-semibold text-zinc-300">
+              <Network className="w-4 h-4 text-amber-300" /> Resonance lattice
+              <span className="text-[11px] text-zinc-500 font-normal">— {lattice.nodes.length} nodes · {lattice.edges.length} bridges + citations</span>
+            </h3>
+            <GraphView nodes={lattice.nodes} edges={lattice.edges} className="w-full h-80" />
+          </div>
         )}
       </main>
     </LensShell>
