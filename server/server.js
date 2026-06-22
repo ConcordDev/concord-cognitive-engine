@@ -25455,6 +25455,11 @@ registerRndMacros(register);
 import registerMetacogMacros from "./domains/metacog.js";
 registerMetacogMacros(register);
 
+// Persistent Goal Decomposition (#10) — durable subgoal tree; root mints a DTU,
+// status rolls up as leaves complete. The plan scaffold for the R&D engine.
+import registerDecompMacros from "./domains/decomp.js";
+registerDecompMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
