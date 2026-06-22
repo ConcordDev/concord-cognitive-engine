@@ -7,6 +7,7 @@
 
 import { verifyClaim } from "../lib/reason-verify.js";
 import { proveClaim, classifyAmenable } from "../lib/proof-gate.js";
+import { deliberate } from "../lib/shadow-council.js";
 
 export default function registerReasonMacros(register) {
   register("reason", "verify", async (ctx, input = {}) => {
@@ -52,4 +53,18 @@ export default function registerReasonMacros(register) {
     note: "formally check whether a math/logic claim is valid via the subconscious brain → SMT-LIB → Z3 (sound when Z3 is installed; degrades to verdict:'unavailable')",
     llmHint: true,
   });
+
+  // Shadow Reasoning Council (#12) — runs the five-voice council on a question
+  // and (when persist) mints a citable shadow_reasoning DTU that preserves the
+  // DISSENT a flat vote throws away. Deterministic; no brains required.
+  register("reason", "council", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    return deliberate(db, {
+      question: input.question || input.claim,
+      proposal: input.proposal || null,
+      qualiaState: input.qualiaState || null,
+      requesterId: ctx?.actor?.userId || input.userId || null,
+      persist: input.persist === true,
+    });
+  }, { note: "five-voice shadow council deliberation with minority report; mints a citable shadow_reasoning DTU when persist:true (#12)" });
 }
