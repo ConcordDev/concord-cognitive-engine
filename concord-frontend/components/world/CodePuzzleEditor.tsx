@@ -110,7 +110,7 @@ export function CodePuzzleEditor({ building, onClose, worldId }: OverlayProps) {
                 {p.optimal_cycles && <div className="text-[10px] text-amber-300/70">optimal: {p.optimal_cycles} cycles · {p.optimal_size} ops</div>}
               </button>
             ))}
-            {puzzles.length === 0 && <p className="text-center text-xs text-zinc-500">No puzzles authored yet.</p>}
+            {puzzles.length === 0 && <p className="text-center text-xs text-zinc-400">No puzzles authored yet.</p>}
           </div>
         </div>
       ) : (

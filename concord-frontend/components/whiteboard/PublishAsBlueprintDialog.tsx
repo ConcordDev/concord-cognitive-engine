@@ -99,11 +99,11 @@ export function PublishAsBlueprintDialog({ boardId, svgDataUrl, onClose }: Publi
           <h2 className="text-sm font-semibold tracking-wide uppercase text-zinc-300">
             Publish as building blueprint
           </h2>
-          <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-200 text-xs">close</button>
+          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200 text-xs">close</button>
         </div>
 
         <div className="space-y-3">
-          <p className="text-[11px] leading-tight text-zinc-500">
+          <p className="text-[11px] leading-tight text-zinc-400">
             Your board becomes the interior decor for one of the 5 building archetypes.
             Marketplace canon picks winners by evolution score; multiple blueprints can
             coexist per archetype.
@@ -128,7 +128,7 @@ export function PublishAsBlueprintDialog({ boardId, svgDataUrl, onClose }: Publi
                     }
                   >
                     <div>{a}</div>
-                    <div className="text-[9px] mt-0.5 text-zinc-500">
+                    <div className="text-[9px] mt-0.5 text-zinc-400">
                       {slot ? `q${slot.qualityLevel}` : '—'}
                     </div>
                   </button>

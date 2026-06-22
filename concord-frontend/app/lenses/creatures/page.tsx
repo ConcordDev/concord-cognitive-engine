@@ -89,7 +89,7 @@ export default function CreaturesLensPage() {
       {/* Wave 7 / E6 — the world's emotional weather: what the fauna have been feeling. */}
       {affect && affect.total > 0 && (
         <section className="rounded-lg border border-fuchsia-500/20 bg-fuchsia-500/[0.04] p-3">
-          <h2 className="mb-2 text-sm font-semibold text-fuchsia-300">Emotional weather <span className="text-[10px] font-normal text-zinc-500">{affect.total} recent felt moments</span></h2>
+          <h2 className="mb-2 text-sm font-semibold text-fuchsia-300">Emotional weather <span className="text-[10px] font-normal text-zinc-400">{affect.total} recent felt moments</span></h2>
           <div className="mb-2 flex flex-wrap gap-1.5">
             {Object.entries(affect.histogram).sort((a, b) => b[1] - a[1]).map(([drive, n]) => (
               <span key={drive} className="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2 py-0.5 text-[10px] text-fuchsia-200">
@@ -111,7 +111,7 @@ export default function CreaturesLensPage() {
       <section>
         <h2 className="mb-2 text-sm font-semibold text-violet-300">Populations</h2>
         {pops.length === 0 ? (
-          <p className="text-xs text-zinc-500">No populations yet in this world.</p>
+          <p className="text-xs text-zinc-400">No populations yet in this world.</p>
         ) : (
           <div className="grid gap-1 md:grid-cols-2">
             {pops.map((p) => {

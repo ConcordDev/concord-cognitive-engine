@@ -93,7 +93,7 @@ export default function AnnouncementsLensPage() {
           </div>
 
           {items.length === 0 ? (
-            <p className="py-12 text-center text-[12px] text-slate-500">No announcements yet.</p>
+            <p className="py-12 text-center text-[12px] text-slate-400">No announcements yet.</p>
           ) : (
             <ol className="space-y-3">
               {items.map((a) => {
@@ -106,7 +106,7 @@ export default function AnnouncementsLensPage() {
                         <Icon size={14} />
                         {a.title}
                       </h2>
-                      <span className="text-[10px] text-slate-500">{meta.label} · {timeAgo(a.published_at)}</span>
+                      <span className="text-[10px] text-slate-400">{meta.label} · {timeAgo(a.published_at)}</span>
                     </header>
                     <div className="whitespace-pre-wrap text-[12px] text-slate-200">{a.body_md}</div>
                   </li>

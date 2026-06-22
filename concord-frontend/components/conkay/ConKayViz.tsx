@@ -92,7 +92,7 @@ function MetricsViz({ spec }: { spec: VizSpec }) {
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {rows.map((r, i) => (
           <div key={i} className="rounded-lg border border-lattice-border bg-lattice-elevated/50 px-3 py-2">
-            <div className="text-[10px] uppercase tracking-wide text-zinc-500">{String(r.label ?? r.name ?? '')}</div>
+            <div className="text-[10px] uppercase tracking-wide text-zinc-400">{String(r.label ?? r.name ?? '')}</div>
             <div className="text-lg font-semibold text-zinc-100">{String(r.value ?? r.v ?? '')}</div>
             {r.delta != null && <div className="text-[11px] text-emerald-300">{String(r.delta)}</div>}
           </div>
@@ -130,7 +130,7 @@ function GraphViz({ spec }: { spec: VizSpec }) {
         ))}
       </div>
       {edges.length > 0 && (
-        <div className="mt-2 space-y-0.5 text-[11px] text-zinc-500">
+        <div className="mt-2 space-y-0.5 text-[11px] text-zinc-400">
           {edges.slice(0, 8).map((e, i) => (
             <div key={i}>{String(e.from ?? '')} → {String(e.to ?? '')}{e.label ? ` · ${String(e.label)}` : ''}</div>
           ))}
@@ -340,7 +340,7 @@ export function ConKayMessage({
       <div className="mt-2 flex items-center gap-3">
         <TrustBadge fields={fields} />
         {brain && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500">
+          <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400">
             <Cpu className="h-3 w-3" /> via {brain}
           </span>
         )}

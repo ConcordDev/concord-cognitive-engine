@@ -132,7 +132,7 @@ export function PublishAsTextureDialog({ canvas, artworkId, onClose }: PublishAs
           <h2 className="text-sm font-semibold tracking-wide uppercase text-zinc-300">
             Publish as Concordia material
           </h2>
-          <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-200 text-xs">close</button>
+          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200 text-xs">close</button>
         </div>
 
         <div className="grid grid-cols-[180px_1fr] gap-4">
@@ -145,7 +145,7 @@ export function PublishAsTextureDialog({ canvas, artworkId, onClose }: PublishAs
                 ? <img src={preview} alt="canvas preview" className="w-full h-full object-contain" />
                 : <span className="text-zinc-600 text-xs">no canvas</span>}
             </div>
-            <p className="text-[10px] leading-tight text-zinc-500">
+            <p className="text-[10px] leading-tight text-zinc-400">
               Goes to <span className="font-mono text-zinc-400">evo_assets</span> with
               {' '}<span className="font-mono text-violet-300">source=authored</span>.
               Royalty cascade + LLaVA validation kick in automatically.
@@ -196,7 +196,7 @@ export function PublishAsTextureDialog({ canvas, artworkId, onClose }: PublishAs
                       }
                     >
                       <div>{ch}</div>
-                      <div className="text-[9px] mt-0.5 text-zinc-500">
+                      <div className="text-[9px] mt-0.5 text-zinc-400">
                         {slot ? `q${slot.qualityLevel}` : '—'}
                       </div>
                     </button>

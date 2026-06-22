@@ -145,7 +145,7 @@ export function HelpButton() {
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder={kind === "bug_report" ? "What happened? What did you expect?" : "Tell us what's on your mind…"}
                     rows={4}
-                    className="w-full px-2 py-2 text-xs rounded bg-lattice-deep border border-lattice-border text-gray-200 placeholder:text-gray-500 resize-none"
+                    className="w-full px-2 py-2 text-xs rounded bg-lattice-deep border border-lattice-border text-gray-200 placeholder:text-gray-400 resize-none"
                   />
                   <button
                     onClick={submit}
@@ -155,7 +155,7 @@ export function HelpButton() {
                     <Send className="w-3.5 h-3.5" />
                     {submitting ? "Sending…" : "Send"}
                   </button>
-                  <p className="text-[11px] text-gray-500">Your current page is attached automatically to help us reproduce it.</p>
+                  <p className="text-[11px] text-gray-400">Your current page is attached automatically to help us reproduce it.</p>
                 </>
               )}
             </div>

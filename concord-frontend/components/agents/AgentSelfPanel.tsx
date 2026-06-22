@@ -39,7 +39,7 @@ export function AgentSelfPanel({ agentId }: { agentId: string }) {
     return () => { cancelled = true; };
   }, [agentId]);
 
-  if (!self) return <p className="text-xs text-zinc-500">No agent self-model.</p>;
+  if (!self) return <p className="text-xs text-zinc-400">No agent self-model.</p>;
 
   return (
     <div className="space-y-3 text-xs">
@@ -63,7 +63,7 @@ export function AgentSelfPanel({ agentId }: { agentId: string }) {
             <span className="flex items-center gap-1 text-emerald-300"><Activity className="h-3 w-3" /> Awareness index</span>
             <span className="font-mono text-emerald-200">Φ≈{(aware.awarenessIndex ?? 0).toFixed(3)}</span>
           </div>
-          <p className="mt-0.5 text-[9px] text-zinc-500">
+          <p className="mt-0.5 text-[9px] text-zinc-400">
             integration {(aware.integration ?? 0).toFixed(2)} × differentiation {(aware.differentiation ?? 0).toFixed(2)} — an access correlate (PCI-proxy), not a consciousness claim
           </p>
         </div>
@@ -77,7 +77,7 @@ export function AgentSelfPanel({ agentId }: { agentId: string }) {
             {self.autobiography.recentPeaks.slice(0, 5).map((p, i) => (
               <div key={i} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1">
                 <span className="text-fuchsia-300">{p.quale || p.drive || 'felt'}</span>
-                <span className="font-mono text-[10px] text-zinc-500">v{(p.valence ?? 0).toFixed(2)} · i{(p.intensity ?? 0).toFixed(2)}</span>
+                <span className="font-mono text-[10px] text-zinc-400">v{(p.valence ?? 0).toFixed(2)} · i{(p.intensity ?? 0).toFixed(2)}</span>
               </div>
             ))}
           </div>

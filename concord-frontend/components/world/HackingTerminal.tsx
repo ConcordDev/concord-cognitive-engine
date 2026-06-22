@@ -189,7 +189,7 @@ export function HackingTerminal({ building, onClose, worldId }: OverlayProps) {
                 <div className="text-[10px] text-cyan-300/60">difficulty {p.difficulty}/5</div>
               </button>
             ))}
-            {puzzles.length === 0 && <p className="text-center text-xs text-zinc-500">No puzzles authored yet.</p>}
+            {puzzles.length === 0 && <p className="text-center text-xs text-zinc-400">No puzzles authored yet.</p>}
           </div>
         </div>
       ) : (

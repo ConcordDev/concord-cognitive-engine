@@ -128,7 +128,7 @@ export default function SpectatorWorldPage() {
               <Sparkle /> Live event stream
             </h2>
             {tickerEvents.length === 0 ? (
-              <p className="text-[11px] text-slate-500">Waiting for events… (this view streams the world\'s public socket events; combat, faction wars, DTU promotions, NPC openers)</p>
+              <p className="text-[11px] text-slate-400">Waiting for events… (this view streams the world\'s public socket events; combat, faction wars, DTU promotions, NPC openers)</p>
             ) : (
               <ol className="space-y-1 font-mono text-[11px]">
                 {tickerEvents.map((e, i) => (
@@ -142,7 +142,7 @@ export default function SpectatorWorldPage() {
             )}
           </div>
 
-          <p className="mt-4 text-[10px] text-slate-500">
+          <p className="mt-4 text-[10px] text-slate-400">
             Spectator mode is read-only. You see what residents see; you cannot interact.
           </p>
         </section>

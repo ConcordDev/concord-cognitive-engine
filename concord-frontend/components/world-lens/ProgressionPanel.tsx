@@ -367,7 +367,7 @@ export default function ProgressionPanel({
         <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1.5">Recent Milestones</p>
         <div className="space-y-1">
           {milestones.length === 0 && (
-            <p className="text-[10px] text-gray-600">No milestones yet.</p>
+            <p className="text-[10px] text-gray-400">No milestones yet.</p>
           )}
           {milestones.slice(0, 3).map((m) => (
             <div key={m.id} className="flex items-center gap-2 text-[10px]">

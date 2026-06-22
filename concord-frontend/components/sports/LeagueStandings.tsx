@@ -111,7 +111,7 @@ export function LeagueStandings({ leagueId: initialLeagueId }: { leagueId?: stri
       </header>
 
       <div className="mb-3 space-y-1">
-        {teams.length === 0 && <p className="text-center text-xs text-zinc-500">No teams yet.</p>}
+        {teams.length === 0 && <p className="text-center text-xs text-zinc-400">No teams yet.</p>}
         {teams
           .slice()
           .sort((a, b) => (b.wins ?? 0) - (a.wins ?? 0) || b.power_score - a.power_score)

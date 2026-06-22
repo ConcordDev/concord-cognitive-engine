@@ -623,7 +623,7 @@ export function ConcordLinkPanel({ myUserId: _myUserId }: { myUserId: string }) 
                 value={forgeName}
                 onChange={(e) => setForgeName(e.target.value)}
                 placeholder={`${forgeElement} ${forgeIntent}`}
-                className="mt-1 w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-600"
+                className="mt-1 w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-400"
               />
             </label>
             <button

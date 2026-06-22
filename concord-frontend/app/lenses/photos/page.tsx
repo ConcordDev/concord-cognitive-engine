@@ -103,7 +103,7 @@ export default function PhotosLensPage() {
           )}
 
           {(tab === 'mine' ? mine : worldFeed).length === 0 ? (
-            <p className="py-12 text-center text-[12px] text-slate-500">
+            <p className="py-12 text-center text-[12px] text-slate-400">
               {tab === 'mine' ? 'No photos yet. Press P in the world to open Photo Mode.' : 'No public photos in this world yet.'}
             </p>
           ) : (
@@ -111,7 +111,7 @@ export default function PhotosLensPage() {
               {(tab === 'mine' ? mine : worldFeed).map((p) => (
                 <li key={p.id} className="rounded-xl border border-sky-500/20 bg-zinc-950/60 p-3">
                   <h3 className="truncate text-[12px] font-medium text-sky-100">{p.caption || 'Untitled'}</h3>
-                  <p className="mt-0.5 text-[10px] text-slate-500">
+                  <p className="mt-0.5 text-[10px] text-slate-400">
                     {p.world_id && `${p.world_id} · `}{timeAgo(p.taken_at)}
                   </p>
                   {tab === 'mine' && (

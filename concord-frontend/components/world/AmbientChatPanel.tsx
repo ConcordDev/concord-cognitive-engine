@@ -104,7 +104,7 @@ export function AmbientChatPanel({ worldId, districtId, currentUserId }: Ambient
                     <span className={`truncate text-[10px] ${isSelf ? 'text-sky-300' : 'text-zinc-400'}`}>
                       {isSelf ? 'you' : m.user_id.slice(0, 8)}
                     </span>
-                    <span className="text-[10px] text-zinc-500">{timeAgo(m.posted_at)}</span>
+                    <span className="text-[10px] text-zinc-400">{timeAgo(m.posted_at)}</span>
                   </div>
                   <div className="text-zinc-200">{m.body}</div>
                 </div>

@@ -91,7 +91,7 @@ export function SchemeOverhearBargeIn() {
         “{ev.snippet || 'whispers of a plot in motion…'}”
       </p>
       {ev.plotterFaction && (
-        <p className="mb-2 text-[10px] text-zinc-500">{ev.plotterArchetype || 'someone'} · {ev.plotterFaction}{ev.schemeKind ? ` · ${ev.schemeKind}` : ''}</p>
+        <p className="mb-2 text-[10px] text-zinc-400">{ev.plotterArchetype || 'someone'} · {ev.plotterFaction}{ev.schemeKind ? ` · ${ev.schemeKind}` : ''}</p>
       )}
       {result ? (
         <p className="py-1 text-center text-[11px] text-emerald-300">{result}</p>

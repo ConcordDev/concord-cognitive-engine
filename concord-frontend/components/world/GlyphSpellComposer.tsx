@@ -126,7 +126,7 @@ export function GlyphSpellComposer({ building, onClose, worldId }: OverlayProps)
         <div>
           <div className="mb-1 text-[10px] uppercase text-violet-300/70">chain ({chain.length})</div>
           <div className="flex min-h-[40px] flex-wrap gap-1 rounded border border-violet-500/30 bg-violet-950/50 p-2">
-            {chain.length === 0 && <span className="text-[10px] text-zinc-500">click components to compose</span>}
+            {chain.length === 0 && <span className="text-[10px] text-zinc-400">click components to compose</span>}
             {chain.map((id, i) => {
               const c = components.find((x) => x.id === id);
               return (

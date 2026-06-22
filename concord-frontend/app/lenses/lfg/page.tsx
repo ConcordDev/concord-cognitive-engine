@@ -128,7 +128,7 @@ export default function LfgLensPage() {
             </div>
             <ul className="space-y-2">
               {requests.length === 0 && (
-                <li className="rounded-md border border-slate-700 bg-slate-900/30 p-3 text-center text-[11px] text-slate-500">No open requests. Post one yourself.</li>
+                <li className="rounded-md border border-slate-700 bg-slate-900/30 p-3 text-center text-[11px] text-slate-400">No open requests. Post one yourself.</li>
               )}
               {requests.map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-2 rounded-md border border-cyan-500/20 bg-cyan-500/5 p-2">

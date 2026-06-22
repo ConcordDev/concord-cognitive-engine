@@ -134,7 +134,7 @@ export default function CivicBondsLens() {
                 {cleared && (b.status === 'voting' || b.status === 'funding') && (
                   <button onClick={() => void act('fund', { bondId: b.id })} className="px-3 py-1 rounded bg-emerald-500/30 text-emerald-100 text-sm font-medium">Fund (110% met)</button>
                 )}
-                <span className="text-xs text-gray-500 ml-auto">▲{b.votes_for} ▼{b.votes_against} · {b.labor_source}</span>
+                <span className="text-xs text-gray-400 ml-auto">▲{b.votes_for} ▼{b.votes_against} · {b.labor_source}</span>
               </div>
             </li>
           );

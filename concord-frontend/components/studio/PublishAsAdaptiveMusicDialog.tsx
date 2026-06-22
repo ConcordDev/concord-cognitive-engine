@@ -147,11 +147,11 @@ export function PublishAsAdaptiveMusicDialog({
           <h2 className="text-sm font-semibold tracking-wide uppercase text-zinc-300">
             Publish as adaptive music
           </h2>
-          <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-200 text-xs">close</button>
+          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-200 text-xs">close</button>
         </div>
 
         <div className="space-y-3">
-          <p className="text-[11px] leading-tight text-zinc-500">
+          <p className="text-[11px] leading-tight text-zinc-400">
             Your bounced project rides into Concordia as a region-aware
             adaptive-music DTU. AdaptiveMusicBridge crossfades it in over
             the procedural floor when players enter the matching region.
@@ -222,7 +222,7 @@ export function PublishAsAdaptiveMusicDialog({
             />
           </label>
 
-          <div className="text-[11px] text-zinc-500">
+          <div className="text-[11px] text-zinc-400">
             Reference stem: {referenceBuffer ? `${referenceBuffer.duration.toFixed(1)}s, ${referenceBuffer.numberOfChannels}ch, ${referenceBuffer.sampleRate}Hz` : 'no buffer (bounce first)'}
           </div>
 

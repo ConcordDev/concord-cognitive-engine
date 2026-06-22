@@ -76,7 +76,7 @@ export function BloodlineTreeViewer() {
         ) : root ? (
           <TreeRender node={root} />
         ) : (
-          <p className="text-center text-xs text-zinc-500">No ancestry data.</p>
+          <p className="text-center text-xs text-zinc-400">No ancestry data.</p>
         )}
       </div>
     </div>

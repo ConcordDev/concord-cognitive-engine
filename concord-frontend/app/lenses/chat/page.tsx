@@ -3194,7 +3194,7 @@ export default function ChatLensPage() {
                                 <span className={cn('w-1.5 h-1.5 rounded-full', item.dot)} aria-hidden="true" />
                               )}
                               {item.hint && (
-                                <kbd className="text-[10px] text-gray-500">{item.hint}</kbd>
+                                <kbd className="text-[10px] text-gray-400">{item.hint}</kbd>
                               )}
                             </button>
                           );

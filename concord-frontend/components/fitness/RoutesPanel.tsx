@@ -86,7 +86,7 @@ export function RoutesPanel({ className }: { className?: string }) {
       )}
 
       <div className="space-y-1.5 mb-3">
-        {routes.length === 0 && !loading && <p className="text-xs text-zinc-500">No saved routes yet.</p>}
+        {routes.length === 0 && !loading && <p className="text-xs text-zinc-400">No saved routes yet.</p>}
         {routes.map((r) => (
           <div key={r.id} className="flex items-center gap-2 text-xs group">
             <span className="text-[10px] uppercase tracking-wider text-orange-300/80 w-10 shrink-0">{r.activityType || 'run'}</span>

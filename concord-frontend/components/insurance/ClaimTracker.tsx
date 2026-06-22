@@ -88,7 +88,7 @@ export function ClaimTracker() {
           <div className="flex items-center gap-2">
             <button onClick={fileNew} className="px-3 py-1 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">File claim</button>
             <button onClick={() => setAdding(false)} className="px-3 py-1 text-xs rounded border border-white/10 text-gray-400 hover:text-white">Cancel</button>
-            <button type="button" disabled aria-label="Attach photos (coming soon)" title="Photo attachments coming soon" className="ml-auto inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded border border-white/10 text-gray-500 cursor-not-allowed">
+            <button type="button" disabled aria-label="Attach photos (coming soon)" title="Photo attachments coming soon" className="ml-auto inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded border border-white/10 text-gray-400 cursor-not-allowed">
               <Camera className="w-3 h-3" /> Attach photos (soon)
             </button>
           </div>

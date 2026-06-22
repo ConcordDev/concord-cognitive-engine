@@ -111,7 +111,7 @@ export default function QuestsLensPage() {
               {[0, 1, 2].map((i) => <li key={i} className="h-16 animate-pulse rounded-xl border border-amber-500/15 bg-amber-500/5" />)}
             </ul>
           ) : filtered.length === 0 ? (
-            <p className="px-4 py-8 text-center text-[12px] text-slate-500">No quests in this list.</p>
+            <p className="px-4 py-8 text-center text-[12px] text-slate-400">No quests in this list.</p>
           ) : (
             <ul className="space-y-3">
               {filtered.map((q) => (

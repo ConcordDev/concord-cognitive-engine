@@ -318,7 +318,7 @@ export default function CombatSystem({
         </div>
         <div className="max-h-36 overflow-y-auto px-3 py-1.5 space-y-0.5">
           {state.combatLog.length === 0 && (
-            <p className="text-[10px] text-gray-600 italic py-1">No combat activity.</p>
+            <p className="text-[10px] text-gray-400 italic py-1">No combat activity.</p>
           )}
           {state.combatLog.map((entry) => (
             <div key={entry.id} className="flex gap-2 text-[10px]">
