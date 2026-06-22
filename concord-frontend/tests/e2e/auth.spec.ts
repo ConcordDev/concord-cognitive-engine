@@ -429,11 +429,15 @@ test.describe('Authentication Flow', () => {
     // endpoint specific to this flow. Without /api/auth/me mocked the
     // post-redirect hydration would bounce back to /register.
     await mockAuthSuccess(page);
+    // The page treats a bare { ok: true } (or the { user: { id: 'ok' } }
+    // placeholder) as NOT-really-logged-in and shows an error instead of
+    // redirecting — see register/page.tsx `realSuccess`. Return a real-shape
+    // user so the auto-login → /onboarding redirect actually fires.
     await page.route('**/api/auth/register', (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ ok: true }),
+        body: JSON.stringify({ ok: true, user: { id: 'usr_newuser' } }),
       })
     );
 
@@ -447,6 +451,9 @@ test.describe('Authentication Flow', () => {
       await page.locator('#email').fill('new@example.com');
       await page.locator('#password').fill('securepassword12');
       await page.locator('#confirm-password').fill('securepassword12');
+      // 18+ age gate (migration 335): the form now requires a date of birth
+      // and rejects under-18 before it will submit. Fill a clearly-adult DOB.
+      await page.locator('#date-of-birth').fill('2000-01-01');
       // Submit is disabled={loading || !agreedToTerms} — tick the terms
       // checkbox so the click can land instead of timing out on a
       // permanently-disabled node.
@@ -454,7 +461,7 @@ test.describe('Authentication Flow', () => {
 
       await page.locator('button[type="submit"]').click({ timeout: 15000 });
 
-      // Should redirect away from /register
+      // Should redirect away from /register (auto-login → /onboarding)
       await expect(page).not.toHaveURL(/\/register/);
     }
   });
@@ -483,8 +490,19 @@ test.describe('Authentication Flow', () => {
     const protectedPaths = ['/lenses/graph', '/lenses/code', '/lenses/board', '/hub'];
 
     for (const path of protectedPaths) {
-      const response = await page.goto(path);
-      expect(response?.status()).toBeLessThan(500);
+      // Some protected routes (e.g. /hub, which mounts AppShell) redirect an
+      // unauthenticated user CLIENT-side via window.location once the auth
+      // context resolves /api/auth/me → 401. That aborts the in-flight
+      // navigation, surfacing as net::ERR_ABORTED / net::ERR_FAILED — which is
+      // still "redirected to login", just not a server 3xx that goto can
+      // follow. Tolerate the abort and assert on the resulting URL instead.
+      let response = null;
+      try {
+        response = await page.goto(path);
+      } catch (err) {
+        if (!/ERR_ABORTED|ERR_FAILED/i.test(String(err))) throw err;
+      }
+      if (response) expect(response.status()).toBeLessThan(500);
 
       // Check if redirect happened — it may or may not depending on middleware config
       const url = page.url();
