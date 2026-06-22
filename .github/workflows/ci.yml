@@ -694,22 +694,24 @@ jobs:
     permissions:
       contents: read
       pull-requests: write  # for the failure-digest PR-comment step
-    # Zero-tech-debt sweep findings: of the 167 Core specs, 8 are
-    # reproducibly flaky against the current frontend regardless of
-    # branch state — most are login-flow tests that mock /api/auth/login
-    # only but don't mock the /api/auth/me hydration call the form's
-    # success path makes, so the redirect-after-login never fires and
-    # the test times out at 30s. Fixing these requires per-spec work
-    # (full mock the auth-success path, OR drive the form via real
-    # creds in a CI fixture user) which is its own sprint.
+    # The dominant failure mode here was a job TIMEOUT, not spec failures:
+    # all-lenses-walk.spec.ts generated ~259 serial diagnostic tests (one
+    # per lens, 3.5s settle each → ~25-35 min on its own) whose assertion
+    # always passes — zero gate signal, but it blew the budget and the job
+    # was cancelled mid-run. It's now excluded from the gating config
+    # (testIgnore in playwright.config.ts) and runs on-demand via
+    # `npm run test:e2e:walk`. The earlier login-flow flakes (specs that
+    # mocked /api/auth/login but not the /api/auth/me hydration call) are
+    # addressed by the shared mockAuthSuccess() helper (tests/e2e/_helpers.ts),
+    # now adopted across the auth/navigation/wallet/social specs.
     #
-    # Gate stays `continue-on-error: true` for now — the PR-comment
-    # failure digest below surfaces every failure into the PR thread
-    # so the surface area is visible without the gate blocking on
-    # pre-existing flake. Flip back to blocking when (a) the 8 known
-    # flakes are fixed, AND (b) the suite spends a full week green
-    # spec-by-spec across multiple commits.
-    timeout-minutes: 25
+    # Budget: 11.5-min prod build + playwright's 20-min globalTimeout cap
+    # = ~32 min worst case, so the job timeout is 35 min (was 25, which
+    # cancelled the run before it could finish + report). Stays
+    # `continue-on-error: true` — the PR-comment failure digest below
+    # surfaces any remaining failure without blocking; flip to blocking
+    # once the trimmed suite spends a full week green across commits.
+    timeout-minutes: 35
     continue-on-error: true
 
     steps:
