@@ -158,6 +158,7 @@ const DOMAIN_TAG_MAP = Object.freeze({
   lab: ["experiment", "sandbox", "explore", "adjacent", "reality"],
   law: ["legal", "contract", "compliance", "license", "rights", "regulation"],
   legal: ["case", "contract", "compliance", "filing", "litigation"],
+  literary: ["literature", "text", "book", "poem", "classic", "public-domain", "semantic", "resonance", "provenance"],
   logistics: ["shipping", "fleet", "warehouse", "route", "supply-chain"],
   manufacturing: ["factory", "assembly", "quality", "bom", "production"],
   market: ["trade", "exchange", "dtu", "listing", "browse"],

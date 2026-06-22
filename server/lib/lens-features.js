@@ -100,6 +100,24 @@ const _FEATURES = {
     usbIntegration: false,
   },
 
+  literary: {
+    lensId: "literary",
+    lensNumber: 125,
+    category: "KNOWLEDGE",
+    features: [
+      f("hybrid_search", "Hybrid Literary Search", "BM25 + dense embedding retrieval fused with Reciprocal Rank Fusion over the public-domain corpus; keyword fallback when offline", "intelligence", ["dtu"]),
+      f("provenance_trace", "Provenance Tracing", "Every result links to its source DTU, work, author, and public-domain license — outputs are verifiable", "analysis", ["dtu"]),
+      f("resonance_graph", "Resonance Graph", "Force-directed graph of related passages by shared work, author, and theme", "analysis", ["dtu"]),
+      f("cross_domain_bridge", "Cross-Domain Bridging", "Literary themes/archetypes/ethics link into code, engineering, and Concordia DTUs", "intelligence", ["dtu", "citation_royalties"]),
+      f("annotation_crystallize", "Annotation Crystallization", "Reader highlights become new or strengthened DTUs in the lattice", "creation", ["dtu"]),
+    ],
+    featureCount: 5,
+    economicIntegrations: ["dtu", "citation_royalties"],
+    emergentAccess: true,
+    botAccess: false,
+    usbIntegration: false,
+  },
+
   code: {
     lensId: "code",
     lensNumber: 4,

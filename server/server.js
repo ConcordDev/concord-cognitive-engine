@@ -25402,6 +25402,12 @@ registerDiscoveryMacros(register);
 import registerReasonMacros from "./domains/reason.js";
 registerReasonMacros(register);
 
+// Literary Resonance Lattice (LRL) — hybrid BM25 + dense (RRF) search over the
+// ingested public-domain literary corpus. Ingestion: server/lib/literary-ingest.js;
+// schema: migration 337. Every hit carries provenance (source DTU + license).
+import registerLiteraryMacros from "./domains/literary.js";
+registerLiteraryMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
