@@ -16,6 +16,7 @@
     "test:e2e": "playwright test",
     "test:e2e:core": "playwright test --config=playwright.config.ts",
     "test:e2e:infra": "playwright test --config=playwright-infra.config.ts",
+    "test:e2e:walk": "playwright test --config=playwright-walk.config.ts",
     "test:a11y": "npx playwright test tests/e2e/accessibility.spec.ts",
     "type-check": "tsc --noEmit",
     "validate-routes": "npx tsx scripts/validate-routes.ts",

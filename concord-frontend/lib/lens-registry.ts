@@ -375,6 +375,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     order: 6,
     keywords: ['dtu', 'browse', 'search', 'thoughts', 'knowledge', 'units'],
   },
+  {
+    id: 'literary',
+    name: 'Literary',
+    icon: BookOpen,
+    description: 'Hybrid search over the public-domain literary corpus with provenance + resonance graph',
+    category: 'knowledge',
+    showInSidebar: true,
+    showInCommandPalette: true,
+    path: '/lenses/literary',
+    order: 7,
+    keywords: ['literature', 'book', 'poem', 'classic', 'shakespeare', 'semantic', 'resonance', 'provenance', 'gutenberg'],
+  },
 
   // ── Absorbed into Chat ──────────────────────────────────────────
   {

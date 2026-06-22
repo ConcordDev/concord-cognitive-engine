@@ -361,12 +361,19 @@ export default function registerForkActions(registerLensAction) {
     const upstreamLastCommit = upstream.lastCommitAt
       ? new Date(upstream.lastCommitAt).getTime() : now;
 
-    // Sync freshness: lose 2 points per day out of sync
-    const daysSinceSync = (now - lastSync) / 86400000;
+    // Sync freshness: lose 2 points per day out of sync. Clamp elapsed days at
+    // 0 so a fork synced "now" scores a full 100. The caller stamps the
+    // timestamp a sub-ms (and, under load, a few-ms) before this handler reads
+    // Date.now(), so (now - lastSync) is a tiny POSITIVE value — a bare
+    // Math.max(0, …) clamp only neutralises the negative (future) case, leaving
+    // syncFreshness at 99.999… and the score on the wrong side of the 86.5→87
+    // rounding boundary. A 1-second grace window makes "synced now" deterministic.
+    const FRESH_GRACE_MS = 1000;
+    const daysSinceSync = Math.max(0, (now - lastSync - FRESH_GRACE_MS) / 86400000);
     const syncFreshness = Math.max(0, 100 - daysSinceSync * 2);
 
-    // Activity: lose 1.5 points per day without commits
-    const daysSinceCommit = (now - lastCommit) / 86400000;
+    // Activity: lose 1.5 points per day without commits (same now-grace clamp).
+    const daysSinceCommit = Math.max(0, (now - lastCommit - FRESH_GRACE_MS) / 86400000);
     const activityScore = Math.max(0, 100 - daysSinceCommit * 1.5);
 
     // Divergence from upstream by commit count

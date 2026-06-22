@@ -115,6 +115,17 @@ export function getOrgMembers(orgId) {
   return [...members.entries()].map(([userId, role]) => ({ userId, role }));
 }
 
+// Reverse lookup: which org(s) is a user a member of. Used to resolve "the
+// caller's firm" for org-scoped chat without the client supplying an orgId.
+export function getOrgsForUser(userId) {
+  if (!userId) return [];
+  const out = [];
+  for (const [orgId, members] of _orgMembers) {
+    if (members.has(userId)) out.push({ orgId, role: members.get(userId) });
+  }
+  return out;
+}
+
 export function listOrganizations({ type, districtId, limit = 50 } = {}) {
   let orgs = [..._orgs.values()];
   if (type) orgs = orgs.filter(o => o.type === type);

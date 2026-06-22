@@ -11,6 +11,7 @@ import { OperatorErrorBanner } from '@/components/common/OperatorErrorBanner';
 import { SystemStatus } from '@/components/common/SystemStatus';
 import { SystemGuidePanel } from '@/components/guidance/SystemGuidePanel';
 import { FirstWinWizard } from '@/components/guidance/FirstWinWizard';
+import { HelpButton } from '@/components/help/HelpButton';
 import { LensErrorBoundary } from '@/components/common/LensErrorBoundary';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { CookieConsent } from '@/components/common/CookieConsent';
@@ -28,6 +29,7 @@ import { useSessionStore } from '@/store/sessions';
 import { useEventRouter } from '@/lib/event-router';
 import { useSocialNotificationToast } from '@/hooks/useSocialNotificationToast';
 import { LegalFooter } from '@/components/legal/LegalFooter';
+import { api } from '@/lib/api/client';
 
 /** Routes that render their own chrome and should skip the AppShell layout. */
 const STANDALONE_PREFIXES = ['/legal/'];
@@ -87,6 +89,27 @@ export function AppShell({ children }: AppShellProps) {
     // Initialize session store from IndexedDB
     useSessionStore.getState().init();
   }, []);
+
+  // Post-OAuth age gate (18+). OAuth sign-ups land with no date of birth and
+  // the callback redirects them to /onboarding/confirm-age, but a DOB-less user
+  // who navigates straight to the app shell must still be sent back. One cheap
+  // status check per shell mount: if the signed-in account owes a DOB, route to
+  // the confirm step. Silent on 401 (unauthenticated) — that's the login flow's job.
+  useEffect(() => {
+    if (pathname?.startsWith('/onboarding/confirm-age')) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get('/api/auth/age-status');
+        if (!cancelled && res.data?.ok && res.data?.needsDob) {
+          router.push('/onboarding/confirm-age');
+        }
+      } catch {
+        // 401 (not signed in) or network error — nothing to gate.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pathname, router]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -178,8 +201,14 @@ export function AppShell({ children }: AppShellProps) {
       <SystemStatus />
       <SystemGuidePanel />
       <FirstWinWizard />
+      <HelpButton />
       <OnboardingWizard
-        isOpen={onboardingOpen}
+        // Don't hijack the world lens with the abstract platform tour — a new
+        // player who just built their character landed here to PLAY. The
+        // game's own FirstWinWizard (Cook → Eat → Fight → Commune) is the right
+        // first-run surface in-world; the platform tour still appears the moment
+        // they visit the dashboard or a workspace lens.
+        isOpen={onboardingOpen && pathname !== '/lenses/world'}
         onClose={dismissOnboarding}
         onComplete={completeOnboarding}
         onAction={(action) => {

@@ -107,7 +107,7 @@ function LoginForm() {
                 autoComplete="username"
                 aria-invalid={!!error}
                 aria-describedby={error ? "login-error" : undefined}
-                className="w-full px-4 py-3 bg-lattice-deep border border-lattice-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-neon-blue/50 focus:ring-1 focus:ring-neon-blue/30 transition-colors"
+                className="w-full px-4 py-3 bg-lattice-deep border border-lattice-border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-neon-blue/50 focus:ring-1 focus:ring-neon-blue/30 transition-colors"
                 placeholder="Enter username or email"
               />
             </div>
@@ -125,7 +125,7 @@ function LoginForm() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
-                  className="w-full px-4 py-3 bg-lattice-deep border border-lattice-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-neon-blue/50 focus:ring-1 focus:ring-neon-blue/30 transition-colors pr-12"
+                  className="w-full px-4 py-3 bg-lattice-deep border border-lattice-border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-neon-blue/50 focus:ring-1 focus:ring-neon-blue/30 transition-colors pr-12"
                   placeholder="Enter password"
                 />
                 <button
@@ -166,11 +166,17 @@ function LoginForm() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-1.5">
             <p className="text-gray-400 text-sm">
               Don&apos;t have an account?{' '}
               <Link href="/register" className="text-neon-cyan hover:text-neon-blue transition-colors font-medium">
                 Create one
+              </Link>
+            </p>
+            <p className="text-gray-400 text-sm">
+              Just curious?{' '}
+              <Link href="/explore" className="text-neon-cyan hover:text-neon-blue transition-colors font-medium">
+                Look around first
               </Link>
             </p>
           </div>

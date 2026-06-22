@@ -53,9 +53,21 @@ vi.mock('@/lib/lens-registry', () => {
     LENS_CATEGORIES: {
       core: { label: 'Core' },
       governance: { label: 'Governance' },
+      system: { label: 'System' },
     },
   };
 });
+
+// CommandPalette also surfaces every cross-lens panel as a `panel:<id>` entry
+// (panel-registry). These tests exercise the lens-driven rendering, so stub the
+// panel modules to an empty set — keeps the option count deterministic (conkay +
+// the two mocked lenses) instead of pulling in the real 13-panel registry.
+vi.mock('@/lib/panel-registry', () => ({
+  allPanels: () => [],
+}));
+vi.mock('@/lib/panel-dispatcher', () => ({
+  openPanel: vi.fn(),
+}));
 
 // Mock lucide-react — use importOriginal to handle all icons
 vi.mock('lucide-react', async (importOriginal) => {

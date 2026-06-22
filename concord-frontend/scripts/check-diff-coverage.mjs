@@ -32,6 +32,13 @@ const SKIP = [
   /(^|\/)concordia\//,
   /(^|\/)world\/(concordia-hud|concord-link|mahjong)\//,
   /\.worker\.(ts|tsx)$/,
+  // Genuinely 3D/canvas components (same rationale as world-lens above): a
+  // requestAnimationFrame + three.js VFX bridge, and a three.js/<Canvas> garden
+  // studio. Their render path is a WebGL loop that jsdom can't exercise, so unit
+  // statement coverage isn't meaningful here. (2D-but-large components are NOT
+  // excluded — those get real render tests.)
+  /(^|\/)world\/CombatVFXBridge\.tsx$/,
+  /(^|\/)landscaping\/GardenStudio\.tsx$/,
 ];
 
 const baseRef = process.argv[2] || (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : 'origin/main');

@@ -133,6 +133,27 @@ fi
 if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; then
   log "Starting with pm2 (RunPod / bare-metal)..."
 
+  # ── File-descriptor limit (Vector 1 crash hardening) ──────────────────────
+  # Linux default nofile = 1024. Node.js + WebSocket needs ~4 FDs per connection.
+  # 1024 crashes at ~200 concurrent users. Raise to 1,048,576 (1M) — the
+  # kernel-recommended production floor for servers handling 10k+ connections.
+  # If the pod's cgroup blocks the hard limit, we silently drop to 65536.
+  if ulimit -n 1048576 2>/dev/null; then
+    log "File-descriptor limit raised to 1,048,576"
+  elif ulimit -n 65536 2>/dev/null; then
+    log "File-descriptor limit raised to 65,536 (pod restricted hard limit)"
+  else
+    log "WARNING: Could not raise ulimit -n — running at $(ulimit -n). Crash risk above ~200 concurrent users."
+    log "         Fix: add 'concord hard nofile 1048576' to /etc/security/limits.conf and relogin."
+  fi
+
+  # ── Node heap + GC flags ───────────────────────────────────────────────────
+  # PM2's node_args in ecosystem.config.cjs handles this for managed processes,
+  # but exporting NODE_OPTIONS here ensures any direct `node` invocations (build
+  # scripts, migration runners) also benefit before PM2 takes over.
+  export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=32768 --expose-gc}"
+  log "NODE_OPTIONS=${NODE_OPTIONS}"
+
   # Check pm2 installed
   if ! command -v pm2 &>/dev/null; then
     log "pm2 not found — installing..."
@@ -202,6 +223,85 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
     pm2 save
   fi
 
+  # ── Cloudflare tunnel (Vector 6 — eliminate SPOF) ─────────────────────────
+  # cloudflared has built-in reconnect logic, but the process can hang or exit.
+  # PM2 manages it as a supervised process so it restarts automatically.
+  # Cloudflare natively supports multiple connectors on one tunnel (redundant
+  # edge) — running startup.sh on a second node auto-adds a failover connector.
+  # Set CLOUDFLARE_TUNNEL_TOKEN in .env to activate.
+  if [ -n "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]; then
+    if ! command -v cloudflared &>/dev/null; then
+      log "WARNING: CLOUDFLARE_TUNNEL_TOKEN is set but cloudflared is not installed."
+      log "         Install: curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o /tmp/cf.deb && dpkg -i /tmp/cf.deb"
+    else
+      if pm2 list | grep -q "concord-tunnel"; then
+        log "Cloudflare tunnel already managed by PM2 — restarting..."
+        pm2 restart concord-tunnel 2>/dev/null || true
+      else
+        log "Starting Cloudflare tunnel (supervised by PM2)..."
+        pm2 start cloudflared \
+          --name concord-tunnel \
+          --no-autorestart \
+          -- tunnel --no-autoupdate run --token "${CLOUDFLARE_TUNNEL_TOKEN}"
+        pm2 start --name concord-tunnel --autorestart --max-restarts 20 2>/dev/null || true
+        pm2 save
+      fi
+      log "Tunnel status: $(pm2 show concord-tunnel 2>/dev/null | grep status | head -1 || echo 'starting')"
+    fi
+  elif [ -n "${TUNNEL_PUBLIC_URL:-}" ]; then
+    log "NOTE: TUNNEL_PUBLIC_URL is set but CLOUDFLARE_TUNNEL_TOKEN is not — tunnel must be started separately."
+    log "      Set CLOUDFLARE_TUNNEL_TOKEN in .env to have startup.sh manage it."
+  fi
+
+  # ── Health watchdog cron (Vector 7 — auto-recovery) ───────────────────────
+  # Installs a crontab entry that runs the health check every 5 minutes.
+  # The health check script detects down services and triggers pm2 restart.
+  # Idempotent: re-running startup.sh replaces the existing entry.
+  if command -v crontab &>/dev/null; then
+    CRON_JOB="*/5 * * * * cd $SCRIPT_DIR && bash scripts/health-check.sh >> $SCRIPT_DIR/logs/health.log 2>&1"
+    ( crontab -l 2>/dev/null | grep -v "health-check\.sh" ; echo "$CRON_JOB" ) | crontab - 2>/dev/null \
+      && log "Health-check cron installed (every 5 minutes)" \
+      || log "WARNING: Could not install health-check cron — add it manually: $CRON_JOB"
+  fi
+
+  # ── DB backup watchdog (Vector — data durability) ─────────────────────────
+  # 6-hourly WAL-safe SQLite snapshot to a PERSISTENT location. CONCORD_BACKUP_DIR
+  # MUST point at the network volume (e.g. /workspace/concord/backups) or the
+  # backups die with the container on a pod reclaim. Idempotent install.
+  if command -v crontab &>/dev/null; then
+    mkdir -p logs
+    BACKUP_CRON="0 */6 * * * cd $SCRIPT_DIR && DB_PATH='${DB_PATH:-}' DATA_DIR='${DATA_DIR:-}' CONCORD_BACKUP_DIR='${CONCORD_BACKUP_DIR:-}' CONCORD_BACKUP_REMOTE='${CONCORD_BACKUP_REMOTE:-}' bash scripts/db-backup.sh >> $SCRIPT_DIR/logs/backup.log 2>&1"
+    ( crontab -l 2>/dev/null | grep -v "db-backup\.sh" ; echo "$BACKUP_CRON" ) | crontab - 2>/dev/null \
+      && log "DB backup cron installed (every 6 hours → ${CONCORD_BACKUP_DIR:-<DATA_DIR>/backups})" \
+      || log "WARNING: Could not install backup cron — add it manually: $BACKUP_CRON"
+    # Durability guard: warn loudly if the DB or backups are NOT on a volume.
+    case "${DB_PATH:-${DATA_DIR:-}}" in
+      /workspace*|/runpod-volume*|/data/*) : ;;  # likely persistent
+      *) log "⚠️  DB_PATH='${DB_PATH:-unset}' may be on the EPHEMERAL container disk."
+         log "    Point DB_PATH + CONCORD_BACKUP_DIR at your network volume (e.g."
+         log "    /workspace/concord/db/concord.db) or a pod reclaim = total data loss." ;;
+    esac
+    # Take one backup right now so there's always at least one on disk.
+    DB_PATH="${DB_PATH:-}" DATA_DIR="${DATA_DIR:-}" CONCORD_BACKUP_DIR="${CONCORD_BACKUP_DIR:-}" \
+      bash scripts/db-backup.sh >> logs/backup.log 2>&1 \
+      && log "Initial DB backup taken" || log "NOTE: initial backup skipped (DB not found yet — cron will catch the next one)"
+  fi
+
+  # ── pm2 startup (survive pod reboot) ──────────────────────────────────────
+  # Save PM2 process list so it auto-restarts after a pod reboot.
+  # `pm2 startup` prints a command to run as root to register the init script;
+  # on RunPod we can't guarantee sudo, so we save the list and try the startup
+  # hook non-fatally.
+  pm2 save 2>/dev/null || true
+  PM2_STARTUP_CMD=$(pm2 startup 2>/dev/null | grep "sudo" | tail -1 || true)
+  if [ -n "$PM2_STARTUP_CMD" ]; then
+    log "To survive reboots, run: $PM2_STARTUP_CMD"
+    # On RunPod pods we often have root — try it automatically.
+    if [ "$(id -u)" = "0" ]; then
+      eval "$PM2_STARTUP_CMD" 2>/dev/null && log "pm2 startup hook registered." || true
+    fi
+  fi
+
   # Wait for backend health
   log "Waiting for backend to be healthy..."
   RETRIES=30
@@ -227,10 +327,12 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
   log "  Backend:  http://localhost:5050"
   log "  Frontend: http://localhost:3000"
   [ -n "${RUNPOD_PUBLIC_URL:-}" ] && log "  Public:   ${RUNPOD_PUBLIC_URL}"
+  [ -n "${TUNNEL_PUBLIC_URL:-}" ]  && log "  Tunnel:   ${TUNNEL_PUBLIC_URL}"
   log ""
   log "  pm2 status:  pm2 list"
   log "  pm2 logs:    pm2 logs"
   log "  pm2 stop:    pm2 stop all"
+  log "  FD limit:    $(ulimit -n)"
   log ""
 
   pm2 list

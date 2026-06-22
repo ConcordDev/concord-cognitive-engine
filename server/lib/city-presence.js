@@ -386,8 +386,11 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
   const entry = {
     cityId,
     // Phase M — track per-world presence so getWorldUserCount /
-    // getPlayersInCell / soft-cap pooling can scope correctly.
-    worldId: worldId ?? prev?.worldId ?? null,
+    // getPlayersInCell / soft-cap pooling can scope correctly. Movement paths
+    // (server.js / routes/world.js) pass cityId but not worldId, so fall back to
+    // cityId — in Concordia the city id IS the world id (e.g. "concordia-hub").
+    // Without this, getPlayersNear / spontaneousGatherings filter out everyone.
+    worldId: worldId ?? prev?.worldId ?? cityId ?? null,
     districtId: districtId ?? prev?.districtId ?? null,
     x,
     y,
@@ -632,6 +635,61 @@ export function getPlayersInCell(worldId, cellX, cellZ, cellSize = 50) {
     const px = Math.floor((Number(pos.x) || 0) / cellSize);
     const pz = Math.floor((Number(pos.z) || 0) / cellSize);
     if (px === cellX && pz === cellZ) out.push(userId);
+  }
+  return out;
+}
+
+// Spontaneous gatherings — cluster the world's currently-present players into
+// `cellSize`-metre cells; any cell with >= minCount players is a "gathering".
+// Reads live in-memory presence (freshest), bounded by the number of online
+// users. Returns the Gathering shape the EventsGatherings panel renders.
+export function spontaneousGatherings(worldId, { cellSize = 50, minCount = 2, limit = 20 } = {}) {
+  if (!worldId) return [];
+  const cells = new Map(); // "cx:cz" -> { count, district, cx, cz }
+  for (const [, pos] of _userPositions) {
+    // Movement paths (server.js / routes/world.js) set cityId, not worldId, so
+    // pos.worldId falls back to cityId. Match on either so a client that scopes
+    // by cityId still surfaces — otherwise the panel reads empty even with
+    // co-located players (PR review on this helper).
+    if (pos.worldId !== worldId && pos.cityId !== worldId) continue;
+    const cx = Math.floor((Number(pos.x) || 0) / cellSize);
+    const cz = Math.floor((Number(pos.z) || 0) / cellSize);
+    const key = `${cx}:${cz}`;
+    const cur = cells.get(key) || { count: 0, district: pos.districtId || null, cx, cz };
+    cur.count += 1;
+    if (!cur.district && pos.districtId) cur.district = pos.districtId;
+    cells.set(key, cur);
+  }
+  const out = [];
+  for (const [key, c] of cells) {
+    if (c.count < minCount) continue;
+    const location = c.district || `area ${c.cx},${c.cz}`;
+    out.push({
+      id: `gather_${worldId}_${key}`,
+      location,
+      playerCount: c.count,
+      description: `${c.count} players gathering at ${location}`,
+    });
+  }
+  out.sort((a, b) => b.playerCount - a.playerCount);
+  return out.slice(0, limit);
+}
+
+// Proximity — userIds of currently-present players within `radiusCells` of the
+// point (x,z) in a world. radiusCells=1 over 50m cells = a 3×3 window (~150m).
+// Powers proximity chat: "who is physically near me right now."
+export function getPlayersNear(worldId, x, z, { cellSize = 50, radiusCells = 1 } = {}) {
+  if (!worldId) return [];
+  const ccx = Math.floor((Number(x) || 0) / cellSize);
+  const ccz = Math.floor((Number(z) || 0) / cellSize);
+  const out = [];
+  for (const [userId, pos] of _userPositions) {
+    // See spontaneousGatherings: match worldId OR cityId so the movement-path
+    // cityId fallback doesn't strand co-located players in proximity chat.
+    if (pos.worldId !== worldId && pos.cityId !== worldId) continue;
+    const px = Math.floor((Number(pos.x) || 0) / cellSize);
+    const pz = Math.floor((Number(pos.z) || 0) / cellSize);
+    if (Math.abs(px - ccx) <= radiusCells && Math.abs(pz - ccz) <= radiusCells) out.push(userId);
   }
   return out;
 }

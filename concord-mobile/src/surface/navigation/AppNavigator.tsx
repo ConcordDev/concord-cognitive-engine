@@ -19,7 +19,11 @@ import { WalletScreen } from '../screens/WalletScreen';
 import { MeshStatusScreen } from '../screens/MeshStatusScreen';
 import { AtlasScreen } from '../screens/AtlasScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
-import { BuyCoinsScreen } from '../screens/BuyCoinsScreen';
+// NOTE: In-app coin purchasing is intentionally NOT in the mobile app.
+// Coins are bought on the website (concord-os.org); the app only spends +
+// earns them. This keeps the iOS build clear of App Store IAP / external-
+// purchase rules. The checkout-complete deep link (App.tsx) still refreshes
+// the wallet when a user returns from a web purchase.
 // Phase Z9 — mobile parity for the 5 Phase D sidebar lenses.
 import { CourtshipScreen } from '../screens/CourtshipScreen';
 import { FishingScreen } from '../screens/FishingScreen';
@@ -49,7 +53,6 @@ export type RootStackParamList = {
   Main: NavigatorScreenParams<RootTabParamList>;
   Atlas: undefined;
   Settings: undefined;
-  BuyCoins: undefined;
   LensDetail: { lensId: string };
   DTUDetail: { dtuId: string };
   PeerDetail: { peerId: string };
@@ -136,7 +139,6 @@ const linking: LinkingOptions<RootStackParamList> = {
           Chat: 'chat',
         },
       },
-      BuyCoins: 'buy-coins',
       Atlas: 'atlas',
       Settings: 'settings',
       DTUDetail: { path: 'dtu/:dtuId', parse: { dtuId: (v) => v } },
@@ -215,7 +217,6 @@ export function AppNavigator() {
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen name="Atlas" component={AtlasScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
-        <Stack.Screen name="BuyCoins" component={BuyCoinsScreen} />
         {/* Phase Z9 — Phase D sidebar lenses */}
         <Stack.Screen name="Courtship" component={CourtshipScreen} options={{ headerShown: true, title: 'Courtship', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#fda4af' }} />
         <Stack.Screen name="Fishing" component={FishingScreen} options={{ headerShown: true, title: 'Fishing', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#a5f3fc' }} />

@@ -1938,7 +1938,14 @@ export default function registerArtActions(registerLensAction) {
     const artworks = s.artworks.get(userId) || [];
     const totalStrokes = artworks.reduce(
       (n, a) => n + a.layers.reduce((m, l) => m + l.strokes.length, 0), 0);
-    const latest = [...artworks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+    // "Latest" = max updatedAt, breaking a same-millisecond tie toward the
+    // later-INSERTED artwork (artworks is in insertion order). A plain stable
+    // sort returns the first-inserted on a tie, which made the dashboard's
+    // latest-title non-deterministic when two artworks shared a timestamp.
+    let latest = null;
+    for (const a of artworks) {
+      if (!latest || a.updatedAt.localeCompare(latest.updatedAt) >= 0) latest = a;
+    }
     const dayIdx = Math.floor(Date.now() / 86400000) % ART_PROMPTS.length;
     return {
       ok: true,

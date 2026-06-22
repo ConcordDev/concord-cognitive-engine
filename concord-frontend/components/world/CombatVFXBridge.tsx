@@ -142,12 +142,31 @@ export default function CombatVFXBridge() {
       const damage = Number(ev.damage ?? ev.magnitude ?? 10);
       const magnitude = Math.max(0.4, Math.min(damage / 30, 2.5));
       vfxRef.current?.spawn(element, pos, magnitude);
-      if (element === 'physical' && damage >= 8) {
-        const att = toVec3(ev.attackerPosition);
-        const normal = att
-          ? { x: att.x - pos.x, y: 0, z: att.z - pos.z }
-          : { x: 0, y: 0, z: 1 };
+
+      // ── Blood ────────────────────────────────────────────────────────
+      // Concordia is a violent game — flesh hits should bleed. Physical
+      // (melee) damage sprays a crimson burst on top of the impact dust, and
+      // any non-elemental hit ≥2 dmg draws at least a little blood. Lethal
+      // blows throw a heavier spray + a ground blood pool.
+      const isFlesh = element === 'physical';
+      if (isFlesh && damage >= 2) {
+        // Bleed burst scales with the hit; a touch above the dust magnitude.
+        vfxRef.current?.spawn('bleed', { x: pos.x, y: (pos.y ?? 0) + 0.1, z: pos.z }, Math.min(magnitude * 1.15, 2.5));
+      }
+      const att = toVec3(ev.attackerPosition);
+      const normal = att
+        ? { x: att.x - pos.x, y: 0, z: att.z - pos.z }
+        : { x: 0, y: 0, z: 1 };
+      // Ground splatter on solid flesh hits (threshold lowered 8 → 4 so even
+      // light blows leave a mark).
+      if (isFlesh && damage >= 4) {
         decalRef.current?.spawn(pos, normal, magnitude);
+      }
+      // Death blood — heavier spray + a wider pool decal under the body.
+      if (ev.lethal) {
+        vfxRef.current?.spawn('bleed', { x: pos.x, y: (pos.y ?? 0) + 0.3, z: pos.z }, 2.5);
+        decalRef.current?.spawn(pos, normal, 2.5);
+        decalRef.current?.spawn({ x: pos.x, y: pos.y, z: pos.z }, { x: 0, y: 1, z: 0 }, 2.2);
       }
     });
 

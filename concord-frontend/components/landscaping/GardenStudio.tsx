@@ -132,6 +132,7 @@ export function GardenStudio() {
       </nav>
 
       {tab === 'designer' && <YardDesigner />}
+      {/* @modal-escape-ok: PhotoOverlay is a tab panel selected by `tab`, not a trapping modal dialog. */}
       {tab === 'overlay' && <PhotoOverlay />}
       {tab === 'identify' && <PlantIdentify />}
       {tab === 'reminders' && <CareReminders />}

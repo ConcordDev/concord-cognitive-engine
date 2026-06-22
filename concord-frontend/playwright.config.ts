@@ -2,6 +2,15 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
+  // all-lenses-walk.spec.ts generates ONE test per lens (~259, mode:serial)
+  // with a fixed 3.5s settle each — ~25-35 min wall-clock on its own, which
+  // single-handedly blew the 25-min E2E Core job budget (the job was
+  // cancelled mid-run). Its assertion is a soft `expect(bucket).toBeDefined()`
+  // that always passes, so it contributes ZERO gate signal — it's a
+  // diagnostic lens-health walk, not a pass/fail gate. Excluded from the
+  // gating run here; still runnable on-demand via `npm run test:e2e:walk`
+  // (playwright-walk.config.ts), which uploads the bucket report.
+  testIgnore: ['**/all-lenses-walk.spec.ts'],
   // Warm every Next.js app route once after the webServer comes up.
   // `next start` lazy-compiles each route on first visit; without
   // pre-warm, the first test that hits a given route waits 30-60 s

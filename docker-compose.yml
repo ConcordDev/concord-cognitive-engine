@@ -13,6 +13,13 @@ services:
         max-file: "3"
     security_opt:
       - no-new-privileges:true
+    # Raise file-descriptor limit from Linux default 1024 → 1,048,576.
+    # The default crashes at ~1k concurrent WS + HTTP connections (4–5 FDs
+    # each). 1M supports 200k+ connections with OS overhead headroom.
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
     read_only: false  # Data dir needs writes; consider tmpfs for /tmp
     tmpfs:
       - /tmp:noexec,nosuid,size=100M
@@ -161,6 +168,10 @@ services:
     profiles: ["read-replica"]
     security_opt:
       - no-new-privileges:true
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
     environment:
       - NODE_ENV=production
       - PORT=5050
@@ -216,6 +227,10 @@ services:
         - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://concord-os.org}
     container_name: concord-frontend
     restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
     environment:
       - NODE_ENV=production
     depends_on:

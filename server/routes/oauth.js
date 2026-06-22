@@ -25,6 +25,7 @@ import {
   exchangeAppleCode,
 } from "../lib/oauth-providers.js";
 import logger from '../logger.js';
+import { ageFromDob, MIN_AGE } from "../lib/age-gate.js";
 
 // In-memory store for OAuth state tokens (CSRF protection)
 // State tokens expire after 10 minutes
@@ -205,8 +206,24 @@ export default function registerOAuthRoutes(app, {
       provider,
     });
 
-    // Redirect to frontend dashboard
+    // ── Age gate (18+) ──────────────────────────────────────────────
+    // OAuth providers don't return a date of birth, so a sign-up lands with
+    // date_of_birth = NULL. Concordia carries mature/violent content, so the
+    // account isn't usable until the user confirms an adult DOB. Route any
+    // DOB-less user (a fresh OAuth account, or one created before this gate
+    // existed) to the one-time confirm-age step instead of the dashboard.
+    let _needsDob = false;
+    try { _needsDob = !AuthDB.getUserDateOfBirth(user.id); } catch (_e) { _needsDob = false; }
+
     const redirectUrl = new URL(FRONTEND_URL);
+    if (_needsDob) {
+      redirectUrl.pathname = "/onboarding/confirm-age";
+      redirectUrl.searchParams.set("provider", provider);
+      res.redirect(302, redirectUrl.toString());
+      return;
+    }
+
+    // Redirect to frontend dashboard
     redirectUrl.pathname = "/";
     redirectUrl.searchParams.set("auth", "success");
     redirectUrl.searchParams.set("provider", provider);
@@ -584,6 +601,65 @@ export default function registerOAuthRoutes(app, {
         linkedAt: c.created_at,
       })),
     });
+  });
+
+  // ── Age gate completion (OAuth sign-ups) ──────────────────────────────
+  // OAuth providers never return a date of birth, so an OAuth account lands
+  // with date_of_birth = NULL. These two endpoints let the authenticated user
+  // confirm an adult DOB (the post-callback "confirm your age" step) and let
+  // the frontend guard discover whether that step is still pending.
+
+  // GET /api/auth/age-status — does the signed-in user still owe a DOB?
+  app.get("/api/auth/age-status", (req, res) => {
+    if (!req.user) return res.status(401).json({ ok: false, error: "Not authenticated" });
+    let needsDob = false;
+    try { needsDob = !AuthDB.getUserDateOfBirth(req.user.id); } catch (_e) { needsDob = false; }
+    res.json({ ok: true, needsDob });
+  });
+
+  // POST /api/auth/confirm-age — one-time DOB confirmation for OAuth accounts.
+  // 18+ → stores the DOB and the account becomes usable. Under-18 → the
+  // just-created account is deactivated and the session cleared (parity with
+  // the password-register age gate, which rejects under-18 before creation).
+  app.post("/api/auth/confirm-age", (req, res) => {
+    if (!req.user) return res.status(401).json({ ok: false, error: "Not authenticated" });
+
+    const dateOfBirth = (req.body && req.body.dateOfBirth) || "";
+    const age = ageFromDob(dateOfBirth);
+    if (age === null) {
+      return res.status(400).json({ ok: false, error: "A valid date of birth is required." });
+    }
+
+    // Idempotency / tamper-guard: if a DOB is already on file, don't let it be
+    // overwritten through this endpoint — it's a one-time onboarding step.
+    let existing = null;
+    try { existing = AuthDB.getUserDateOfBirth(req.user.id); } catch (_e) { existing = null; }
+    if (existing) {
+      return res.json({ ok: true, alreadyConfirmed: true });
+    }
+
+    if (age < MIN_AGE) {
+      // Bar the account. is_active = 0 makes the existing token useless
+      // (getUser filters is_active = 1); cookie clear is best-effort cleanup.
+      try { AuthDB.deactivateUser(req.user.id); } catch (_e) { /* best-effort */ }
+      try {
+        res.clearCookie("concord_auth", { path: "/" });
+        res.clearCookie("concord_refresh", { path: "/" });
+      } catch (_e) { /* best-effort */ }
+      auditLog("auth", "oauth_age_rejected", { userId: req.user.id, ip: req.ip });
+      return res.status(403).json({
+        ok: false,
+        error: `You must be at least ${MIN_AGE} years old to use Concord.`,
+        code: "AGE_RESTRICTED",
+      });
+    }
+
+    try { AuthDB.setUserDateOfBirth(req.user.id, dateOfBirth); } catch (_e) {
+      return res.status(500).json({ ok: false, error: "Could not save date of birth." });
+    }
+    auditLog("auth", "oauth_age_confirmed", { userId: req.user.id, ip: req.ip });
+    structuredLog("info", "oauth_age_confirmed", { userId: req.user.id });
+    res.json({ ok: true });
   });
 
   structuredLog("info", "oauth_routes_registered", {

@@ -9,9 +9,9 @@ describe('createElementVfx', () => {
     scene = new THREE.Scene();
   });
 
-  it('registers all seven element kinds', () => {
+  it('registers all eight element kinds', () => {
     expect(Object.keys(_testing.SPECS).sort()).toEqual(
-      ['energy', 'fire', 'ice', 'lightning', 'physical', 'poison', 'water'].sort(),
+      ['bleed', 'energy', 'fire', 'ice', 'lightning', 'physical', 'poison', 'water'].sort(),
     );
   });
 
@@ -49,7 +49,7 @@ describe('createElementVfx', () => {
     for (const key of Object.keys(_testing.SPECS) as Array<keyof typeof _testing.SPECS>) {
       seen.add(_testing.SPECS[key].color);
     }
-    expect(seen.size).toBe(7);
+    expect(seen.size).toBe(8);
   });
 
   it('uses additive blending for fire, lightning, water, energy', () => {

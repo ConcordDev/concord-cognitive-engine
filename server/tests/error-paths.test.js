@@ -108,7 +108,7 @@ async function api(method, path, body = null, { token } = {}) {
 let _seq = Date.now();
 async function registerAndLogin() {
   const n = ++_seq;
-  const creds = { username: `err_user_${n}`, email: `err_${n}@test.invalid`, password: "TestPass123!" };
+  const creds = { username: `err_user_${n}`, email: `err_${n}@test.invalid`, password: "TestPass123!", dateOfBirth: "1990-01-01" };
   const reg = await api("POST", "/api/auth/register", creds);
   if (reg.ok && reg.token) return { token: reg.token, userId: reg.user?.id ?? reg.userId };
   const login = await api("POST", "/api/auth/login", { username: creds.username, password: creds.password });

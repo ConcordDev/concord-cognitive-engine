@@ -8,7 +8,7 @@
  * of the template + the resulting app.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 
 const PRICE_TIERS: Array<{ label: string; cents: number }> = [
@@ -56,6 +56,14 @@ export function PublishForgeAppDialog({
   const [listResult, setListResult] = useState<ListResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Keyboard parity for the click-outside-to-dismiss backdrop: Escape closes
+  // the dialog (matches the modal pattern used across the app, e.g. HelpButton).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const submit = useCallback(async () => {
     if (!sourceCode || !templateId) return;
     setError(null);
@@ -101,9 +109,12 @@ export function PublishForgeAppDialog({
   return (
     <div
       role="dialog"
+      aria-modal="true"
       aria-label="Publish forge app to the marketplace"
+      tabIndex={-1}
       className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
     >
       <div className="bg-zinc-950 border border-zinc-800 rounded-lg w-full max-w-xl p-5 text-zinc-200">
         <div className="flex items-baseline justify-between mb-4">

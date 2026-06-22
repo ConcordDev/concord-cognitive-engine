@@ -9,6 +9,7 @@
 // Shadows Instagram / X core engagement features.
 
 import { screenLocalSync } from "../lib/content-safety/index.js";
+import { resolveUserDisplay } from "../lib/friend-presence.js";
 
 export default function registerSocialActions(registerLensAction) {
   // ─── shared state helpers ───────────────────────────────────────────
@@ -291,6 +292,12 @@ export default function registerSocialActions(registerLensAction) {
       const bt = b.lastMessage?.createdAt || "";
       return bt.localeCompare(at);
     });
+    // Resolve the other participant's display name per thread (additive — old
+    // consumers ignore the new `withName` field). resolveUserDisplay is sync.
+    try {
+      const display = resolveUserDisplay(ctx?.db, [...new Set(threads.map((t) => t.with))]);
+      for (const t of threads) t.withName = display[t.with]?.displayName || t.with;
+    } catch { /* names are best-effort */ }
     const totalUnread = threads.reduce((n, t) => n + t.unread, 0);
     return { ok: true, result: { threads, count: threads.length, totalUnread } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -309,9 +316,18 @@ export default function registerSocialActions(registerLensAction) {
     thread.readBy[me] = thread.messages.length;
     save();
     const other = thread.participants.find((p) => p !== me) || me;
+    // Resolve display names for the header + per message (additive fields).
+    // resolveUserDisplay is synchronous — keep this handler sync.
+    let withName = other;
+    let msgs = thread.messages;
+    try {
+      const display = resolveUserDisplay(ctx?.db, [...new Set([me, other, ...thread.messages.map((m) => m.from)])]);
+      withName = display[other]?.displayName || other;
+      msgs = thread.messages.map((m) => ({ ...m, fromName: display[m.from]?.displayName || m.from }));
+    } catch { /* names are best-effort */ }
     return {
       ok: true,
-      result: { threadKey: key, with: other, messages: thread.messages, count: thread.messages.length },
+      result: { threadKey: key, with: other, withName, messages: msgs, count: msgs.length },
     };
   });
 

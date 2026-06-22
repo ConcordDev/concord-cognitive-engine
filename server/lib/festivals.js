@@ -1,3 +1,4 @@
+// @sync-fs-ok: one-time festival-content load at init. Sync fs in this file is intentional and not on the user request path (audited 2026-06).
 // server/lib/festivals.js
 //
 // Phase BB1 — annual festival engine.

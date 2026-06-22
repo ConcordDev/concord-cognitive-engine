@@ -50,6 +50,10 @@ const GLOBAL_WRITE_GATE_SIG = /\bproductionWriteAuthMiddleware\b|\bPROD_WRITE_AU
 const INFRA_BYPASS = [
   "/health", "/ready", "/metrics",
   "/api/auth/login", "/api/auth/register", "/api/auth/csrf-token",
+  // Stripe webhook authenticates by request SIGNATURE, not a cookie/JWT (Stripe
+  // can't send one). handleWebhook verifies the signature before any DB write,
+  // so this bypass is reviewed-and-intentional, not a coverage gap.
+  "/api/stripe/webhook",
 ];
 
 /**

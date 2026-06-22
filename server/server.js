@@ -211,6 +211,25 @@ registerHeartbeat("economy-anomaly-cycle", {
   handler: ({ db } = {}) => runEconomyAnomalyCycle({ db }),
 });
 
+// LRL Phase 2 — literary cross-domain resonance. Crystallizes embedding-near
+// bridges from literary chunk-DTUs into other lenses (lib/literary-resonance.js).
+// Bounded per pass, try/catch isolated. Kill-switch CONCORD_LITERARY_RESONANCE=0.
+import { runLiteraryResonanceCycle } from "./emergent/literary-resonance-cycle.js";
+registerHeartbeat("literary-resonance-cycle", {
+  frequency: 200,
+  scope: "global",
+  handler: ({ db } = {}) => runLiteraryResonanceCycle({ db }),
+});
+
+// LRL Phase 3 — literary license-compliance audit. Flags non-PD/unverified
+// sources for review. Kill-switch CONCORD_LITERARY_LICENSE_AUDIT=0.
+import { runLiteraryLicenseAuditCycle } from "./emergent/literary-license-audit-cycle.js";
+registerHeartbeat("literary-license-audit-cycle", {
+  frequency: 480,
+  scope: "global",
+  handler: ({ db } = {}) => runLiteraryLicenseAuditCycle({ db }),
+});
+
 // Living Society Phase 3 — sparks-flow payday. Pay moves along employment edges;
 // skim diverts to collectors (corruption); unpaid flow deepens grievances.
 import { runPayCycle } from "./emergent/pay-cycle.js";
@@ -4902,9 +4921,10 @@ function initDatabase() {
       db.pragma(`mmap_size = ${mmapMb * 1024 * 1024}`);
       db.pragma(`cache_size = -${cacheMb * 1024}`);
       db.pragma("temp_store = MEMORY");       // Temp tables in RAM
-      db.pragma("busy_timeout = 5000");       // Wait up to 5s before SQLITE_BUSY error
+      db.pragma("busy_timeout = 10000");      // 10s retry — burst-safe under concurrent writers
       db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
       db.pragma("page_size = 8192");          // Larger pages amortize I/O on big rows (DTU body_json)
+      db.pragma("optimize");                  // Refresh query-planner stats at boot (idempotent, fast)
     }
 
     // Create tables (writer only — a read-only replica inherits the schema the
@@ -5100,11 +5120,22 @@ const AuthDB = {
   // Users
   createUser(user) {
     if (db) {
-      const stmt = db.prepare(`
-        INSERT INTO users (id, username, email, password_hash, role, scopes, created_at, last_login_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      stmt.run(user.id, user.username, user.email, user.passwordHash, user.role, JSON.stringify(user.scopes), user.createdAt, user.lastLoginAt);
+      // date_of_birth is migration 335 (18+ age gate). Guard against older DBs
+      // that haven't applied it yet so registration never hard-fails on schema.
+      const _hasDob = (() => { try { return db.pragma("table_info(users)").some(c => c.name === "date_of_birth"); } catch { return false; } })();
+      if (_hasDob) {
+        const stmt = db.prepare(`
+          INSERT INTO users (id, username, email, password_hash, role, scopes, created_at, last_login_at, date_of_birth)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        stmt.run(user.id, user.username, user.email, user.passwordHash, user.role, JSON.stringify(user.scopes), user.createdAt, user.lastLoginAt, user.dateOfBirth || null);
+      } else {
+        const stmt = db.prepare(`
+          INSERT INTO users (id, username, email, password_hash, role, scopes, created_at, last_login_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        stmt.run(user.id, user.username, user.email, user.passwordHash, user.role, JSON.stringify(user.scopes), user.createdAt, user.lastLoginAt);
+      }
     }
     AUTH.users.set(user.id, user);
     saveAuthData();
@@ -5198,6 +5229,47 @@ const AuthDB = {
       return stmt.get().count;
     }
     return AUTH.users.size;
+  },
+
+  // Age gate (18+, migration 335). OAuth sign-ups can't attest a DOB at the
+  // provider callback, so they land with date_of_birth = NULL and must
+  // confirm it before the account is usable. These two helpers read/write
+  // that single column, guarding older DBs that predate the migration.
+  getUserDateOfBirth(userId) {
+    if (db) {
+      const _hasDob = (() => { try { return db.pragma("table_info(users)").some(c => c.name === "date_of_birth"); } catch { return false; } })();
+      if (!_hasDob) return null;
+      try {
+        const row = db.prepare("SELECT date_of_birth FROM users WHERE id = ? AND is_active = 1").get(userId);
+        return row ? (row.date_of_birth || null) : null;
+      } catch { return null; }
+    }
+    const user = AUTH.users.get(userId);
+    return user ? (user.dateOfBirth || null) : null;
+  },
+
+  setUserDateOfBirth(userId, dob) {
+    if (db) {
+      const _hasDob = (() => { try { return db.pragma("table_info(users)").some(c => c.name === "date_of_birth"); } catch { return false; } })();
+      if (_hasDob) {
+        db.prepare("UPDATE users SET date_of_birth = ? WHERE id = ?").run(dob || null, userId);
+      }
+    }
+    const user = AUTH.users.get(userId);
+    if (user) { user.dateOfBirth = dob || null; }
+    saveAuthData();
+    return true;
+  },
+
+  // Soft-delete a user (is_active = 0). Used by the OAuth age gate to bar an
+  // account that attests to being under 18 at the post-signup DOB step.
+  deactivateUser(userId) {
+    if (db) {
+      try { db.prepare("UPDATE users SET is_active = 0 WHERE id = ?").run(userId); } catch { /* schema-tolerant */ }
+    }
+    AUTH.users.delete(userId);
+    saveAuthData();
+    return true;
   },
 
   // API Keys
@@ -6004,7 +6076,10 @@ function csrfMiddleware(req, res, next) {
   if (safeMethods.includes(req.method)) return next();
 
   // Skip for public endpoints and core API paths (chat, lens operations)
-  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens"];
+  // /api/stripe/webhook is authenticated by Stripe's request SIGNATURE (verified
+  // in handleWebhook), not a cookie/CSRF token — Stripe can't send one. It must
+  // be CSRF-exempt or every webhook 403s and paid coins never mint.
+  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook"];
   if (csrfExempt.some(p => req.path.startsWith(p))) return next();
 
   // In AUTH_MODE=public, skip CSRF — anonymous users have no session to protect
@@ -6144,8 +6219,10 @@ function authMiddleware(req, res, next) {
     return next();
   }
 
-  // Skip auth for always-public endpoints (any method)
-  const alwaysPublic = ["/health", "/ready", "/metrics", "/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/csrf-token", "/api/auth/google", "/api/auth/apple", "/api/auth/providers", "/api/docs", "/api/status", "/api/chat", "/api/brain/conscious"];
+  // Skip auth for always-public endpoints (any method). /api/stripe/webhook is
+  // authenticated by Stripe's signature (verified in handleWebhook), never a
+  // cookie/JWT — it must skip auth or webhooks are rejected and coins never mint.
+  const alwaysPublic = ["/health", "/ready", "/metrics", "/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/csrf-token", "/api/auth/google", "/api/auth/apple", "/api/auth/providers", "/api/docs", "/api/status", "/api/chat", "/api/brain/conscious", "/api/stripe/webhook"];
   if (alwaysPublic.some(p => req.path.startsWith(p))) return next();
 
   // Sovereign-only route protection
@@ -6513,7 +6590,10 @@ function requireRole(...roles) {
 // /api/lens were removed (H1 + its follow-up): anonymous POST to them is an unauthenticated
 // write/LLM-cost surface. AUTH_MODE=public deploys still allow anonymous writes — the gate
 // skips entirely in that mode — so local-first/demo setups are unaffected.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics"];
+// /api/stripe/webhook is signature-authenticated by Stripe (no cookie/JWT), so
+// it must bypass the production write-auth gate or every webhook 401s and paid
+// coins never mint. handleWebhook verifies the Stripe signature before any write.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook"];
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -6576,7 +6656,10 @@ if (z) {
   schemas.userRegister = z.object({
     username: z.string().min(3).max(50).regex(/^[a-zA-Z0-9_-]+$/),
     email: z.string().email(),
-    password: z.string().min(12).max(100)
+    password: z.string().min(12).max(100),
+    // 18+ age gate — Concordia has mature/violent content. The route computes
+    // the age and rejects < 18; here we just require a well-formed ISO date.
+    dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth is required (YYYY-MM-DD)")
   });
 
   schemas.userLogin = z.object({
@@ -25337,6 +25420,12 @@ registerDiscoveryMacros(register);
 // reason.verify — claim verification (citation-resolution floor + council judge).
 import registerReasonMacros from "./domains/reason.js";
 registerReasonMacros(register);
+
+// Literary Resonance Lattice (LRL) — hybrid BM25 + dense (RRF) search over the
+// ingested public-domain literary corpus. Ingestion: server/lib/literary-ingest.js;
+// schema: migration 337. Every hit carries provenance (source DTU + license).
+import registerLiteraryMacros from "./domains/literary.js";
+registerLiteraryMacros(register);
 
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
@@ -49935,6 +50024,20 @@ app.get("/api/ambient-chat/list", asyncHandler(async (req, res) => {
   res.json({ ok: true, messages: listRecentInDistrict(db, worldId, districtId, { limit: Number(req.query.limit) || 15 }) });
 }));
 
+// Proximity chat — recent chatter from players PHYSICALLY near the caller (a
+// 3×3 50m-cell window, ~150m, around their live position), regardless of
+// district. The client passes its avatar's x/z (window.__concordiaPlayerPos).
+app.get("/api/ambient-chat/proximity", asyncHandler(async (req, res) => {
+  const worldId = String(req.query.worldId || "");
+  if (!worldId) return res.status(400).json({ ok: false, error: "worldId_required" });
+  const x = Number(req.query.x) || 0;
+  const z = Number(req.query.z) || 0;
+  const { listRecentByUsers } = await import("./lib/ambient-chat.js");
+  const cp = await import("./lib/city-presence.js");
+  const nearby = cp.getPlayersNear(worldId, x, z, { radiusCells: 1 });
+  res.json({ ok: true, messages: listRecentByUsers(db, worldId, nearby, { limit: Number(req.query.limit) || 20 }) });
+}));
+
 // ── Phase BA1 — player housing (wire land_claims → building → rooms) ───
 
 app.post("/api/housing/claim", requireAuth(), asyncHandler(async (req, res) => {
@@ -53315,6 +53418,67 @@ app.post("/api/economy/buy", requireAuth(), asyncHandler(async (req, res) => {
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+}));
+
+// POST /api/economy/buy/checkout — alias of /api/economy/buy.
+// The frontend billing page (apiHelpers.economy.createCheckout) posts here;
+// without this route it 404s and the "Buy Coins" button is dead. Same handler
+// as /api/economy/buy: creates a Stripe Checkout session via the production
+// createCheckoutSession (metadata userId/tokens), which the /api/stripe/webhook
+// handler below matches when minting. Idempotent at the Stripe layer.
+app.post("/api/economy/buy/checkout", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  const tokens = Math.floor(Number(req.body?.tokens) || 0);
+  if (!userId) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (tokens < 1 || tokens > 1_000_000) {
+    return res.status(400).json({ ok: false, error: "tokens must be between 1 and 1,000,000" });
+  }
+  try {
+    const { createCheckoutSession, STRIPE_ENABLED } = await import("./economy/stripe.js");
+    if (!STRIPE_ENABLED) {
+      return res.status(503).json({ ok: false, error: "payments_not_configured", hint: "Set STRIPE_SECRET_KEY in .env to enable token purchases" });
+    }
+    const result = await createCheckoutSession(db, { userId, tokens, requestId: req.id || undefined, ip: req.ip });
+    if (!result?.ok) return res.status(503).json({ ok: false, error: result?.error || "checkout_failed" });
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+}));
+
+// POST /api/stripe/webhook — production Stripe webhook (mints coins on payment).
+// CRITICAL money path: without this, a successful Stripe payment never credits
+// the user's wallet (the buyer pays and gets nothing). Uses the production
+// handleWebhook (idempotent via stripe_events_processed, ledger mint + treasury
+// 1:1 peg) and reads req.rawBody (captured for this path in middleware/index.js
+// so the signature verifies against the unparsed bytes). Point your Stripe
+// dashboard webhook at https://concord-os.org/api/stripe/webhook and set
+// STRIPE_WEBHOOK_SECRET. No auth gate — Stripe authenticates via the signature.
+app.post("/api/stripe/webhook", asyncHandler(async (req, res) => {
+  try {
+    const { handleWebhook, STRIPE_ENABLED } = await import("./economy/stripe.js");
+    if (!STRIPE_ENABLED) return res.status(503).json({ ok: false, error: "payments_not_configured" });
+    if (!req.rawBody) {
+      // rawBody is only captured for whitelisted paths in middleware/index.js;
+      // if it's missing the signature can't be verified — fail closed.
+      structuredLog?.("error", "stripe_webhook_no_raw_body", { url: req.originalUrl });
+      return res.status(400).json({ ok: false, error: "missing_raw_body" });
+    }
+    const result = await handleWebhook(db, {
+      rawBody: req.rawBody,
+      signature: req.headers["stripe-signature"],
+      requestId: req.id || undefined,
+      ip: req.ip,
+    });
+    // Stripe expects a 2xx to mark the event delivered; on a verification or
+    // processing failure return 400 so Stripe retries (the handler is
+    // idempotent, so retries are safe).
+    if (!result?.ok) return res.status(400).json({ ok: false, error: result?.error || "webhook_failed" });
+    res.json({ ok: true, received: true });
+  } catch (e) {
+    structuredLog?.("error", "stripe_webhook_exception", { error: String(e?.message || e) });
+    res.status(400).json({ ok: false, error: String(e?.message || e) });
   }
 }));
 
@@ -62457,9 +62621,21 @@ try { await initStateSync(STATE); } catch (e) {
 }
 startAllIntervals(structuredLog);
 
-// Sentry error handler — must be registered after all routes but before listen
+// Sentry error handler — must be registered after all routes but before listen.
+// @sentry/node v8+ removed the old `Sentry.Handlers.errorHandler()` middleware
+// in favour of `setupExpressErrorHandler(app)`; calling the old API on v10
+// throws at boot (Handlers is undefined), so use the current one.
 if (globalThis.__sentry) {
-  app.use(globalThis.__sentry.Handlers.errorHandler());
+  try {
+    if (typeof globalThis.__sentry.setupExpressErrorHandler === "function") {
+      globalThis.__sentry.setupExpressErrorHandler(app);
+    } else if (globalThis.__sentry.Handlers?.errorHandler) {
+      // Back-compat for an older SDK if it's ever pinned down.
+      app.use(globalThis.__sentry.Handlers.errorHandler());
+    }
+  } catch (_e) {
+    console.warn("[Sentry] error-handler registration failed:", _e?.message);
+  }
 }
 
 // Listen-suppression for tests. NODE_ENV=test (in-process unit tests
@@ -75451,6 +75627,112 @@ register("spectator", "list_for_world", async (_ctx, input = {}) => {
     return { ok: true, worldId, spectators: lib.activeSpectators(db, worldId) };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Active spectators on a world." });
+
+// World build-replay: assemble a ReplayRecording from the event_timeline_log
+// (migration 169), which the realtime emit pipeline auto-populates. Backs the
+// ReplaySpectator panel's timeline (the spectator COUNT is the macro above).
+register("replay", "recording_for_world", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId, limit = 200 } = input || {};
+  if (!worldId) return { ok: false, reason: "missing_worldId" };
+  try {
+    const CHANNELS = ["build", "place", "destroy", "weather", "disaster", "milestone", "validate"];
+    const ph = CHANNELS.map(() => "?").join(",");
+    const rows = db.prepare(
+      `SELECT channel, actor_id, payload_json, created_at
+         FROM event_timeline_log
+        WHERE world_id = ? AND channel IN (${ph})
+        ORDER BY created_at ASC
+        LIMIT ?`
+    ).all(worldId, ...CHANNELS, Math.min(Number(limit) || 200, 1000));
+    if (!rows.length) return { ok: true, worldId, recording: null };
+    const events = rows.map((r) => {
+      let payload = {};
+      try { payload = r.payload_json ? JSON.parse(r.payload_json) : {}; } catch { /* tolerate bad json */ }
+      const ev = {
+        timestamp: (r.created_at || 0) * 1000,
+        type: CHANNELS.includes(r.channel) ? r.channel : "milestone",
+        actorId: r.actor_id || "",
+        description: String(payload.summary || payload.description || payload.message || r.channel),
+      };
+      if (payload.position && typeof payload.position === "object") ev.position = payload.position;
+      return ev;
+    });
+    const first = rows[0].created_at || 0;
+    const last = rows[rows.length - 1].created_at || first;
+    const recording = {
+      id: `rec_${worldId}_${first}`,
+      worldId,
+      startTime: new Date(first * 1000).toISOString(),
+      endTime: new Date(last * 1000).toISOString(),
+      events,
+      duration: Math.max(0, (last - first) * 1000),
+    };
+    return { ok: true, worldId, recording };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "World build-replay recording assembled from event_timeline_log." });
+
+// Spontaneous gatherings: clusters of nearby currently-present players in a
+// world (>= 2 in a 50m cell). Backs the EventsGatherings panel's gatherings
+// section. Honest-empty when nobody's clustered.
+register("world", "gatherings", async (_ctx, input = {}) => {
+  const { worldId } = input || {};
+  if (!worldId) return { ok: false, reason: "missing_worldId" };
+  try {
+    const cp = await import("./lib/city-presence.js");
+    return { ok: true, worldId, gatherings: cp.spontaneousGatherings(worldId, {}) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Spontaneous co-presence gatherings (clusters of nearby players)." });
+
+// Firm/org chat (migration 336). `firm.chat` resolves the CALLER's org (reverse
+// lookup over org membership), its roster (online = has live presence), and
+// recent messages. `firm.post` appends a message, gated by membership. Backs
+// the ChatSystem "Firm" channel. firm = null when the caller isn't in an org.
+function _firmActorId(ctx) { return ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId || null; }
+register("firm", "chat", async (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = _firmActorId(ctx);
+  if (!userId) return { ok: false, reason: "unauthenticated" };
+  try {
+    const orgLib = await import("./lib/world-organizations.js");
+    const orgs = orgLib.getOrgsForUser(userId);
+    if (!orgs.length) return { ok: true, firm: null };
+    const orgId = orgs[0].orgId;
+    const org = orgLib.getOrganization(orgId);
+    const cp = await import("./lib/city-presence.js");
+    const ocLib = await import("./lib/org-chat.js");
+    const rawMembers = orgLib.getOrgMembers(orgId);
+    const messages = ocLib.listOrgChat(db, orgId, { limit: 30 });
+    // Resolve display names for the roster + message authors in one lookup, so
+    // the panel shows "Marcus the Healer", not a raw user id.
+    const fp = await import("./lib/friend-presence.js");
+    const ids = [...new Set([...rawMembers.map((m) => m.userId), ...messages.map((m) => m.user_id)])];
+    const display = fp.resolveUserDisplay(db, ids);
+    const nameOf = (id) => display[id]?.displayName || id;
+    const members = rawMembers.map((m) => ({ id: m.userId, name: nameOf(m.userId), online: !!cp.getUserPosition(m.userId) }));
+    const msgs = messages.map((m) => ({ ...m, user_name: nameOf(m.user_id) }));
+    return { ok: true, firm: { orgId, orgName: org?.name || orgId, members, messages: msgs } };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Caller's firm/org chat context: roster + recent messages." });
+
+register("firm", "post", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = _firmActorId(ctx);
+  if (!userId) return { ok: false, reason: "unauthenticated" };
+  try {
+    const orgLib = await import("./lib/world-organizations.js");
+    const orgs = orgLib.getOrgsForUser(userId);
+    if (!orgs.length) return { ok: false, error: "not_in_org" };
+    const orgId = orgs[0].orgId;
+    const ocLib = await import("./lib/org-chat.js");
+    return ocLib.postToOrgChat(db, {
+      orgId,
+      userId,
+      body: input?.body,
+      isMember: (u) => orgLib.getOrgMembers(orgId).some((m) => m.userId === u),
+    });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Post a message to the caller's firm/org chat." });
 
 // #11 Goddess broadcast.
 register("goddess", "compose_now", async (ctx, input = {}) => {

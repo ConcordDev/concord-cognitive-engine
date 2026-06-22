@@ -9,6 +9,7 @@ import type { NextRequest } from 'next/server';
 
 const PUBLIC_PATHS = new Set([
   '/',
+  '/explore',        // public "look around first" showcase — no account needed
   '/login',
   '/register',
   '/forgot-password',

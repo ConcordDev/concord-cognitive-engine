@@ -40,6 +40,34 @@ export async function mockAuthSuccess(page: Page, opts: AuthMockOptions = {}) {
   const { username = 'testuser', role = 'user', walletBalance = 0 } = opts;
   const userId = `usr_${username}`;
 
+  // Pre-dismiss the first-run overlays BEFORE any page script runs. The
+  // OnboardingWizard renders a full-screen `fixed inset-0 z-50 bg-black/80`
+  // modal whenever `concord-onboarding-completed` is unset (and its
+  // /api/onboarding/wizard-status probe doesn't say completed) — for a
+  // freshly-"logged-in" mock user that's always, so the modal COVERS the
+  // page and intercepts every click / hides content the spec asserts on
+  // (NEC-calculator tab clicks timed out at 120s; "Admin access required"
+  // read as not-visible underneath it). FirstWinWizard + CookieConsent are
+  // the same class of overlay. addInitScript persists across navigations.
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('concord-onboarding-completed', 'true');
+      localStorage.setItem('concord_first_win_dismissed', 'true');
+      localStorage.setItem('concord_arrival_seen', 'true');
+      localStorage.setItem('concord_cookie_consent', 'accepted');
+      localStorage.setItem('world_lens_visited', '1');
+      localStorage.setItem('concord_entered', 'true');
+    } catch { /* private mode */ }
+  });
+  // Belt-and-suspenders for the OnboardingWizard server probe.
+  await page.route('**/api/onboarding/wizard-status', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, completed: true }),
+    })
+  );
+
   // CSRF token — fired before login + after login by app/login/page.tsx
   await page.route('**/api/auth/csrf-token', (route) =>
     route.fulfill({ status: 200, body: JSON.stringify({ token: 'mock-csrf' }) })

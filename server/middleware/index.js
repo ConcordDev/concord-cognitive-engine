@@ -135,7 +135,14 @@ export default function configureMiddleware(app, deps) {
       limit,
       type: ['application/json', 'application/activity+json', 'application/ld+json'],
       verify: (innerReq, _res, buf) => {
-        if (innerReq.url === '/api/economy/webhook') innerReq.rawBody = buf;
+        // Stripe webhook signature verification needs the UNPARSED body bytes
+        // (stripe.webhooks.constructEvent hashes the raw payload). Capture it
+        // for the canonical Stripe webhook path + legacy aliases. Match on
+        // pathname only (strip any query string).
+        const _path = (innerReq.url || '').split('?')[0];
+        if (_path === '/api/stripe/webhook' || _path === '/api/economy/webhook' || _path === '/api/economic/webhook') {
+          innerReq.rawBody = buf;
+        }
         // ActivityPub inbox needs the unparsed body so HTTP-Signature
         // digest verification can prove the body wasn't tampered with.
         if (/^\/api\/federation\/users\/[^/]+\/inbox\b/.test(innerReq.url)) innerReq.rawBody = buf;

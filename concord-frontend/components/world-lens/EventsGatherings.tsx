@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { lensRun } from '@/lib/api/client';
 import {
   Calendar, Clock, MapPin, Users, Plus, ChevronLeft, ChevronRight,
   X, Check,
@@ -138,12 +139,27 @@ export default function EventsGatherings({
   const [activeTab, setActiveTab] = useState<'upcoming' | 'calendar' | 'live' | 'create' | 'past'>('upcoming');
   const [selectedEvent, setSelectedEvent] = useState<GameEvent | null>(null);
 
-  // Real events come from GET /api/world/events. Start EMPTY — never seed
-  // fabricated events. Spontaneous gatherings have no backend surface yet, so
-  // they stay empty (honest empty-state) unless the caller passes them in.
+  // Real events come from GET /api/world/events; spontaneous gatherings come
+  // from the world.gatherings macro (clusters of nearby present players). Both
+  // start EMPTY and stay honest-empty — never fabricated.
   const [events, setEvents] = useState<GameEvent[]>(eventsProp ?? []);
-  // TODO: wire spontaneous gatherings to backend (no co-presence cluster API exists yet)
-  const gatherings = gatheringsProp ?? [];
+  const [fetchedGatherings, setFetchedGatherings] = useState<Gathering[]>([]);
+  const gatherings = gatheringsProp ?? fetchedGatherings;
+
+  useEffect(() => {
+    if (gatheringsProp) return; // caller supplied data — respect it
+    let cancelled = false;
+    (async () => {
+      try {
+        const wid = worldId || 'concordia-hub';
+        const r = await lensRun<{ gatherings?: Gathering[] }>('world', 'gatherings', { worldId: wid });
+        if (cancelled) return;
+        const rows = r.data?.ok ? r.data.result?.gatherings : null;
+        setFetchedGatherings(Array.isArray(rows) ? rows : []);
+      } catch { if (!cancelled) setFetchedGatherings([]); }
+    })();
+    return () => { cancelled = true; };
+  }, [worldId, gatheringsProp]);
 
   useEffect(() => {
     if (eventsProp) return; // caller supplied data — respect it

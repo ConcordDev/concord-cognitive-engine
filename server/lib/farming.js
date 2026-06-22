@@ -1,3 +1,4 @@
+// @sync-fs-ok: lazy, memoized one-time crop-catalog content load. Sync fs in this file is intentional and not on the user request path (audited 2026-06).
 // server/lib/farming.js
 //
 // Phase CB3 — farm plots.

@@ -238,6 +238,24 @@ else
   WARNINGS+=("$(c_y "⚠ DB_PATH dir missing")  $DB_DIR — server will create at boot if parent is writable")
 fi
 
+# ── Data durability — is the DB on a persistent volume? ──
+# The container disk is ephemeral on RunPod; a pod reclaim wipes it. Warn if
+# DB_PATH doesn't look like a persistent network-volume mount.
+case "${DB_PATH:-$DB_DIR}" in
+  /workspace*|/runpod-volume*|/data/*) echo "$(c_g "✓ DB on a likely-persistent path")  ${DB_PATH:-$DB_DIR}" ;;
+  *) WARNINGS+=("$(c_y "⚠ DB_PATH may be EPHEMERAL")  ${DB_PATH:-$DB_DIR} — put it on the network volume (e.g. /workspace/concord/db/concord.db) or a pod reclaim = total data loss") ;;
+esac
+
+# ── Transactional email — account recovery depends on it ──
+# Without SMTP, password-reset + verification emails never send; a user who
+# forgets their password is locked out. Not a hard fail (some launch without
+# email), but a loud warning since it's a silent footgun.
+if [ -n "${SMTP_HOST:-}" ]; then
+  echo "$(c_g "✓ SMTP configured")  ${SMTP_HOST} — password reset + verification will send"
+else
+  WARNINGS+=("$(c_y "⚠ SMTP not configured")  password reset + email verification will NOT send — users who forget passwords are locked out. Set SMTP_HOST/USER/PASS.")
+fi
+
 # ── MMO sprint — content + flag parseability ──
 # Phase U2 — achievement catalog
 if [ -d "./content/achievements" ]; then

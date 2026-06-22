@@ -248,9 +248,34 @@ export default function FederationPanel() {
     return { totalInstances, totalDTUs, lastGlobal };
   }, [instances, syncLog]);
 
-  // Cross-instance federated search has no backend macro yet — honest empty.
-  // TODO: wire to backend (no federation cross-instance search macro exists).
-  const searchResults: SearchResult[] = [];
+  // Cross-instance federated search — wired to GET /api/federation/search, which
+  // runs the local semantic search and fans out to connected peers (capped at 8,
+  // 5s timeout each), then merges + dedupes by DTU id. Debounced; honest-empty
+  // until a query is typed or when nothing matches.
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) { setSearchResults([]); return; }
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/federation/search?q=${encodeURIComponent(q)}&limit=20`, { signal: ctrl.signal });
+        if (!r.ok) { setSearchResults([]); return; }
+        const data = await r.json();
+        const rows: Array<Record<string, unknown>> = Array.isArray(data?.results) ? data.results : [];
+        setSearchResults(rows.map((x, i) => ({
+          id: String(x.dtuId ?? x.id ?? `r${i}`),
+          title: String(x.title ?? x.name ?? 'Untitled'),
+          instanceName: x.source === 'self' ? 'This instance' : String(x.peerName ?? x.source ?? 'Peer'),
+          instanceId: String(x.source ?? 'self'),
+          snippet: String(x.snippet ?? x.summary ?? x.content ?? '').slice(0, 200),
+        })));
+      } catch {
+        if (!ctrl.signal.aborted) setSearchResults([]);
+      }
+    }, 350);
+    return () => { ctrl.abort(); clearTimeout(t); };
+  }, [searchQuery]);
 
   const handleSync = async (instanceId: string) => {
     const inst = instances.find((i) => i.id === instanceId);

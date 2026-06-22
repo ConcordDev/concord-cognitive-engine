@@ -93,11 +93,11 @@ const DOMAIN_META: Record<ReputationDomain, { label: string; icon: React.Compone
 };
 
 /* ── Empty defaults ────────────────────────────────────────────── */
-// TODO: wire to backend — no player-profile macro/route currently returns the
-// rich profile shape this component renders (reputation radar + DTU portfolio +
-// badges + visitor log). Until one exists, defaults are empty so the panel
-// shows honest empty states instead of fabricated data. Callers may still
-// pass a real `profile` (+ portfolio/badges/friends/visitorLog) via props.
+// Shown only until the real fetch resolves (or when a caller passes data via
+// props). The component fetches REAL data from the `profile.*` macros
+// (profile-get / reputation-summary / badges-list / portfolio-list /
+// visitors-list — see the effect below) which back the reputation radar, DTU
+// portfolio, badges, and visitor log. Empty states are honest, never fabricated.
 
 const EMPTY_PROFILE: ProfileData = {
   id: '',

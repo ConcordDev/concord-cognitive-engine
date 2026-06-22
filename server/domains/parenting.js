@@ -433,7 +433,13 @@ export default function registerParentingActions(registerLensAction) {
   };
   // Approximate coefficient of variation per measure (WHO spread).
   const PG_CV = { weight: 0.13, height: 0.038, head: 0.035 };
-  function pgWhoMedian(table, ageMonths) {
+  function pgWhoMedian(table, ageMonthsRaw) {
+    // WHO growth references are tabulated at whole-month anchor ages, so a
+    // child's age must snap to the nearest reference month before lookup.
+    // Without this, a same-day log (age ≈ 0.02mo) interpolates the median UP
+    // off the 0-month value, so a measurement exactly AT the published median
+    // reads as slightly below it (e.g. 47th pct instead of 50th).
+    const ageMonths = Math.round(ageMonthsRaw);
     const ages = Object.keys(table).map(Number).sort((a, b) => a - b);
     if (ageMonths <= ages[0]) return table[ages[0]];
     if (ageMonths >= ages[ages.length - 1]) return table[ages[ages.length - 1]];
