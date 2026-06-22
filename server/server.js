@@ -25473,6 +25473,11 @@ registerDecompMacros(register);
 import registerPlannerMacros from "./domains/planner.js";
 registerPlannerMacros(register);
 
+// Contribution Quests (#36) — verifiable-contribution quests (author N DTUs in a
+// target lens); reward mints through the earned-CC path, idempotent.
+import registerContribMacros from "./domains/contrib.js";
+registerContribMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
