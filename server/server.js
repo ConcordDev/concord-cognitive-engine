@@ -239,6 +239,15 @@ registerHeartbeat("hypothesis-cycle", {
   handler: () => runHypothesisCycle(),
 });
 
+// Cognitive Fingerprint (#5) — snapshot each active author's thinking-style
+// profile for trend tracking. Kill-switch CONCORD_COGNITIVE_FINGERPRINT=0.
+import { runCognitiveFingerprintCycle } from "./emergent/cognitive-fingerprint-cycle.js";
+registerHeartbeat("cognitive-fingerprint-cycle", {
+  frequency: 360,
+  scope: "global",
+  handler: ({ db } = {}) => runCognitiveFingerprintCycle({ db }),
+});
+
 // Living Society Phase 3 — sparks-flow payday. Pay moves along employment edges;
 // skim diverts to collectors (corruption); unpaid flow deepens grievances.
 import { runPayCycle } from "./emergent/pay-cycle.js";
@@ -25441,6 +25450,10 @@ registerLiteraryMacros(register);
 // chains them with LRL grounding into one verifiable research loop (rnd.run).
 import registerRndMacros from "./domains/rnd.js";
 registerRndMacros(register);
+
+// Cognitive Fingerprint (#5) — thinking-style profile from real activity.
+import registerMetacogMacros from "./domains/metacog.js";
+registerMetacogMacros(register);
 
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
