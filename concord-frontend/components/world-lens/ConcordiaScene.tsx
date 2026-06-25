@@ -440,6 +440,27 @@ export default function ConcordiaScene({
       // @resource-leak-ok: terrain-ready is a one-shot scene-init signal; ConcordiaScene unmounts the whole canvas, not the listener individually
       window.addEventListener('concordia:terrain-ready', onTerrainPhysics);
 
+      // Lens-as-Station — consume the React BuildingRenderer3D layer's output.
+      // It builds a fully-positioned group of all world buildings (with iconic
+      // silhouettes) and dispatches concordia:buildings-ready; without this the
+      // group was dispatched into the void (only a no-op event-router stub
+      // listened), so 3D buildings never reached the scene. Add it to the
+      // 'buildings' layer (otherwise empty — addBuilding has no caller — so no
+      // doubling); replace on re-dispatch when the building set changes.
+      let currentBuildingsGroup: unknown = null;
+      function onBuildingsReady(e: Event) {
+        const g = (e as CustomEvent).detail?.buildingGroup as unknown;
+        const layer = layersRef.current['buildings'] as
+          | { add: (c: unknown) => void; remove: (c: unknown) => void }
+          | undefined;
+        if (!g || !layer) return;
+        if (currentBuildingsGroup) { try { layer.remove(currentBuildingsGroup); } catch { /* ignore */ } }
+        layer.add(g);
+        currentBuildingsGroup = g;
+      }
+      // @resource-leak-ok: same one-shot scene lifecycle as terrain-ready above.
+      window.addEventListener('concordia:buildings-ready', onBuildingsReady);
+
       // Theme 6 deferred follow-up (game-feel pass): water plane + swim
       // registration. Adds a translucent blue plane at y=2 that covers
       // the river-bluff valley west of origin, plus a Fall Kill Creek
