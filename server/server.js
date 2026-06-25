@@ -25490,6 +25490,12 @@ registerMusicResMacros(register);
 import registerLicensingMacros from "./domains/licensing.js";
 registerLicensingMacros(register);
 
+// Holographic Invariant Storage (#40) — bipolar-VSA ethics safety layer: store
+// the refusal invariants as a hypervector codebook, detect/counter context
+// drift, expose the design-time recovery contract. Deterministic, no DB/LLM.
+import registerHisMacros from "./domains/his.js";
+registerHisMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
