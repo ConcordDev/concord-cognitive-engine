@@ -25501,6 +25501,11 @@ registerHisMacros(register);
 import registerOrchestrateMacros from "./domains/orchestrate.js";
 registerOrchestrateMacros(register);
 
+// Invariant Geometry Mapper (#20) — live invariant co-violation graph (real
+// telemetry) + topological summary for GraphView.
+import registerInvgeoMacros from "./domains/invgeo.js";
+registerInvgeoMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
