@@ -304,6 +304,12 @@ export function createResourceNodeRenderer(
   const pollMs = opts.pollMs ?? 5000;
   const apiBase = opts.apiBase ?? '';
   const url = `${apiBase}/api/worlds/${opts.worldId}/nodes`;
+  // World→scene offset. The server seeds nodes in the [0, 2000] world frame
+  // (x = 50 + rand·1900), but the frontend terrain / player / NPCs are centred
+  // at the origin ([-1000, +1000]). Shift node coords by TERRAIN_SIZE/2 = 1000
+  // so they sit on the terrain among everything else (at this offset the server
+  // and frontend elevation formulas agree, so nodes stay on the ground).
+  const WORLD_TO_SCENE_OFFSET = 1000;
 
   const tracked = new Map<string, TrackedNode>();
   let disposed = false;
@@ -325,14 +331,14 @@ export function createResourceNodeRenderer(
       if (existing && (existing.kind === visual.kind) &&
           (existing.depleted === visual.depleted)) {
         existing.targetScale = visual.scale;
-        existing.object.position.set(node.x, node.y, node.z);
+        existing.object.position.set(node.x - WORLD_TO_SCENE_OFFSET, node.y, node.z - WORLD_TO_SCENE_OFFSET);
         continue;
       }
 
       if (existing) disposeTracked(existing, parentGroup);
 
       const built = buildNodeObject(visual);
-      built.object.position.set(node.x, node.y, node.z);
+      built.object.position.set(node.x - WORLD_TO_SCENE_OFFSET, node.y, node.z - WORLD_TO_SCENE_OFFSET);
       const initialScale = existing ? existing.object.scale.x : visual.scale;
       built.object.scale.setScalar(initialScale);
       parentGroup.add(built.object);
