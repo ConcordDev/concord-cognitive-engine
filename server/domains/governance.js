@@ -11,6 +11,7 @@ import {
   listAllProposals,
   GOVERNED_CONSTANTS,
 } from "../lib/governance.js";
+import { projectImpact, simulateProposal, getSimulation } from "../lib/governance-sim.js";
 
 export default function registerGovernanceMacros(register) {
   register("governance", "open_proposal", async (ctx, input = {}) => {
@@ -72,4 +73,22 @@ export default function registerGovernanceMacros(register) {
   register("governance", "list_governed_constants", async (_ctx, _input = {}) => {
     return { ok: true, constants: [...GOVERNED_CONSTANTS] };
   }, { note: "list which constants can be proposed against" });
+
+  // #41 Governance Proposal Simulator — project a proposal's policy impact on a
+  // reference scenario BEFORE voting ("if this passes → X changes by Y"). Pure
+  // projection on a snapshot; no live constant changes.
+  register("governance", "simulate", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (input.proposalId) return simulateProposal(db, input.proposalId);
+    // Ad-hoc projection without a stored proposal.
+    return projectImpact(input.constantPath, input.currentValue, input.proposedValue);
+  }, { note: "project a proposal's policy impact on a reference scenario (#41)" });
+
+  register("governance", "simulation", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const sim = getSimulation(db, input.proposalId);
+    return sim ? { ok: true, ...sim } : { ok: false, reason: "not_simulated" };
+  }, { note: "read a proposal's cached impact projection (#41)" });
 }
