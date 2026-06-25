@@ -25516,6 +25516,11 @@ registerTomographyMacros(register);
 import registerHapticMacros from "./domains/haptic.js";
 registerHapticMacros(register);
 
+// Engine Bridge (#29) — serialize real world_buildings geometry into a neutral
+// scene graph an external engine (Unreal/Godot/Three.js) can ingest.
+import registerSceneBridgeMacros from "./domains/scenebridge.js";
+registerSceneBridgeMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
