@@ -66,15 +66,22 @@ describe("Maker-Checker Orchestrator (#9)", () => {
     assert.ok(r.results.every((x) => x.accepted));
   });
 
-  it("orchestrate macros round-trip (real deterministic council)", async () => {
-    const run = await macros.get("orchestrate.run")({ db }, { goal: "evaluate a proposal", maxRounds: 2 });
+  it("orchestrate.run uses the REAL brain maker — degrades honestly with no brain", async () => {
+    // No injected maker → the real brainMaker runs. Offline (no Ollama reachable)
+    // it must report makerUnavailable, NOT fabricate a proposal.
+    const run = await macros.get("orchestrate.run")({ db, actor: { userId: "u2" } }, { goal: "evaluate a proposal", maxRounds: 2 });
     assert.equal(run.ok, true);
-    assert.ok(run.rounds.length >= 1 && run.rounds.length <= 2);
+    assert.equal(run.makerUnavailable, true, "honest: no brain → no proposal");
+    assert.equal(run.accepted, false);
+    assert.equal(run.finalProposal, null, "nothing fabricated");
+  });
 
+  it("orchestrate.dispatch over a goal tree also degrades honestly offline", async () => {
     const t = createGoalTree(db, { userId: "u2", title: "Tree", mintDtu: false });
     addSubgoals(db, { treeId: t.treeId, parentId: t.rootId, subgoals: ["do x"] });
-    const disp = await macros.get("orchestrate.dispatch")({ db }, { treeId: t.treeId });
+    const disp = await macros.get("orchestrate.dispatch")({ db, actor: { userId: "u2" } }, { treeId: t.treeId });
     assert.equal(disp.ok, true);
     assert.ok(disp.dispatched >= 1);
+    assert.ok(disp.results.every((r) => r.makerUnavailable === true), "no fabricated proposals");
   });
 });
