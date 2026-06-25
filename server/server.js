@@ -25484,6 +25484,12 @@ registerContribMacros(register);
 import registerMusicResMacros from "./domains/musicres.js";
 registerMusicResMacros(register);
 
+// Licensed DTU Vaults — revocation (#37). A creator revokes/reinstates a usage
+// license they granted; licensing.check honours revocation/expiry. Additive —
+// no existing marketplace path or royalty math changes.
+import registerLicensingMacros from "./domains/licensing.js";
+registerLicensingMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 

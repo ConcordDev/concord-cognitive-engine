@@ -55,11 +55,17 @@ a migration/lib/domain + offline tests, and the global gates stay green
   same BM25+dense pipeline as the literary lattice (honest `semantic` flag), and
   `musicres.bridge` cross-links a lyric to the public-domain passage it resonates
   with — making the LRL genuinely cross-domain (two corpora bridged).
+- **#37 Licensed DTU Vaults — revocation — DONE.** `lib/license-revocation.js` +
+  `domains/licensing.js` + mig 344. Owner-gated revoke/reinstate of a granted
+  usage license with an auditable reason, plus `licenseIsActive` — the access
+  check that honours revocation/expiry. Purely additive: no existing marketplace
+  path or royalty math changes (revocation withdraws a usage right, not a payment).
 
-**Remaining (specs in the tiers below):** #37 license revocation (economy-core,
-needs care), #9 swarm orchestration, #20 invariant viz, #40 HDC/VSA upgrade, #41
-governance sim, #45 style transfer, #49 holocron agent, #38 federated brain, #15
-voice+affect fusion. Tier-5 hardware/external (#23/#29/#44/#27) stays deferred.
+**Remaining (specs in the tiers below):** #9 swarm orchestration, #20 invariant
+viz, #40 HDC/VSA upgrade, #41 governance sim, #45 style transfer, #49 holocron
+agent, #38 federated brain, #15 voice+affect fusion — each needs LLM/embeddings,
+deeper infra, or research-grade work and isn't a clean offline-testable add.
+Tier-5 hardware/external (#23/#29/#44/#27) stays deferred.
 
 ---
 
