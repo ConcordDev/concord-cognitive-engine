@@ -156,44 +156,73 @@ const SEED_CITIES = {
 SEED_CITIES.urban_crime  = SEED_CITIES.post_apocalyptic;
 SEED_CITIES.war_zone     = SEED_CITIES.post_apocalyptic;
 
-// ── Lens-as-Station civic ring ──────────────────────────────────────────────────
+// ── Lens-as-Station district ring ───────────────────────────────────────────────
 //
 // Each of these is a real LENS you walk into: the frontend station-lens registry
 // (concord-frontend/lib/station-lens-registry.ts) maps building_type → lens, and
 // interacting opens the lens as a persistent overlay over the 3D world. They are
-// placed as an outer civic ring around the seed city, clustered by purpose, with
-// names + designs grounded in Concord's own mythos — the lattice (DTU substrate),
-// Concordant Law, the perpetual-royalty cascade, the Concord Link (cross-world
-// relay), and music→soundscape resonance. The `lore` line documents the design
-// rationale (the building's form expresses its role); the building_type also has
-// a matching interior in lib/building-interiors.js ROOM_TEMPLATES.
+// grouped into purpose DISTRICTS and auto-placed on a two-radius ring around the
+// seed city (see _stationOffset) — so adding a station is just one more row, no
+// hand-tuned coordinates, and it stays non-overlapping as the set grows.
 //
-// Offsets sit OUTSIDE the core seed-city cluster (which lives within ~±32 of
-// centre) so stations never overlap the inn/market/forge/houses.
-const STATION_RING = [
-  // ── Civic quarter (north) ──
-  { type: 'courthouse',         name: 'The Concordant Court',     w: 14, d: 12, h: 11, mat: 'stone', floors: 2, ox: 0,   oz: -52,
-    lore: 'Seat of Concordant Law — disputes over citation, refusal, and royalty are argued here; the Sovereign Refusal Archive answers to its bench. Tall stone hall, built to be looked up at.' },
-  // ── Knowledge quarter (north-east) ──
-  { type: 'cartographer_table', name: "The Cartographer's Spire",  w: 9,  d: 9,  h: 14, mat: 'stone', floors: 3, ox: 46,  oz: -40,
-    lore: 'Charts the lattice — every DTU, edge, and territory mapped from the spire. Narrow and tall so the survey deck clears the rooftops.' },
-  { type: 'code_terminal',      name: 'The Lattice Terminal',      w: 6,  d: 6,  h: 7,  mat: 'steel', floors: 2, ox: 54,  oz: -18,
-    lore: 'A public access node — jack into the Concord lattice and shape the substrate directly. Compact steel-and-glass, the one modern thing on the green.' },
-  // ── Commerce quarter (east, beside the Seed Market) ──
-  { type: 'trading_floor',      name: 'The Concord Exchange',      w: 16, d: 12, h: 9,  mat: 'stone', floors: 2, ox: 58,  oz: 6,
-    lore: 'The open floor where creations are listed, bid, and sold. A wide pillared hall — the bustle needs room.' },
-  { type: 'ledger_desk',        name: 'The Royalty Ledger',        w: 8,  d: 7,  h: 7,  mat: 'brick', floors: 2, ox: 58,  oz: 26,
-    lore: 'The counting house — the perpetual-royalty cascade is reconciled to the coin here. Squat brick, vault-heavy, next door to the Exchange it serves.' },
-  // ── Arts quarter (south-east) ──
-  { type: 'music_booth',        name: 'The Resonance Booth',       w: 7,  d: 6,  h: 6,  mat: 'wood',  floors: 1, ox: 46,  oz: 46,
-    lore: 'Where a track becomes a district soundscape — compose, perform, and let it carry. Small warm timber room, good for the sound.' },
-  // ── Care quarter (south) ──
-  { type: 'clinic',             name: 'The Mendery',               w: 10, d: 8,  h: 5,  mat: 'stone', floors: 1, ox: 0,   oz: 54,
-    lore: "House of mending — wounds, ailments, and the body's pain-ledger are tended here. Low, calm stone, set apart from the market noise." },
-  // ── Communication quarter (west) ──
-  { type: 'post_office',        name: 'The Link Post',             w: 9,  d: 7,  h: 7,  mat: 'stone', floors: 1, ox: -52, oz: 28,
-    lore: 'Relays word across the Concord Link — letters and parcels move between worlds from here. Stone-built and durable, because the Link must never go dark.' },
+// Names + designs are grounded in Concord's own mythos (the lattice, Concordant
+// Law, the royalty cascade, the Concord Link, music→soundscape). Every
+// building_type also has a matching interior in lib/building-interiors.js
+// ROOM_TEMPLATES, and a row in the frontend station-lens registry.
+const STATIONS = [
+  // ── Civic & governance ──
+  { type: 'courthouse',         district: 'civic',     name: 'The Concordant Court', w: 14, d: 12, h: 11, mat: 'stone', floors: 2, lore: 'Seat of Concordant Law — citation, refusal, and royalty disputes are argued here.' },
+  { type: 'assembly_hall',      district: 'civic',     name: 'The Assembly Hall',    w: 16, d: 12, h: 9,  mat: 'stone', floors: 2, lore: 'Where proposals are convened and the governed constants amended.' },
+  { type: 'watch_house',        district: 'civic',     name: 'The Watch House',      w: 10, d: 9,  h: 6,  mat: 'stone', floors: 1, lore: 'Keepers of the peace — crimes logged, bounties posted.' },
+  // ── Knowledge & science ──
+  { type: 'cartographer_table', district: 'knowledge', name: "The Cartographer's Spire", w: 9, d: 9, h: 14, mat: 'stone', floors: 3, lore: 'Charts the lattice from a deck that clears the rooftops.' },
+  { type: 'code_terminal',      district: 'knowledge', name: 'The Lattice Terminal', w: 6,  d: 6,  h: 7,  mat: 'steel', floors: 2, lore: 'Jack into the Concord lattice and shape the substrate directly.' },
+  { type: 'observatory',        district: 'knowledge', name: 'The Observatory',      w: 10, d: 10, h: 13, mat: 'stone', floors: 3, lore: 'A domed eye on the heavens — ephemerides and apparitions.' },
+  { type: 'laboratory',         district: 'knowledge', name: 'The Laboratory',       w: 11, d: 9,  h: 6,  mat: 'brick', floors: 1, lore: 'Run the experiment; let the residuals tell the truth.' },
+  { type: 'archive_hall',       district: 'knowledge', name: 'The Archive',          w: 12, d: 10, h: 8,  mat: 'stone', floors: 2, lore: 'The record of what was — read the long memory of the world.' },
+  // ── Commerce & economy ──
+  { type: 'trading_floor',      district: 'commerce',  name: 'The Concord Exchange', w: 16, d: 12, h: 9,  mat: 'stone', floors: 2, lore: 'The open floor where creations are listed, bid, and sold.' },
+  { type: 'ledger_desk',        district: 'commerce',  name: 'The Royalty Ledger',   w: 8,  d: 7,  h: 7,  mat: 'brick', floors: 2, lore: 'The counting house — the royalty cascade reconciled to the coin.' },
+  { type: 'bank_house',         district: 'commerce',  name: 'The Concord Bank',     w: 12, d: 10, h: 8,  mat: 'stone', floors: 2, lore: 'Vaulted and deliberate — mind the money, earn the withdrawal.' },
+  { type: 'auction_house',      district: 'commerce',  name: 'The Auction House',    w: 12, d: 10, h: 8,  mat: 'wood',  floors: 2, lore: 'Going once — the snipe window and the gavel.' },
+  // ── Arts & creative ──
+  { type: 'music_booth',        district: 'arts',      name: 'The Resonance Booth',  w: 7,  d: 6,  h: 6,  mat: 'wood',  floors: 1, lore: 'Where a track becomes a district soundscape.' },
+  { type: 'atelier',            district: 'arts',      name: 'The Atelier',          w: 10, d: 8,  h: 6,  mat: 'wood',  floors: 1, lore: 'Make something — the open studio floor.' },
+  { type: 'writers_room',       district: 'arts',      name: "The Writers' Room",    w: 8,  d: 7,  h: 5,  mat: 'wood',  floors: 1, lore: 'Draft, revise, and mint the page.' },
+  { type: 'gallery_hall',       district: 'arts',      name: 'The Gallery',          w: 14, d: 10, h: 7,  mat: 'stone', floors: 1, lore: 'Show the work; let the citations gather.' },
+  // ── Craft & industry ──
+  { type: 'workshop',           district: 'craft',     name: 'The Workshop',         w: 10, d: 8,  h: 6,  mat: 'wood',  floors: 1, lore: 'Resolve the recipe; the resources decide the potency.' },
+  { type: 'engineers_hall',     district: 'craft',     name: "The Engineers' Hall",  w: 12, d: 10, h: 7,  mat: 'steel', floors: 1, lore: 'CAS and the beam-frame solver — engineer it for real.' },
+  // ── Care & wellbeing ──
+  { type: 'clinic',             district: 'care',      name: 'The Mendery',          w: 10, d: 8,  h: 5,  mat: 'stone', floors: 1, lore: "House of mending — the body's pain-ledger tended." },
+  { type: 'sanctuary',          district: 'care',      name: 'The Sanctuary',        w: 10, d: 10, h: 6,  mat: 'stone', floors: 1, lore: 'A quiet place to breathe and find calm.' },
+  { type: 'counsel_room',       district: 'care',      name: 'The Counsel Room',     w: 8,  d: 7,  h: 5,  mat: 'wood',  floors: 1, lore: 'Talk it through; the mind has a ledger too.' },
+  // ── Communication & social ──
+  { type: 'post_office',        district: 'comms',     name: 'The Link Post',        w: 9,  d: 7,  h: 7,  mat: 'stone', floors: 1, lore: 'Relays word across the Concord Link between worlds.' },
+  { type: 'forum_hall',         district: 'comms',     name: 'The Forum',            w: 14, d: 12, h: 6,  mat: 'stone', floors: 1, lore: 'The open square — threads, debate, the common voice.' },
+  { type: 'newsroom',           district: 'comms',     name: 'The Newsroom',         w: 10, d: 8,  h: 6,  mat: 'brick', floors: 2, lore: 'File the story; the world reads it next.' },
+  // ── Learning ──
+  { type: 'schoolhouse',        district: 'learning',  name: 'The Schoolhouse',      w: 10, d: 9,  h: 6,  mat: 'wood',  floors: 1, lore: 'Teach and learn — the first cycle and the long curriculum.' },
+  { type: 'academy',            district: 'learning',  name: 'The Academy',          w: 12, d: 10, h: 8,  mat: 'stone', floors: 2, lore: 'Study deeply; mastery is tracked and earned.' },
 ];
+
+// Two-radius ring auto-placement: station i is dropped on a circle around the
+// city centre at angle i·(2π/N) starting due north, alternating inner/outer
+// radius so even angularly-close neighbours never overlap. Ordered by district,
+// so each district occupies a contiguous arc ("quarter"). Adding a station just
+// shifts the angles — it stays clear of the core seed-city cluster (±~41).
+const STATION_RING_RADII = [58, 78];
+function _stationOffset(index, total) {
+  const angle = -Math.PI / 2 + index * ((2 * Math.PI) / total);
+  const R = STATION_RING_RADII[index % 2];
+  return { ox: Math.round(R * Math.cos(angle)), oz: Math.round(R * Math.sin(angle)) };
+}
+
+/** The lens-station building types this seeder places (kept in sync with the
+ *  frontend station-lens registry + building-interiors ROOM_TEMPLATES). */
+export function stationTypes() {
+  return STATIONS.map((s) => s.type);
+}
 
 // ── Seeder ─────────────────────────────────────────────────────────────────────
 
@@ -259,15 +288,17 @@ function _seedStations(db, worldId) {
   `);
 
   let count = 0;
+  const total = STATIONS.length;
   const place = db.transaction(() => {
-    for (const b of STATION_RING) {
-      if (has.get(worldId, b.type).n > 0) continue; // already placed — idempotent
-      const bx = cx + b.ox;
-      const bz = cz + b.oz;
+    STATIONS.forEach((b, i) => {
+      if (has.get(worldId, b.type).n > 0) return; // already placed — idempotent
+      const { ox, oz } = _stationOffset(i, total);
+      const bx = cx + ox;
+      const bz = cz + oz;
       const by = getElevation(bx, bz);
       insert.run(crypto.randomUUID(), worldId, b.type, b.name, bx, by, bz, b.w, b.d, b.h, b.mat, b.floors);
       count++;
-    }
+    });
   });
   place();
   if (count > 0) logger.info('world-seeder', 'seed_stations_placed', { worldId, stationCount: count });

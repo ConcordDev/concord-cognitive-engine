@@ -51,6 +51,25 @@ export const ROOM_TEMPLATES = {
   cartographer_table: { capacity: 6,  typical_furniture: ['map_table', 'star_globe', 'survey_instruments', 'chart_rack'], width: 8,  depth: 7,  height: 4 },
   trading_floor:      { capacity: 20, typical_furniture: ['ticker_board', 'trading_desks', 'pit_rail', 'phone_bank'], width: 14, depth: 12, height: 5 },
   post_office:        { capacity: 8,  typical_furniture: ['sorting_pigeonholes', 'counter', 'mail_sacks', 'stamp_press'], width: 8,  depth: 6,  height: 4 },
+  // District expansion — civic / knowledge / commerce / arts / craft / care / comms / learning.
+  assembly_hall:      { capacity: 30, typical_furniture: ['speaker_rostrum', 'tiered_benches', 'vote_urns', 'banner'], width: 16, depth: 12, height: 5 },
+  watch_house:        { capacity: 8,  typical_furniture: ['duty_desk', 'bounty_board', 'evidence_locker', 'cell'], width: 10, depth: 9, height: 3 },
+  observatory:        { capacity: 6,  typical_furniture: ['telescope', 'orrery', 'star_charts', 'observation_dome'], width: 10, depth: 10, height: 5 },
+  laboratory:         { capacity: 6,  typical_furniture: ['lab_bench', 'reagent_shelves', 'centrifuge', 'fume_hood'], width: 11, depth: 9, height: 3 },
+  archive_hall:       { capacity: 12, typical_furniture: ['record_stacks', 'reading_carrels', 'index_cabinet', 'lantern'], width: 12, depth: 10, height: 4 },
+  bank_house:         { capacity: 10, typical_furniture: ['teller_counter', 'vault_door', 'ledger_desks', 'coin_scale'], width: 12, depth: 10, height: 4 },
+  auction_house:      { capacity: 16, typical_furniture: ['auctioneer_podium', 'bidding_seats', 'display_plinth', 'gavel'], width: 12, depth: 10, height: 4 },
+  atelier:            { capacity: 8,  typical_furniture: ['easels', 'work_table', 'material_racks', 'drying_line'], width: 10, depth: 8, height: 3 },
+  writers_room:       { capacity: 4,  typical_furniture: ['writing_desk', 'bookshelf', 'pinboard', 'lamp'], width: 8, depth: 7, height: 3 },
+  gallery_hall:       { capacity: 20, typical_furniture: ['picture_rails', 'plinths', 'bench_seating', 'spotlights'], width: 14, depth: 10, height: 4 },
+  workshop:           { capacity: 6,  typical_furniture: ['workbench', 'tool_wall', 'material_bins', 'grindstone'], width: 10, depth: 8, height: 3 },
+  engineers_hall:     { capacity: 6,  typical_furniture: ['drafting_tables', 'truss_models', 'parts_bins', 'overhead_crane'], width: 12, depth: 10, height: 4 },
+  sanctuary:          { capacity: 12, typical_furniture: ['cushions', 'water_basin', 'incense_stand', 'lamp'], width: 10, depth: 10, height: 3 },
+  counsel_room:       { capacity: 2,  typical_furniture: ['two_chairs', 'low_table', 'plant', 'lamp'], width: 8, depth: 7, height: 3 },
+  forum_hall:         { capacity: 24, typical_furniture: ['speaking_floor', 'ring_benches', 'notice_board', 'brazier'], width: 14, depth: 12, height: 4 },
+  newsroom:           { capacity: 10, typical_furniture: ['copy_desks', 'wire_board', 'printing_press', 'paper_stacks'], width: 10, depth: 8, height: 4 },
+  schoolhouse:        { capacity: 16, typical_furniture: ['student_desks', 'chalkboard', 'bookshelf', 'globe'], width: 10, depth: 9, height: 3 },
+  academy:            { capacity: 20, typical_furniture: ['lecture_benches', 'lectern', 'library_nook', 'demonstration_table'], width: 12, depth: 10, height: 4 },
 };
 
 // Default room layouts per building type

@@ -26,7 +26,7 @@ describe('LensStationOverlay', () => {
 
   it('frames the lens diegetically with the place label + verb', () => {
     render(<LensStationOverlay building={building('clinic')} worldId="w1" onClose={() => {}} />);
-    expect(screen.getByText('The Clinic')).toBeTruthy();
+    expect(screen.getByText('The Mendery')).toBeTruthy();
     expect(screen.getByText(/Treat a patient/)).toBeTruthy();
   });
 
