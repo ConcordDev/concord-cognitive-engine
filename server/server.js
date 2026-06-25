@@ -25496,6 +25496,11 @@ registerLicensingMacros(register);
 import registerHisMacros from "./domains/his.js";
 registerHisMacros(register);
 
+// Maker-Checker Orchestrator (#9) — the propose→verify loop with the shadow
+// council as the deterministic checker; dispatches across a goal tree.
+import registerOrchestrateMacros from "./domains/orchestrate.js";
+registerOrchestrateMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
