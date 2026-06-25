@@ -39,6 +39,7 @@ import OnboardingTutorial from '@/components/world-lens/OnboardingTutorial';
 import dynamic from 'next/dynamic';
 import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
+import { coerceMaterial } from '@/lib/world-lens/building-silhouette';
 import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/control-schemes';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import FactionOverlay from '@/components/world/FactionOverlay';
@@ -4335,7 +4336,29 @@ export default function WorldLensPage() {
           </div>
           {/* 3D scene rendering layers */}
           <TerrainRenderer districts={[]} lodCenter={{ x: 0, z: 0 }} quality="medium" />
-          <BuildingRenderer3D buildings={[]} viewMode="normal" buildingStyle={buildingStyleForWorld(worldIdForTheme)} />
+          <BuildingRenderer3D
+            buildings={worldBuildings.map((b) => ({
+              id: b.id,
+              name: b.name || b.building_type,
+              position: { x: b.x, y: b.y ?? 0, z: b.z },
+              dimensions: { width: b.width || 10, height: b.height || 8, depth: b.depth || 8 },
+              floors: 1,
+              material: coerceMaterial(b.material),
+              style: 'colonial' as const,
+              // building_type drives the procedural archetype + iconic silhouette.
+              building_type: b.building_type,
+              structure: {
+                columns: { count: 0, spacing: 0, radius: 0 },
+                beams: { count: 0, height: 0 },
+                roofType: 'gable' as const,
+                hasBasement: false,
+                windowRows: 1,
+                windowsPerRow: 2,
+              },
+            }))}
+            viewMode="normal"
+            buildingStyle={buildingStyleForWorld(worldIdForTheme)}
+          />
           {/* Phase A3 — L-system trees + procedural rocks per biome.
               Mounts when worldId resolves (worldIdForTheme). */}
           <TreeLayer worldId={worldIdForTheme} biome="temperate_forest" quality="medium" />
