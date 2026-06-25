@@ -25506,6 +25506,11 @@ registerOrchestrateMacros(register);
 import registerInvgeoMacros from "./domains/invgeo.js";
 registerInvgeoMacros(register);
 
+// Signal Tomography (#23) — reconstruct the sensed spatial field into a voxel
+// grid from real embodied_signal_log cell readings.
+import registerTomographyMacros from "./domains/tomography.js";
+registerTomographyMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
