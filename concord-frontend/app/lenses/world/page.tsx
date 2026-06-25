@@ -41,6 +41,13 @@ import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
 import { coerceMaterial } from '@/lib/world-lens/building-silhouette';
 import { deriveTerrainZones } from '@/lib/world-lens/terrain-zones';
+
+// World→scene coordinate offset. The server seeds buildings in a [0, 2000] frame
+// (city centre ~800,1000); the frontend terrain/player/NPCs are centred at the
+// origin ([-1000, +1000]). Shifting server coords by TERRAIN_SIZE/2 = 1000 lands
+// the seed city on the plateau among the NPCs, where the server + frontend
+// elevation formulas agree so buildings sit on the ground rather than off-edge.
+const WORLD_TO_SCENE_OFFSET = 1000; // = TERRAIN_SIZE / 2
 import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/control-schemes';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import FactionOverlay from '@/components/world/FactionOverlay';
@@ -4335,9 +4342,15 @@ export default function WorldLensPage() {
               {concordiaRenderStyle === 'pbr' ? 'PBR' : 'Toon'}
             </button>
           </div>
-          {/* 3D scene rendering layers */}
+          {/* 3D scene rendering layers.
+              WORLD_TO_SCENE: the server seeds the city at world ([0, 2000], centre
+              ~800,1000) while the frontend terrain + player + NPCs are centred at
+              the origin ([-1000, +1000]). Shift server building coords by
+              TERRAIN_SIZE/2 so the city lands on the plateau among the NPCs — at
+              this offset the server elevation (nx=x/2000) and the frontend terrain
+              elevation (nx=(x+1000)/2000) agree, so buildings sit ON the ground. */}
           <TerrainRenderer
-            districts={deriveTerrainZones(worldBuildings)}
+            districts={deriveTerrainZones(worldBuildings, WORLD_TO_SCENE_OFFSET)}
             lodCenter={{ x: 0, z: 0 }}
             quality="medium"
           />
@@ -4345,7 +4358,7 @@ export default function WorldLensPage() {
             buildings={worldBuildings.map((b) => ({
               id: b.id,
               name: b.name || b.building_type,
-              position: { x: b.x, y: b.y ?? 0, z: b.z },
+              position: { x: b.x - WORLD_TO_SCENE_OFFSET, y: b.y ?? 0, z: b.z - WORLD_TO_SCENE_OFFSET },
               dimensions: { width: b.width || 10, height: b.height || 8, depth: b.depth || 8 },
               floors: 1,
               material: coerceMaterial(b.material),

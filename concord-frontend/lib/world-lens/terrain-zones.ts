@@ -54,20 +54,25 @@ export function buildingTypeToTerrainZone(buildingType?: string | null): Terrain
 
 /**
  * Derive terrain splat zones from real building positions: an apron region
- * around each building, tinted by its purpose. Same world-coordinate frame as
- * the buildings (their x/z), which is what TerrainRenderer's control map expects.
+ * around each building, tinted by its purpose. `offset` is the world→scene
+ * transform (the server places the seed city at [0, WORLD_SIZE] while the
+ * frontend terrain is centred at the origin [-SIZE/2, +SIZE/2], so server
+ * coords are shifted by SIZE/2); the zones must use the SAME scene frame the
+ * buildings render in, hence the shared offset.
  */
-export function deriveTerrainZones(buildings: ZonableBuilding[]): DistrictZone[] {
+export function deriveTerrainZones(buildings: ZonableBuilding[], offset = 0): DistrictZone[] {
   const out: DistrictZone[] = [];
   for (const b of buildings || []) {
     if (!b || !Number.isFinite(b.x) || !Number.isFinite(b.z)) continue;
+    const x = b.x - offset;
+    const z = b.z - offset;
     const halfW = Math.max(Number(b.width) || 8, 8) / 2 + APRON_M;
     const halfD = Math.max(Number(b.depth) || 8, 8) / 2 + APRON_M;
     out.push({
       id: `zone_${b.id}`,
       name: b.building_type,
       zone: buildingTypeToTerrainZone(b.building_type),
-      bounds: [b.x - halfW, b.z - halfD, b.x + halfW, b.z + halfD],
+      bounds: [x - halfW, z - halfD, x + halfW, z + halfD],
     });
   }
   return out;

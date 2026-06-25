@@ -51,6 +51,16 @@ describe('deriveTerrainZones', () => {
     expect(zones[0].id).toBe('zone_ok');
   });
 
+  it('applies the world→scene offset so zones match the shifted building frame', () => {
+    // Server city (800,1000) with the 1000 offset → scene-centred (-200, 0).
+    const [z] = deriveTerrainZones([{ id: 'c', building_type: 'courthouse', x: 800, z: 1000, width: 14, depth: 12 }], 1000);
+    const [minX, minZ, maxX, maxZ] = z.bounds;
+    const cx = (minX + maxX) / 2;
+    const cz = (minZ + maxZ) / 2;
+    expect(cx).toBe(-200); // 800 - 1000
+    expect(cz).toBe(0);    // 1000 - 1000
+  });
+
   it('uses a minimum apron so tiny buildings still tint a visible patch', () => {
     const [z] = deriveTerrainZones([{ id: 't', building_type: 'code_terminal', x: 0, z: 0, width: 4, depth: 4 }]);
     const [minX, , maxX] = z.bounds;
