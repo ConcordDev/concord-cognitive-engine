@@ -25526,6 +25526,11 @@ registerSceneBridgeMacros(register);
 import registerRobolabMacros from "./domains/robolab.js";
 registerRobolabMacros(register);
 
+// Style Transfer (#45) — move a DTU toward a style direction in real embedding
+// space; nearest real DTUs to the result. Honest semantic flag when unembedded.
+import registerStyletxMacros from "./domains/styletx.js";
+registerStyletxMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
