@@ -13,10 +13,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { resolveStationLens, type StationLens } from '@/lib/station-lens-registry';
+import { worldToSceneAxis } from '@/lib/world-lens/coord-frame';
 
 const APPROACH_RADIUS_M = 6; // show the cue a touch beyond the router's 4m gate
 const POLL_MS = 300;
-const WORLD_TO_SCENE_OFFSET = 1000; // = TERRAIN_SIZE/2; server [0,2000] frame → origin-centred scene frame
 
 export interface StationBuilding { id: string; building_type: string; x: number; z: number; name?: string }
 
@@ -65,7 +65,7 @@ export function LensStationPrompt() {
         // fires (server ~800 vs player ~0).
         const list: StationBuilding[] = (j?.buildings || [])
           .filter((b: { building_type?: string }) => b.building_type && resolveStationLens(b.building_type))
-          .map((b: StationBuilding) => ({ id: b.id, building_type: b.building_type, x: b.x - WORLD_TO_SCENE_OFFSET, z: b.z - WORLD_TO_SCENE_OFFSET, name: b.name }));
+          .map((b: StationBuilding) => ({ id: b.id, building_type: b.building_type, x: worldToSceneAxis(b.x), z: worldToSceneAxis(b.z), name: b.name }));
         if (!cancelled) setStations(list);
       } catch { /* offline / no buildings — prompt simply never shows */ }
     })();

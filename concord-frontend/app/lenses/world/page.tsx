@@ -41,13 +41,7 @@ import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
 import { coerceMaterial } from '@/lib/world-lens/building-silhouette';
 import { deriveTerrainZones } from '@/lib/world-lens/terrain-zones';
-
-// World→scene coordinate offset. The server seeds buildings in a [0, 2000] frame
-// (city centre ~800,1000); the frontend terrain/player/NPCs are centred at the
-// origin ([-1000, +1000]). Shifting server coords by TERRAIN_SIZE/2 = 1000 lands
-// the seed city on the plateau among the NPCs, where the server + frontend
-// elevation formulas agree so buildings sit on the ground rather than off-edge.
-const WORLD_TO_SCENE_OFFSET = 1000; // = TERRAIN_SIZE / 2
+import { worldToScene, sceneToWorldAxis } from '@/lib/world-lens/coord-frame';
 import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/control-schemes';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import FactionOverlay from '@/components/world/FactionOverlay';
@@ -2545,7 +2539,11 @@ export default function WorldLensPage() {
     fetch(`/api/worlds/${activeDistrict.id}/buildings`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d?.buildings) setWorldBuildings(d.buildings);
+        // Boundary transform: server [0,2000] world frame → origin-centred scene
+        // frame, ONCE on the way in, so every downstream consumer (3D render,
+        // terrain zones, the 2D enter-pills, the minimap, the station prompt)
+        // works in one frame and lines up with the player/NPCs/terrain.
+        if (d?.buildings) setWorldBuildings(d.buildings.map(worldToScene));
       })
       .catch(() => {});
   }, [activeDistrict.id]);
@@ -2570,8 +2568,10 @@ export default function WorldLensPage() {
   // Poll for nearby nodes every 5s based on player position
   useEffect(() => {
     const poll = () => {
+      // Player position is in the scene frame; the server stores nodes in the
+      // world frame — convert back on the way out so the proximity query matches.
       const { x, z } = playerPos.current;
-      fetch(`/api/worlds/${activeDistrict.id}/nodes?x=${x}&z=${z}&radius=15`)
+      fetch(`/api/worlds/${activeDistrict.id}/nodes?x=${sceneToWorldAxis(x)}&z=${sceneToWorldAxis(z)}&radius=15`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
           if (d?.nodes) setNearbyNodes(d.nodes);
@@ -4342,15 +4342,11 @@ export default function WorldLensPage() {
               {concordiaRenderStyle === 'pbr' ? 'PBR' : 'Toon'}
             </button>
           </div>
-          {/* 3D scene rendering layers.
-              WORLD_TO_SCENE: the server seeds the city at world ([0, 2000], centre
-              ~800,1000) while the frontend terrain + player + NPCs are centred at
-              the origin ([-1000, +1000]). Shift server building coords by
-              TERRAIN_SIZE/2 so the city lands on the plateau among the NPCs — at
-              this offset the server elevation (nx=x/2000) and the frontend terrain
-              elevation (nx=(x+1000)/2000) agree, so buildings sit ON the ground. */}
+          {/* 3D scene rendering layers. worldBuildings is already in the
+              origin-centred scene frame (transformed at the fetch boundary via
+              worldToScene), so it's consumed raw here. */}
           <TerrainRenderer
-            districts={deriveTerrainZones(worldBuildings, WORLD_TO_SCENE_OFFSET)}
+            districts={deriveTerrainZones(worldBuildings)}
             lodCenter={{ x: 0, z: 0 }}
             quality="medium"
           />
@@ -4358,7 +4354,7 @@ export default function WorldLensPage() {
             buildings={worldBuildings.map((b) => ({
               id: b.id,
               name: b.name || b.building_type,
-              position: { x: b.x - WORLD_TO_SCENE_OFFSET, y: b.y ?? 0, z: b.z - WORLD_TO_SCENE_OFFSET },
+              position: { x: b.x, y: b.y ?? 0, z: b.z },
               dimensions: { width: b.width || 10, height: b.height || 8, depth: b.depth || 8 },
               floors: 1,
               material: coerceMaterial(b.material),
