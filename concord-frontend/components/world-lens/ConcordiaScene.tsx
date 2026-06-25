@@ -503,6 +503,20 @@ export default function ConcordiaScene({
       // @resource-leak-ok: same one-shot scene lifecycle as terrain-ready above.
       window.addEventListener('concordia:avatars-ready', onAvatarsReady);
 
+      // Answer scene-request-ready: TreeLayer / RockLayer / QuestMarker3D (and
+      // other self-adding overlays) ping this when they mount AFTER our one-shot
+      // scene-ready already fired, asking for the scene. With no responder they
+      // never received it and silently never rendered (a mount-order race). Re-
+      // emit scene-ready WITH {scene, camera} so a late layer can self-add.
+      function onSceneRequest() {
+        const s = sceneRef.current, c = cameraRef.current;
+        if (s && c) {
+          window.dispatchEvent(new CustomEvent('concordia:scene-ready', { detail: { scene: s, camera: c } }));
+        }
+      }
+      // @resource-leak-ok: same one-shot scene lifecycle as terrain-ready above.
+      window.addEventListener('concordia:scene-request-ready', onSceneRequest);
+
       // Theme 6 deferred follow-up (game-feel pass): water plane + swim
       // registration. Adds a translucent blue plane at y=2 that covers
       // the river-bluff valley west of origin, plus a Fall Kill Creek
