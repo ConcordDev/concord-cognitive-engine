@@ -478,6 +478,31 @@ export default function ConcordiaScene({
       // @resource-leak-ok: same one-shot scene lifecycle as terrain-ready above.
       window.addEventListener('concordia:buildings-ready', onBuildingsReady);
 
+      // Consume the AvatarSystem3D layer's output — the player + NPC meshes.
+      // AvatarSystem3D builds the avatar group and dispatches
+      // concordia:avatars-ready, but the only listener was a no-op stub, so the
+      // player character + NPC bodies never reached the scene (they showed only
+      // as 2D HTML name-tags). Add the group to the 'avatars' scene layer and
+      // route its per-frame update through the layer (the LAYER_NAMES fan-out in
+      // the render loop calls layers.avatars.userData.update each frame), so the
+      // avatars both RENDER and ANIMATE/move. Replace on re-dispatch.
+      let currentAvatarGroup: unknown = null;
+      function onAvatarsReady(e: Event) {
+        const ag = (e as CustomEvent).detail?.avatarGroup as
+          | { userData?: { update?: (d: number, en: number) => void } }
+          | null;
+        const layer = layersRef.current['avatars'] as
+          | { add: (c: unknown) => void; remove: (c: unknown) => void; userData: { update?: (d: number, en: number) => void } }
+          | undefined;
+        if (!ag || !layer) return;
+        if (currentAvatarGroup) { try { layer.remove(currentAvatarGroup); } catch { /* ignore */ } }
+        layer.add(ag);
+        currentAvatarGroup = ag;
+        layer.userData.update = (d: number, en: number) => { try { ag.userData?.update?.(d, en); } catch { /* per-frame, never throw */ } };
+      }
+      // @resource-leak-ok: same one-shot scene lifecycle as terrain-ready above.
+      window.addEventListener('concordia:avatars-ready', onAvatarsReady);
+
       // Theme 6 deferred follow-up (game-feel pass): water plane + swim
       // registration. Adds a translucent blue plane at y=2 that covers
       // the river-bluff valley west of origin, plus a Fall Kill Creek
