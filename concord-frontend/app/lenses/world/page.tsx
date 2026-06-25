@@ -40,6 +40,7 @@ import dynamic from 'next/dynamic';
 import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
 import { coerceMaterial } from '@/lib/world-lens/building-silhouette';
+import { deriveTerrainZones } from '@/lib/world-lens/terrain-zones';
 import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/control-schemes';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import FactionOverlay from '@/components/world/FactionOverlay';
@@ -4335,7 +4336,11 @@ export default function WorldLensPage() {
             </button>
           </div>
           {/* 3D scene rendering layers */}
-          <TerrainRenderer districts={[]} lodCenter={{ x: 0, z: 0 }} quality="medium" />
+          <TerrainRenderer
+            districts={deriveTerrainZones(worldBuildings)}
+            lodCenter={{ x: 0, z: 0 }}
+            quality="medium"
+          />
           <BuildingRenderer3D
             buildings={worldBuildings.map((b) => ({
               id: b.id,

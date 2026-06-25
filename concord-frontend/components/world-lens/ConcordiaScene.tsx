@@ -361,6 +361,7 @@ export default function ConcordiaScene({
       } catch { /* ragdoll bridge optional */ }
 
       // Listen for terrain-ready to register heightfield collider
+      let currentTerrainGroup: unknown = null;
       function onTerrainPhysics(e: Event) {
         const { hmData, hmWidth, hmHeight, terrainGroup, getElevationAt } = (e as CustomEvent).detail ?? {};
         if (hmData) {
@@ -369,6 +370,22 @@ export default function ConcordiaScene({
             y: 80, // maxElevation
             z: 2000,
           });
+        }
+        // Add the terrain MESH (with its district zone-splat materials) to the
+        // visible 'terrain' layer. TerrainRenderer builds it and dispatches it
+        // here, but previously it was only consumed for physics/deformation —
+        // never displayed (same dead-bridge the buildings layer had). The
+        // 'terrain' layer is otherwise empty (it's the raycast target), so no
+        // doubling. Replace on re-dispatch (e.g. when district zones change).
+        if (terrainGroup) {
+          const layer = layersRef.current['terrain'] as
+            | { add: (c: unknown) => void; remove: (c: unknown) => void }
+            | undefined;
+          if (layer) {
+            if (currentTerrainGroup) { try { layer.remove(currentTerrainGroup); } catch { /* ignore */ } }
+            layer.add(terrainGroup);
+            currentTerrainGroup = terrainGroup;
+          }
         }
         // WS-A3 — once terrain + its collider exist, attach the deformation
         // orchestrator: replay GET /terrain + live concordia:terrain-deformed →
