@@ -25531,6 +25531,11 @@ registerRobolabMacros(register);
 import registerStyletxMacros from "./domains/styletx.js";
 registerStyletxMacros(register);
 
+// ConKay Voice + Affect fusion (#15) — persistent per-user affect state from real
+// VAD; derives TTS prosody + a persona note. Speech I/O is the real voice adapter.
+import registerConkayMacros from "./domains/conkay.js";
+registerConkayMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
