@@ -25536,6 +25536,11 @@ registerStyletxMacros(register);
 import registerConkayMacros from "./domains/conkay.js";
 registerConkayMacros(register);
 
+// Federated brain / mesh (#38) — persistent peers + consent-gated DTU inbox +
+// a consented consult of peers' brains over the real connectorFetch.
+import registerFedmeshMacros from "./domains/fedmesh.js";
+registerFedmeshMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
