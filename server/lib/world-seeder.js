@@ -156,6 +156,45 @@ const SEED_CITIES = {
 SEED_CITIES.urban_crime  = SEED_CITIES.post_apocalyptic;
 SEED_CITIES.war_zone     = SEED_CITIES.post_apocalyptic;
 
+// ── Lens-as-Station civic ring ──────────────────────────────────────────────────
+//
+// Each of these is a real LENS you walk into: the frontend station-lens registry
+// (concord-frontend/lib/station-lens-registry.ts) maps building_type → lens, and
+// interacting opens the lens as a persistent overlay over the 3D world. They are
+// placed as an outer civic ring around the seed city, clustered by purpose, with
+// names + designs grounded in Concord's own mythos — the lattice (DTU substrate),
+// Concordant Law, the perpetual-royalty cascade, the Concord Link (cross-world
+// relay), and music→soundscape resonance. The `lore` line documents the design
+// rationale (the building's form expresses its role); the building_type also has
+// a matching interior in lib/building-interiors.js ROOM_TEMPLATES.
+//
+// Offsets sit OUTSIDE the core seed-city cluster (which lives within ~±32 of
+// centre) so stations never overlap the inn/market/forge/houses.
+const STATION_RING = [
+  // ── Civic quarter (north) ──
+  { type: 'courthouse',         name: 'The Concordant Court',     w: 14, d: 12, h: 11, mat: 'stone', floors: 2, ox: 0,   oz: -52,
+    lore: 'Seat of Concordant Law — disputes over citation, refusal, and royalty are argued here; the Sovereign Refusal Archive answers to its bench. Tall stone hall, built to be looked up at.' },
+  // ── Knowledge quarter (north-east) ──
+  { type: 'cartographer_table', name: "The Cartographer's Spire",  w: 9,  d: 9,  h: 14, mat: 'stone', floors: 3, ox: 46,  oz: -40,
+    lore: 'Charts the lattice — every DTU, edge, and territory mapped from the spire. Narrow and tall so the survey deck clears the rooftops.' },
+  { type: 'code_terminal',      name: 'The Lattice Terminal',      w: 6,  d: 6,  h: 7,  mat: 'steel', floors: 2, ox: 54,  oz: -18,
+    lore: 'A public access node — jack into the Concord lattice and shape the substrate directly. Compact steel-and-glass, the one modern thing on the green.' },
+  // ── Commerce quarter (east, beside the Seed Market) ──
+  { type: 'trading_floor',      name: 'The Concord Exchange',      w: 16, d: 12, h: 9,  mat: 'stone', floors: 2, ox: 58,  oz: 6,
+    lore: 'The open floor where creations are listed, bid, and sold. A wide pillared hall — the bustle needs room.' },
+  { type: 'ledger_desk',        name: 'The Royalty Ledger',        w: 8,  d: 7,  h: 7,  mat: 'brick', floors: 2, ox: 58,  oz: 26,
+    lore: 'The counting house — the perpetual-royalty cascade is reconciled to the coin here. Squat brick, vault-heavy, next door to the Exchange it serves.' },
+  // ── Arts quarter (south-east) ──
+  { type: 'music_booth',        name: 'The Resonance Booth',       w: 7,  d: 6,  h: 6,  mat: 'wood',  floors: 1, ox: 46,  oz: 46,
+    lore: 'Where a track becomes a district soundscape — compose, perform, and let it carry. Small warm timber room, good for the sound.' },
+  // ── Care quarter (south) ──
+  { type: 'clinic',             name: 'The Mendery',               w: 10, d: 8,  h: 5,  mat: 'stone', floors: 1, ox: 0,   oz: 54,
+    lore: "House of mending — wounds, ailments, and the body's pain-ledger are tended here. Low, calm stone, set apart from the market noise." },
+  // ── Communication quarter (west) ──
+  { type: 'post_office',        name: 'The Link Post',             w: 9,  d: 7,  h: 7,  mat: 'stone', floors: 1, ox: -52, oz: 28,
+    lore: 'Relays word across the Concord Link — letters and parcels move between worlds from here. Stone-built and durable, because the Link must never go dark.' },
+];
+
 // ── Seeder ─────────────────────────────────────────────────────────────────────
 
 function _rk(universeType) {
@@ -197,6 +236,41 @@ function _seedCity(db, worldId, universeType) {
     count++;
   }
   logger.info('world-seeder', 'seed_city_placed', { worldId, buildingCount: count, cx, cz });
+  return count;
+}
+
+/**
+ * Seed the lens-as-station civic ring around the world centre.
+ *
+ * Idempotent PER building_type (not gated on the is_seed flag like _seedCity),
+ * so this also back-fills existing worlds that already have a seed city — each
+ * station is inserted only if a building of that type doesn't already exist for
+ * the world. Same centre as _seedCity (x=800, z=1000).
+ */
+function _seedStations(db, worldId) {
+  const cx = 800, cz = 1000; // mirrors _seedCity's centre
+  const has = db.prepare(
+    'SELECT COUNT(*) AS n FROM world_buildings WHERE world_id = ? AND building_type = ?'
+  );
+  const insert = db.prepare(`
+    INSERT INTO world_buildings
+      (id, world_id, building_type, name, x, y, z, width, depth, height, material, floors, owner_type, is_seed)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'world',1)
+  `);
+
+  let count = 0;
+  const place = db.transaction(() => {
+    for (const b of STATION_RING) {
+      if (has.get(worldId, b.type).n > 0) continue; // already placed — idempotent
+      const bx = cx + b.ox;
+      const bz = cz + b.oz;
+      const by = getElevation(bx, bz);
+      insert.run(crypto.randomUUID(), worldId, b.type, b.name, bx, by, bz, b.w, b.d, b.h, b.mat, b.floors);
+      count++;
+    }
+  });
+  place();
+  if (count > 0) logger.info('world-seeder', 'seed_stations_placed', { worldId, stationCount: count });
   return count;
 }
 
@@ -278,8 +352,9 @@ function _seedNodes(db, worldId, universeType) {
 export function seedWorldContent(db, worldId, universeType = 'standard') {
   try {
     const buildings = _seedCity(db, worldId, universeType);
+    const stations  = _seedStations(db, worldId);
     const nodes     = _seedNodes(db, worldId, universeType);
-    return { buildings, nodes };
+    return { buildings, stations, nodes };
   } catch (err) {
     logger.warn('world-seeder', 'seed_failed', { worldId, error: err?.message });
     return { buildings: 0, nodes: 0 };
