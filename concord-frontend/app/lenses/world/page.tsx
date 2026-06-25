@@ -179,6 +179,13 @@ const StationInteractionRouter = dynamic(
     })),
   { ssr: false }
 );
+const LensStationPrompt = dynamic(
+  () =>
+    import('@/components/world/LensStationPrompt').then((m) => ({
+      default: m.LensStationPrompt,
+    })),
+  { ssr: false }
+);
 const CommandPalette = dynamic(
   () =>
     import('@/components/world/CommandPalette').then((m) => ({
@@ -5179,6 +5186,9 @@ export default function WorldLensPage() {
 
           {/* Phase DA2 — station / workbench interaction router */}
           <StationInteractionRouter />
+
+          {/* Lens-as-Station — diegetic approach prompt for nearby lens stations */}
+          <LensStationPrompt />
 
           {/* Phase DA3 — Global command palette (Ctrl+K) */}
           <CommandPalette />
