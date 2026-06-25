@@ -39,7 +39,9 @@ describe('LensStationPrompt (render + trigger)', () => {
       ok: true,
       json: async () => ({ ok: true, buildings }),
     });
-    (window as { __concordiaPlayerPos?: { x: number; z: number } }).__concordiaPlayerPos = { x: 800, z: 1000 };
+    // Player position is in the origin-centred scene frame; the fetched building
+    // at server (800,1000) shifts to scene (-200,0), so the player stands there.
+    (window as { __concordiaPlayerPos?: { x: number; z: number } }).__concordiaPlayerPos = { x: -200, z: 0 };
   });
   afterEach(() => {
     delete (window as { __concordiaPlayerPos?: unknown }).__concordiaPlayerPos;
