@@ -25511,6 +25511,11 @@ registerInvgeoMacros(register);
 import registerTomographyMacros from "./domains/tomography.js";
 registerTomographyMacros(register);
 
+// Haptic encoding (#44) — encode a real combat impact into a Gamepad rumble
+// pattern + ADSR envelope the client plays via the real vibrationActuator API.
+import registerHapticMacros from "./domains/haptic.js";
+registerHapticMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
