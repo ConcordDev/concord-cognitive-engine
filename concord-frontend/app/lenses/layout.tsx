@@ -22,6 +22,7 @@ import { SkeletonCard } from '@/components/common/Skeleton';
 import { ContentPublisher } from '@/components/lens/ContentPublisher';
 import { LensStateProvider } from '@/components/lens/LensStateProvider';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { useDiegetic } from '@/hooks/useDiegetic';
 import {
   isCoreLens,
   getParentCoreLens,
@@ -147,6 +148,36 @@ function UniversalLensFeatures({ children }: { children: React.ReactNode }) {
 }
 
 /**
+ * Diegetic layout — a lens opened inside the in-world station frame
+ * (LensStationOverlay, ?diegetic=1). Drops the lens chrome (nav, context bar,
+ * timeline, floating FABs, command palette) and renders the lens full-bleed,
+ * keeping only the error/repair boundaries, state preservation, and per-lens
+ * visual identity. The StationOverlayShell already frames it in-world.
+ */
+function DiegeticLensLayout({ children }: { children: React.ReactNode }) {
+  const { slug } = useLensMeta();
+  useLensIdentity(slug);
+  return (
+    <LensErrorBoundary name="Lens">
+      <RepairBoundary lens={slug || 'unknown'}>
+        <LensStateProvider domain={slug} className="h-full min-h-0">
+          <Suspense
+            fallback={
+              <div className="space-y-4 p-6">
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
+            }
+          >
+            {children}
+          </Suspense>
+        </LensStateProvider>
+      </RepairBoundary>
+    </LensErrorBoundary>
+  );
+}
+
+/**
  * FE-012 + FE-014: Lens layout with loading isolation, error containment,
  * automatic CoreLensNav for core workspace lenses, and universal features
  * (Smart Context Bar, Quick Capture, Domain AI Assistant, Cross-Domain
@@ -156,6 +187,12 @@ function UniversalLensFeatures({ children }: { children: React.ReactNode }) {
 export default function LensLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const lensName = pathname.split('/lenses/')[1]?.split('/')[0] || 'unknown';
+  const diegetic = useDiegetic();
+
+  // In-world station frame: render the lens bare (chrome lives in the world).
+  if (diegetic) {
+    return <DiegeticLensLayout>{children}</DiegeticLensLayout>;
+  }
 
   return (
     <>

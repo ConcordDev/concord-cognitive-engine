@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { useDiegetic } from '@/hooks/useDiegetic';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from '@/components/common/CommandPalette';
@@ -55,6 +56,9 @@ export function AppShell({ children }: AppShellProps) {
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
   const fullPageMode = useUIStore((s) => s.fullPageMode);
   const pathname = usePathname();
+  // Lens-as-Station: a lens opened inside the in-world station frame (?diegetic=1)
+  // renders without the global sidebar/topbar chrome.
+  const diegetic = useDiegetic();
   const [mounted, setMounted] = useState(false);
   const [sessionSidebarOpen, setSessionSidebarOpen] = useState(false);
   const quickCapture = useQuickCapture();
@@ -140,9 +144,10 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
-  // Full page mode OR standalone route: render children without shell chrome.
+  // Full page mode OR standalone route OR diegetic (in-world station) frame:
+  // render children without shell chrome.
   const isStandalone = STANDALONE_PREFIXES.some((p) => pathname.startsWith(p));
-  if (fullPageMode || isStandalone) {
+  if (fullPageMode || isStandalone || diegetic) {
     return <>{children}</>;
   }
 
