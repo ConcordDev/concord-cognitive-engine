@@ -12,7 +12,7 @@
 
 export type StationAccent = 'amber' | 'emerald' | 'cyan' | 'violet' | 'pink' | 'rose' | 'slate';
 
-export type StationDistrict = 'civic' | 'knowledge' | 'commerce' | 'arts' | 'craft' | 'care' | 'comms' | 'learning';
+export type StationDistrict = 'civic' | 'knowledge' | 'commerce' | 'arts' | 'craft' | 'care' | 'comms' | 'learning' | 'world' | 'industry';
 
 export interface StationLens {
   /** world_buildings.building_type that triggers this station. */
@@ -69,6 +69,28 @@ export const STATION_LENS_REGISTRY: Record<string, StationLens> = {
   // ── Learning ──
   schoolhouse:        { buildingType: 'schoolhouse',        lensId: 'classroom',        verb: 'Teach & learn',      placeLabel: 'The Schoolhouse',         accent: 'violet',  district: 'learning' },
   academy:            { buildingType: 'academy',            lensId: 'education',        verb: 'Study',              placeLabel: 'The Academy',             accent: 'violet',  district: 'learning' },
+  // ── Civic (more) ──
+  council_chamber:    { buildingType: 'council_chamber',    lensId: 'council',          verb: 'Sit on the council', placeLabel: 'The Council Chamber',     accent: 'slate',   district: 'civic' },
+  ethics_hall:        { buildingType: 'ethics_hall',        lensId: 'ethics',           verb: 'Weigh the right',    placeLabel: 'The Ethics Hall',         accent: 'slate',   district: 'civic' },
+  // ── Knowledge (more) ──
+  physics_hall:       { buildingType: 'physics_hall',       lensId: 'physics',          verb: 'Test the laws',      placeLabel: 'The Physics Hall',        accent: 'cyan',    district: 'knowledge' },
+  calcularium:        { buildingType: 'calcularium',        lensId: 'math',             verb: 'Work the proof',     placeLabel: 'The Calcularium',         accent: 'cyan',    district: 'knowledge' },
+  philosophy_porch:   { buildingType: 'philosophy_porch',   lensId: 'philosophy',       verb: 'Reason it out',      placeLabel: 'The Porch',               accent: 'violet',  district: 'knowledge' },
+  // ── Nature & world ──
+  grange:             { buildingType: 'grange',             lensId: 'agriculture',      verb: 'Work the land',      placeLabel: 'The Grange',              accent: 'emerald', district: 'world' },
+  foresters_lodge:    { buildingType: 'foresters_lodge',    lensId: 'forestry',         verb: 'Tend the forest',    placeLabel: "The Forester's Lodge",    accent: 'emerald', district: 'world' },
+  mineshaft:          { buildingType: 'mineshaft',          lensId: 'mining',           verb: 'Work the seam',      placeLabel: 'The Mineshaft',           accent: 'amber',   district: 'world' },
+  tide_station:       { buildingType: 'tide_station',       lensId: 'ocean',            verb: 'Read the tides',     placeLabel: 'The Tide Station',        accent: 'cyan',    district: 'world' },
+  survey_camp:        { buildingType: 'survey_camp',        lensId: 'geology',          verb: 'Read the strata',    placeLabel: 'The Survey Camp',         accent: 'amber',   district: 'world' },
+  // ── Industry & logistics ──
+  mill:               { buildingType: 'mill',               lensId: 'manufacturing',    verb: 'Run the line',       placeLabel: 'The Mill',                accent: 'amber',   district: 'industry' },
+  depot:              { buildingType: 'depot',              lensId: 'logistics',        verb: 'Route the goods',    placeLabel: 'The Depot',               accent: 'slate',   district: 'industry' },
+  powerhouse:         { buildingType: 'powerhouse',         lensId: 'energy',           verb: 'Mind the grid',      placeLabel: 'The Powerhouse',          accent: 'amber',   district: 'industry' },
+  site_office:        { buildingType: 'site_office',        lensId: 'construction',     verb: 'Raise the build',    placeLabel: 'The Site Office',         accent: 'slate',   district: 'industry' },
+  // ── Care (more) ──
+  gymnasium:          { buildingType: 'gymnasium',          lensId: 'fitness',          verb: 'Train the body',     placeLabel: 'The Gymnasium',           accent: 'emerald', district: 'care' },
+  // ── Communication (more) ──
+  agora:              { buildingType: 'agora',              lensId: 'social',           verb: 'Gather',             placeLabel: 'The Agora',               accent: 'cyan',    district: 'comms' },
 };
 
 /** Resolve the lens-station for a building_type, or null if it isn't one. */

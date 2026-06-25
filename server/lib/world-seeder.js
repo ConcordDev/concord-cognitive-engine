@@ -204,17 +204,44 @@ const STATIONS = [
   // ── Learning ──
   { type: 'schoolhouse',        district: 'learning',  name: 'The Schoolhouse',      w: 10, d: 9,  h: 6,  mat: 'wood',  floors: 1, lore: 'Teach and learn — the first cycle and the long curriculum.' },
   { type: 'academy',            district: 'learning',  name: 'The Academy',          w: 12, d: 10, h: 8,  mat: 'stone', floors: 2, lore: 'Study deeply; mastery is tracked and earned.' },
+  // ── Civic (more) ──
+  { type: 'council_chamber',    district: 'civic',     name: 'The Council Chamber',  w: 12, d: 11, h: 7,  mat: 'stone', floors: 1, lore: 'Where the council sits and the factions deliberate.' },
+  { type: 'ethics_hall',        district: 'civic',     name: 'The Ethics Hall',      w: 10, d: 9,  h: 8,  mat: 'stone', floors: 1, lore: 'Weigh the right — the refusal field is reasoned here.' },
+  // ── Knowledge (more) ──
+  { type: 'physics_hall',       district: 'knowledge', name: 'The Physics Hall',     w: 11, d: 9,  h: 7,  mat: 'brick', floors: 1, lore: 'Test the laws — forces, motion, and the residuals.' },
+  { type: 'calcularium',        district: 'knowledge', name: 'The Calcularium',      w: 8,  d: 8,  h: 6,  mat: 'stone', floors: 1, lore: 'Work the proof — the CAS made a room.' },
+  { type: 'philosophy_porch',   district: 'knowledge', name: 'The Porch',            w: 10, d: 8,  h: 4,  mat: 'wood',  floors: 1, lore: 'Reason it out under the colonnade.' },
+  // ── Nature & world ──
+  { type: 'grange',             district: 'world',     name: 'The Grange',           w: 12, d: 10, h: 6,  mat: 'wood',  floors: 1, lore: 'Work the land — seasons, soil, and the harvest.' },
+  { type: 'foresters_lodge',    district: 'world',     name: "The Forester's Lodge",  w: 10, d: 8,  h: 6,  mat: 'wood',  floors: 1, lore: 'Tend the forest — timber, game, and regrowth.' },
+  { type: 'mineshaft',          district: 'world',     name: 'The Mineshaft',        w: 9,  d: 9,  h: 5,  mat: 'stone', floors: 1, lore: 'Work the seam — ore, depth, and the dark.' },
+  { type: 'tide_station',       district: 'world',     name: 'The Tide Station',     w: 10, d: 8,  h: 5,  mat: 'stone', floors: 1, lore: 'Read the tides — currents, depth, and the ocean.' },
+  { type: 'survey_camp',        district: 'world',     name: 'The Survey Camp',      w: 9,  d: 8,  h: 4,  mat: 'wood',  floors: 1, lore: 'Read the strata — the bones of the world.' },
+  // ── Industry & logistics ──
+  { type: 'mill',               district: 'industry',  name: 'The Mill',             w: 14, d: 10, h: 8,  mat: 'brick', floors: 2, lore: 'Run the line — raw stock to finished goods.' },
+  { type: 'depot',              district: 'industry',  name: 'The Depot',            w: 16, d: 12, h: 7,  mat: 'steel', floors: 1, lore: 'Route the goods — the supply chain made physical.' },
+  { type: 'powerhouse',         district: 'industry',  name: 'The Powerhouse',       w: 12, d: 12, h: 9,  mat: 'steel', floors: 1, lore: 'Mind the grid — generation and load.' },
+  { type: 'site_office',        district: 'industry',  name: 'The Site Office',      w: 8,  d: 7,  h: 4,  mat: 'wood',  floors: 1, lore: 'Raise the build — plans, crews, and the crane.' },
+  // ── Care (more) ──
+  { type: 'gymnasium',          district: 'care',      name: 'The Gymnasium',        w: 12, d: 10, h: 6,  mat: 'wood',  floors: 1, lore: 'Train the body — the fitness ledger.' },
+  // ── Communication (more) ──
+  { type: 'agora',              district: 'comms',     name: 'The Agora',            w: 14, d: 14, h: 4,  mat: 'stone', floors: 1, lore: 'Gather — the open social square.' },
 ];
 
 // Two-radius ring auto-placement: station i is dropped on a circle around the
 // city centre at angle i·(2π/N) starting due north, alternating inner/outer
 // radius so even angularly-close neighbours never overlap. Ordered by district,
-// so each district occupies a contiguous arc ("quarter"). Adding a station just
-// shifts the angles — it stays clear of the core seed-city cluster (±~41).
-const STATION_RING_RADII = [58, 78];
+// so each district occupies a contiguous arc ("quarter"). The inner radius GROWS
+// with N so the centre-to-centre gap between same-radius neighbours stays ≥
+// STATION_MIN_GAP — i.e. adding stations widens the ring instead of crowding it,
+// and it always stays clear of the core seed-city cluster (±~41).
+const STATION_MIN_GAP = 26;
 function _stationOffset(index, total) {
   const angle = -Math.PI / 2 + index * ((2 * Math.PI) / total);
-  const R = STATION_RING_RADII[index % 2];
+  // Same-radius neighbours are 2 index steps apart → chord = 2R·sin(2π/N);
+  // require chord ≥ STATION_MIN_GAP. Floor at 56 so small sets still clear core.
+  const innerR = Math.max(56, Math.ceil(STATION_MIN_GAP / (2 * Math.sin((2 * Math.PI) / total) || 1)));
+  const R = index % 2 === 0 ? innerR : innerR + 22;
   return { ox: Math.round(R * Math.cos(angle)), oz: Math.round(R * Math.sin(angle)) };
 }
 
