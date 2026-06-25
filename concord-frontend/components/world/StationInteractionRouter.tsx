@@ -17,6 +17,7 @@
 // invariant: a new gameplay station type slots in here, nowhere else.
 
 import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
+import { resolveStationLens } from '@/lib/station-lens-registry';
 
 const PROXIMITY_GATE_M = 4;
 
@@ -33,6 +34,10 @@ const ThemeParkAttractionPanel = lazy(() => import('./ThemeParkAttractionPanel')
 const CreatureBreedingPanel   = lazy(() => import('./CreatureBreedingPanel').then(m => ({ default: m.CreatureBreedingPanel })));
 const GlyphSpellComposer      = lazy(() => import('./GlyphSpellComposer').then(m => ({ default: m.GlyphSpellComposer })));
 const MysteryBoardLauncher    = lazy(() => import('./MysteryBoardLauncher').then(m => ({ default: m.MysteryBoardLauncher })));
+// Lens-as-Station — the keep-alive host mounts any real lens (by building_type →
+// lib/station-lens-registry.ts) as a persistent iframe overlay and keeps it warm
+// when you walk away. Stays mounted, so it lives outside the active/!active gate.
+const LensStationHost         = lazy(() => import('./LensStationHost').then(m => ({ default: m.LensStationHost })));
 
 // Production invariant: this is the canonical building_type → overlay map.
 // New gameplay stations slot here, nowhere else.
@@ -100,8 +105,10 @@ export function StationInteractionRouter() {
         return;
       }
 
-      // Route to the right overlay.
-      if (!ROUTER_TABLE[building.building_type]) {
+      // Route to the right overlay: a bespoke gameplay station (ROUTER_TABLE)
+      // or, failing that, a lens-station (any real lens mounted as an iframe
+      // overlay via the station-lens registry).
+      if (!ROUTER_TABLE[building.building_type] && !resolveStationLens(building.building_type)) {
         // Building type has no overlay; do nothing (other handlers may pick it up).
         return;
       }
@@ -127,29 +134,38 @@ export function StationInteractionRouter() {
     return () => window.removeEventListener('keydown', onKey);
   }, [active]);
 
-  if (error) {
-    return (
-      <div className="pointer-events-none fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-md border border-rose-500/40 bg-zinc-950/95 px-3 py-1.5 text-xs text-rose-200 shadow-lg backdrop-blur">
-        {error}
-      </div>
-    );
-  }
+  // Bespoke gameplay overlays (ROUTER_TABLE) unmount on close, as before. Lens
+  // stations route through the always-mounted LensStationHost so their iframes
+  // stay warm when you walk away — hence the host lives OUTSIDE the !active gate.
+  const BespokeOverlay = active ? ROUTER_TABLE[active.building.building_type] : undefined;
+  const lensActive = active && resolveStationLens(active.building.building_type) ? active : null;
 
-  if (!active) return null;
-
-  const Overlay = ROUTER_TABLE[active.building.building_type];
   return (
-    <Suspense fallback={
-      <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur">
-        <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">Loading…</div>
-      </div>
-    }>
-      <Overlay
-        building={active.building}
-        worldId={active.worldId}
-        onClose={() => setActive(null)}
-      />
-    </Suspense>
+    <>
+      {error && (
+        <div className="pointer-events-none fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-md border border-rose-500/40 bg-zinc-950/95 px-3 py-1.5 text-xs text-rose-200 shadow-lg backdrop-blur">
+          {error}
+        </div>
+      )}
+
+      {active && BespokeOverlay && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur">
+            <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm text-zinc-300">Loading…</div>
+          </div>
+        }>
+          <BespokeOverlay
+            building={active.building}
+            worldId={active.worldId}
+            onClose={() => setActive(null)}
+          />
+        </Suspense>
+      )}
+
+      <Suspense fallback={null}>
+        <LensStationHost active={lensActive} onClose={() => setActive(null)} />
+      </Suspense>
+    </>
   );
 }
 

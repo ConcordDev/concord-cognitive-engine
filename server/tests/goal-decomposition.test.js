@@ -60,7 +60,7 @@ describe("Persistent Goal Decomposition (#10)", () => {
     const d = addSubgoals(db, { treeId: t.treeId, parentId: t.rootId, subgoals: ["keep", "drop"] });
     const [keep, drop] = d.nodes;
     setNodeStatus(db, { treeId: t.treeId, nodeId: drop.id, status: "abandoned" });
-    let leaves = nextActionable(db, t.treeId);
+    const leaves = nextActionable(db, t.treeId);
     assert.ok(leaves.some((l) => l.id === keep.id), "open leaf surfaces");
     assert.ok(!leaves.some((l) => l.id === drop.id), "abandoned leaf does not");
     const r = setNodeStatus(db, { treeId: t.treeId, nodeId: keep.id, status: "done" });

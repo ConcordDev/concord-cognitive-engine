@@ -156,6 +156,101 @@ const SEED_CITIES = {
 SEED_CITIES.urban_crime  = SEED_CITIES.post_apocalyptic;
 SEED_CITIES.war_zone     = SEED_CITIES.post_apocalyptic;
 
+// ── Lens-as-Station district ring ───────────────────────────────────────────────
+//
+// Each of these is a real LENS you walk into: the frontend station-lens registry
+// (concord-frontend/lib/station-lens-registry.ts) maps building_type → lens, and
+// interacting opens the lens as a persistent overlay over the 3D world. They are
+// grouped into purpose DISTRICTS and auto-placed on a two-radius ring around the
+// seed city (see _stationOffset) — so adding a station is just one more row, no
+// hand-tuned coordinates, and it stays non-overlapping as the set grows.
+//
+// Names + designs are grounded in Concord's own mythos (the lattice, Concordant
+// Law, the royalty cascade, the Concord Link, music→soundscape). Every
+// building_type also has a matching interior in lib/building-interiors.js
+// ROOM_TEMPLATES, and a row in the frontend station-lens registry.
+const STATIONS = [
+  // ── Civic & governance ──
+  { type: 'courthouse',         district: 'civic',     name: 'The Concordant Court', w: 14, d: 12, h: 11, mat: 'stone', floors: 2, lore: 'Seat of Concordant Law — citation, refusal, and royalty disputes are argued here.' },
+  { type: 'assembly_hall',      district: 'civic',     name: 'The Assembly Hall',    w: 16, d: 12, h: 9,  mat: 'stone', floors: 2, lore: 'Where proposals are convened and the governed constants amended.' },
+  { type: 'watch_house',        district: 'civic',     name: 'The Watch House',      w: 10, d: 9,  h: 6,  mat: 'stone', floors: 1, lore: 'Keepers of the peace — crimes logged, bounties posted.' },
+  // ── Knowledge & science ──
+  { type: 'cartographer_table', district: 'knowledge', name: "The Cartographer's Spire", w: 9, d: 9, h: 14, mat: 'stone', floors: 3, lore: 'Charts the lattice from a deck that clears the rooftops.' },
+  { type: 'code_terminal',      district: 'knowledge', name: 'The Lattice Terminal', w: 6,  d: 6,  h: 7,  mat: 'steel', floors: 2, lore: 'Jack into the Concord lattice and shape the substrate directly.' },
+  { type: 'observatory',        district: 'knowledge', name: 'The Observatory',      w: 10, d: 10, h: 13, mat: 'stone', floors: 3, lore: 'A domed eye on the heavens — ephemerides and apparitions.' },
+  { type: 'laboratory',         district: 'knowledge', name: 'The Laboratory',       w: 11, d: 9,  h: 6,  mat: 'brick', floors: 1, lore: 'Run the experiment; let the residuals tell the truth.' },
+  { type: 'archive_hall',       district: 'knowledge', name: 'The Archive',          w: 12, d: 10, h: 8,  mat: 'stone', floors: 2, lore: 'The record of what was — read the long memory of the world.' },
+  // ── Commerce & economy ──
+  { type: 'trading_floor',      district: 'commerce',  name: 'The Concord Exchange', w: 16, d: 12, h: 9,  mat: 'stone', floors: 2, lore: 'The open floor where creations are listed, bid, and sold.' },
+  { type: 'ledger_desk',        district: 'commerce',  name: 'The Royalty Ledger',   w: 8,  d: 7,  h: 7,  mat: 'brick', floors: 2, lore: 'The counting house — the royalty cascade reconciled to the coin.' },
+  { type: 'bank_house',         district: 'commerce',  name: 'The Concord Bank',     w: 12, d: 10, h: 8,  mat: 'stone', floors: 2, lore: 'Vaulted and deliberate — mind the money, earn the withdrawal.' },
+  { type: 'auction_house',      district: 'commerce',  name: 'The Auction House',    w: 12, d: 10, h: 8,  mat: 'wood',  floors: 2, lore: 'Going once — the snipe window and the gavel.' },
+  // ── Arts & creative ──
+  { type: 'music_booth',        district: 'arts',      name: 'The Resonance Booth',  w: 7,  d: 6,  h: 6,  mat: 'wood',  floors: 1, lore: 'Where a track becomes a district soundscape.' },
+  { type: 'atelier',            district: 'arts',      name: 'The Atelier',          w: 10, d: 8,  h: 6,  mat: 'wood',  floors: 1, lore: 'Make something — the open studio floor.' },
+  { type: 'writers_room',       district: 'arts',      name: "The Writers' Room",    w: 8,  d: 7,  h: 5,  mat: 'wood',  floors: 1, lore: 'Draft, revise, and mint the page.' },
+  { type: 'gallery_hall',       district: 'arts',      name: 'The Gallery',          w: 14, d: 10, h: 7,  mat: 'stone', floors: 1, lore: 'Show the work; let the citations gather.' },
+  // ── Craft & industry ──
+  { type: 'workshop',           district: 'craft',     name: 'The Workshop',         w: 10, d: 8,  h: 6,  mat: 'wood',  floors: 1, lore: 'Resolve the recipe; the resources decide the potency.' },
+  { type: 'engineers_hall',     district: 'craft',     name: "The Engineers' Hall",  w: 12, d: 10, h: 7,  mat: 'steel', floors: 1, lore: 'CAS and the beam-frame solver — engineer it for real.' },
+  // ── Care & wellbeing ──
+  { type: 'clinic',             district: 'care',      name: 'The Mendery',          w: 10, d: 8,  h: 5,  mat: 'stone', floors: 1, lore: "House of mending — the body's pain-ledger tended." },
+  { type: 'sanctuary',          district: 'care',      name: 'The Sanctuary',        w: 10, d: 10, h: 6,  mat: 'stone', floors: 1, lore: 'A quiet place to breathe and find calm.' },
+  { type: 'counsel_room',       district: 'care',      name: 'The Counsel Room',     w: 8,  d: 7,  h: 5,  mat: 'wood',  floors: 1, lore: 'Talk it through; the mind has a ledger too.' },
+  // ── Communication & social ──
+  { type: 'post_office',        district: 'comms',     name: 'The Link Post',        w: 9,  d: 7,  h: 7,  mat: 'stone', floors: 1, lore: 'Relays word across the Concord Link between worlds.' },
+  { type: 'forum_hall',         district: 'comms',     name: 'The Forum',            w: 14, d: 12, h: 6,  mat: 'stone', floors: 1, lore: 'The open square — threads, debate, the common voice.' },
+  { type: 'newsroom',           district: 'comms',     name: 'The Newsroom',         w: 10, d: 8,  h: 6,  mat: 'brick', floors: 2, lore: 'File the story; the world reads it next.' },
+  // ── Learning ──
+  { type: 'schoolhouse',        district: 'learning',  name: 'The Schoolhouse',      w: 10, d: 9,  h: 6,  mat: 'wood',  floors: 1, lore: 'Teach and learn — the first cycle and the long curriculum.' },
+  { type: 'academy',            district: 'learning',  name: 'The Academy',          w: 12, d: 10, h: 8,  mat: 'stone', floors: 2, lore: 'Study deeply; mastery is tracked and earned.' },
+  // ── Civic (more) ──
+  { type: 'council_chamber',    district: 'civic',     name: 'The Council Chamber',  w: 12, d: 11, h: 7,  mat: 'stone', floors: 1, lore: 'Where the council sits and the factions deliberate.' },
+  { type: 'ethics_hall',        district: 'civic',     name: 'The Ethics Hall',      w: 10, d: 9,  h: 8,  mat: 'stone', floors: 1, lore: 'Weigh the right — the refusal field is reasoned here.' },
+  // ── Knowledge (more) ──
+  { type: 'physics_hall',       district: 'knowledge', name: 'The Physics Hall',     w: 11, d: 9,  h: 7,  mat: 'brick', floors: 1, lore: 'Test the laws — forces, motion, and the residuals.' },
+  { type: 'calcularium',        district: 'knowledge', name: 'The Calcularium',      w: 8,  d: 8,  h: 6,  mat: 'stone', floors: 1, lore: 'Work the proof — the CAS made a room.' },
+  { type: 'philosophy_porch',   district: 'knowledge', name: 'The Porch',            w: 10, d: 8,  h: 4,  mat: 'wood',  floors: 1, lore: 'Reason it out under the colonnade.' },
+  // ── Nature & world ──
+  { type: 'grange',             district: 'world',     name: 'The Grange',           w: 12, d: 10, h: 6,  mat: 'wood',  floors: 1, lore: 'Work the land — seasons, soil, and the harvest.' },
+  { type: 'foresters_lodge',    district: 'world',     name: "The Forester's Lodge",  w: 10, d: 8,  h: 6,  mat: 'wood',  floors: 1, lore: 'Tend the forest — timber, game, and regrowth.' },
+  { type: 'mineshaft',          district: 'world',     name: 'The Mineshaft',        w: 9,  d: 9,  h: 5,  mat: 'stone', floors: 1, lore: 'Work the seam — ore, depth, and the dark.' },
+  { type: 'tide_station',       district: 'world',     name: 'The Tide Station',     w: 10, d: 8,  h: 5,  mat: 'stone', floors: 1, lore: 'Read the tides — currents, depth, and the ocean.' },
+  { type: 'survey_camp',        district: 'world',     name: 'The Survey Camp',      w: 9,  d: 8,  h: 4,  mat: 'wood',  floors: 1, lore: 'Read the strata — the bones of the world.' },
+  // ── Industry & logistics ──
+  { type: 'mill',               district: 'industry',  name: 'The Mill',             w: 14, d: 10, h: 8,  mat: 'brick', floors: 2, lore: 'Run the line — raw stock to finished goods.' },
+  { type: 'depot',              district: 'industry',  name: 'The Depot',            w: 16, d: 12, h: 7,  mat: 'steel', floors: 1, lore: 'Route the goods — the supply chain made physical.' },
+  { type: 'powerhouse',         district: 'industry',  name: 'The Powerhouse',       w: 12, d: 12, h: 9,  mat: 'steel', floors: 1, lore: 'Mind the grid — generation and load.' },
+  { type: 'site_office',        district: 'industry',  name: 'The Site Office',      w: 8,  d: 7,  h: 4,  mat: 'wood',  floors: 1, lore: 'Raise the build — plans, crews, and the crane.' },
+  // ── Care (more) ──
+  { type: 'gymnasium',          district: 'care',      name: 'The Gymnasium',        w: 12, d: 10, h: 6,  mat: 'wood',  floors: 1, lore: 'Train the body — the fitness ledger.' },
+  // ── Communication (more) ──
+  { type: 'agora',              district: 'comms',     name: 'The Agora',            w: 14, d: 14, h: 4,  mat: 'stone', floors: 1, lore: 'Gather — the open social square.' },
+];
+
+// Two-radius ring auto-placement: station i is dropped on a circle around the
+// city centre at angle i·(2π/N) starting due north, alternating inner/outer
+// radius so even angularly-close neighbours never overlap. Ordered by district,
+// so each district occupies a contiguous arc ("quarter"). The inner radius GROWS
+// with N so the centre-to-centre gap between same-radius neighbours stays ≥
+// STATION_MIN_GAP — i.e. adding stations widens the ring instead of crowding it,
+// and it always stays clear of the core seed-city cluster (±~41).
+const STATION_MIN_GAP = 26;
+function _stationOffset(index, total) {
+  const angle = -Math.PI / 2 + index * ((2 * Math.PI) / total);
+  // Same-radius neighbours are 2 index steps apart → chord = 2R·sin(2π/N);
+  // require chord ≥ STATION_MIN_GAP. Floor at 56 so small sets still clear core.
+  const innerR = Math.max(56, Math.ceil(STATION_MIN_GAP / (2 * Math.sin((2 * Math.PI) / total) || 1)));
+  const R = index % 2 === 0 ? innerR : innerR + 22;
+  return { ox: Math.round(R * Math.cos(angle)), oz: Math.round(R * Math.sin(angle)) };
+}
+
+/** The lens-station building types this seeder places (kept in sync with the
+ *  frontend station-lens registry + building-interiors ROOM_TEMPLATES). */
+export function stationTypes() {
+  return STATIONS.map((s) => s.type);
+}
+
 // ── Seeder ─────────────────────────────────────────────────────────────────────
 
 function _rk(universeType) {
@@ -197,6 +292,43 @@ function _seedCity(db, worldId, universeType) {
     count++;
   }
   logger.info('world-seeder', 'seed_city_placed', { worldId, buildingCount: count, cx, cz });
+  return count;
+}
+
+/**
+ * Seed the lens-as-station civic ring around the world centre.
+ *
+ * Idempotent PER building_type (not gated on the is_seed flag like _seedCity),
+ * so this also back-fills existing worlds that already have a seed city — each
+ * station is inserted only if a building of that type doesn't already exist for
+ * the world. Same centre as _seedCity (x=800, z=1000).
+ */
+function _seedStations(db, worldId) {
+  const cx = 800, cz = 1000; // mirrors _seedCity's centre
+  const has = db.prepare(
+    'SELECT COUNT(*) AS n FROM world_buildings WHERE world_id = ? AND building_type = ?'
+  );
+  const insert = db.prepare(`
+    INSERT INTO world_buildings
+      (id, world_id, building_type, name, x, y, z, width, depth, height, material, floors, owner_type, is_seed)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'world',1)
+  `);
+
+  let count = 0;
+  const total = STATIONS.length;
+  const place = db.transaction(() => {
+    STATIONS.forEach((b, i) => {
+      if (has.get(worldId, b.type).n > 0) return; // already placed — idempotent
+      const { ox, oz } = _stationOffset(i, total);
+      const bx = cx + ox;
+      const bz = cz + oz;
+      const by = getElevation(bx, bz);
+      insert.run(crypto.randomUUID(), worldId, b.type, b.name, bx, by, bz, b.w, b.d, b.h, b.mat, b.floors);
+      count++;
+    });
+  });
+  place();
+  if (count > 0) logger.info('world-seeder', 'seed_stations_placed', { worldId, stationCount: count });
   return count;
 }
 
@@ -278,8 +410,9 @@ function _seedNodes(db, worldId, universeType) {
 export function seedWorldContent(db, worldId, universeType = 'standard') {
   try {
     const buildings = _seedCity(db, worldId, universeType);
+    const stations  = _seedStations(db, worldId);
     const nodes     = _seedNodes(db, worldId, universeType);
-    return { buildings, nodes };
+    return { buildings, stations, nodes };
   } catch (err) {
     logger.warn('world-seeder', 'seed_failed', { worldId, error: err?.message });
     return { buildings: 0, nodes: 0 };

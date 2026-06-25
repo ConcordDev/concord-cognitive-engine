@@ -25484,6 +25484,63 @@ registerContribMacros(register);
 import registerMusicResMacros from "./domains/musicres.js";
 registerMusicResMacros(register);
 
+// Licensed DTU Vaults — revocation (#37). A creator revokes/reinstates a usage
+// license they granted; licensing.check honours revocation/expiry. Additive —
+// no existing marketplace path or royalty math changes.
+import registerLicensingMacros from "./domains/licensing.js";
+registerLicensingMacros(register);
+
+// Holographic Invariant Storage (#40) — bipolar-VSA ethics safety layer: store
+// the refusal invariants as a hypervector codebook, detect/counter context
+// drift, expose the design-time recovery contract. Deterministic, no DB/LLM.
+import registerHisMacros from "./domains/his.js";
+registerHisMacros(register);
+
+// Maker-Checker Orchestrator (#9) — the propose→verify loop with the shadow
+// council as the deterministic checker; dispatches across a goal tree.
+import registerOrchestrateMacros from "./domains/orchestrate.js";
+registerOrchestrateMacros(register);
+
+// Invariant Geometry Mapper (#20) — live invariant co-violation graph (real
+// telemetry) + topological summary for GraphView.
+import registerInvgeoMacros from "./domains/invgeo.js";
+registerInvgeoMacros(register);
+
+// Signal Tomography (#23) — reconstruct the sensed spatial field into a voxel
+// grid from real embodied_signal_log cell readings.
+import registerTomographyMacros from "./domains/tomography.js";
+registerTomographyMacros(register);
+
+// Haptic encoding (#44) — encode a real combat impact into a Gamepad rumble
+// pattern + ADSR envelope the client plays via the real vibrationActuator API.
+import registerHapticMacros from "./domains/haptic.js";
+registerHapticMacros(register);
+
+// Engine Bridge (#29) — serialize real world_buildings geometry into a neutral
+// scene graph an external engine (Unreal/Godot/Three.js) can ingest.
+import registerSceneBridgeMacros from "./domains/scenebridge.js";
+registerSceneBridgeMacros(register);
+
+// Robotics persistence (#27) — persist real computed robotics runs + DTU
+// genesis; physical actuation via the honest actuator adapter.
+import registerRobolabMacros from "./domains/robolab.js";
+registerRobolabMacros(register);
+
+// Style Transfer (#45) — move a DTU toward a style direction in real embedding
+// space; nearest real DTUs to the result. Honest semantic flag when unembedded.
+import registerStyletxMacros from "./domains/styletx.js";
+registerStyletxMacros(register);
+
+// ConKay Voice + Affect fusion (#15) — persistent per-user affect state from real
+// VAD; derives TTS prosody + a persona note. Speech I/O is the real voice adapter.
+import registerConkayMacros from "./domains/conkay.js";
+registerConkayMacros(register);
+
+// Federated brain / mesh (#38) — persistent peers + consent-gated DTU inbox +
+// a consented consult of peers' brains over the real connectorFetch.
+import registerFedmeshMacros from "./domains/fedmesh.js";
+registerFedmeshMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
