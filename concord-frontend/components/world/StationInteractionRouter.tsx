@@ -17,6 +17,7 @@
 // invariant: a new gameplay station type slots in here, nowhere else.
 
 import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
+import { resolveStationLens } from '@/lib/station-lens-registry';
 
 const PROXIMITY_GATE_M = 4;
 
@@ -33,6 +34,9 @@ const ThemeParkAttractionPanel = lazy(() => import('./ThemeParkAttractionPanel')
 const CreatureBreedingPanel   = lazy(() => import('./CreatureBreedingPanel').then(m => ({ default: m.CreatureBreedingPanel })));
 const GlyphSpellComposer      = lazy(() => import('./GlyphSpellComposer').then(m => ({ default: m.GlyphSpellComposer })));
 const MysteryBoardLauncher    = lazy(() => import('./MysteryBoardLauncher').then(m => ({ default: m.MysteryBoardLauncher })));
+// Lens-as-Station — the generic "persistent redirect" overlay that mounts any
+// real lens (by building_type → lib/station-lens-registry.ts) as an iframe.
+const LensStationOverlay      = lazy(() => import('./LensStationOverlay').then(m => ({ default: m.LensStationOverlay })));
 
 // Production invariant: this is the canonical building_type → overlay map.
 // New gameplay stations slot here, nowhere else.
@@ -100,8 +104,10 @@ export function StationInteractionRouter() {
         return;
       }
 
-      // Route to the right overlay.
-      if (!ROUTER_TABLE[building.building_type]) {
+      // Route to the right overlay: a bespoke gameplay station (ROUTER_TABLE)
+      // or, failing that, a lens-station (any real lens mounted as an iframe
+      // overlay via the station-lens registry).
+      if (!ROUTER_TABLE[building.building_type] && !resolveStationLens(building.building_type)) {
         // Building type has no overlay; do nothing (other handlers may pick it up).
         return;
       }
@@ -137,7 +143,9 @@ export function StationInteractionRouter() {
 
   if (!active) return null;
 
-  const Overlay = ROUTER_TABLE[active.building.building_type];
+  const Overlay = ROUTER_TABLE[active.building.building_type]
+    ?? (resolveStationLens(active.building.building_type) ? LensStationOverlay : null);
+  if (!Overlay) return null;
   return (
     <Suspense fallback={
       <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur">

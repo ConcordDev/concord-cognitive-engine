@@ -40,6 +40,17 @@ export const ROOM_TEMPLATES = {
   construction_site:{ capacity: 8,  typical_furniture: ['scaffold', 'tool_rack', 'cement_mixer', 'truck', 'crane'], width: 12, depth: 12, height: 0 },
   barracks_hall:    { capacity: 12, typical_furniture: ['bunks', 'weapon_rack', 'drill_dummy', 'banner'],   width: 12, depth: 8, height: 4 },
   clinic:           { capacity: 6,  typical_furniture: ['cot', 'herb_shelf', 'washbasin', 'instrument_tray'], width: 8, depth: 6, height: 3 },
+  // Lens-as-Station building kinds — each opens a real lens as a persistent
+  // iframe overlay in-world (concord-frontend/lib/station-lens-registry.ts).
+  // `clinic` above doubles as the healthcare-lens station. building_types here
+  // match the station-lens registry so spawning one auto-seeds its interior.
+  code_terminal:      { capacity: 2,  typical_furniture: ['terminal_console', 'server_rack', 'cable_spool', 'crt_monitor'], width: 4,  depth: 4,  height: 3 },
+  courthouse:         { capacity: 24, typical_furniture: ['judge_bench', 'witness_stand', 'gallery_seating', 'evidence_table'], width: 14, depth: 12, height: 6 },
+  ledger_desk:        { capacity: 4,  typical_furniture: ['ledger_desk', 'abacus', 'filing_cabinet', 'coin_scale'], width: 6,  depth: 5,  height: 3 },
+  music_booth:        { capacity: 4,  typical_furniture: ['mixing_desk', 'mic_stand', 'monitor_speakers', 'instrument_rack'], width: 6,  depth: 5,  height: 3 },
+  cartographer_table: { capacity: 6,  typical_furniture: ['map_table', 'star_globe', 'survey_instruments', 'chart_rack'], width: 8,  depth: 7,  height: 4 },
+  trading_floor:      { capacity: 20, typical_furniture: ['ticker_board', 'trading_desks', 'pit_rail', 'phone_bank'], width: 14, depth: 12, height: 5 },
+  post_office:        { capacity: 8,  typical_furniture: ['sorting_pigeonholes', 'counter', 'mail_sacks', 'stamp_press'], width: 8,  depth: 6,  height: 4 },
 };
 
 // Default room layouts per building type
