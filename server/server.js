@@ -25521,6 +25521,11 @@ registerHapticMacros(register);
 import registerSceneBridgeMacros from "./domains/scenebridge.js";
 registerSceneBridgeMacros(register);
 
+// Robotics persistence (#27) — persist real computed robotics runs + DTU
+// genesis; physical actuation via the honest actuator adapter.
+import registerRobolabMacros from "./domains/robolab.js";
+registerRobolabMacros(register);
+
 // Game-mode realtime push helper (used by the mode-push middleware below).
 import { emitModeToUser } from "./lib/mode-realtime.js";
 
