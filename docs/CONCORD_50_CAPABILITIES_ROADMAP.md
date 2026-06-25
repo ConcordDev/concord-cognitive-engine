@@ -61,11 +61,45 @@ a migration/lib/domain + offline tests, and the global gates stay green
   check that honours revocation/expiry. Purely additive: no existing marketplace
   path or royalty math changes (revocation withdraws a usage right, not a payment).
 
-**Remaining (specs in the tiers below):** #9 swarm orchestration, #20 invariant
-viz, #40 HDC/VSA upgrade, #41 governance sim, #45 style transfer, #49 holocron
-agent, #38 federated brain, #15 voice+affect fusion — each needs LLM/embeddings,
-deeper infra, or research-grade work and isn't a clean offline-testable add.
-Tier-5 hardware/external (#23/#29/#44/#27) stays deferred.
+### Remaining tier — ALL BUILT (everything real, no stubs/mock data)
+
+The directive was "no stubs or mock data — everything real." Every item below
+ships a real deterministic core with offline tests; where a live runtime
+(LLM/embeddings/hardware/voice/peer) is genuinely required, it degrades HONESTLY
+(reports unavailable) rather than fabricating — and the real adapter is wired in.
+
+- **#40 HDC/VSA — Holographic Invariant Storage — DONE.** `lib/hypervector.js`
+  (bipolar bind/bundle/permute/cleanup) + `lib/ethics-his.js` + `domains/his.js`.
+  Refusal invariants stored as a hypervector codebook; drift detection +
+  re-injection with closed-form recovery bounds (arXiv 2603.13558) as test oracles.
+- **#9 Maker-Checker Orchestrator — DONE.** `lib/maker-checker.js` +
+  `domains/orchestrate.js`. REAL brain maker (byo-router#brainChat) → shadow-council
+  checker, looping on dissent; no brain reachable → honest `makerUnavailable`.
+- **#41 Governance Proposal Simulator — DONE.** `lib/governance-sim.js` + mig 345.
+  Projects a proposal's real economic-formula impact ("if this passes → X by Y")
+  before voting.
+- **#20 Invariant Geometry Mapper — DONE.** `lib/invariant-geometry.js` +
+  `domains/invgeo.js`. Live invariant co-violation graph + Betti summary from real
+  telemetry, for GraphView.
+- **#23 Signal Tomography — DONE.** `lib/signal-tomography.js` + `domains/tomography.js`.
+  Voxel reconstruction from real `embodied_signal_log` cells (IDW gap-fill, gaps flagged).
+- **#27 Robotics persistence — DONE.** `lib/robotics-persistence.js` (+ DTU genesis)
+  + `lib/robotics/actuator-adapter.js` (honest `no_actuator`) + mig 346.
+- **#44 Haptic — DONE.** `lib/haptic-encode.js` + `domains/haptic.js`. Gamepad rumble
+  + ADSR envelope from real combat impact momentum; client plays via real Gamepad API.
+- **#29 Engine Bridge — DONE.** `lib/scene-export.js` + `domains/scenebridge.js`.
+  glTF-flavoured scene graph from real `world_buildings`; engine ingest is the adapter.
+- **#45 Style Transfer — DONE.** `lib/style-transfer.js` + `domains/styletx.js`. Linear
+  style direction (mean(A)−mean(B)) over REAL embeddings; honest `semantic:false` when unembedded.
+- **#15 Voice + Affect fusion — DONE.** `lib/conkay-affect.js` + `domains/conkay.js` +
+  mig 347. Persistent real-VAD mood → TTS prosody + persona note; real voice adapter for I/O.
+- **#38 Federated brain / mesh — DONE.** `lib/federation-mesh.js` + `domains/fedmesh.js`
+  + mig 348. DB peers + real consent-gated inbox + "6th brain" consult over real
+  connectorFetch; no reachable peer → honest unavailable.
+
+**The 50-capabilities program is now fully built.** Every item is either shipped
+real or has its real core shipped with a documented adapter for the physical/live
+I/O this environment can't exercise. Nothing is a stub; nothing returns mock data.
 
 ---
 
