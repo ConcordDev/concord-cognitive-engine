@@ -10919,6 +10919,26 @@ globalThis.__CARTOGRAPHER__ = Object.assign(globalThis.__CARTOGRAPHER__ || {}, {
   MACROS, listDomains, listMacros,
 });
 
+// Orchestrated Invariant Engine — LIVE layer. The macro-assassin gate proves
+// invariants at commit time; this is the runtime counterpart: a cheap universal
+// contract assertion on real macro output (a macro MUST return a non-null
+// object/envelope). A violation records a drift footprint + counter and is
+// surfaced on globalThis.__INVARIANT_RUNTIME__ for the ops-telemetry/drift
+// surface — it NEVER throws and NEVER blocks the tick. Gated: full in non-prod,
+// ~1% sample in prod; off entirely with CONCORD_INVARIANT_RUNTIME=0.
+let _invariantRuntimeViolations = 0;
+function _recordInvariantViolation(domain, name, result) {
+  _invariantRuntimeViolations++;
+  try {
+    structuredLog("warn", "invariant_runtime_violation", {
+      macro: `${domain}.${name}`,
+      gotType: result === null ? "null" : typeof result,
+      total: _invariantRuntimeViolations,
+    });
+  } catch { /* logging is best-effort */ }
+  try { globalThis.__INVARIANT_RUNTIME__ = { violations: _invariantRuntimeViolations }; } catch { /* noop */ }
+}
+
 async function runMacro(domain, name, input, ctx) {
   // Gate A — arg-shape guard (docs/CONTRACT_ENFORCEMENT_STRATEGY.md). The
   // signature is (domain, name, input, ctx); the #1 recurring bug is calling it
@@ -11637,6 +11657,17 @@ async function runMacro(domain, name, input, ctx) {
     };
   }
   try { fireHook(STATE, "macro:afterExecute", { domain, name, result }); } catch (e) { observe(e, "macro_hook_after_execute_main"); }
+
+  // Orchestrated Invariant Engine — live universal-contract assertion on the real
+  // output. Never throws, never blocks; ~1% sampled in prod, full in non-prod.
+  try {
+    if (process.env.CONCORD_INVARIANT_RUNTIME !== "0") {
+      const _sample = process.env.NODE_ENV !== "production" || (_macroStart % 100 === 0);
+      if (_sample && (result === null || result === undefined || typeof result !== "object")) {
+        _recordInvariantViolation(domain, name, result);
+      }
+    }
+  } catch { /* invariant check must never affect the macro path */ }
 
   // DX Platform Phase A1 — per-call billing. Logs every call to
   // macro_call_log; charges the user wallet via FEE ledger entry when
@@ -16602,7 +16633,13 @@ async function initGhostFleet() {
     // from ./emergent/hypothesis-engine.js. Marked with note so the
     // duplicate-registration warning in register() stays quiet.
     register("hypothesis", "propose", (_ctx, input = {}) => hypo.proposeHypothesis(input.statement, input.domain, input.priority), { note: "ghost_fleet_shadow_ok" });
-    register("hypothesis", "get", (_ctx, input = {}) => hypo.getHypothesis(input.id), { note: "ghost_fleet_shadow_ok" });
+    register("hypothesis", "get", (_ctx, input = {}) => {
+      // Always return an envelope, never raw null — getHypothesis(undefined) and
+      // unknown ids return null, which violates the macro contract (a macro must
+      // return an object). Caught by the invariant engine (V2/V3 on hypothesis.get).
+      const h = hypo.getHypothesis(input.id);
+      return h ? { ok: true, hypothesis: h } : { ok: false, error: "not_found" };
+    }, { note: "ghost_fleet_shadow_ok" });
     register("hypothesis", "list", (_ctx, input = {}) => hypo.listHypotheses(input.status), { note: "ghost_fleet_shadow_ok" });
     register("hypothesis", "add_evidence", (_ctx, input = {}) => hypo.addEvidence(input.hypothesisId, input.side, input.dtuId, input.weight, input.summary));
     register("hypothesis", "add_test", (_ctx, input = {}) => hypo.addTest(input.hypothesisId, input.description));
