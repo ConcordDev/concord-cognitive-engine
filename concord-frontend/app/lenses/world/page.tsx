@@ -5560,7 +5560,7 @@ export default function WorldLensPage() {
           {showPanel === 'map' && (
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
               <MapNavigation
-                playerPosition={{ x: 0, y: 0 }}
+                playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.z }}
                 district={activeDistrict.name}
                 buildings={worldBuildings.map((b) => ({
                   id: b.id,

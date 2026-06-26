@@ -21135,7 +21135,24 @@ register("dtu", "create", async (ctx, input) => {
   dtu.cretiHuman = dtu.cretiHuman || renderHumanDTU(dtu);
   dtu.hash = crypto.createHash("sha256").update(title + "\n" + dtu.cretiHuman).digest("hex").slice(0, 16);
 
-  await pipelineCommitDTU(ctx, dtu, { op: 'dtu.create', allowRewrite: true });
+  // PLAYTEST #32 — phantom-success data loss: this result used to be ignored,
+  // so when the pipeline REJECTED the commit (verifier/council/dedup/template
+  // block, or a pipeline error) the macro still returned { ok:true, dtu } even
+  // though the row never landed in STATE.dtus — and an immediate dtu.get then
+  // reported "DTU not found". The headline "create a thought" verb silently lost
+  // data. Now we check the commit result and fail honestly when it didn't persist.
+  const _commit = await pipelineCommitDTU(ctx, dtu, { op: 'dtu.create', allowRewrite: true });
+  if (!_commit || _commit.ok === false) {
+    ctx.log("dtu.create.reject", `DTU not committed: ${title}`, { id: dtu.id, reason: _commit?.error });
+    return {
+      ok: false,
+      error: _commit?.error || "dtu_commit_failed",
+      reason: _commit?.reason || _commit?.error || "dtu_commit_failed",
+      proposalId: _commit?.proposalId,
+      verify: _commit?.verify,
+      council: _commit?.council,
+    };
+  }
   ctx.log("dtu.create", `Created DTU: ${title}`, { id: dtu.id, tier, tags, source, score: gate.score });
 
   // Notify event bus of DTU creation

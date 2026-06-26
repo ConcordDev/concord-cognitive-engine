@@ -101,6 +101,17 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'world:player-arrived'      as SocketEvent, channel: 'entity',    label: 'Player arrived' },
   { name: 'world:season-transition'   as SocketEvent, channel: 'weather',   label: 'Season turned' },
   { name: 'world:weather'             as SocketEvent, channel: 'weather',   label: 'Weather shifted' },
+  // WS-LEGIBILITY (cont.) — 9 backend emits to world:${worldId} that had no
+  // frontend listener. Each carries a discrete, player-facing signal.
+  { name: 'world:npc-bark'           as SocketEvent, channel: 'npc',       label: 'NPC said' },
+  { name: 'world:npc-attack'         as SocketEvent, channel: 'npc',       label: 'NPC attacked' },
+  { name: 'world:npc-spared'         as SocketEvent, channel: 'npc',       label: 'NPC spared' },
+  { name: 'world:racing-started'     as SocketEvent, channel: 'world',     label: 'Race started' },
+  { name: 'world:basketball-started' as SocketEvent, channel: 'world',     label: 'Match started' },
+  { name: 'mount:behavior'           as SocketEvent, channel: 'npc',       label: 'Mount behavior' },
+  { name: 'world:node-update'        as SocketEvent, channel: 'world',     label: 'Resource node changed' },
+  { name: 'world:loot-node'          as SocketEvent, channel: 'world',     label: 'Loot dropped' },
+  { name: 'world:broadcast'          as SocketEvent, channel: 'system_health', label: 'World broadcast' },
 ];
 
 const CHANNEL_COLORS: Record<EmergentChannel, string> = {
@@ -153,6 +164,10 @@ function summarize(payload: unknown): string {
   if (!payload || typeof payload !== 'object') return '';
   const p = payload as Record<string, unknown>;
   // Prefer human-readable fields when present.
+  // Spoken / broadcast text reads as the detail line verbatim when present
+  // (npc-bark `text`, world:broadcast `message`). These carry the real signal.
+  const spoken = (p.text as string | undefined) || (p.message as string | undefined) || '';
+  if (spoken) return spoken;
   const name =
     (p.npcName as string | undefined) ||
     (p.entityName as string | undefined) ||

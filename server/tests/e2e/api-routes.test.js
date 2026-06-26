@@ -263,6 +263,41 @@ describe('E2E API routes — public auth mode', { timeout: 120000 }, function() 
     assert.equal(body && body.error, 'unknown_macro', 'Expected unknown_macro, got ' + JSON.stringify(body));
   });
 
+  // ── dtu.create → dtu.get round-trip (PLAYTEST #32 phantom-success) ────────
+  // If dtu.create reports ok:true, the DTU MUST be retrievable via dtu.get.
+  // The defect was that a pipeline-rejected commit still returned ok:true while
+  // the row never landed in STATE.dtus, so dtu.get reported "not found".
+
+  it('dtu.create success is not a phantom — dtu.get round-trips the created id', async function() {
+    const createRes = await postJSON(base, '/api/lens/run', {
+      domain: 'dtu',
+      action: 'create',
+      input: {
+        title: 'E2E roundtrip thought ' + Date.now(),
+        source: 'user',
+        human: { summary: 'a real thought created by the e2e round-trip test' },
+        core: { definitions: ['roundtrip: a created DTU must be retrievable'] },
+      },
+    });
+    assert.equal(createRes.status, 200, 'create returned ' + createRes.status);
+    const cbody = createRes.body || {};
+    // Unwrap the { ok, result } envelope.
+    const result = cbody.result || cbody;
+    if (result && result.ok === false) {
+      // Honest rejection (council/verifier/dedup) is acceptable — the point of
+      // the fix is that it must NOT claim success without persisting.
+      assert.ok(true, 'create honestly rejected: ' + JSON.stringify(result.error || result.reason));
+      return;
+    }
+    const id = (result && result.dtu && result.dtu.id) || (result && result.id);
+    assert.ok(id, 'create reported success but returned no dtu id: ' + JSON.stringify(cbody));
+    const getRes = await postJSON(base, '/api/lens/run', { domain: 'dtu', action: 'get', input: { id } });
+    assert.equal(getRes.status, 200, 'get returned ' + getRes.status);
+    const gresult = (getRes.body && getRes.body.result) || getRes.body || {};
+    assert.equal(gresult.ok, true, 'PHANTOM SUCCESS: create said ok but dtu.get could not find ' + id + ': ' + JSON.stringify(getRes.body));
+    assert.ok(gresult.dtu && gresult.dtu.id === id, 'get returned the wrong/no dtu: ' + JSON.stringify(gresult));
+  });
+
   // ── /api/lattice/beacon ──────────────────────────────────────────────────
 
   it('GET /api/lattice/beacon returns 200 with ok:true and rootHash', async function() {

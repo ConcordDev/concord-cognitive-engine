@@ -3182,7 +3182,20 @@ export default function createWorldsRouter({ requireAuth, db }) {
               worldId, hp: bars.hp, maxHp: bars.max_hp, source: 'near_death_survived',
             });
           }
-        } catch { /* awakening surfacing is best-effort */ }
+          // Low-health signal for the screen-reader / a11y bridge. The world page
+          // subscribes to `player:low-health` (SR_BRIDGE_EVENTS) but until now
+          // nothing emitted it — a receiver with no caller. Fire it whenever the
+          // player drops below LOW_HEALTH_FRACTION so the announce / HUD cue is a
+          // pure function of a real backend event.
+          const LOW_HEALTH_FRACTION = 0.3;
+          if (bars && bars.max_hp > 0 && bars.hp / bars.max_hp <= LOW_HEALTH_FRACTION) {
+            req.app.locals.io?.to(`user:${userId}`)?.emit?.("player:low-health", {
+              worldId, hp: bars.hp, maxHp: bars.max_hp,
+              fraction: Math.max(0, bars.hp / bars.max_hp),
+              source: 'npc_attack',
+            });
+          }
+        } catch { /* awakening + low-health surfacing is best-effort */ }
       }
 
       res.json({ ok: true, damageResult, eventId, kill, message: kill ? 'You have been defeated' : undefined });
