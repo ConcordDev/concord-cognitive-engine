@@ -2,9 +2,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
-// Mock the axios-shaped api client. Both endpoints are GET routes.
+// Mock the axios-shaped api client. GET for the feeds, POST for rsvp/create,
+// lensRun for the spontaneous-gatherings macro.
 const get = vi.fn();
-vi.mock('@/lib/api/client', () => ({ api: { get: (...a: unknown[]) => get(...a) } }));
+const post = vi.fn();
+const lensRun = vi.fn();
+vi.mock('@/lib/api/client', () => ({
+  api: {
+    get: (...a: unknown[]) => get(...a),
+    post: (...a: unknown[]) => post(...a),
+  },
+  lensRun: (...a: unknown[]) => lensRun(...a),
+}));
 
 import { WorldEventBoard } from './WorldEventBoard';
 
@@ -17,6 +26,9 @@ function eventsResponse(events: unknown[]) {
 }
 function festivalsResponse(festivals: unknown[]) {
   return { data: { ok: true, festivals } };
+}
+function gatheringsResponse(gatherings: unknown[]) {
+  return { data: { ok: true, result: { gatherings } } };
 }
 
 /** Route api.get calls by URL to the right canned response. */
@@ -31,6 +43,11 @@ function routeGet(eventsRes: unknown, festivalsRes: unknown) {
 describe('WorldEventBoard', () => {
   beforeEach(() => {
     get.mockReset();
+    post.mockReset();
+    lensRun.mockReset();
+    // Default: no gatherings, successful POSTs.
+    lensRun.mockResolvedValue(gatheringsResponse([]));
+    post.mockResolvedValue({ data: { ok: true } });
   });
 
   it('renders active, upcoming, and festival sections with real-shaped data', async () => {
@@ -159,5 +176,99 @@ describe('WorldEventBoard', () => {
 
     expect(get).toHaveBeenCalledWith('/api/world/events', { params: { cityId: 'cyber' } });
     expect(get).toHaveBeenCalledWith('/api/festivals/active', { params: { worldId: 'cyber' } });
+    // Gatherings come from the world.gatherings macro for this world.
+    expect(lensRun).toHaveBeenCalledWith('world', 'gatherings', { worldId: 'cyber' });
+  });
+
+  it('renders spontaneous gatherings from the world.gatherings macro', async () => {
+    routeGet(eventsResponse([]), festivalsResponse([]));
+    lensRun.mockResolvedValue(
+      gatheringsResponse([
+        { id: 'g1', location: 'Fountain Plaza', playerCount: 4, description: '4 players at the fountain' },
+      ]),
+    );
+
+    render(<WorldEventBoard worldId="tunya" />);
+
+    await waitFor(() => expect(screen.getByText('Gatherings')).toBeInTheDocument());
+    expect(screen.getByText('4 players at the fountain')).toBeInTheDocument();
+    expect(screen.getByText('4')).toBeInTheDocument();
+  });
+
+  it('shows an honest empty gatherings state when nobody is grouped up', async () => {
+    routeGet(eventsResponse([]), festivalsResponse([]));
+    render(<WorldEventBoard worldId="tunya" />);
+
+    await waitFor(() => expect(screen.getByText('Gatherings')).toBeInTheDocument());
+    expect(screen.getByText('No spontaneous gatherings right now')).toBeInTheDocument();
+  });
+
+  it('RSVPs to an event via the real endpoint and reflects it in the UI', async () => {
+    routeGet(
+      eventsResponse([
+        {
+          id: 'e-active',
+          name: 'Plaza Bonfire',
+          status: 'active',
+          startTime: iso(-30 * 60_000),
+          endTime: iso(30 * 60_000),
+          attendee_count: 2,
+        },
+      ]),
+      festivalsResponse([]),
+    );
+
+    render(<WorldEventBoard worldId="tunya" />);
+    await waitFor(() => expect(screen.getByText('Plaza Bonfire')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('RSVP'));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith('/api/world/events/e-active/rsvp', {}),
+    );
+    // Optimistic flip to RSVP'd.
+    await waitFor(() => expect(screen.getByText(/RSVP'd/)).toBeInTheDocument());
+  });
+
+  it('surfaces an honest RSVP error and does not fake success', async () => {
+    routeGet(
+      eventsResponse([
+        { id: 'e1', name: 'Night Bazaar', status: 'active', startTime: iso(-60_000), endTime: iso(60_000) },
+      ]),
+      festivalsResponse([]),
+    );
+    post.mockRejectedValue(new Error('network down'));
+
+    render(<WorldEventBoard worldId="tunya" />);
+    await waitFor(() => expect(screen.getByText('Night Bazaar')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('RSVP'));
+
+    await waitFor(() => expect(screen.getByText(/RSVP failed/)).toBeInTheDocument());
+    // Never flipped to RSVP'd on failure.
+    expect(screen.queryByText(/RSVP'd/)).not.toBeInTheDocument();
+  });
+
+  it('creates an event via the real endpoint with worldId in the body', async () => {
+    routeGet(eventsResponse([]), festivalsResponse([]));
+
+    render(<WorldEventBoard worldId="tunya" />);
+    await waitFor(() => expect(screen.getByText('Active now')).toBeInTheDocument());
+
+    // Open the create form.
+    fireEvent.click(screen.getByLabelText('Create event'));
+    fireEvent.change(screen.getByPlaceholderText('Event name'), {
+      target: { value: 'Founders Gala' },
+    });
+    fireEvent.click(screen.getByText('Create event'));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith('/api/world/events', {
+        name: 'Founders Gala',
+        type: 'concert',
+        maxAttendees: 50,
+        worldId: 'tunya',
+      }),
+    );
   });
 });
