@@ -180,6 +180,13 @@ export class ReconciliationBuffer {
   private history: Array<{ input: InputFrame; state: CharState }> = [];
   private maxHistory = 128; // ~2 seconds at 60 fps
   private simFn: PhysicsSimFn;
+  // H1+ — highest server sequence we've reconciled against, + the last
+  // reconciled state. Used to DROP stale / out-of-order server snapshots: under
+  // jitter a packet #4 can arrive before #3, and re-applying the older
+  // authoritative state after inputs were already pruned would rubber-band the
+  // player backward (into a wall). Server snapshots only ever move forward.
+  private lastServerSeq = -1;
+  private lastReconciled: CharState | null = null;
 
   constructor(simFn: PhysicsSimFn) {
     this.simFn = simFn;
@@ -209,6 +216,14 @@ export class ReconciliationBuffer {
    * Returns the re-simulated state (use this as the new authoritative client state).
    */
   reconcile(serverMsg: ServerStateMsg): CharState {
+    // Drop stale / duplicate server snapshots (out-of-order arrival under
+    // jitter). Acks only move forward; an older one re-applied after newer
+    // inputs were pruned would rubber-band the player. Keep our latest state.
+    if (serverMsg.seq <= this.lastServerSeq) {
+      return this.lastReconciled ?? { ...serverMsg.state };
+    }
+    this.lastServerSeq = serverMsg.seq;
+
     // Prune inputs already acknowledged by the server
     this.history = this.history.filter((h) => h.input.seq > serverMsg.seq);
 
@@ -219,6 +234,7 @@ export class ReconciliationBuffer {
       state.seq = input.seq;
     }
 
+    this.lastReconciled = state;
     return state;
   }
 
@@ -244,6 +260,10 @@ export class ReconciliationBuffer {
 
   clearHistory(): void {
     this.history = [];
+    // Reset the ack watermark too — after a respawn/teleport the next server
+    // snapshot is authoritative even if its seq is lower than the old stream.
+    this.lastServerSeq = -1;
+    this.lastReconciled = null;
   }
 }
 

@@ -7133,6 +7133,15 @@ async function initMetrics() {
       labelNames: ["world"],
       registers: [METRICS.registry]
     });
+    // H3+ — anti-cheat rejection telemetry. Movement guards (speed-hack /
+    // teleport) increment this with their reason; the anti-cheat-monitor also
+    // drops repeat offenders' sockets. Pairs with an alert on a sustained rate.
+    METRICS.counters.antiCheatRejected = new prom.Counter({
+      name: "concord_anti_cheat_rejected_total",
+      help: "Movement/combat packets rejected by an anti-cheat guard, by reason",
+      labelNames: ["reason"],
+      registers: [METRICS.registry]
+    });
 
     // E2 — economy-anomaly telemetry. The economy-anomaly-cycle heartbeat rolls up
     // world-health.js#detectPathologies (negative_balance / dupe_citation) + the
@@ -8569,6 +8578,19 @@ async function tryInitWebSockets(server) {
               observedSpeed: pos.observedSpeed,
               maxSpeed: pos.maxSpeed,
             });
+            // H3+ — treat a real movement rejection (speed-hack / teleport) as
+            // an anomaly data point: count it, and drop a sustained offender's
+            // socket so a live exploitation tool can't keep hammering. Telemetry
+            // + auto-drop are both best-effort and never block the move path.
+            try {
+              METRICS?.counters?.antiCheatRejected?.inc({ reason: String(pos.reason || "unknown") });
+              const verdict = _noteAntiCheatRejection(userId);
+              if (verdict.shouldDisconnect) {
+                logger.warn?.("anti-cheat", "user_dropped", { userId, reason: pos.reason, hits: verdict.threshold });
+                socket.emit("anti-cheat:dropped", { reason: "too_many_violations" });
+                socket.disconnect(true);
+              }
+            } catch { /* telemetry/drop best-effort */ }
           }
           return;
         }
@@ -9474,6 +9496,7 @@ async function tryInitWebSockets(server) {
     const _sweepSocketState = (userId) => {
       if (userId) {
         try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
+        try { _clearAntiCheatUser(userId); } catch (_e) { /* ignore */ }
         import("./lib/brawl.js").then((m) => m.cleanupForUser?.(userId)).catch(() => {});
       }
       import("./lib/spectator-mode.js").then((m) => m.leaveSpectator?.(socket)).catch(() => {});
@@ -16031,6 +16054,7 @@ async function llmChat(messagesOrCtx, messagesOrOptions = {}, maybeOptions = {})
 // the registry is intentionally light (functional directives only).
 import { BRAIN_IDENTITY, composeSystemPrompt, TASK_PROMPTS } from "./lib/prompt-registry.js";
 import { makeEscalationBudget } from "./lib/affect-salience.js";
+import { noteRejection as _noteAntiCheatRejection, clearUser as _clearAntiCheatUser } from "./lib/anti-cheat-monitor.js";
 import { runChatComputePreflight } from "./lib/chat-compute-preflight.js";
 import { hydrateSession, persistChatTurn } from "./lib/chat-session-store.js";
 
