@@ -572,8 +572,14 @@ export default function createWorldsRouter({ requireAuth, db }) {
         return res.status(403).json({ error: "Killer priority window active" });
       }
 
-      db.prepare("UPDATE loot_nodes SET claimed_by = ?, claimed_at = ? WHERE id = ?")
-        .run(req.user.id, now, node.id);
+      // G5 — TOCTOU-safe claim: only the request that flips claimed_by from NULL
+      // wins. Spamming the claim packet (double-click / script) previously read
+      // claimed_by=NULL N times before any write landed → N× the loot. The
+      // conditional WHERE + changes check makes exactly one claimant succeed.
+      const claim = db.prepare(
+        "UPDATE loot_nodes SET claimed_by = ?, claimed_at = ? WHERE id = ? AND claimed_by IS NULL"
+      ).run(req.user.id, now, node.id);
+      if (claim.changes !== 1) return res.status(409).json({ error: "Already claimed" });
 
       const contents = JSON.parse(node.contents || "[]");
       res.json({ ok: true, contents });
