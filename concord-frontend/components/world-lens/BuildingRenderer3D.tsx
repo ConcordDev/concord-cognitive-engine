@@ -25,6 +25,10 @@ export interface BuildingDTU {
   floors: number;
   material: BuildingMaterialType;
   style: 'colonial' | 'federal' | 'industrial' | 'modern' | 'mixed';
+  /** World/seed/station building type — drives the procedural archetype + iconic
+   *  silhouette feature (lib/world-lens/building-silhouette.ts). Absent for
+   *  player-designed structural DTUs, which keep the legacy structural render. */
+  building_type?: string;
   /** Structural elements specification */
   structure: {
     columns: { count: number; spacing: number; radius: number };
@@ -157,10 +161,20 @@ export default function BuildingRenderer3D({
     // archetype isn't in the procgen registry.
     const knownArchetypes = ['tavern', 'archive', 'forge', 'market', 'tower'] as const;
     type ProcArch = typeof knownArchetypes[number];
-    const dtuArch = (dtu as { archetype?: string }).archetype;
-    if (dtuArch && (knownArchetypes as readonly string[]).includes(dtuArch)) {
+    const explicitArch = (dtu as { archetype?: string }).archetype;
+    const buildingType = (dtu as { building_type?: string }).building_type;
+    // Take the rich procedural path for any building with an explicit archetype
+    // OR a building_type (seed / lens-station buildings) — the latter derives its
+    // archetype + iconic landmark feature (dome / spire / colonnade / belfry) from
+    // the type. Player-designed DTUs with neither keep the structural legacy path.
+    const hasExplicit = !!explicitArch && (knownArchetypes as readonly string[]).includes(explicitArch);
+    if (hasExplicit || buildingType) {
       try {
         const { createBuilding } = await import('@/lib/world-lens/procedural-buildings');
+        const { silhouetteForBuildingType } = await import('@/lib/world-lens/building-silhouette');
+        const sil = silhouetteForBuildingType(buildingType);
+        const dtuArch: ProcArch = hasExplicit ? (explicitArch as ProcArch) : sil.archetype;
+        const feature = (dtu as { feature?: import('@/lib/world-lens/procedural-buildings').IconicFeature }).feature ?? sil.feature;
         const factionVisual = (dtu as { faction_visual?: { primary_color?: string; secondary_color?: string; accent_color?: string } }).faction_visual;
         const archStyleByArch: Record<ProcArch, 'fortified' | 'gracile' | 'crystalline' | 'organic' | 'industrial'> = {
           tavern: 'organic', archive: 'gracile', forge: 'fortified',
@@ -172,15 +186,16 @@ export default function BuildingRenderer3D({
         const { getClientConfigSync } = await import('@/hooks/useClientConfig');
         const worldDensityOn = getClientConfigSync().flags.worldDensity;
         const result = createBuilding(THREE, {
-          archetype: dtuArch as ProcArch,
+          archetype: dtuArch,
+          feature,
           seed: dtu.id,
           withInterior: worldDensityOn ? 'lazy' : false,
           factionStyle: factionVisual ? {
             primary_color: factionVisual.primary_color,
             secondary_color: factionVisual.secondary_color,
             accent_color: factionVisual.accent_color,
-            architecture_style: archStyleByArch[dtuArch as ProcArch],
-          } : { architecture_style: archStyleByArch[dtuArch as ProcArch] },
+            architecture_style: archStyleByArch[dtuArch],
+          } : { architecture_style: archStyleByArch[dtuArch] },
         });
         result.name = `building_${dtu.id}`;
         // Merge (not overwrite) so createBuilding's archetype + _interiorMode

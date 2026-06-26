@@ -17,6 +17,15 @@ import { speedScaledRadius } from "./movement/interest-management.js";
 // radius. Set on each validated move; read by getNearbyUsers when CONCORD_SPEED_AOI.
 const _lastSpeed = new Map();
 
+// G6 note (speedhack): the per-packet check below IS the server-authoritative
+// distance-over-time gate. dt is measured from the SERVER wall-clock (never a
+// client-supplied delta), and a rejected update never advances lastUpdate/
+// position — so a clock-speed hack shows up as speedMps > maxSpeed and is
+// dropped, and sustained movement is hard-capped at maxSpeed per accepted
+// packet. A rolling-window aggregate would be redundant (any window of
+// per-packet-valid steps already averages ≤ maxSpeed by construction) and would
+// only add false-reject risk on the hot path, so it is intentionally NOT added.
+
 // ── State ───────────────────────────────────────────────────────────────────
 
 /** userId -> { cityId, x, y, z, direction, action, lastUpdate, avatar, dirty } */
@@ -1153,7 +1162,7 @@ function _getZoneDebuff(zone, armorPct) {
   return null;
 }
 
-export function applyAttack({ attackerId, targetId, baseDamage = 10, range = 3, armorPierce = 0, contextModifiers = null }) {
+export function applyAttack({ attackerId, targetId, baseDamage = 10, range = 3, armorPierce = 0, contextModifiers = null, maxDamage = Infinity }) {
   if (!attackerId || !targetId) return { ok: false, error: "missing_ids" };
   if (attackerId === targetId) return { ok: false, error: "cannot_attack_self" };
 
@@ -1229,7 +1238,11 @@ export function applyAttack({ attackerId, targetId, baseDamage = 10, range = 3, 
   const mitigated = Math.max(1, Math.floor(variedBase * (1 - mitFactor)));
 
   const isCrit = Math.random() > 0.85;
-  const damage = isCrit ? mitigated * 2 : mitigated;
+  // Server-authoritative ceiling: bound the resolved (post-crit) damage so a
+  // client-supplied baseDamage can never one-shot regardless of variance/crit.
+  // maxDamage defaults to Infinity (NPC/legacy callers unaffected); the socket
+  // PvP path passes resolvedDamageCap() to close the injection exploit.
+  const damage = Math.min(isCrit ? mitigated * 2 : mitigated, maxDamage);
 
   // Degrade zone armor — each hit reduces it; heavier hits + crits degrade more
   const armorDeg = Math.min(zoneArmorBefore, Math.ceil((damage / 3) + (isCrit ? 5 : 0)));

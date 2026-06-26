@@ -24,6 +24,7 @@
  * sway). Removed/depleted nodes dispose their geometry + materials.
  */
 import * as THREE from 'three';
+import { worldToSceneAxis, sampleGroundY } from './coord-frame';
 
 // ── Wire types ──────────────────────────────────────────────────────────────
 
@@ -321,18 +322,26 @@ export function createResourceNodeRenderer(
       const visual = nodeVisual(node);
       const existing = tracked.get(node.id);
 
+      // Plant on the exact visual surface. node.y is the server's getElevation,
+      // which differs from the rendered mesh by the noise term (server sin vs
+      // client simplex) — up to a few metres of float/sink. Sampling the actual
+      // heightmap makes trees/rocks sit flush; fall back to node.y pre-terrain.
+      const sx = worldToSceneAxis(node.x);
+      const sz = worldToSceneAxis(node.z);
+      const ny = sampleGroundY(sx, sz) ?? node.y;
+
       // Rebuild when the kind or depleted-state changes (different geometry).
       if (existing && (existing.kind === visual.kind) &&
           (existing.depleted === visual.depleted)) {
         existing.targetScale = visual.scale;
-        existing.object.position.set(node.x, node.y, node.z);
+        existing.object.position.set(sx, ny, sz);
         continue;
       }
 
       if (existing) disposeTracked(existing, parentGroup);
 
       const built = buildNodeObject(visual);
-      built.object.position.set(node.x, node.y, node.z);
+      built.object.position.set(sx, ny, sz);
       const initialScale = existing ? existing.object.scale.x : visual.scale;
       built.object.scale.setScalar(initialScale);
       parentGroup.add(built.object);

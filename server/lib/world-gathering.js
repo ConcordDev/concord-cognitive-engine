@@ -176,34 +176,45 @@ export function gatherFromNode(db, nodeId, gatheredBy, opts = {}) {
   }
 
   const { amount } = estimateYield(node, toolType, toolTier, skillLevel);
-  const newQty = Math.max(0, node.quantity_remaining - amount);
-  const depleted = newQty === 0;
   const now = Math.floor(Date.now() / 1000);
+
+  // G4 — TOCTOU-safe decrement. The old code SET an absolute quantity computed
+  // from the stale SELECT above, so two concurrent/duplicate gathers (double-
+  // click, or two world-shard writers) could each read 10 and each write 5 →
+  // double-harvest. Decrement RELATIVE to the live column, gated on the node
+  // still being un-depleted, in one atomic statement. `changes===1` means we
+  // won the decrement; otherwise another request emptied it first.
+  const upd = db.prepare(`
+    UPDATE world_resource_nodes
+    SET quantity_remaining = MAX(0, quantity_remaining - ?),
+        is_depleted = CASE WHEN quantity_remaining - ? <= 0 THEN 1 ELSE 0 END,
+        respawn_at  = CASE WHEN quantity_remaining - ? <= 0 THEN ? + (respawn_hours * 3600) ELSE NULL END,
+        last_gathered_by = ?,
+        last_gathered_at = ?
+    WHERE id = ? AND is_depleted = 0 AND quantity_remaining > 0
+  `).run(amount, amount, amount, now, gatheredBy, now, nodeId);
+  if (upd.changes !== 1) return { ok: false, error: 'node_depleted' };
+
+  // Actual units extracted = what was really there (the node never goes
+  // negative — MAX(0) above), so a near-empty node yields only its remainder.
+  const extracted = Math.min(amount, node.quantity_remaining);
+  const newQty = node.quantity_remaining - extracted;
+  const depleted = newQty <= 0;
 
   // Determine quality of gathered resources (rare nodes can drop better items)
   const droppedQuality = _rolledQuality(node.quality, skillLevel);
 
-  db.prepare(`
-    UPDATE world_resource_nodes
-    SET quantity_remaining = ?,
-        is_depleted = ?,
-        respawn_at = CASE WHEN ? THEN ? + (respawn_hours * 3600) ELSE NULL END,
-        last_gathered_by = ?,
-        last_gathered_at = ?
-    WHERE id = ?
-  `).run(newQty, depleted ? 1 : 0, depleted ? 1 : 0, now, gatheredBy, now, nodeId);
-
   const gathered = [{
     item:         node.resource_id,
     name:         node.resource_name,
-    quantity:     amount,
+    quantity:     extracted,
     quality:      droppedQuality,
     fromNodeType: node.node_type,
   }];
 
   // Trees also drop a small amount of resin/branches
-  if (node.node_type === 'tree' && amount > 0) {
-    gathered.push({ item: 'branches', name: 'Branches', quantity: Math.ceil(amount / 2), quality: 'common', fromNodeType: 'tree' });
+  if (node.node_type === 'tree' && extracted > 0) {
+    gathered.push({ item: 'branches', name: 'Branches', quantity: Math.ceil(extracted / 2), quality: 'common', fromNodeType: 'tree' });
   }
   // Coal seam drops a small flint chip
   if (node.resource_id === 'coal' && Math.random() < 0.25) {

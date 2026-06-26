@@ -148,3 +148,45 @@ export function seedDefaultZones(db, worldIds = []) {
   }
   return n;
 }
+
+/** Validate one authored zone object from a content `zones.json`. Shape:
+ *  { name, kind, x, z, radius, rules? } — x/z/radius default to 0/0/50. */
+export function validateZone(z) {
+  if (!z || typeof z !== "object" || Array.isArray(z)) return { ok: false, reason: "not_object" };
+  if (typeof z.name !== "string" || !z.name) return { ok: false, reason: "missing_name" };
+  if (!ZONE_KINDS.includes(z.kind)) return { ok: false, reason: "invalid_kind" };
+  for (const k of ["x", "z", "radius"]) {
+    if (z[k] !== undefined && !Number.isFinite(Number(z[k]))) return { ok: false, reason: `invalid_${k}` };
+  }
+  if (z.rules !== undefined && (typeof z.rules !== "object" || Array.isArray(z.rules))) {
+    return { ok: false, reason: "invalid_rules" };
+  }
+  return { ok: true };
+}
+
+/**
+ * Seed authored lore zones for a world from a parsed `zones.json` array. Each
+ * entry maps the lore's coordinate region onto the circular substrate via
+ * upsertZone (idempotent on (world_id, name)). Invalid entries are skipped, not
+ * fatal. Returns the count seeded. The lore's safe plaza / pvp arena / hazard
+ * ruins become real combat/spawn rules `combatRuleFor` consults.
+ */
+export function seedZonesFromContent(db, worldId, zones) {
+  if (!db || !worldId || !Array.isArray(zones) || !tableExists(db, "world_zones")) return 0;
+  let n = 0;
+  for (const z of zones) {
+    if (!validateZone(z).ok) continue;
+    const r = upsertZone(db, {
+      worldId,
+      name: z.name,
+      kind: z.kind,
+      centerX: Number(z.x) || 0,
+      centerZ: Number(z.z) || 0,
+      radiusM: Number(z.radius) || 50,
+      rules: (z.rules && typeof z.rules === "object") ? z.rules : {},
+      createdBy: "content-seeder",
+    });
+    if (r.ok) n++;
+  }
+  return n;
+}

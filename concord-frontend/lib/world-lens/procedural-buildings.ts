@@ -87,7 +87,16 @@ export interface BuildingOptions {
    * buildings without paying the decor cost upfront.
    */
   withInterior?: boolean | 'lazy';
+  /**
+   * V5 — iconic silhouette feature appended on top of the base archetype, so a
+   * building reads as a specific landmark at a glance (the silhouette-readability
+   * principle). Mapped from building_type in lib/world-lens/building-silhouette.ts.
+   */
+  feature?: IconicFeature;
 }
+
+/** Landmark silhouette caps — the shape that makes a building instantly legible. */
+export type IconicFeature = 'dome' | 'spire' | 'colonnade' | 'belfry';
 
 /**
  * Sprint D / V4 — silhouette bias by architecture style. Returned values
@@ -253,6 +262,10 @@ export function createBuilding(THREE: typeof THREE_NS, opts: BuildingOptions): T
     if (rng() < bias.parapetChance) addParapet(THREE, group, scale, trimMat);
     if (rng() < bias.columnChance) addColumns(THREE, group, scale, trimMat);
   }
+
+  // V5 — iconic landmark cap (dome / spire / colonnade / belfry) so a building
+  // reads as a specific place at a glance.
+  if (opts.feature) addIconicFeature(THREE, group, opts.feature, scale, roofMat, trimMat);
 
   group.userData = {
     isBuilding:   true,
@@ -433,6 +446,94 @@ function addColumns(THREE: typeof THREE_NS, g: THREE_NS.Group, scale: number, tr
     col.position.set(xSign * 4 * scale, colHeight / 2, 5.2 * scale);
     col.castShadow = true; col.receiveShadow = true;
     g.add(col);
+  }
+}
+
+/**
+ * V5 — append an iconic landmark feature on top of / in front of the base
+ * archetype. Pure geometry, deterministic, low-poly (silhouette-readability:
+ * the cap is what makes the building legible from afar). `roofTop` ≈ the base
+ * wall height in archetype units (~8·scale), so caps sit at the roofline.
+ */
+export function addIconicFeature(
+  THREE: typeof THREE_NS,
+  g: THREE_NS.Group,
+  feature: IconicFeature,
+  scale: number,
+  roofMat: THREE_NS.MeshStandardMaterial,
+  trimMat: THREE_NS.MeshStandardMaterial,
+) {
+  const s = scale;
+  const roofTop = 8 * s; // base archetypes top out ~8·scale
+  switch (feature) {
+    case 'dome': {
+      // Hemisphere drum + cap, the observatory / sanctuary read.
+      const drum = new THREE.Mesh(new THREE.CylinderGeometry(3.4 * s, 3.6 * s, 1.2 * s, 20), trimMat);
+      drum.position.y = roofTop + 0.6 * s;
+      drum.castShadow = true;
+      g.add(drum);
+      const dome = new THREE.Mesh(
+        new THREE.SphereGeometry(3.4 * s, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+        roofMat,
+      );
+      dome.position.y = roofTop + 1.2 * s;
+      dome.castShadow = true;
+      g.add(dome);
+      const finial = new THREE.Mesh(new THREE.ConeGeometry(0.4 * s, 1.4 * s, 8), trimMat);
+      finial.position.y = roofTop + 1.2 * s + 3.4 * s;
+      g.add(finial);
+      break;
+    }
+    case 'spire': {
+      // Turret + tall thin spire, the cartographer / watch read.
+      const turret = new THREE.Mesh(new THREE.CylinderGeometry(2.2 * s, 2.4 * s, 3 * s, 8), roofMat);
+      turret.position.y = roofTop + 1.5 * s;
+      turret.castShadow = true;
+      g.add(turret);
+      const spire = new THREE.Mesh(new THREE.ConeGeometry(2.2 * s, 7 * s, 8), roofMat);
+      spire.position.y = roofTop + 3 * s + 3.5 * s;
+      spire.castShadow = true;
+      g.add(spire);
+      break;
+    }
+    case 'colonnade': {
+      // A grand portico across the front — civic / court / academy read.
+      const cols = 6;
+      const w = 12 * s;
+      const colH = 6 * s;
+      for (let i = 0; i < cols; i++) {
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.45 * s, 0.5 * s, colH, 12), trimMat);
+        col.position.set(-w / 2 + (i + 0.5) * (w / cols), colH / 2, 6 * s);
+        col.castShadow = true; col.receiveShadow = true;
+        g.add(col);
+      }
+      // Architrave + pediment over the columns.
+      const architrave = new THREE.Mesh(new THREE.BoxGeometry(w + 1 * s, 1 * s, 2 * s), trimMat);
+      architrave.position.set(0, colH + 0.5 * s, 6 * s);
+      architrave.castShadow = true;
+      g.add(architrave);
+      const pediment = new THREE.Mesh(new THREE.ConeGeometry(w * 0.55, 2 * s, 3), roofMat);
+      pediment.position.set(0, colH + 1.5 * s, 6 * s);
+      pediment.rotation.y = Math.PI / 6;
+      pediment.scale.z = 0.5;
+      g.add(pediment);
+      break;
+    }
+    case 'belfry': {
+      // An open bell-tower on the roof — schoolhouse / watch-house read.
+      const baseBox = new THREE.Mesh(new THREE.BoxGeometry(3 * s, 3 * s, 3 * s), roofMat);
+      baseBox.position.y = roofTop + 1.5 * s;
+      baseBox.castShadow = true;
+      g.add(baseBox);
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(2.4 * s, 2.4 * s, 4), roofMat);
+      cap.position.y = roofTop + 3 * s + 1.2 * s;
+      cap.rotation.y = Math.PI / 4;
+      g.add(cap);
+      const bell = new THREE.Mesh(new THREE.SphereGeometry(0.7 * s, 10, 8), trimMat);
+      bell.position.y = roofTop + 1.6 * s;
+      g.add(bell);
+      break;
+    }
   }
 }
 

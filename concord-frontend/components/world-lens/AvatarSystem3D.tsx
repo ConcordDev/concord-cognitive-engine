@@ -50,6 +50,7 @@ import { FacialController, resolveNPCEmotion } from '@/lib/concordia/facial-blen
 import { installMoodListener, emotionFor, biasFor } from '@/lib/concordia/mood-registry';
 import { getClientConfigSync } from '@/hooks/useClientConfig';
 import { physicsWorld } from '@/lib/world-lens/physics-world';
+import { sampleGroundY, outOfBounds } from '@/lib/world-lens/coord-frame';
 import { accelToward } from '@/lib/world-lens/jump-forgiveness';
 import { applyCelShade } from '@/lib/world-lens/cel-shade';
 import { ART_STYLE } from '@/lib/world-lens/concordia-theme';
@@ -341,6 +342,9 @@ export default function AvatarSystem3D({
   // B2 — smoothed planar input (accel/decel curve), so direction changes ease.
   const planarMoveRef = useRef<{ x: number; z: number }>({ x: 0, z: 0 });
   const playerPositionRef = useRef({ ...playerAvatar.position });
+  // Last known-good standing position — the snapback target when the player
+  // goes out of bounds / falls through / hits a NaN (G1/G2). Seeded to spawn.
+  const lastGroundedPosRef = useRef({ ...playerAvatar.position });
   const playerRotationRef = useRef(playerAvatar.rotation);
   // B1b — double-tap dash memory (traversal dodge).
   const dashTapRef = useRef<{ key: string; t: number }>({ key: '', t: 0 });
@@ -1972,7 +1976,7 @@ export default function AvatarSystem3D({
         });
         if (disposed) return;
 
-        mesh.position.set(other.position.x, other.position.y, other.position.z);
+        mesh.position.set(other.position.x, sampleGroundY(other.position.x, other.position.z) ?? other.position.y, other.position.z);
         mesh.rotation.y = other.rotation;
         mesh.userData = { avatarId: other.id, isOtherPlayer: true, name: other.name };
 
@@ -2015,7 +2019,7 @@ export default function AvatarSystem3D({
         });
         if (disposed) return;
 
-        mesh.position.set(npc.position.x, npc.position.y, npc.position.z);
+        mesh.position.set(npc.position.x, sampleGroundY(npc.position.x, npc.position.z) ?? npc.position.y, npc.position.z);
         mesh.rotation.y = npc.rotation;
         mesh.userData = {
           avatarId: npc.id,
@@ -2347,6 +2351,28 @@ export default function AvatarSystem3D({
             if (below !== isSwimming) physicsWorld.setSwim?.('player', below);
           }
         } catch { /* swim toggle is best-effort */ }
+
+        // ── Invisible safety net: out-of-bounds / fall / NaN recovery (G1/G2) ──
+        // The player is normally planted by the terrain heightfield, but a
+        // physics glitch, walking off the ±WORLD_BOUND edge while airborne, or a
+        // NaN reaching the vertical integration can drop them into the void with
+        // no floor. Snap back to the last grounded position (NOT respawnPlayer —
+        // a fall must not heal; that's death's job) and zero the fall speed.
+        // Runs once per frame; the ≤1-frame latency is imperceptible and the
+        // reconciliation buffer absorbs the corrected position on the next move.
+        {
+          const p = playerPositionRef.current;
+          if (outOfBounds(p)) {
+            const safe = lastGroundedPosRef.current;
+            p.x = safe.x; p.y = safe.y; p.z = safe.z;
+            physicsWorld.resetVerticalVelocity?.('player');
+            const pmRecover = playerMeshRef.current as { position?: { set: (x: number, y: number, z: number) => void } } | null;
+            pmRecover?.position?.set(p.x, p.y, p.z);
+          } else if (!isAirborne && !isSwimming) {
+            // Record the last KNOWN-good standing spot (in-bounds + grounded).
+            lastGroundedPosRef.current = { x: p.x, y: p.y, z: p.z };
+          }
+        }
 
         if (isMoving) {
           const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
@@ -2739,6 +2765,10 @@ export default function AvatarSystem3D({
         const interpFactor = Math.min(1, delta * INTERPOLATION_RATE);
         for (const [, data] of otherPlayerMeshes) {
           data.mesh.position.lerp(data.targetPos, interpFactor);
+          // Plant on the terrain surface (they arrive at server Y=0; the ground
+          // is ~40m on the plateau). Skip when the sampler isn't ready yet.
+          const gy = sampleGroundY(data.mesh.position.x, data.mesh.position.z);
+          if (gy !== null) data.mesh.position.y = gy;
           let rd = data.targetRot - data.mesh.rotation.y;
           while (rd > Math.PI) rd -= Math.PI * 2;
           while (rd < -Math.PI) rd += Math.PI * 2;
@@ -2749,6 +2779,9 @@ export default function AvatarSystem3D({
         const npcInterpFactor = Math.min(1, delta * NPC_UPDATE_RATE);
         for (const [, data] of npcMeshes) {
           data.mesh.position.lerp(data.targetPos, npcInterpFactor);
+          // Plant on the terrain surface (same reason as other players above).
+          const gy = sampleGroundY(data.mesh.position.x, data.mesh.position.z);
+          if (gy !== null) data.mesh.position.y = gy;
           let rd = data.targetRot - data.mesh.rotation.y;
           while (rd > Math.PI) rd -= Math.PI * 2;
           while (rd < -Math.PI) rd += Math.PI * 2;

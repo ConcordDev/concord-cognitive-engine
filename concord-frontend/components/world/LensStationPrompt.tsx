@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { resolveStationLens, type StationLens } from '@/lib/station-lens-registry';
+import { worldToSceneAxis } from '@/lib/world-lens/coord-frame';
 
 const APPROACH_RADIUS_M = 6; // show the cue a touch beyond the router's 4m gate
 const POLL_MS = 300;
@@ -57,9 +58,14 @@ export function LensStationPrompt() {
         const r = await fetch(`/api/worlds/${encodeURIComponent(worldId)}/buildings`, { credentials: 'include' });
         if (!r.ok) return;
         const j = await r.json();
+        // Buildings come from the server in the [0, 2000] world frame; the player
+        // position (__concordiaPlayerPos) is in the origin-centred scene frame.
+        // Shift to the scene frame (matching how the 3D buildings render) so the
+        // proximity check compares like-for-like, otherwise the prompt never
+        // fires (server ~800 vs player ~0).
         const list: StationBuilding[] = (j?.buildings || [])
           .filter((b: { building_type?: string }) => b.building_type && resolveStationLens(b.building_type))
-          .map((b: StationBuilding) => ({ id: b.id, building_type: b.building_type, x: b.x, z: b.z, name: b.name }));
+          .map((b: StationBuilding) => ({ id: b.id, building_type: b.building_type, x: worldToSceneAxis(b.x), z: worldToSceneAxis(b.z), name: b.name }));
         if (!cancelled) setStations(list);
       } catch { /* offline / no buildings — prompt simply never shows */ }
     })();

@@ -39,6 +39,9 @@ import OnboardingTutorial from '@/components/world-lens/OnboardingTutorial';
 import dynamic from 'next/dynamic';
 import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
 import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
+import { coerceMaterial } from '@/lib/world-lens/building-silhouette';
+import { deriveTerrainZones } from '@/lib/world-lens/terrain-zones';
+import { worldToScene, sceneToWorldAxis } from '@/lib/world-lens/coord-frame';
 import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/control-schemes';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import FactionOverlay from '@/components/world/FactionOverlay';
@@ -2536,7 +2539,11 @@ export default function WorldLensPage() {
     fetch(`/api/worlds/${activeDistrict.id}/buildings`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d?.buildings) setWorldBuildings(d.buildings);
+        // Boundary transform: server [0,2000] world frame → origin-centred scene
+        // frame, ONCE on the way in, so every downstream consumer (3D render,
+        // terrain zones, the 2D enter-pills, the minimap, the station prompt)
+        // works in one frame and lines up with the player/NPCs/terrain.
+        if (d?.buildings) setWorldBuildings(d.buildings.map(worldToScene));
       })
       .catch(() => {});
   }, [activeDistrict.id]);
@@ -2561,8 +2568,10 @@ export default function WorldLensPage() {
   // Poll for nearby nodes every 5s based on player position
   useEffect(() => {
     const poll = () => {
+      // Player position is in the scene frame; the server stores nodes in the
+      // world frame — convert back on the way out so the proximity query matches.
       const { x, z } = playerPos.current;
-      fetch(`/api/worlds/${activeDistrict.id}/nodes?x=${x}&z=${z}&radius=15`)
+      fetch(`/api/worlds/${activeDistrict.id}/nodes?x=${sceneToWorldAxis(x)}&z=${sceneToWorldAxis(z)}&radius=15`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
           if (d?.nodes) setNearbyNodes(d.nodes);
@@ -2671,6 +2680,55 @@ export default function WorldLensPage() {
     const interval = setInterval(loadNPCs, 10_000);
     return () => clearInterval(interval);
   }, [activeDistrict.id]);
+
+  // Quest waypoint markers (3D). Poll the player's active quests and turn the
+  // ones with a placeable target into QuestMarker3D objectives. This closes a
+  // dead wire: ConcordiaScene mounts QuestMarker3D but was never fed
+  // `questObjectives`, so the `length > 0` guard meant 3D waypoints never
+  // rendered even though active quests existed in the HUD. We resolve a
+  // talk_to / deliver objective's `target` (an npc_id) to that NPC's live
+  // position from rawWorldNPCs and place a marker on them — same scene + same
+  // raw frame the NPC avatar renders in, so the marker sits on the NPC by
+  // construction. Objectives with no fixed coordinate (kill / gather /
+  // reach_location) get no marker (no invented positions).
+  useEffect(() => {
+    if (rawWorldNPCs.length === 0) { setQuestObjectives([]); return; }
+    let cancelled = false;
+    const npcById = new Map(rawWorldNPCs.map((n) => [n.id, n]));
+    const MARKER_TYPE: Record<string, 'talk' | 'delivery'> = {
+      talk_to: 'talk', deliver: 'delivery',
+    };
+    const loadQuestMarkers = async () => {
+      try {
+        const r = await fetch(`/api/worlds/${encodeURIComponent(activeDistrict.id)}/quests/active`, { credentials: 'include' });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (cancelled || !Array.isArray(j?.quests)) return;
+        const markers: import('@/components/world-lens/QuestMarker3D').QuestObjective[] = [];
+        for (const q of j.quests) {
+          const objs = Array.isArray(q?.progress) ? q.progress : [];
+          for (const o of objs) {
+            if (o?.obj_completed_at) continue;            // already done
+            const markerType = MARKER_TYPE[o?.type];
+            if (!markerType) continue;                    // only placeable kinds
+            const npc = npcById.get(o?.target);
+            if (!npc) continue;                            // target not in-world right now
+            markers.push({
+              id: `quest:${q.id}:${o.id}`,
+              label: o.description || q.title || 'Objective',
+              position: { x: npc.position.x, y: npc.position.y, z: npc.position.z ?? 0 },
+              type: markerType,
+              done: false,
+            });
+          }
+        }
+        if (!cancelled) setQuestObjectives(markers);
+      } catch { /* offline — leave markers as-is */ }
+    };
+    loadQuestMarkers();
+    const iv = setInterval(loadQuestMarkers, 15_000);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [activeDistrict.id, rawWorldNPCs]);
 
   // Proximity check: update nearPortalId and nearbyNPC whenever the player moves
   useEffect(() => {
@@ -3550,9 +3608,16 @@ export default function WorldLensPage() {
     // F3 — mirror screen-reader-relevant socket events to window events so the
     // ScreenReaderAnnouncer (and any a11y consumer) can voice them. Naming:
     // 'world:crisis' → 'concordia:world-crisis'.
+    // NOTE: the real server event is `faction:war-declared` (faction-strategy.js
+    // emitFn). The prior `faction-war:declared` here was a phantom name that is
+    // never emitted, so the `concordia:faction-war-declared` window event never
+    // fired and StrategicWarBanner's real-time refresh (+ the screen-reader
+    // announce) silently fell back to its 30s poll. Subscribing to the correct
+    // name still produces winName `concordia:faction-war-declared` (": "→"-"),
+    // so the banner listener is unchanged.
     const SR_BRIDGE_EVENTS = [
       'world:event:scheduled', 'world:plague-declared', 'world:crisis', 'world:crisis-resolved',
-      'faction-war:declared', 'combat:telegraph', 'combat:impact', 'player:low-health',
+      'faction:war-declared', 'combat:telegraph', 'combat:impact', 'player:low-health',
     ];
     const srBridges: Array<[string, (...a: unknown[]) => void]> = SR_BRIDGE_EVENTS.map((kind) => {
       const winName = `concordia:${kind.replace(/:/g, '-')}`;
@@ -3666,6 +3731,14 @@ export default function WorldLensPage() {
     quest: import('@/lib/concordia/quest-system').Quest;
     type: 'new' | 'completed' | 'failed';
   } | null>(null);
+  // 3D quest waypoint markers fed to ConcordiaScene → QuestMarker3D. Only
+  // objectives we can place at a REAL coordinate get a marker (talk_to /
+  // deliver, whose target is an npc_id resolvable to that NPC's live
+  // position). kill / gather / reach_location have no fixed coordinate, so
+  // they're surfaced in the QuestTracker HUD only — no fabricated positions.
+  const [questObjectives, setQuestObjectives] = useState<
+    import('@/components/world-lens/QuestMarker3D').QuestObjective[]
+  >([]);
   const [showDesignHUD, setShowDesignHUD] = useState(false);
   const [upgradePrompt, setUpgradePrompt] = useState<{
     characterLevel: number;
@@ -3870,6 +3943,56 @@ export default function WorldLensPage() {
     };
     window.addEventListener('concordia:combo-trigger', handler);
     return () => window.removeEventListener('concordia:combo-trigger', handler);
+  }, [worldSocket, playerAvatar.id]);
+
+  // SkillWheelMount + CombatFlowHotbar dispatch concordia:spell-cast when the
+  // player flicks the radial skill wheel or presses a spell hotbar slot. The
+  // only listener used to be a no-op stub in event-router.ts, so casting did
+  // nothing — a dead wire. Wire it like combo-trigger: play the committed cast
+  // animation + tier VFX, and when a combat target is engaged emit a
+  // combat:attack carrying the spell's element / skillId / weapon / tier. The
+  // server reads those fields off combat:attack (server.js ~8864-8874) and
+  // propagates them to combat:hit / combat:impact, so the element burst and
+  // per-skill mastery VFX fire on the target instead of defaulting to
+  // 'physical' / fist. No target → the cast still animates + flashes locally.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        spellId?: string;
+        spellName?: string;
+        element?: string | null;
+        tier?: number;
+        costs?: unknown;
+      } | undefined;
+      if (!detail?.spellId) return;
+      const element = String(detail.element || '').toLowerCase() || 'energy';
+      const tier = Math.max(1, Math.min(5, Number(detail.tier) || 2));
+      // Committed cast pose (rides the tiered biomechanics clip path).
+      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+        detail: { entityId: playerAvatar.id, animation: 'attack-heavy', tier },
+      }));
+      // Tier-scaled cast VFX (particles + flash), keyed by the spell name.
+      import('@/lib/combat/combo-vfx').then((m) => {
+        m.dispatchComboVfx({ tier, comboName: detail.spellName });
+      }).catch(() => { /* fallback: no special VFX */ });
+      // Land the spell on the engaged target, if any.
+      const target = combatStateRef.current.target;
+      if (target && worldSocket.isConnected) {
+        worldSocket.emit('combat:attack', {
+          targetId: target.id,
+          baseDamage: (combatStateRef.current.weapon?.damage ?? 12) * (1 + tier * 0.08),
+          range: 12, // ranged magic reaches further than a fist
+          armorPierce: tier - 1,
+          element,
+          skillId: detail.spellId,
+          weapon: 'magic',
+          tier,
+          style: 'spell',
+        });
+      }
+    };
+    window.addEventListener('concordia:spell-cast', handler);
+    return () => window.removeEventListener('concordia:spell-cast', handler);
   }, [worldSocket, playerAvatar.id]);
 
   // PlayerActionMenu (and any other source) dispatches concordia:emote with
@@ -4272,6 +4395,7 @@ export default function WorldLensPage() {
             theme={concordiaTheme}
             renderStyle={concordiaRenderStyle}
             cameraMode={cameraMode}
+            questObjectives={questObjectives}
             getPlayerPose={() => ({
               x: playerAvatar.position.x,
               y: playerAvatar.position.y,
@@ -4333,9 +4457,37 @@ export default function WorldLensPage() {
               {concordiaRenderStyle === 'pbr' ? 'PBR' : 'Toon'}
             </button>
           </div>
-          {/* 3D scene rendering layers */}
-          <TerrainRenderer districts={[]} lodCenter={{ x: 0, z: 0 }} quality="medium" />
-          <BuildingRenderer3D buildings={[]} viewMode="normal" buildingStyle={buildingStyleForWorld(worldIdForTheme)} />
+          {/* 3D scene rendering layers. worldBuildings is already in the
+              origin-centred scene frame (transformed at the fetch boundary via
+              worldToScene), so it's consumed raw here. */}
+          <TerrainRenderer
+            districts={deriveTerrainZones(worldBuildings)}
+            lodCenter={{ x: 0, z: 0 }}
+            quality="medium"
+          />
+          <BuildingRenderer3D
+            buildings={worldBuildings.map((b) => ({
+              id: b.id,
+              name: b.name || b.building_type,
+              position: { x: b.x, y: b.y ?? 0, z: b.z },
+              dimensions: { width: b.width || 10, height: b.height || 8, depth: b.depth || 8 },
+              floors: 1,
+              material: coerceMaterial(b.material),
+              style: 'colonial' as const,
+              // building_type drives the procedural archetype + iconic silhouette.
+              building_type: b.building_type,
+              structure: {
+                columns: { count: 0, spacing: 0, radius: 0 },
+                beams: { count: 0, height: 0 },
+                roofType: 'gable' as const,
+                hasBasement: false,
+                windowRows: 1,
+                windowsPerRow: 2,
+              },
+            }))}
+            viewMode="normal"
+            buildingStyle={buildingStyleForWorld(worldIdForTheme)}
+          />
           {/* Phase A3 — L-system trees + procedural rocks per biome.
               Mounts when worldId resolves (worldIdForTheme). */}
           <TreeLayer worldId={worldIdForTheme} biome="temperate_forest" quality="medium" />

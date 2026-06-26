@@ -599,6 +599,29 @@ export async function seedContent({ db = null } = {}) {
     results.lore = seedLore(lore);
   }
 
+  // Content pillar 2 — authored skill/weapon blueprints (global, cross-world).
+  // A lore weapon/combat-style IS a skill DTU here: the combat route reads
+  // max_damage/range_m/bar_cost off the DTU's data JSON (bounded by
+  // combat-limits.js). Idempotent insert-once on the versioned id.
+  if (db) {
+    const skills = readJSON("skills.json");
+    if (Array.isArray(skills)) {
+      try {
+        const { seedSkillBlueprints } = await import("./skill-seeder.js");
+        results.skillBlueprints = seedSkillBlueprints(db, skills);
+      } catch { /* skill blueprint seeding best-effort */ }
+    }
+    // Authored lore materials → resource_properties (read by propsFor /
+    // craft-resolve). Mythical ores/essences become real craftable inputs.
+    const items = readJSON("items.json");
+    if (Array.isArray(items)) {
+      try {
+        const { seedItemBlueprints } = await import("./resources.js");
+        results.itemBlueprints = seedItemBlueprints(db, items);
+      } catch { /* item blueprint seeding best-effort */ }
+    }
+  }
+
   // World meta for Concordia (the hub) — stored at content/world/_meta.json
   // because Concordia's content lives at the top level.
   const concordiaMeta = readJSON("world/_meta.json");
@@ -647,6 +670,17 @@ export async function seedContent({ db = null } = {}) {
     }
     const subLore = readJSON(`${sub.path}/lore.json`);
     if (subLore) results.lore += seedLore(subLore);
+    // Content pillar 1 — authored lore zones (safe plaza / pvp arena / hazard
+    // ruins) → world_zones, so combatRuleFor consults them. Reuses upsertZone
+    // (idempotent on (world_id, name)). Runs after default zones below too;
+    // named authored zones coexist with the default spawn sanctuary.
+    const subZones = readJSON(`${sub.path}/zones.json`);
+    if (Array.isArray(subZones) && db) {
+      try {
+        const { seedZonesFromContent } = await import("./world-zones.js");
+        results.worldZonesAuthored = (results.worldZonesAuthored || 0) + seedZonesFromContent(db, sub.id, subZones);
+      } catch { /* zone seeding best-effort */ }
+    }
   }
 
   // Phase F1.2 — boot-time asymmetric-traits seeding.
@@ -1173,7 +1207,25 @@ export function getAuthoredDialogue(npcId, questId = null, phase = null) {
     const b = _authoredDialogues.get(`${npcId}:${questId}`);
     if (b) return b;
   }
-  return _authoredDialogues.get(`${npcId}:idle`) ?? null;
+  // Idle fallback. Authored trees are keyed `npcId:questId:phase` (3-part, e.g.
+  // `coalition_enforcer:idle:default`), so a bare 2-part `npcId:idle` lookup
+  // never matched the real keys — the idle path was effectively dead. Try the
+  // canonical 3-part idle key, then the legacy 2-part, then any `npcId:idle:*`.
+  return (
+    _authoredDialogues.get(`${npcId}:idle:default`) ??
+    _authoredDialogues.get(`${npcId}:idle`) ??
+    _firstIdleTree(npcId) ??
+    null
+  );
+}
+
+/** First authored tree whose key starts `${npcId}:idle` (any phase). */
+function _firstIdleTree(npcId) {
+  const prefix = `${npcId}:idle`;
+  for (const [key, val] of _authoredDialogues) {
+    if (key.startsWith(prefix)) return val;
+  }
+  return null;
 }
 
 /** Return all authored NPCs in a given faction. */

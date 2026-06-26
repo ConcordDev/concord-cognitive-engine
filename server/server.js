@@ -7133,6 +7133,15 @@ async function initMetrics() {
       labelNames: ["world"],
       registers: [METRICS.registry]
     });
+    // H3+ — anti-cheat rejection telemetry. Movement guards (speed-hack /
+    // teleport) increment this with their reason; the anti-cheat-monitor also
+    // drops repeat offenders' sockets. Pairs with an alert on a sustained rate.
+    METRICS.counters.antiCheatRejected = new prom.Counter({
+      name: "concord_anti_cheat_rejected_total",
+      help: "Movement/combat packets rejected by an anti-cheat guard, by reason",
+      labelNames: ["reason"],
+      registers: [METRICS.registry]
+    });
 
     // E2 — economy-anomaly telemetry. The economy-anomaly-cycle heartbeat rolls up
     // world-health.js#detectPathologies (negative_balance / dupe_citation) + the
@@ -8183,7 +8192,12 @@ async function tryInitWebSockets(server) {
     // Dev keeps polling for local dev tools and proxy interop.
     transports: NODE_ENV === "production" ? ["websocket"] : ["websocket", "polling"],
     pingTimeout: 60000,
-    pingInterval: 25000
+    pingInterval: 25000,
+    // G-5 — tighten the inbound frame ceiling (default 1MB). Game packets are
+    // <1KB; a 1MB deeply-nested JSON payload can still burn parse CPU on the
+    // single event-loop thread (JSON-bomb DoS). 64KB is generous for any real
+    // client message and rejects the bomb at the transport layer before parse.
+    maxHttpBufferSize: Number(process.env.CONCORD_WS_MAX_BUFFER) || 64_000
   });
 
   // Phase 3a — multi-instance fan-out via the Redis adapter. Opt-in: only wired
@@ -8564,6 +8578,19 @@ async function tryInitWebSockets(server) {
               observedSpeed: pos.observedSpeed,
               maxSpeed: pos.maxSpeed,
             });
+            // H3+ — treat a real movement rejection (speed-hack / teleport) as
+            // an anomaly data point: count it, and drop a sustained offender's
+            // socket so a live exploitation tool can't keep hammering. Telemetry
+            // + auto-drop are both best-effort and never block the move path.
+            try {
+              METRICS?.counters?.antiCheatRejected?.inc({ reason: String(pos.reason || "unknown") });
+              const verdict = _noteAntiCheatRejection(userId);
+              if (verdict.shouldDisconnect) {
+                logger.warn?.("anti-cheat", "user_dropped", { userId, reason: pos.reason, hits: verdict.threshold });
+                socket.emit("anti-cheat:dropped", { reason: "too_many_violations" });
+                socket.disconnect(true);
+              }
+            } catch { /* telemetry/drop best-effort */ }
           }
           return;
         }
@@ -8607,6 +8634,13 @@ async function tryInitWebSockets(server) {
       if (!userId) return;
       if (!data || typeof data !== "object") return;
       const now = Date.now();
+      // G10 (anti animation-cancel): this server-side cooldown is the
+      // authoritative attack-rate gate. It uses the SERVER clock + per-class
+      // cooldowns, so a memory-injected client animation-cancel cannot fire
+      // attacks faster than the cooldown — the "infinite attack speed" exploit
+      // is closed here regardless of client-side animation state. (A separate
+      // stun-prevents-action FSM is a fairness-polish follow-up, not a rate
+      // exploit — the rate is already bounded.)
       if (!_checkAttackCooldown(_attackCd, now, data.style || data.actionOverride).allowed) return;
 
       // Flow Combat: derive context modifiers up-front so applyAttack can
@@ -8711,13 +8745,23 @@ async function tryInitWebSockets(server) {
         } catch { /* refusal-field unavailable — continue normally */ }
       }
 
+      // G3 — server-authoritative damage ceiling on the socket PvP path. The
+      // HTTP NPC route validates computed damage via _validateDamageCap, but
+      // this path fed client `data.baseDamage` straight into applyAttack with
+      // only armor mitigation — a modified client could one-shot any player.
+      // Clamp the input + bound the resolved damage to the SAME shared cap.
+      if (!globalThis._concordCombatLimits) {
+        globalThis._concordCombatLimits = import("./lib/combat-limits.js");
+      }
+      const { clampBaseDamage, resolvedDamageCap } = await globalThis._concordCombatLimits;
       const result = cityPresence.applyAttack({
         attackerId: userId,
         targetId: _ffTargetId,
-        baseDamage: Number(data.baseDamage) || 10,
+        baseDamage: clampBaseDamage(data.baseDamage),
         range: Number(data.range) || 3,
         armorPierce: Number(data.armorPierce) || 0,
         contextModifiers: _contextModifiers,
+        maxDamage: resolvedDamageCap(),
       });
 
       // Ack back to attacker with full detail (damage, crit, kill)
@@ -9444,23 +9488,25 @@ async function tryInitWebSockets(server) {
       } catch (_e) { /* ignore */ }
     };
 
-    socket.on("disconnect", () => {
-      const userId = socket.data?.userId;
+    // F5 — unified per-socket teardown. cityPresence.removeUser already sweeps
+    // presence/chunks; this also sweeps the registrations that had NO disconnect
+    // path (spectator rooms — accumulated with no TTL backstop) and the brawl
+    // matchmaking queue/invites (TTL-only). Fire-and-forget dynamic imports
+    // mirror the rest of this file; failures never block disconnect.
+    const _sweepSocketState = (userId) => {
       if (userId) {
         try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
+        try { _clearAntiCheatUser(userId); } catch (_e) { /* ignore */ }
+        import("./lib/brawl.js").then((m) => m.cleanupForUser?.(userId)).catch(() => {});
       }
+      import("./lib/spectator-mode.js").then((m) => m.leaveSpectator?.(socket)).catch(() => {});
       broadcastDeparture();
       REALTIME.clients.delete(clientId);
-    });
+    };
 
-    socket.on("error", () => {
-      const userId = socket.data?.userId;
-      if (userId) {
-        try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
-      }
-      broadcastDeparture();
-      REALTIME.clients.delete(clientId);
-    });
+    socket.on("disconnect", () => { _sweepSocketState(socket.data?.userId); });
+
+    socket.on("error", () => { _sweepSocketState(socket.data?.userId); });
   });
 
   // MEGA SPEC: Initialize chat WebSocket handlers for streaming
@@ -16007,6 +16053,8 @@ async function llmChat(messagesOrCtx, messagesOrOptions = {}, maybeOptions = {})
 // Voice for conscious lives in the Modelfile; BRAIN_IDENTITY.conscious in
 // the registry is intentionally light (functional directives only).
 import { BRAIN_IDENTITY, composeSystemPrompt, TASK_PROMPTS } from "./lib/prompt-registry.js";
+import { makeEscalationBudget } from "./lib/affect-salience.js";
+import { noteRejection as _noteAntiCheatRejection, clearUser as _clearAntiCheatUser } from "./lib/anti-cheat-monitor.js";
 import { runChatComputePreflight } from "./lib/chat-compute-preflight.js";
 import { hydrateSession, persistChatTurn } from "./lib/chat-session-store.js";
 
@@ -33252,7 +33300,7 @@ app.get("/api/simulate/:simId", (req, res) => {
 });
 
 // ===== VULNERABILITY API =====
-app.post("/api/vulnerability/detect", (req, res) => {
+app.post("/api/vulnerability/detect", requireOwner, (req, res) => {
   const { message } = req.body || {};
   if (!message) return res.status(400).json({ ok: false, error: "message required" });
   const vulnerability = detectVulnerability(message);
@@ -38482,7 +38530,7 @@ app.get("/api/system/circuit-breakers", asyncHandler(async (req, res) => {
   res.json({ ok: true, breakers: _breakers.getAllStatus() });
 }));
 
-app.post("/api/system/circuit-breakers/reset", asyncHandler(async (req, res) => {
+app.post("/api/system/circuit-breakers/reset", requireOwner, asyncHandler(async (req, res) => {
   const name = req.body?.name || "";
   if (name && _breakers[name]) {
     _breakers[name].reset();
@@ -45501,12 +45549,26 @@ function needsWebSearch(msg) {
 
 function initChatSocketHandlers(io) {
   if (!io) return;
+  // G9 — per-user chat rate limit. chat:message routes to the conscious brain
+  // (GPU); an unthrottled spammer floods the LLM queue and starves real players
+  // (and the physics/movement loops on the same event thread). Token bucket:
+  // a burst up to CONCORD_CHAT_PER_MIN then ~that-many/min sustained, keyed by
+  // the authenticated user. Over-budget messages are NAKed BEFORE any brain
+  // work. CONCORD_CHAT_RATELIMIT=0 disables.
+  const _chatBudget = makeEscalationBudget({ perWorldPerMin: Number(process.env.CONCORD_CHAT_PER_MIN) || 60 });
   io.on("connection", (socket) => {
     socket.on("chat:message", async (data, ack) => {
       try {
         const { sessionId, prompt, lens } = data || {};
         if (!sessionId || !prompt) {
           ack?.({ ok: false, error: "sessionId and prompt required" });
+          return;
+        }
+        // Rate gate — keyed by authenticated user (falls back to the socket id).
+        const _rlKey = socket.data?.userId || socket.handshake?.auth?.userId || socket.id;
+        if (process.env.CONCORD_CHAT_RATELIMIT !== "0" && !_chatBudget.tryConsume(_rlKey)) {
+          ack?.({ ok: false, error: "rate_limited", retryAfterMs: 1000 });
+          socket.emit("chat:status", { sessionId, status: "rate_limited", lens });
           return;
         }
 
@@ -52836,7 +52898,7 @@ app.post("/api/physics/step", (req, res) => {
   }
 });
 
-app.post("/api/physics/reset", (req, res) => {
+app.post("/api/physics/reset", requireOwner, (req, res) => {
   try {
     const ps = ensurePhysicsState();
     ps.bodies.clear();
@@ -61129,7 +61191,7 @@ app.get("/api/circuits", (_req, res) => {
   res.json({ ok: true, breakers: states });
 });
 
-app.post("/api/circuits/:name/reset", (req, res) => {
+app.post("/api/circuits/:name/reset", requireOwner, (req, res) => {
   const breaker = circuitBreakers[req.params.name];
   if (!breaker) return res.status(404).json({ ok: false, error: "Breaker not found" });
   breaker.state = "closed";

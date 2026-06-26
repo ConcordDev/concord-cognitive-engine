@@ -572,8 +572,14 @@ export default function createWorldsRouter({ requireAuth, db }) {
         return res.status(403).json({ error: "Killer priority window active" });
       }
 
-      db.prepare("UPDATE loot_nodes SET claimed_by = ?, claimed_at = ? WHERE id = ?")
-        .run(req.user.id, now, node.id);
+      // G5 — TOCTOU-safe claim: only the request that flips claimed_by from NULL
+      // wins. Spamming the claim packet (double-click / script) previously read
+      // claimed_by=NULL N times before any write landed → N× the loot. The
+      // conditional WHERE + changes check makes exactly one claimant succeed.
+      const claim = db.prepare(
+        "UPDATE loot_nodes SET claimed_by = ?, claimed_at = ? WHERE id = ? AND claimed_by IS NULL"
+      ).run(req.user.id, now, node.id);
+      if (claim.changes !== 1) return res.status(409).json({ error: "Already claimed" });
 
       const contents = JSON.parse(node.contents || "[]");
       res.json({ ok: true, contents });
@@ -1329,6 +1335,44 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* weaponise consumption best-effort — never blocks dialogue */ }
 
+      // Hand-authored dialogue is canon. The seeder loads branching trees from
+      // content/dialogues/ into _authoredDialogues at boot, but THIS route never
+      // consulted them — it ran deterministic-fallback → LLM and the authored
+      // voice (23 files, the named characters) never reached players. A dead
+      // content wire. Surface the authored greeting (+ opening subtext) here so
+      // it wins over both the LLM and the deterministic fallback. We keep the
+      // canonical action `options` (trade/quest/etc.) — the tree's branch nodes
+      // are a separate conversation surface, not the action-key contract — so
+      // this lifts the authored opener without breaking the option keys.
+      let authoredVoice = false;
+      let dialogueTree;
+      try {
+        const { getAuthoredDialogue } = await import("../lib/content-seeder.js");
+        const authored = getAuthoredDialogue(npcId);
+        if (authored?.greeting) {
+          greeting = authored.greeting;
+          if (authored.subtext) subtext = authored.subtext;
+          authoredVoice = true;
+          // Ship the whole branching tree so the client can walk the authored
+          // conversation (npcText + playerOptions per node) locally. Trees are
+          // immutable per release, so no per-node round-trip is needed. We only
+          // forward the fields the walker uses — never any author-only field
+          // (secrets/branch conditions live outside `nodes`/`greeting`).
+          if (Array.isArray(authored.nodes) && authored.nodes.length) {
+            dialogueTree = {
+              greeting: authored.greeting,
+              nodes: authored.nodes.map((n) => ({
+                id: n.id,
+                npcText: n.npcText,
+                playerOptions: Array.isArray(n.playerOptions)
+                  ? n.playerOptions.map((o) => ({ text: o.text, leadsTo: o.leadsTo }))
+                  : [],
+              })),
+            };
+          }
+        }
+      } catch { /* authored lookup optional — keep computed greeting */ }
+
       // 10. Return structured response (isAgent computed once at fetch — C1 disclosure).
       res.json({
         ok: true, npcId, npcName,
@@ -1336,6 +1380,8 @@ export default function createWorldsRouter({ requireAuth, db }) {
         mood,
         options: parsedOptions,
         subtext: subtext || undefined,
+        authoredVoice: authoredVoice || undefined,
+        dialogueTree,
         reputation,
         opinion: interactResult.opinion,
         isAgent: isAgentNpc || undefined,

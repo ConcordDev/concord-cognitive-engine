@@ -9,6 +9,7 @@
 
 import * as THREE from 'three';
 import { createCreatureMesh, type CreatureTopology, type CreatureMeshResult } from './creature-mesh-builder';
+import { sampleGroundY } from './coord-frame';
 
 interface CreatureRow {
   id: string;
@@ -131,6 +132,10 @@ export function createCreatureRenderer(
         const dx = entry.target.x - pos.x, dz = entry.target.z - pos.z;
         if (Math.abs(dx) + Math.abs(dz) > 0.01) entry.mesh.group.rotation.y = Math.atan2(dx, dz);
       }
+      // Plant on the terrain surface — creatures arrive at server Y=0 but the
+      // ground is ~40m on the plateau, so without this they'd be buried.
+      const gy = sampleGroundY(pos.x, pos.z);
+      if (gy !== null) pos.y = gy;
       entry.mesh.tick(delta, dist * 4);
     }
   }

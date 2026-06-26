@@ -361,6 +361,7 @@ export default function ConcordiaScene({
       } catch { /* ragdoll bridge optional */ }
 
       // Listen for terrain-ready to register heightfield collider
+      let currentTerrainGroup: unknown = null;
       function onTerrainPhysics(e: Event) {
         const { hmData, hmWidth, hmHeight, terrainGroup, getElevationAt } = (e as CustomEvent).detail ?? {};
         if (hmData) {
@@ -369,6 +370,22 @@ export default function ConcordiaScene({
             y: 80, // maxElevation
             z: 2000,
           });
+        }
+        // Add the terrain MESH (with its district zone-splat materials) to the
+        // visible 'terrain' layer. TerrainRenderer builds it and dispatches it
+        // here, but previously it was only consumed for physics/deformation —
+        // never displayed (same dead-bridge the buildings layer had). The
+        // 'terrain' layer is otherwise empty (it's the raycast target), so no
+        // doubling. Replace on re-dispatch (e.g. when district zones change).
+        if (terrainGroup) {
+          const layer = layersRef.current['terrain'] as
+            | { add: (c: unknown) => void; remove: (c: unknown) => void }
+            | undefined;
+          if (layer) {
+            if (currentTerrainGroup) { try { layer.remove(currentTerrainGroup); } catch { /* ignore */ } }
+            layer.add(terrainGroup);
+            currentTerrainGroup = terrainGroup;
+          }
         }
         // WS-A3 — once terrain + its collider exist, attach the deformation
         // orchestrator: replay GET /terrain + live concordia:terrain-deformed →
@@ -439,6 +456,66 @@ export default function ConcordiaScene({
       }
       // @resource-leak-ok: terrain-ready is a one-shot scene-init signal; ConcordiaScene unmounts the whole canvas, not the listener individually
       window.addEventListener('concordia:terrain-ready', onTerrainPhysics);
+
+      // Lens-as-Station — consume the React BuildingRenderer3D layer's output.
+      // It builds a fully-positioned group of all world buildings (with iconic
+      // silhouettes) and dispatches concordia:buildings-ready; without this the
+      // group was dispatched into the void (only a no-op event-router stub
+      // listened), so 3D buildings never reached the scene. Add it to the
+      // 'buildings' layer (otherwise empty — addBuilding has no caller — so no
+      // doubling); replace on re-dispatch when the building set changes.
+      let currentBuildingsGroup: unknown = null;
+      function onBuildingsReady(e: Event) {
+        const g = (e as CustomEvent).detail?.buildingGroup as unknown;
+        const layer = layersRef.current['buildings'] as
+          | { add: (c: unknown) => void; remove: (c: unknown) => void }
+          | undefined;
+        if (!g || !layer) return;
+        if (currentBuildingsGroup) { try { layer.remove(currentBuildingsGroup); } catch { /* ignore */ } }
+        layer.add(g);
+        currentBuildingsGroup = g;
+      }
+      // @resource-leak-ok: same one-shot scene lifecycle as terrain-ready above.
+      window.addEventListener('concordia:buildings-ready', onBuildingsReady);
+
+      // Consume the AvatarSystem3D layer's output — the player + NPC meshes.
+      // AvatarSystem3D builds the avatar group and dispatches
+      // concordia:avatars-ready, but the only listener was a no-op stub, so the
+      // player character + NPC bodies never reached the scene (they showed only
+      // as 2D HTML name-tags). Add the group to the 'avatars' scene layer and
+      // route its per-frame update through the layer (the LAYER_NAMES fan-out in
+      // the render loop calls layers.avatars.userData.update each frame), so the
+      // avatars both RENDER and ANIMATE/move. Replace on re-dispatch.
+      let currentAvatarGroup: unknown = null;
+      function onAvatarsReady(e: Event) {
+        const ag = (e as CustomEvent).detail?.avatarGroup as
+          | { userData?: { update?: (d: number, en: number) => void } }
+          | null;
+        const layer = layersRef.current['avatars'] as
+          | { add: (c: unknown) => void; remove: (c: unknown) => void; userData: { update?: (d: number, en: number) => void } }
+          | undefined;
+        if (!ag || !layer) return;
+        if (currentAvatarGroup) { try { layer.remove(currentAvatarGroup); } catch { /* ignore */ } }
+        layer.add(ag);
+        currentAvatarGroup = ag;
+        layer.userData.update = (d: number, en: number) => { try { ag.userData?.update?.(d, en); } catch { /* per-frame, never throw */ } };
+      }
+      // @resource-leak-ok: same one-shot scene lifecycle as terrain-ready above.
+      window.addEventListener('concordia:avatars-ready', onAvatarsReady);
+
+      // Answer scene-request-ready: TreeLayer / RockLayer / QuestMarker3D (and
+      // other self-adding overlays) ping this when they mount AFTER our one-shot
+      // scene-ready already fired, asking for the scene. With no responder they
+      // never received it and silently never rendered (a mount-order race). Re-
+      // emit scene-ready WITH {scene, camera} so a late layer can self-add.
+      function onSceneRequest() {
+        const s = sceneRef.current, c = cameraRef.current;
+        if (s && c) {
+          window.dispatchEvent(new CustomEvent('concordia:scene-ready', { detail: { scene: s, camera: c } }));
+        }
+      }
+      // @resource-leak-ok: same one-shot scene lifecycle as terrain-ready above.
+      window.addEventListener('concordia:scene-request-ready', onSceneRequest);
 
       // Theme 6 deferred follow-up (game-feel pass): water plane + swim
       // registration. Adds a translucent blue plane at y=2 that covers

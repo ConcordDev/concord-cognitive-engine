@@ -96,6 +96,7 @@ describe("Phase AC — buy orders", () => {
 
   it("fillBuyOrder full flips status to 'filled'", () => {
     fund(db, "buyer", 500);
+    fund(db, "seller", 0);
     const r = placeBuyOrder(db, "buyer", {
       worldId: "tunya", itemDescriptor: "rare_herb",
       unitPriceCc: 5, quantity: 100,
@@ -107,6 +108,7 @@ describe("Phase AC — buy orders", () => {
 
   it("fillBuyOrder clamps to remaining quantity", () => {
     fund(db, "buyer", 500);
+    fund(db, "seller", 0);
     const r = placeBuyOrder(db, "buyer", {
       worldId: "tunya", itemDescriptor: "rare_herb",
       unitPriceCc: 5, quantity: 100,
@@ -119,6 +121,7 @@ describe("Phase AC — buy orders", () => {
 
   it("cancelBuyOrder refunds the unfilled portion only", () => {
     fund(db, "buyer", 1000);
+    fund(db, "seller", 0);
     const r = placeBuyOrder(db, "buyer", {
       worldId: "tunya", itemDescriptor: "rare_herb",
       unitPriceCc: 5, quantity: 100,

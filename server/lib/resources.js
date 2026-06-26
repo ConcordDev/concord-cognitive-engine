@@ -118,4 +118,57 @@ export function seedResourceProperties(db) {
   }
 }
 
+/** Validate one authored material blueprint from `content/items.json`. Required:
+ *  item_id. Numeric props, if present, must be finite. */
+export function validateItemBlueprint(it) {
+  if (!it || typeof it !== "object" || Array.isArray(it)) return { ok: false, reason: "not_object" };
+  if (typeof it.item_id !== "string" || !it.item_id) return { ok: false, reason: "missing_item_id" };
+  for (const k of ["potency", "stability", "volume", "weight", "rarity_tier"]) {
+    if (it[k] !== undefined && !Number.isFinite(Number(it[k]))) return { ok: false, reason: `invalid_${k}` };
+  }
+  return { ok: true };
+}
+
+/**
+ * Content pillar 2 (materials) — seed authored lore materials from a parsed
+ * `content/items.json` array into `resource_properties`, the same table
+ * `seedResourceProperties` populates and `propsFor` reads (override→DB→catalog→
+ * default). So an authored mythical ore becomes a real craftable material the
+ * craft-resolve system reads. Each entry merges over DEFAULT_PROPS; idempotent
+ * upsert on item_id. Returns the count seeded.
+ */
+export function seedItemBlueprints(db, items) {
+  if (!db || !Array.isArray(items)) return 0;
+  let stmt;
+  try {
+    stmt = db.prepare(`
+      INSERT INTO resource_properties (item_id, potency, affinity, stability, volume, weight, rarity_tier, source_type, magical_sub)
+      VALUES (@item_id, @potency, @affinity, @stability, @volume, @weight, @rarity_tier, @source_type, @magical_sub)
+      ON CONFLICT(item_id) DO UPDATE SET
+        potency=excluded.potency, affinity=excluded.affinity, stability=excluded.stability,
+        volume=excluded.volume, weight=excluded.weight, rarity_tier=excluded.rarity_tier,
+        source_type=excluded.source_type, magical_sub=excluded.magical_sub, updated_at=unixepoch()
+    `);
+  } catch {
+    return 0; // resource_properties absent on a minimal build — degrade to no-op
+  }
+  let n = 0;
+  const tx = db.transaction(() => {
+    for (const it of items) {
+      if (!validateItemBlueprint(it).ok) continue;
+      const m = { ...DEFAULT_PROPS, ...it };
+      stmt.run({
+        item_id: it.item_id,
+        potency: Number(m.potency), affinity: String(m.affinity),
+        stability: Number(m.stability), volume: Number(m.volume), weight: Number(m.weight),
+        rarity_tier: Number(m.rarity_tier), source_type: String(m.source_type),
+        magical_sub: m.magical_sub != null ? String(m.magical_sub) : null,
+      });
+      n++;
+    }
+  });
+  tx();
+  return n;
+}
+
 export const RESOURCE_CONSTANTS = Object.freeze({ AFFINITIES, DEFAULT_PROPS });

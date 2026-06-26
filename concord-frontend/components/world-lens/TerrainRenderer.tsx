@@ -246,6 +246,21 @@ export default function TerrainRenderer({
     return elevation * 80 + getTerrainDeltaAt(worldX, worldZ); // maxElevation
   }, []);
 
+  // Publish the ground sampler so other scene layers (NPCs, other players,
+  // creatures) can plant themselves on the SAME surface the player walks (this
+  // reads the actual heightmap the mesh + physics heightfield were built from,
+  // incl. live deformation — so it's exact, not an approximation). Without this
+  // those entities sit at their server Y (0) while the city plateau renders at
+  // ~40m, i.e. buried under the world. Args are scene-frame coords.
+  useEffect(() => {
+    const w = window as unknown as { __concordiaSampleGroundY?: (x: number, z: number) => number | null };
+    w.__concordiaSampleGroundY = (x: number, z: number) => {
+      if (!heightmapDataRef.current) return null; // terrain not built yet
+      return getElevationAt(x, z);
+    };
+    return () => { delete w.__concordiaSampleGroundY; };
+  }, [getElevationAt]);
+
   // ── Build terrain geometry ────────────────────────────────────
 
   useEffect(() => {

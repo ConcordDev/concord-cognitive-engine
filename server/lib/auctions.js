@@ -382,19 +382,44 @@ export function fillBuyOrder(db, buyOrderId, sellerId, quantity) {
     const newStatus = newFilled >= order.quantity_wanted ? "filled" : "partial";
 
     const fillId = `bof_${crypto.randomBytes(8).toString("hex")}`;
-    db.prepare(`
-      INSERT INTO auction_buy_fills
-        (id, buy_order_id, seller_user_id, quantity, unit_price_cc)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(fillId, buyOrderId, sellerId, fillQty, order.unit_price_cc);
-
-    db.prepare(`
-      UPDATE auction_buy_orders
-      SET quantity_filled = ?, status = ?
-      WHERE id = ?
-    `).run(newFilled, newStatus, buyOrderId);
-
-    _walletCredit(db, sellerId, payment, `buy_order_fill:${buyOrderId}`);
+    // G8 — atomic fill. The order-state advance, the fill row, and the seller
+    // credit must commit as one unit; previously they were three separate
+    // statements, so a throw/crash after the UPDATE left the order "filled" but
+    // the seller unpaid (lost money). The conditional `quantity_filled = ?`
+    // guard also makes the advance single-winner against a concurrent fill.
+    const tx = db.transaction(() => {
+      const upd = db.prepare(`
+        UPDATE auction_buy_orders
+        SET quantity_filled = ?, status = ?
+        WHERE id = ? AND quantity_filled = ?
+      `).run(newFilled, newStatus, buyOrderId, order.quantity_filled);
+      if (upd.changes !== 1) throw new Error("concurrent_fill");
+      db.prepare(`
+        INSERT INTO auction_buy_fills
+          (id, buy_order_id, seller_user_id, quantity, unit_price_cc)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(fillId, buyOrderId, sellerId, fillQty, order.unit_price_cc);
+      // CHECKED credit — the shared _walletCredit swallows errors, so a seller
+      // with no wallet row would leave the order "filled" but unpaid. Do the
+      // authoritative balance write here and roll the whole fill back if it
+      // doesn't land; the ledger note stays best-effort.
+      const credited = db.prepare(
+        `UPDATE users SET concordia_credits = concordia_credits + ? WHERE id = ?`
+      ).run(payment, sellerId);
+      if (credited.changes !== 1) throw new Error("seller_wallet_missing");
+      try {
+        db.prepare(
+          `INSERT INTO reward_ledger (id, user_id, kind, amount_cc, ts, ref_id)
+           VALUES (?, ?, 'auction_credit', ?, unixepoch(), ?)`
+        ).run(`led_${crypto.randomBytes(6).toString("hex")}`, sellerId, payment, `buy_order_fill:${buyOrderId}`);
+      } catch { /* ledger note optional */ }
+    });
+    try {
+      tx();
+    } catch (e) {
+      if (e?.message === "concurrent_fill") return { ok: false, error: "concurrent_fill" };
+      throw e;
+    }
 
     logger.info?.("auctions", "buy_order_filled", {
       buyOrderId, sellerId, fillQty, payment, newStatus,
