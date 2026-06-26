@@ -10,6 +10,15 @@ interface DialogueOption {
   key: string;
 }
 
+// Hand-authored branching dialogue tree (content/dialogues/*.json), shipped on
+// the /dialogue response when one exists for this NPC. The walk is purely
+// client-side — trees are immutable per release.
+interface AuthoredPlayerOption { text: string; leadsTo: string }
+interface AuthoredNode { id: string; npcText: string; playerOptions?: AuthoredPlayerOption[] }
+interface AuthoredTree { greeting?: string; nodes?: AuthoredNode[] }
+
+const WALK_PREFIX = '__walk:';
+
 interface QuestOffered {
   id: string;
   title: string;
@@ -290,6 +299,9 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
   const [options, setOptions] = useState<DialogueOption[]>([]);
   const [subtext, setSubtext] = useState<string | undefined>();
   const [response, setResponse] = useState('');
+  // Authored branching dialogue (when the NPC has a hand-authored tree).
+  const [tree, setTree] = useState<AuthoredTree | null>(null);
+  const [nodeId, setNodeId] = useState<string | null>(null);
   const [questOffered, setQuestOffered] = useState<QuestOffered | null>(null);
   const [acceptingQuest, setAcceptingQuest] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -424,9 +436,11 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
     });
   }, [cancelSpeech]);
 
-  // Speak greeting when it arrives
+  // Speak greeting when it arrives. In authored-tree mode the greeting is just
+  // scene-setting context (shown italic); the spoken line is the node's npcText
+  // (handled by the node-walk effect below), so we don't speak it here.
   useEffect(() => {
-    if (greeting) speak(greeting);
+    if (greeting && !nodeId) speak(greeting);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [greeting]);
 
@@ -505,6 +519,17 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
         setOptions(data.options || [{ label: 'Leave', key: 'goodbye' }]);
         setSubtext(data.subtext);
         setIsAgent(!!data.isAgent); // Wave 7 / C1 — hard AI disclosure
+        // Hand-authored branching tree, if present — start the walk at its
+        // first node (the opening exchange). The flat greeting/options above
+        // remain the fallback for NPCs with no authored tree.
+        const t: AuthoredTree | undefined = data.dialogueTree;
+        if (t?.nodes?.length) {
+          setTree(t);
+          setNodeId(t.nodes[0].id);
+        } else {
+          setTree(null);
+          setNodeId(null);
+        }
         setPhase('greeting');
       })
       .catch(() => {
@@ -519,11 +544,45 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
     };
   }, [npc.id, npc.name, worldId]);
 
+  // ── Authored tree walk ───────────────────────────────────────────────────────
+  // The current node is whatever nodeId points at; a node with no playerOptions
+  // is terminal (farewell line → the player can only Leave).
+  const currentNode = tree?.nodes?.find((n) => n.id === nodeId) ?? null;
+
+  // Speak the node's line as the walk advances (greeting is spoken separately).
+  useEffect(() => {
+    if (currentNode?.npcText) speak(currentNode.npcText);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodeId]);
+
+  const walkTo = useCallback((leadsTo: string) => {
+    const next = tree?.nodes?.find((n) => n.id === leadsTo);
+    if (!next) { onClose(); return; }   // unresolved branch → end the exchange
+    setNodeId(next.id);
+  }, [tree, onClose]);
+
+  // What the body renders: in authored-tree mode the NPC speech is the current
+  // node's line and the options are its branches; otherwise the flat LLM/
+  // deterministic path (greeting + canonical action options).
+  const treeMode = !!currentNode;
+  const displayedSpeech = treeMode ? (currentNode?.npcText ?? '') : (response || greeting);
+  const displayedSubtext = treeMode ? tree?.greeting : subtext;
+  const displayedOptions: DialogueOption[] = treeMode
+    ? (currentNode?.playerOptions?.length
+        ? currentNode.playerOptions.map((o) => ({ label: o.text, key: `${WALK_PREFIX}${o.leadsTo}` }))
+        : [{ label: 'Leave', key: 'goodbye' }])
+    : options;
+
   // ── Player selects option ────────────────────────────────────────────────────
   const choose = useCallback(
     async (option: DialogueOption) => {
       if (option.key === 'goodbye') {
         onClose();
+        return;
+      }
+      // Authored branching walk — navigate to the linked node, no server call.
+      if (option.key.startsWith(WALK_PREFIX)) {
+        walkTo(option.key.slice(WALK_PREFIX.length));
         return;
       }
 
@@ -546,7 +605,7 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
 
       setPhase('greeting'); // return to options after response
     },
-    [npc.id, npc.name, worldId, onClose]
+    [npc.id, npc.name, worldId, onClose, walkTo]
   );
 
   // ── Accept quest ─────────────────────────────────────────────────────────────
@@ -703,10 +762,10 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
             <>
               {/* NPC speech */}
               <div className="text-sm text-white/90 leading-relaxed mb-1">
-                {response || greeting}
+                {displayedSpeech}
               </div>
-              {subtext && !response && (
-                <div className="text-[11px] text-white/30 italic mt-1">{subtext}</div>
+              {displayedSubtext && !response && (
+                <div className="text-[11px] text-white/30 italic mt-1">{displayedSubtext}</div>
               )}
 
               {/* Quest card */}
@@ -744,9 +803,9 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
         </div>
 
         {/* Options */}
-        {phase === 'greeting' && options.length > 0 && (
+        {phase === 'greeting' && displayedOptions.length > 0 && (
           <div className="border-t border-white/10 px-4 pb-4 pt-3 flex flex-col gap-1.5">
-            {options.map((opt) => (
+            {displayedOptions.map((opt) => (
               <button
                 key={opt.key}
                 onClick={() => choose(opt)}

@@ -1339,6 +1339,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // are a separate conversation surface, not the action-key contract — so
       // this lifts the authored opener without breaking the option keys.
       let authoredVoice = false;
+      let dialogueTree;
       try {
         const { getAuthoredDialogue } = await import("../lib/content-seeder.js");
         const authored = getAuthoredDialogue(npcId);
@@ -1346,6 +1347,23 @@ export default function createWorldsRouter({ requireAuth, db }) {
           greeting = authored.greeting;
           if (authored.subtext) subtext = authored.subtext;
           authoredVoice = true;
+          // Ship the whole branching tree so the client can walk the authored
+          // conversation (npcText + playerOptions per node) locally. Trees are
+          // immutable per release, so no per-node round-trip is needed. We only
+          // forward the fields the walker uses — never any author-only field
+          // (secrets/branch conditions live outside `nodes`/`greeting`).
+          if (Array.isArray(authored.nodes) && authored.nodes.length) {
+            dialogueTree = {
+              greeting: authored.greeting,
+              nodes: authored.nodes.map((n) => ({
+                id: n.id,
+                npcText: n.npcText,
+                playerOptions: Array.isArray(n.playerOptions)
+                  ? n.playerOptions.map((o) => ({ text: o.text, leadsTo: o.leadsTo }))
+                  : [],
+              })),
+            };
+          }
         }
       } catch { /* authored lookup optional — keep computed greeting */ }
 
@@ -1357,6 +1375,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         options: parsedOptions,
         subtext: subtext || undefined,
         authoredVoice: authoredVoice || undefined,
+        dialogueTree,
         reputation,
         opinion: interactResult.opinion,
         isAgent: isAgentNpc || undefined,
