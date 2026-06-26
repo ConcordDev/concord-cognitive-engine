@@ -46,5 +46,34 @@ export function sampleGroundY(sceneX: number, sceneZ: number): number | null {
   try { return fn(sceneX, sceneZ); } catch { return null; }
 }
 
-const coordFrame = { WORLD_TO_SCENE_OFFSET, worldToSceneAxis, sceneToWorldAxis, worldToScene, sceneToWorld, sampleGroundY };
+// ── Invisible safety net: out-of-bounds / fall detection ─────────────────────
+
+/** Walkable horizontal bound (scene frame): terrain half-extent minus a margin
+ *  so the snapback fires just before the player reaches the visible edge. */
+export const WORLD_BOUND = WORLD_TO_SCENE_OFFSET - 20; // 980
+/** Kill-volume floor — below the lowest terrain (sea level is y≈0..2). */
+export const FALL_FLOOR_Y = -25;
+
+/**
+ * True when a scene-frame position has left the world and must be snapped back:
+ * non-finite (NaN/Infinity), below the fall floor, or beyond the walkable
+ * bounds. PURE + unit-testable — no THREE, no DOM. The render loop calls this
+ * each frame against the player position; on true it restores the last grounded
+ * position and zeroes vertical velocity (the kill-volume / edge-clamp catch-all).
+ */
+export function outOfBounds(
+  pos: { x: number; y: number; z: number },
+  bound: number = WORLD_BOUND,
+  floor: number = FALL_FLOOR_Y,
+): boolean {
+  if (!Number.isFinite(pos.x) || !Number.isFinite(pos.y) || !Number.isFinite(pos.z)) return true;
+  if (pos.y < floor) return true;
+  if (Math.abs(pos.x) > bound || Math.abs(pos.z) > bound) return true;
+  return false;
+}
+
+const coordFrame = {
+  WORLD_TO_SCENE_OFFSET, worldToSceneAxis, sceneToWorldAxis, worldToScene, sceneToWorld,
+  sampleGroundY, WORLD_BOUND, FALL_FLOOR_Y, outOfBounds,
+};
 export default coordFrame;

@@ -532,6 +532,17 @@ class PhysicsWorld {
   }
 
   /**
+   * Zero an entity's accumulated vertical velocity (and clear the airborne
+   * flag). Called by the out-of-bounds / fall-recovery snapback so the player
+   * doesn't keep the fall speed they'd built up after being teleported back to
+   * solid ground. No-op for unknown ids.
+   */
+  resetVerticalVelocity(id: string): void {
+    const ks = this.kinematic.get(id);
+    if (ks) { ks.verticalVel = 0; ks.isAirborne = false; ks.gliding = false; }
+  }
+
+  /**
    * Move a character controller by `desiredTranslation`, returning the
    * collision-resolved actual translation applied.
    */
@@ -540,6 +551,11 @@ class PhysicsWorld {
     desiredTranslation: { x: number; y: number; z: number },
     dt: number,
   ): CharacterMoveResult {
+    // Delta clamp (anti "blind dt trust"): a NaN / huge dt (tab-suspend resume,
+    // or a spoofed value) would integrate gravity/velocity for thousands of
+    // simulated seconds in one step → instant teleport into the void. Hard-cap
+    // every physics step to 100ms and reject non-finite dt.
+    dt = Number.isFinite(dt) ? Math.min(Math.max(dt, 0), 0.1) : 0;
     // Gate on full readiness — half-initialised worlds during the init()
     // await chain are the most common source of "recursive use of an
     // object" panics from this method.
@@ -584,6 +600,10 @@ class PhysicsWorld {
     });
 
     const ks = this._ensureKinematic(id);
+    // Finite guard: a NaN that ever lands in verticalVel (e.g. a divide-by-zero
+    // upstream) would propagate to the capsule's Y and break the avatar's
+    // position permanently. Reset to 0 so integration stays well-defined.
+    if (!Number.isFinite(ks.verticalVel)) ks.verticalVel = 0;
     const now = performance.now();
 
     // Theme 5 (game-feel pass): kinematic knockback. Add the active

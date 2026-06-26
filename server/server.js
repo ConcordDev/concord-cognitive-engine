@@ -8711,13 +8711,23 @@ async function tryInitWebSockets(server) {
         } catch { /* refusal-field unavailable — continue normally */ }
       }
 
+      // G3 — server-authoritative damage ceiling on the socket PvP path. The
+      // HTTP NPC route validates computed damage via _validateDamageCap, but
+      // this path fed client `data.baseDamage` straight into applyAttack with
+      // only armor mitigation — a modified client could one-shot any player.
+      // Clamp the input + bound the resolved damage to the SAME shared cap.
+      if (!globalThis._concordCombatLimits) {
+        globalThis._concordCombatLimits = import("./lib/combat-limits.js");
+      }
+      const { clampBaseDamage, resolvedDamageCap } = await globalThis._concordCombatLimits;
       const result = cityPresence.applyAttack({
         attackerId: userId,
         targetId: _ffTargetId,
-        baseDamage: Number(data.baseDamage) || 10,
+        baseDamage: clampBaseDamage(data.baseDamage),
         range: Number(data.range) || 3,
         armorPierce: Number(data.armorPierce) || 0,
         contextModifiers: _contextModifiers,
+        maxDamage: resolvedDamageCap(),
       });
 
       // Ack back to attacker with full detail (damage, crit, kill)
