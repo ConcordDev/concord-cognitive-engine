@@ -387,6 +387,10 @@ export type SocketEvent =
   | 'combat:kill'
   // Combat combo evolution — server emits when flow-engine derives a new branch.
   | 'combat:combo-evolved'
+  // Gear durability — server emits to user:<id> on death (gear took decay,
+  // possibly broke) and after a Repair All, so HUDs refresh + warn.
+  | 'world:gear-damaged'
+  | 'world:gear-repaired'
   // Companions (pet/tame system) — Phase A of pre-playtest sprint.
   | 'companion:tame-success'
   | 'companion:deployed'

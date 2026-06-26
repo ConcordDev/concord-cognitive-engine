@@ -79,8 +79,19 @@ export function rollAffixes(rarity = "common", rng = Math.random) {
   return out;
 }
 
+// A broken item (durability 0 with a max set) contributes NOTHING until
+// repaired — this is the load-bearing "broken gear is dead weight" rule.
+// Items with a NULL max_durability are indestructible and always count.
+function gearIsBroken(item) {
+  if (!item) return false;
+  const max = item.max_durability;
+  if (max === null || max === undefined) return false;
+  return Number(item.current_durability) === 0;
+}
+
 function parseAffixes(item) {
   if (!item) return [];
+  if (gearIsBroken(item)) return []; // broken gear → no affix benefit
   const raw = item.affixes_json;
   if (!raw) return [];
   try { const a = JSON.parse(raw); return Array.isArray(a) ? a : []; }

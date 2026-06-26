@@ -49,6 +49,11 @@ export function getEquipmentSetBonuses(loadout) {
   for (const slot of slots) {
     const item = loadout[slot];
     if (!item) continue;
+    // Broken gear (durability 0 with a max set) provides no set-piece benefit
+    // until repaired — it stops counting toward set thresholds. NULL max ⇒
+    // indestructible, always counts.
+    if (item.max_durability !== null && item.max_durability !== undefined
+        && Number(item.current_durability) === 0) continue;
     const sid = item.set_id || null;
     if (sid && SET_DEFINITIONS[sid]) counts[sid] = (counts[sid] || 0) + 1;
   }

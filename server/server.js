@@ -8997,6 +8997,27 @@ async function tryInitWebSockets(server) {
                   });
                 }).catch(() => { /* corpse drop best-effort */ });
               }
+              // Gear DURABILITY: death-tied decay of the dead player's equipped
+              // gear (MMO research — durability is tied to DEATH, not per-hit).
+              // Broken/low items are pushed to the player's client so it can
+              // warn (consumed by world:gear-damaged listener in the world lens).
+              import("./lib/gear-durability.js").then(({ decayEquippedOnDeath }) => {
+                const changes = decayEquippedOnDeath(db, data.targetId);
+                if (Array.isArray(changes) && changes.length) {
+                  const broke = changes.filter((c) => c.broke);
+                  const low   = changes.filter((c) => !c.broken && c.max > 0 && c.current <= Math.floor(c.max * 0.2));
+                  try {
+                    const io = globalThis?.__CONCORD_REALTIME__?.io;
+                    io?.to(`user:${data.targetId}`).emit("world:gear-damaged", {
+                      userId: data.targetId,
+                      cause: "death",
+                      items: changes,
+                      broke,
+                      low,
+                    });
+                  } catch { /* emit best-effort */ }
+                }
+              }).catch(() => { /* durability decay best-effort */ });
             }
           } catch { /* corpse drop best-effort */ }
 
@@ -25344,6 +25365,8 @@ registerVoiceTTSMacros(register);
 // list_for_user macros for the world lens to interrogate the substrate.
 import registerLandClaimsMacros from "./domains/land-claims.js";
 registerLandClaimsMacros(register);
+import registerGearMacros from "./domains/gear.js";
+registerGearMacros(register);
 
 // Phase 5d — Magic Glyph Composition. Players compose spells from base-6
 // glyph components. The composed spell is minted as a kind='spell_recipe'
