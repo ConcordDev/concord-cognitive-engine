@@ -71,7 +71,7 @@ For each pillar: the completeness bar + the retention driver (condensed from the
 | 16 | Onboarding/NPE | **Solid** | `OnboardingTutorial.tsx`, `FirstWinWizard`, `content/quests/onboarding.json` |
 | 17 | Multiplayer infra | **Solid** | spatial chunking, anti-cheat (`_validateCombatReach`/`_validateDamageCap`), shard protocol; **fixed:** unknown-macro masking |
 | 18 | Accessibility & input | **Solid** | `components/accessibility/*`, `useGamepad`, subtitles/screen-reader bridge; **fixed:** `player:low-health` a11y event now emitted |
-| 19 | Audio/visual polish | **Partial** | procedural animation + VFX strong; **gaps (POLISH_AUDIT):** light-attack hitstop, whiff SFX, recorded audio assets |
+| 19 | Audio/visual polish | **Solid** | procedural animation + VFX strong; POLISH_AUDIT combat-feel seams (hitstop, whiff SFX, lock-on camera, shake) all FIXED + pinned (`feel-consolidation.test.ts`); only recorded-audio-vs-synthesis remains (a taste call, by design) |
 | 20 | Live-ops/community | **Solid** | world-event scheduler, festivals, announcements, drift→quest pipeline |
 | 21 | Performance | **Solid** | LOD/draw budgets, SSGI/PCSS presets, heartbeat overrun telemetry |
 
@@ -113,14 +113,30 @@ For each pillar: the completeness bar + the retention driver (condensed from the
   → **44/44**; Wave A vitest → **11/11**; CharacterCustomizer vitest → **6/6**.
 - `node scripts/verify-lens-backends.mjs` → **258 WIRED / 0 broken / 0 PARTIAL** (2 by-design).
 
-### Remaining backlog (verified-real, prioritized)
-- **Gear durability + repair** end-to-end (migration + wear hooks + repair NPC sink + durability bars).
-  Research: tie decay to *death* not per-ability (WoW "Block Tax" anti-pattern); broken = no stats.
-- **Schema-drift batch** (~105 sites, `scripts/verify-schema-drift.mjs`): mostly try/catch-swallowed; the
-  maintenance-gates critical is now honest about it. Ratchet the floor toward 0.
-- **POLISH_AUDIT feel seams**: light-attack hitstop, whiff SFX, recorded audio assets, lock-on camera.
-- **In-world auction/marketplace browse + price-check** (backend `lib/auctions.js` exists; surface it).
-- **Untuned balance constants** (`docs/BALANCE_DIALS.md`, Phase-D first-draft set): pin to researched values.
+### Remaining backlog — re-verified 2026-06-26 (most prior items were STALE/CLOSED)
+A "double check the backlog" pass ran the live tooling + read current code. The two big items I'd
+listed as open are **not** open:
+- ✅ **Gear durability + repair** — SHIPPED this initiative (migration 350, `lib/gear-durability.js`,
+  death-tied decay, broken=no-stats, CC repair sink, InventoryPanel bars; 16 tests).
+- ✅ **Schema-drift batch (~105 sites)** — **CLOSED, floor 0.** `node scripts/verify-schema-drift.mjs --ci 0`
+  reports `DRIFT: 0` over 5,467 prepare/exec sites (15,227 high-confidence column checks). The cluster
+  was fixed via migrations + code (dtus `kind`→`type`/`meta`→`metadata_json`, `user_wallets`→`users`,
+  `economy_transactions`→`economy_ledger` all resolved/guarded) and is CI-gated against recurrence
+  (`CONTRACT_ENFORCEMENT_STRATEGY.md` Gate C). NOT an open item.
+- ✅ **POLISH_AUDIT combat-feel seams** — **FIXED**, pinned by `concord-frontend/tests/.../feel-consolidation.test.ts`:
+  light-attack hitstop (`GameJuice.tsx:168-171`), whiff/swing SFX (`CombatInputController.tsx:330-342`),
+  lock-on camera framing (`ConcordiaScene.tsx:1299-1309`), dead AnimationManager (deleted), transparent
+  shake div (`GameJuice.tsx:287-302`), shared-cooldown drop (`lib/combat/attack-cooldown.js` per-class).
+- ✅ **In-world auction/marketplace browse + price-check** — SHIPPED (`AuctionBrowsePanel.tsx` on the real
+  `/api/auctions/active` + `/item/:itemId/price-history` + bid).
+
+**Genuine residual (optional, NON-defect):**
+- **Recorded audio vs oscillator synthesis** — `public/` has 0 audio files by design (Web Audio synthesis,
+  licensing-simple per CLAUDE.md). Shipping recorded assets is a taste call, not a bug.
+- **Untuned balance constants** (`docs/BALANCE_DIALS.md`, Phase-D first-draft set) — pin to researched
+  values; a playtest-tuning pass, not a correctness gap.
+- **Invariant-engine override authoring** — add `content/contracts/overrides/*` for high-value domains so
+  the engine proves *behavioral* invariants (not just the universal contract), driving the ratchet down.
 
 > Notes on stale findings: several PLAYTEST_FINDINGS_PLAN §6 items (e.g. the auth-mount R4/R6/R8 set)
 > are **stale** — `requireAuth` is a hybrid that handles both direct + factory call styles, so the
