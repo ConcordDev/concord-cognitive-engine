@@ -611,6 +611,15 @@ export async function seedContent({ db = null } = {}) {
         results.skillBlueprints = seedSkillBlueprints(db, skills);
       } catch { /* skill blueprint seeding best-effort */ }
     }
+    // Authored lore materials → resource_properties (read by propsFor /
+    // craft-resolve). Mythical ores/essences become real craftable inputs.
+    const items = readJSON("items.json");
+    if (Array.isArray(items)) {
+      try {
+        const { seedItemBlueprints } = await import("./resources.js");
+        results.itemBlueprints = seedItemBlueprints(db, items);
+      } catch { /* item blueprint seeding best-effort */ }
+    }
   }
 
   // World meta for Concordia (the hub) — stored at content/world/_meta.json

@@ -1,0 +1,40 @@
+[
+  {
+    "item_id": "lattice_shard",
+    "name": "Lattice Shard",
+    "potency": 58,
+    "affinity": "magic",
+    "stability": 60,
+    "volume": 0.3,
+    "weight": 0.4,
+    "rarity_tier": 4,
+    "source_type": "verge_salvage",
+    "magical_sub": "aether",
+    "lore": "A splinter of the dome-lattice that never fully set after The Dome Stabilisation. It hums against the palm. The Curators pay well and ask few questions about where it was found."
+  },
+  {
+    "item_id": "refusal_iron",
+    "name": "Refusal Iron",
+    "potency": 30,
+    "affinity": "physical",
+    "stability": 99,
+    "volume": 1.0,
+    "weight": 2.6,
+    "rarity_tier": 3,
+    "source_type": "keep_forge",
+    "lore": "Forged in the Refusal Keep and quenched in oaths. It does not bend, which is the entire point. The Watch's Founder's Edge blades are drawn from it."
+  },
+  {
+    "item_id": "verge_glass",
+    "name": "Sundered Glass",
+    "potency": 52,
+    "affinity": "chaos",
+    "stability": 35,
+    "volume": 0.4,
+    "weight": 0.5,
+    "rarity_tier": 4,
+    "source_type": "verge_salvage",
+    "magical_sub": "essence",
+    "lore": "Sand fused to glass in an instant at The Sundered Verge when the lattice tore. Beautiful, unstable, and prone to backfire in a careless craft — a high-potency input only a steady bender should risk."
+  }
+]
