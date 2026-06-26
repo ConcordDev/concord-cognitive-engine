@@ -87,10 +87,16 @@ export default function CrossWorldPotencyHUD() {
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'concordia:activeWorldId') refresh();
     };
+    // Same-tab world travel: the `storage` event only fires in OTHER tabs, so
+    // listen for the active tab's `concordia:active-world-changed` too (real
+    // consumer of useWorldTravel's dispatch — previously it had none).
+    const onWorldChanged = () => refresh();
     window.addEventListener('storage', onStorage);
+    window.addEventListener('concordia:active-world-changed', onWorldChanged);
     return () => {
       clearInterval(id);
       window.removeEventListener('storage', onStorage);
+      window.removeEventListener('concordia:active-world-changed', onWorldChanged);
     };
   }, [refresh]);
 

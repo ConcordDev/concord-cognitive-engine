@@ -6,9 +6,10 @@
 // exclusive — a session has one ghost and N investigators, server
 // enforces.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useClientConfig } from '@/hooks/useClientConfig';
+import { useActiveWorldId } from '@/hooks/useActiveWorldId';
 import { Ghost, Flashlight, Camera, X, Trophy, Skull } from 'lucide-react';
 
 interface Session {
@@ -26,17 +27,14 @@ interface Session {
 
 export function HorrorRoleHUDs() {
   const POLL_MS = useClientConfig().poll.horrorRoleMs; // E0 — server-tunable
-  const [worldId, setWorldId] = useState<string | null>(null);
+  // Same-tab-reactive active world (updates on world travel via
+  // concordia:active-world-changed) — replaces the one-shot mount read.
+  const worldId = useActiveWorldId('');
   const [session, setSession] = useState<Session | null>(null);
   const [endedAck, setEndedAck] = useState<Session | null>(null);
   const [evidenceForm, setEvidenceForm] = useState(false);
   const [evidenceKind, setEvidenceKind] = useState('footprint');
   const [downing, setDowning] = useState<string | null>(null);
-
-  useEffect(() => {
-    const id = typeof window !== 'undefined' ? localStorage.getItem('concordia:activeWorldId') : null;
-    setWorldId(id);
-  }, []);
 
   const refresh = useCallback(async () => {
     if (!worldId) return;
