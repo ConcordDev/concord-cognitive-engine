@@ -3,6 +3,7 @@
 
 import crypto from 'node:crypto';
 import { gainSkillXP } from '../skills/skill-engine.js';
+import { grantUnlock } from '../milestone-unlocks.js';
 
 /**
  * Return all active quests for a player in a world, with objectives and rewards attached.
@@ -166,6 +167,21 @@ export function claimQuestRewards(db, userId, worldId, questId) {
       granted.push({ type: 'xp', amount: r.amount });
     } else if (r.reward_type === 'gold') {
       granted.push({ type: 'gold', amount: r.amount });
+    } else if (r.reward_type === 'skill_unlock' || r.reward_type === 'faction_modifier') {
+      // Pillar 3 — completing a legendary task stamps an IMMUTABLE unlock onto
+      // the player's state (a skill branch they may now wield, or a permanent
+      // faction modifier), not just text. ref_id is deterministic per
+      // (quest, user, key) so re-claiming is a no-op. Best-effort: a failed
+      // stamp never blocks the rest of the reward grant.
+      const u = grantUnlock(db, {
+        userId,
+        kind: r.reward_type,
+        key: r.reward_key,
+        amount: r.amount,
+        source: `quest:${questId}`,
+        refId: `quest:${questId}:${userId}:${r.reward_type}:${r.reward_key}`,
+      });
+      granted.push({ type: r.reward_type, key: r.reward_key, granted: !!u.granted, alreadyHad: !!u.alreadyHad });
     }
   }
 
