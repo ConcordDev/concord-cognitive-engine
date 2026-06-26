@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { FishingMinigameOverlay } from '@/components/world-lens/FishingMinigameOverlay';
 import { Fish, Trophy, Sparkles, Loader2 } from 'lucide-react';
 
 interface FishCatalog {
@@ -38,10 +39,19 @@ export default function FishingLensPage() {
   const [catches, setCatches] = useState<CatchRow[]>([]);
   const [worldId, setWorldId] = useState<string>('concordia-hub');
   const [pending, setPending] = useState(false);
+  // Real consumer for the `concordia:open-fishing` dispatch below — open the
+  // reaction-timed minigame overlay mounted at the bottom of this page.
+  const [minigameOpen, setMinigameOpen] = useState(false);
 
   useEffect(() => {
     const w = typeof window !== 'undefined' ? localStorage.getItem('concordia:activeWorldId') : null;
     if (w) setWorldId(w);
+  }, []);
+
+  useEffect(() => {
+    const onOpen = () => setMinigameOpen(true);
+    window.addEventListener('concordia:open-fishing', onOpen);
+    return () => window.removeEventListener('concordia:open-fishing', onOpen);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -121,6 +131,15 @@ export default function FishingLensPage() {
           </div>
         </section>
       </div>
+
+      {/* Reaction-timed minigame — opened by the `concordia:open-fishing`
+          dispatch on Cast. Refreshes the catch log when it closes. */}
+      <FishingMinigameOverlay
+        open={minigameOpen}
+        worldId={worldId}
+        position={{ x: 0, z: 0 }}
+        onClose={() => { setMinigameOpen(false); refresh(); }}
+      />
     </div>
     </LensShell>
   );

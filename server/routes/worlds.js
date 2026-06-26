@@ -1423,10 +1423,19 @@ export default function createWorldsRouter({ requireAuth, db }) {
         ).all(npcId);
       } catch { /* table may not exist */ }
 
+      // Deterministic, in-character fallback (PLAYTEST #1) — composed from the
+      // same grounding the LLM prompt uses, so an LLM-off / unavailable box still
+      // answers as a person instead of "<name> responds to your choice."
+      const { composeDeterministicResponse } = await import("../lib/npc-dialogue-fallback.js");
+      const _respondFallback = composeDeterministicResponse({
+        npcId, npcName, archetype: npc.archetype, job: npc.job_type,
+        faction: npc.faction, choice, questTitle: quests[0]?.title || null,
+      });
+
       // Build follow-up prompt
       const { selectBrain } = await import("../lib/brain-config.js").catch(() => ({ selectBrain: null }));
       if (!selectBrain) {
-        return res.json({ ok: true, response: `${npcName} responds to your choice.` });
+        return res.json({ ok: true, response: _respondFallback });
       }
 
       const { handle } = await selectBrain("subconscious", { callerId: "world:npc:dialogue:respond" });
@@ -1453,7 +1462,8 @@ export default function createWorldsRouter({ requireAuth, db }) {
       ].filter(Boolean).join('\n');
 
       const response = await handle.generate(promptLines);
-      const safeResponse = response?.slice(0, 800) || `${npcName} nods and moves on.`;
+      // Empty/garbled LLM output → the grounded deterministic reply, not a flat stub.
+      const safeResponse = (response && response.trim()) ? response.slice(0, 800) : _respondFallback;
 
       // Track talk_to quest objectives whenever a player responds to an NPC
       try {

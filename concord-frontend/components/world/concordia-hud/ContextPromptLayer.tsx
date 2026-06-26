@@ -18,6 +18,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useHUDContext, type NearbyTarget } from './HUDContextProvider';
 import { useClientConfig } from '@/hooks/useClientConfig';
+import { useHudSettings } from '@/lib/concordia/hud-settings';
 
 type Projection = { x: number; y: number; visible: boolean };
 type Projector = (world: { x: number; y: number; z: number }) => Projection | null;
@@ -49,6 +50,9 @@ function pickHighest(targets: NearbyTarget[]): NearbyTarget | null {
 
 export function ContextPromptLayer() {
   const FRAME_THROTTLE_MS = useClientConfig().throttle.contextPromptFrameMs; // E0 — server-tunable
+  // HUDSettingsPanel's "Context prompts" toggle gates this whole layer (real
+  // consumer of concordia:hud-settings-changed).
+  const contextPromptsOn = useHudSettings().context_prompts;
   const mode = useHUDContext((s) => s.inputMode);
   const nearby = useHUDContext((s) => s.nearbyTargets);
   const projectorRef = useRef<Projector | null>(null);
@@ -90,7 +94,7 @@ export function ContextPromptLayer() {
     return () => cancelAnimationFrame(raf);
   }, [target, FRAME_THROTTLE_MS]);
 
-  if (mode !== 'exploration' || !target || !screenPos?.visible) return null;
+  if (!contextPromptsOn || mode !== 'exploration' || !target || !screenPos?.visible) return null;
 
   const binding = KEY_BINDINGS[target.kind];
   return (
