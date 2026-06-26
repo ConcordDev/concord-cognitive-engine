@@ -59,6 +59,9 @@ import WorldAccessibilityMenu from '@/components/accessibility/WorldAccessibilit
 import WorldQuestLogPanel from '@/components/world/WorldQuestLogPanel';
 import WorldMarketplacePanel from '@/components/world/WorldMarketplacePanel';
 import WorldAdventureKitPanel from '@/components/world/WorldAdventureKitPanel';
+import { CharacterSheetPanel } from '@/components/world-lens/CharacterSheetPanel';
+import { AbilityCooldownHud } from '@/components/world-lens/AbilityCooldownHud';
+import { TargetNameplate } from '@/components/world-lens/TargetNameplate';
 import {
   DeformationStore,
   replayDeformations,
@@ -2013,6 +2016,7 @@ export default function WorldLensPage() {
     | 'jobs'
     | 'lore'
     | 'timeline'
+    | 'character'
   >('none');
   // Local player avatar — mutable so moves update it in place. On
   // first mount we ask the server for saved state (via player:load)
@@ -4643,7 +4647,7 @@ export default function WorldLensPage() {
           <DiegeticSurfaces
             playerPosition={playerAvatar.position}
             onOpenMap={() => setShowPanel('map')}
-            onOpenSheet={() => setShowPanel('inventory')}
+            onOpenSheet={() => setShowPanel('character')}
             onOpenInventory={() => setShowPanel('inventory')}
           />
           <SocialOverlay
@@ -5496,6 +5500,11 @@ export default function WorldLensPage() {
           {showPanel === 'inventory' && (
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
               <InventoryPanel onClose={() => setShowPanel('none')} />
+            </div>
+          )}
+          {showPanel === 'character' && (
+            <div className="absolute top-4 left-4 z-20 w-96 max-w-[92vw] max-h-[80vh] overflow-auto pointer-events-auto">
+              <CharacterSheetPanel worldId={activeDistrict.id} onClose={() => setShowPanel('none')} />
             </div>
           )}
           {showPanel === 'timeline' && (
@@ -6475,6 +6484,13 @@ export default function WorldLensPage() {
 
       {/* Phase W — disease HUD (top-right; renders only when infected). */}
       <DiseaseStatusHUD />
+
+      {/* MMO completeness — combat/character QoL HUDs. AbilityCooldownHud polls
+          world.combat-prefs-get (renders nothing with no bound abilities);
+          TargetNameplate surfaces the locked-on target's live health from the
+          real NPC list + combat events (renders nothing with no lock-on). */}
+      <AbilityCooldownHud />
+      <TargetNameplate npcs={rawWorldNPCs} />
 
       {/* World Actions Panel */}
       <div className="px-4 py-3 border-t border-white/10">

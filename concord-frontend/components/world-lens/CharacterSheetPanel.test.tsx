@@ -1,10 +1,10 @@
+/// <reference types="@testing-library/jest-dom/vitest" />
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { CharacterSheetPanel } from './CharacterSheetPanel';
 
 const mockFetch = vi.fn();
-// @ts-expect-error — jsdom global
-global.fetch = mockFetch;
+global.fetch = mockFetch as unknown as typeof fetch;
 
 const CHARACTER = {
   ok: true,
