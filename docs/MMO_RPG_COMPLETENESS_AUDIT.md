@@ -105,6 +105,14 @@ For each pillar: the completeness bar + the retention driver (condensed from the
 - **Orphan socket emits + dead CustomEvents** wired to real receivers (NPC barks, node/loot updates,
   combat juice, etc.) — see commit history.
 
+### Verification (this initiative)
+- Full-frontend `tsc --noEmit` → **exit 0** (Wave A HUDs mounted in the world page + all wiring).
+- New e2e tests (unknown-macro fail-fast, dtu.create round-trip) + the full `tests/e2e/api-routes.test.js`
+  → **38/38 pass** against spawned servers.
+- Touched-area server tests (combat-anti-cheat, npc-dialogue-fallback, maintenance-immune, appearance-domain)
+  → **44/44**; Wave A vitest → **11/11**; CharacterCustomizer vitest → **6/6**.
+- `node scripts/verify-lens-backends.mjs` → **258 WIRED / 0 broken / 0 PARTIAL** (2 by-design).
+
 ### Remaining backlog (verified-real, prioritized)
 - **Gear durability + repair** end-to-end (migration + wear hooks + repair NPC sink + durability bars).
   Research: tie decay to *death* not per-ability (WoW "Block Tax" anti-pattern); broken = no stats.
