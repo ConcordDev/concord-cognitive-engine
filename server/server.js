@@ -16017,6 +16017,7 @@ async function llmChat(messagesOrCtx, messagesOrOptions = {}, maybeOptions = {})
 // Voice for conscious lives in the Modelfile; BRAIN_IDENTITY.conscious in
 // the registry is intentionally light (functional directives only).
 import { BRAIN_IDENTITY, composeSystemPrompt, TASK_PROMPTS } from "./lib/prompt-registry.js";
+import { makeEscalationBudget } from "./lib/affect-salience.js";
 import { runChatComputePreflight } from "./lib/chat-compute-preflight.js";
 import { hydrateSession, persistChatTurn } from "./lib/chat-session-store.js";
 
@@ -45511,12 +45512,26 @@ function needsWebSearch(msg) {
 
 function initChatSocketHandlers(io) {
   if (!io) return;
+  // G9 — per-user chat rate limit. chat:message routes to the conscious brain
+  // (GPU); an unthrottled spammer floods the LLM queue and starves real players
+  // (and the physics/movement loops on the same event thread). Token bucket:
+  // a burst up to CONCORD_CHAT_PER_MIN then ~that-many/min sustained, keyed by
+  // the authenticated user. Over-budget messages are NAKed BEFORE any brain
+  // work. CONCORD_CHAT_RATELIMIT=0 disables.
+  const _chatBudget = makeEscalationBudget({ perWorldPerMin: Number(process.env.CONCORD_CHAT_PER_MIN) || 60 });
   io.on("connection", (socket) => {
     socket.on("chat:message", async (data, ack) => {
       try {
         const { sessionId, prompt, lens } = data || {};
         if (!sessionId || !prompt) {
           ack?.({ ok: false, error: "sessionId and prompt required" });
+          return;
+        }
+        // Rate gate — keyed by authenticated user (falls back to the socket id).
+        const _rlKey = socket.data?.userId || socket.handshake?.auth?.userId || socket.id;
+        if (process.env.CONCORD_CHAT_RATELIMIT !== "0" && !_chatBudget.tryConsume(_rlKey)) {
+          ack?.({ ok: false, error: "rate_limited", retryAfterMs: 1000 });
+          socket.emit("chat:status", { sessionId, status: "rate_limited", lens });
           return;
         }
 
