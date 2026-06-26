@@ -50,6 +50,10 @@ export function MentorshipNotifier() {
       } catch { /* socket optional */ }
     })();
     return () => {
+      // Remove the listener before tearing the socket down. disconnect() alone
+      // would drop it, but an explicit off() is leak-proof if this socket ever
+      // becomes shared/reused (this component remounts on every world render).
+      try { socket?.off('mentorship:npc-adopted'); } catch { /* ignore */ }
       try { socket?.disconnect(); } catch { /* ignore */ }
       for (const t of timerIds) clearTimeout(t);
       timerIds = [];

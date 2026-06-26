@@ -8183,7 +8183,12 @@ async function tryInitWebSockets(server) {
     // Dev keeps polling for local dev tools and proxy interop.
     transports: NODE_ENV === "production" ? ["websocket"] : ["websocket", "polling"],
     pingTimeout: 60000,
-    pingInterval: 25000
+    pingInterval: 25000,
+    // G-5 — tighten the inbound frame ceiling (default 1MB). Game packets are
+    // <1KB; a 1MB deeply-nested JSON payload can still burn parse CPU on the
+    // single event-loop thread (JSON-bomb DoS). 64KB is generous for any real
+    // client message and rejects the bomb at the transport layer before parse.
+    maxHttpBufferSize: Number(process.env.CONCORD_WS_MAX_BUFFER) || 64_000
   });
 
   // Phase 3a — multi-instance fan-out via the Redis adapter. Opt-in: only wired
@@ -9461,23 +9466,24 @@ async function tryInitWebSockets(server) {
       } catch (_e) { /* ignore */ }
     };
 
-    socket.on("disconnect", () => {
-      const userId = socket.data?.userId;
+    // F5 — unified per-socket teardown. cityPresence.removeUser already sweeps
+    // presence/chunks; this also sweeps the registrations that had NO disconnect
+    // path (spectator rooms — accumulated with no TTL backstop) and the brawl
+    // matchmaking queue/invites (TTL-only). Fire-and-forget dynamic imports
+    // mirror the rest of this file; failures never block disconnect.
+    const _sweepSocketState = (userId) => {
       if (userId) {
         try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
+        import("./lib/brawl.js").then((m) => m.cleanupForUser?.(userId)).catch(() => {});
       }
+      import("./lib/spectator-mode.js").then((m) => m.leaveSpectator?.(socket)).catch(() => {});
       broadcastDeparture();
       REALTIME.clients.delete(clientId);
-    });
+    };
 
-    socket.on("error", () => {
-      const userId = socket.data?.userId;
-      if (userId) {
-        try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
-      }
-      broadcastDeparture();
-      REALTIME.clients.delete(clientId);
-    });
+    socket.on("disconnect", () => { _sweepSocketState(socket.data?.userId); });
+
+    socket.on("error", () => { _sweepSocketState(socket.data?.userId); });
   });
 
   // MEGA SPEC: Initialize chat WebSocket handlers for streaming
@@ -33270,7 +33276,7 @@ app.get("/api/simulate/:simId", (req, res) => {
 });
 
 // ===== VULNERABILITY API =====
-app.post("/api/vulnerability/detect", (req, res) => {
+app.post("/api/vulnerability/detect", requireOwner, (req, res) => {
   const { message } = req.body || {};
   if (!message) return res.status(400).json({ ok: false, error: "message required" });
   const vulnerability = detectVulnerability(message);
@@ -38500,7 +38506,7 @@ app.get("/api/system/circuit-breakers", asyncHandler(async (req, res) => {
   res.json({ ok: true, breakers: _breakers.getAllStatus() });
 }));
 
-app.post("/api/system/circuit-breakers/reset", asyncHandler(async (req, res) => {
+app.post("/api/system/circuit-breakers/reset", requireOwner, asyncHandler(async (req, res) => {
   const name = req.body?.name || "";
   if (name && _breakers[name]) {
     _breakers[name].reset();
@@ -52868,7 +52874,7 @@ app.post("/api/physics/step", (req, res) => {
   }
 });
 
-app.post("/api/physics/reset", (req, res) => {
+app.post("/api/physics/reset", requireOwner, (req, res) => {
   try {
     const ps = ensurePhysicsState();
     ps.bodies.clear();
@@ -61161,7 +61167,7 @@ app.get("/api/circuits", (_req, res) => {
   res.json({ ok: true, breakers: states });
 });
 
-app.post("/api/circuits/:name/reset", (req, res) => {
+app.post("/api/circuits/:name/reset", requireOwner, (req, res) => {
   const breaker = circuitBreakers[req.params.name];
   if (!breaker) return res.status(404).json({ ok: false, error: "Breaker not found" });
   breaker.state = "closed";

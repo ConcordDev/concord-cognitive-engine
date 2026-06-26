@@ -124,6 +124,25 @@ export function queueStatus(userId = null) {
 }
 
 /**
+ * F5 — disconnect sweep for a user: drop them from the matchmaking queue and
+ * cancel any pending invites they're a party to. The TTL would eventually do
+ * this, but a crashed/closed socket shouldn't linger in the queue or hold a
+ * phantom invite. Idempotent; safe to call for users with no brawl state.
+ */
+export function cleanupForUser(userId) {
+  if (!userId) return { ok: false, error: "missing_user" };
+  _queue.delete(userId);
+  let invitesCleared = 0;
+  for (const [id, inv] of _invites) {
+    if (inv.fromUserId === userId || inv.toUserId === userId) {
+      _invites.delete(id);
+      invitesCleared++;
+    }
+  }
+  return { ok: true, invitesCleared };
+}
+
+/**
  * Pop the two oldest queuers and create a brawl invite between them.
  * Returns { ok, paired: { a, b, inviteId } } or { ok: true, paired: null }.
  */
