@@ -39005,14 +39005,35 @@ app.post("/api/lens/run", async (req, res) => {
       emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
       return res.json({ ok: true, result });
     }
-    // AI-powered catch-all: route unregistered domain actions to the utility
-    // brain (the intentional freeform path). Two hardenings (playtest #3/#25/#27):
-    //  - bound it with a hard timeout so a dead macro can't hang the worker ~96s
-    //    on brain backoff (#27, the slow_request / quality-pipeline hang #T3);
-    //  - on brain failure (e.g. Ollama down, or a never-registered ghost-fleet
-    //    macro #11), return an HONEST `unknown_macro` non-200 instead of a 200
-    //    masking it as a transient "fetch failed" success (#3/#25). When the
-    //    brain genuinely answers, freeform still returns 200 with the output.
+    // No registered macro for this (domain, action).
+    //
+    // HISTORICAL DEFECT (PLAYTEST #3/#11/#25/#27): this path used to route EVERY
+    // unregistered pair to the utility brain and return its answer as
+    // `{ ok:true, source:"utility-brain" }` — masking a typo'd or never-registered
+    // game macro as a real, successful result. That is the documented systemic
+    // root cause behind a cluster of playtest bugs (a dead macro looked like it
+    // "worked"). No legitimate lens caller depends on that masking — UniversalActions
+    // only ever invokes manifest-declared (registered) actions, and `source` there is
+    // a display default, not a dependency. So the honest default is now: FAIL FAST
+    // with `unknown_macro` and DO NOT invoke the brain.
+    //
+    // HTTP 200 + `ok:false` is deliberate: `unknown_macro` is NOT in the axios
+    // RETRY_STATUS_CODES {502,503,504}, so a dead macro degrades to a clean
+    // "unavailable" state without a client retry-storm. The frontend `lensRun`
+    // helper already surfaces `{ ok:false, error }` as a real error to callers.
+    //
+    // The intentional freeform-AI escape hatch is preserved behind an EXPLICIT
+    // opt-in (`input.__ai === true` or top-level `ai:true`) so a caller that
+    // genuinely wants a brain answer (not a macro) can still request one — but a
+    // plain game-macro call can never again be silently answered by the LLM.
+    const _wantsBrainFallback = rest?.__ai === true || body.ai === true;
+    if (!_wantsBrainFallback) {
+      emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: "unknown_macro" });
+      return res.status(200).json({ ok: false, error: "unknown_macro", domain, action, detail: "no registered macro for this domain/action" });
+    }
+    // Explicit freeform-AI path (opt-in only): route to the utility brain, bounded
+    // by a hard timeout so a dead/slow brain can't hang the worker ~96s on backoff
+    // (#27, the slow_request / quality-pipeline hang #T3).
     const CATCHALL_TIMEOUT_MS = Number(process.env.CONCORD_LENS_CATCHALL_TIMEOUT_MS) || 20000;
     let aiResult, _catchallTimer;
     try {

@@ -230,6 +230,39 @@ describe('E2E API routes — public auth mode', { timeout: 120000 }, function() 
     assert.ok(Array.isArray(body && body.lenses), 'Expected lenses array');
   });
 
+  // ── /api/lens/run unknown-macro fail-fast (PLAYTEST #3/#11/#25/#27) ────────
+  // An unregistered (domain, action) MUST return an honest `unknown_macro`
+  // instead of being silently answered by the utility brain and masked as a
+  // successful result. This is the systemic root-cause fix.
+
+  it('POST /api/lens/run with an unknown macro returns ok:false unknown_macro (no brain mask)', async function() {
+    const { status, body } = await postJSON(base, '/api/lens/run', {
+      domain: 'definitely_not_a_real_domain_xyz',
+      action: 'definitely_not_a_real_action_xyz',
+      input: {},
+    });
+    // 200 + ok:false is deliberate (unknown_macro is not in the axios retry set).
+    assert.equal(status, 200, 'Expected 200, got ' + status);
+    assert.ok(body, 'Expected JSON body');
+    assert.equal(body.ok, false, 'Expected ok:false for an unknown macro');
+    assert.equal(body.error, 'unknown_macro', 'Expected error:"unknown_macro", got ' + JSON.stringify(body));
+    // The defect was masking the unknown macro as a brain answer — assert it is NOT.
+    const blob = JSON.stringify(body);
+    assert.ok(!/utility-brain/.test(blob), 'Unknown macro must NOT be answered by the utility brain: ' + blob);
+  });
+
+  it('POST /api/lens/run with a known typo in a real domain still fails fast (not brain-masked)', async function() {
+    // `dtu` is a real, registered domain; a typo'd action must not LLM-fallthrough.
+    const { status, body } = await postJSON(base, '/api/lens/run', {
+      domain: 'dtu',
+      action: 'craete_typo_not_a_macro',
+      input: {},
+    });
+    assert.equal(status, 200, 'Expected 200, got ' + status);
+    assert.equal(body && body.ok, false, 'Expected ok:false for a typo macro');
+    assert.equal(body && body.error, 'unknown_macro', 'Expected unknown_macro, got ' + JSON.stringify(body));
+  });
+
   // ── /api/lattice/beacon ──────────────────────────────────────────────────
 
   it('GET /api/lattice/beacon returns 200 with ok:true and rootHash', async function() {
