@@ -599,6 +599,20 @@ export async function seedContent({ db = null } = {}) {
     results.lore = seedLore(lore);
   }
 
+  // Content pillar 2 — authored skill/weapon blueprints (global, cross-world).
+  // A lore weapon/combat-style IS a skill DTU here: the combat route reads
+  // max_damage/range_m/bar_cost off the DTU's data JSON (bounded by
+  // combat-limits.js). Idempotent insert-once on the versioned id.
+  if (db) {
+    const skills = readJSON("skills.json");
+    if (Array.isArray(skills)) {
+      try {
+        const { seedSkillBlueprints } = await import("./skill-seeder.js");
+        results.skillBlueprints = seedSkillBlueprints(db, skills);
+      } catch { /* skill blueprint seeding best-effort */ }
+    }
+  }
+
   // World meta for Concordia (the hub) — stored at content/world/_meta.json
   // because Concordia's content lives at the top level.
   const concordiaMeta = readJSON("world/_meta.json");
