@@ -81,8 +81,31 @@ function defaultSpokes(variant: ActionWheelProps['variant']): WheelSpoke[] {
   ];
 }
 
+// Tool spoke id → the HUD panel that actually performs it. The default tool
+// wheel is a fallback (SkillWheelMount supplies real skills for the skill
+// wheel); routing these to panels gives the selection a real effect instead
+// of the dead `concordia:wheel-action` event that had no consumer.
+const TOOL_PANEL: Record<string, string> = {
+  mount: 'mounts',
+  dismount: 'mounts',
+  equip: 'crafts',
+  unequip: 'crafts',
+  torch: 'crafts',
+  ration: 'crafts',
+};
+
 function dispatch(category: string, id: string) {
-  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('concordia:wheel-action', { detail: { category, id } }));
+  if (typeof window === 'undefined') return;
+  if (category === 'skill') {
+    // Ride the canonical cast channel (same consumer as SkillWheelMount /
+    // CombatFlowHotbar → world page.tsx handles anim + VFX + combat:attack).
+    window.dispatchEvent(new CustomEvent('concordia:spell-cast', { detail: { spellId: id, spellName: id } }));
+    return;
+  }
+  // Tool wheel → open the panel that owns the action (mounts / crafts /
+  // inventory). PanelHost consumes concordia:panel-open.
+  const panelId = TOOL_PANEL[id] || 'crafts';
+  window.dispatchEvent(new CustomEvent('concordia:panel-open', { detail: { panelId } }));
 }
 
 function maxSpokesFor(expertise: ReturnType<typeof useHUDContext.getState>['expertiseLevel']): number {

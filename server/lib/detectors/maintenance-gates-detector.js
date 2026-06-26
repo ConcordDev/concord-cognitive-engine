@@ -32,12 +32,16 @@ const GATES = [
 export function gateFinding(gate, exitCode) {
   if (exitCode === 0) return null;
   return {
+    id: `${gate.name}-gate-failed`,
     severity: gate.severity,
     kind: "runtime",
-    title: `${gate.name} gate failed`,
-    detail: gate.message,
+    // Canonical Finding shape is { id, severity, kind, message, location } —
+    // the run-detectors renderer reads f.id / f.message / f.location. The prior
+    // { title, detail, file } shape rendered as `undefined — undefined`, hiding
+    // which gate actually failed behind a malformed critical.
+    message: `${gate.name} gate failed — ${gate.message}`,
+    location: gate.script,
     fixHint: gate.hint,
-    file: gate.script,
   };
 }
 
@@ -48,12 +52,12 @@ export function gateFinding(gate, exitCode) {
  *  the gate. */
 function unrunnableFinding(gate, why) {
   return {
+    id: `${gate.name}-gate-unrunnable`,
     severity: "high",
     kind: "runtime",
-    title: `${gate.name} gate could not run`,
-    detail: `${why} — the gate is disarmed, not passing. (${gate.script})`,
+    message: `${gate.name} gate could not run: ${why} — the gate is disarmed, not passing.`,
+    location: gate.script,
     fixHint: "restore_or_fix_gate_script",
-    file: gate.script,
   };
 }
 
@@ -93,6 +97,6 @@ export async function runMaintenanceGatesDetector(_ctx = {}) {
     const findings = results.filter(Boolean);
     return makeReport("maintenance-gates", findings, t0);
   } catch (err) {
-    return makeError("maintenance-gates", err, t0);
+    return makeError("maintenance-gates", "detector_error", err, t0);
   }
 }

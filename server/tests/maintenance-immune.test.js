@@ -28,6 +28,20 @@ describe("B — maintenance-gates detector", () => {
     assert.equal(f.kind, "runtime");
   });
 
+  it("finding uses the canonical { id, message, location } shape (no undefined render)", () => {
+    // Regression: the finding used { title, detail, file }, so the run-detectors
+    // renderer (reads f.id / f.message / f.location) printed `undefined — undefined`,
+    // hiding which gate failed behind a malformed critical.
+    const f = gateFinding(gate, 1);
+    assert.equal(typeof f.id, "string");
+    assert.ok(f.id.length > 0, "finding must carry a real id");
+    assert.equal(typeof f.message, "string");
+    assert.ok(f.message.includes("schema-drift"), "message names the failing gate");
+    assert.equal(f.location, "scripts/verify-schema-drift.mjs");
+    assert.equal(f.title, undefined, "legacy title field is gone");
+    assert.equal(f.detail, undefined, "legacy detail field is gone");
+  });
+
   it("is registered + tagged for the repair-cortex consumer", () => {
     const d = getDetector("maintenance-gates");
     assert.ok(d, "maintenance-gates is registered");

@@ -10,8 +10,7 @@
  *   - dispatches `concordia:time-dilation` to ~0 (pauses the world tick)
  *   - exposes 6 filter buttons (Velvia / Provia / Astia / B&W / sepia /
  *     infrared) that overlay a CSS filter on the canvas
- *   - on Escape, restores time-dilation to 1.0 and emits
- *     `concordia:photo-mode-end`
+ *   - on Escape, restores time-dilation to 1.0 and clears the filter
  *
  * No backend integration — purely a presentation layer that the
  * world-lens hosts (ConcordiaScene) reads via the CSS variable
@@ -62,9 +61,11 @@ export function PhotoMode() {
       window.dispatchEvent(new CustomEvent('concordia:time-dilation', { detail: { scale: 0.0001 } }));
       document.documentElement.style.setProperty('--photo-filter', FILTER_CSS[filter]);
     } else {
+      // Exit photo mode: un-pause the world tick + clear the CSS filter. The
+      // former `concordia:photo-mode-end` dispatch was dead (no listener) and
+      // redundant — these two lines ARE the exit effect, so it was removed.
       window.dispatchEvent(new CustomEvent('concordia:time-dilation', { detail: { scale: 1.0 } }));
       document.documentElement.style.setProperty('--photo-filter', 'none');
-      window.dispatchEvent(new CustomEvent('concordia:photo-mode-end'));
       setFilter('none');
     }
   }, [active, filter]);

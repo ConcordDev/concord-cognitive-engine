@@ -244,6 +244,13 @@ export default function ConcordiaScene({
   const cameraPunchRef = useRef<{ until: number; start: number; shake: number; fov: number }>(
     { until: 0, start: 0, shake: 0, fov: 0 },
   );
+  // Phase BE1 — photo-mode freecam. PhotoMode dispatches `concordia:freecam`
+  // with positional/yaw/zoom offsets; the render loop reads this ref and layers
+  // the offset onto the base camera transform (active is reset to false when
+  // PhotoMode closes, which re-zeroes the offsets via the off-detail).
+  const freecamRef = useRef<{ active: boolean; x: number; y: number; z: number; yaw: number; zoom: number }>(
+    { active: false, x: 0, y: 0, z: 0, yaw: 0, zoom: 1 },
+  );
   // The shared trauma engine for the 3D camera (world-unit amplitudes). The
   // camera-punch handler feeds it trauma; the render loop applies its decaying
   // offset. FOV stays on cameraPunchRef (a lens effect, not part of the trauma
@@ -1331,6 +1338,25 @@ export default function ConcordiaScene({
           }
         }
 
+        // Phase BE1 — photo-mode freecam. Layer the PhotoMode offsets on top of
+        // the base camera transform (positional dolly + yaw rotation + a zoom
+        // that maps to FOV). Only active while PhotoMode is open.
+        {
+          const fc = freecamRef.current;
+          if (fc.active) {
+            camera.position.x += fc.x;
+            camera.position.y += fc.y;
+            camera.position.z += fc.z;
+            if (fc.yaw) camera.rotation.y += fc.yaw;
+            // zoom 0.5..3 → FOV ~75..30 (narrower FOV = zoomed in).
+            const fcFov = Math.max(25, Math.min(80, 55 / Math.max(0.5, fc.zoom)));
+            if (Math.abs(camera.fov - fcFov) > 0.01) {
+              camera.fov = fcFov;
+              camera.updateProjectionMatrix();
+            }
+          }
+        }
+
         // Update weather transition + emit modifiers
         weatherSys.update(delta);
         onWeatherModifiersRef.current?.(weatherSys.getModifiers());
@@ -1558,6 +1584,33 @@ export default function ConcordiaScene({
     };
     window.addEventListener('concordia:camera-punch', handleCameraPunch);
 
+    // Phase BE1 — photo-mode freecam consumer. PhotoMode (WASD/QE/RF/wheel)
+    // dispatches positional + yaw + zoom offsets; we accumulate them onto a ref
+    // the render loop layers on top of the base camera transform. The offsets
+    // are absolute (PhotoMode owns the running total), so we just mirror them.
+    const handleFreecam = (e: Event) => {
+      const d = (e as CustomEvent).detail as
+        { x?: number; y?: number; z?: number; yaw?: number; zoom?: number } | undefined;
+      if (!d) return;
+      freecamRef.current = {
+        active: true,
+        x: Number(d.x) || 0,
+        y: Number(d.y) || 0,
+        z: Number(d.z) || 0,
+        yaw: Number(d.yaw) || 0,
+        zoom: Math.max(0.5, Math.min(3, Number(d.zoom) || 1)),
+      };
+    };
+    // PhotoMode's hide-HUD close re-shows the HUD; reuse it to clear freecam.
+    const handleHideHud = (e: Event) => {
+      const d = (e as CustomEvent).detail as { hide?: boolean } | undefined;
+      if (d && d.hide === false) {
+        freecamRef.current = { active: false, x: 0, y: 0, z: 0, yaw: 0, zoom: 1 };
+      }
+    };
+    window.addEventListener('concordia:freecam', handleFreecam);
+    window.addEventListener('concordia:hide-hud', handleHideHud);
+
     // ── Click handler ─────────────────────────────────────────────
     function handleCanvasClick(e: MouseEvent) {
       if (disposed || !THREE) return;
@@ -1721,6 +1774,8 @@ export default function ConcordiaScene({
       cancelAnimationFrame(frameIdRef.current);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('concordia:camera-punch', handleCameraPunch);
+      window.removeEventListener('concordia:freecam', handleFreecam);
+      window.removeEventListener('concordia:hide-hud', handleHideHud);
       canvas.removeEventListener('click', handleCanvasClick);
       canvas.removeEventListener('contextmenu', handleContextMenu);
       canvas.removeEventListener('mousedown', maybeRequestPointerLock);

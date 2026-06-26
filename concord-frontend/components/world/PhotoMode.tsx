@@ -43,8 +43,8 @@ export default function PhotoMode({ open, onClose, canvasRef }: Props) {
   const [caption, setCaption] = useState('');
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  // Phase BE1 — freecam offsets. The actual scene camera reads these
-  // by subscribing to 'concordia:freecam' on window.
+  // Phase BE1 — freecam offsets. ConcordiaScene's render loop subscribes to
+  // 'concordia:freecam' on window and layers these offsets onto the camera.
   const freecamRef = useRef({ x: 0, y: 0, z: 0, yaw: 0, pitch: 0, zoom: 1 });
   useEffect(() => {
     if (!open) return;
