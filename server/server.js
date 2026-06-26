@@ -75474,6 +75474,14 @@ structuredLog("info", "phase7_self_improving_init", {
   detail: "Phase 7 macros registered: macro_dag.{validate,describe,run}, narrative.ripple_report, npc.lie_probability, deity.{compose,list,tone_vector}",
 });
 
+// Verified semantic sandwich — NL → parse (structured-output) → deterministic
+// macro DAG → verified format. Wired with runMcpTool as the DAG dispatcher so
+// the pipeline can reach lens-action macros (the math CAS) as well as MACROS,
+// and the live db for the citation-grounding verdict. The parse/format brains
+// are the real defaults inside the lib (injectable in tests).
+import registerSandwichMacros from "./domains/sandwich.js";
+registerSandwichMacros(register, { runMacro: runMcpTool, db: STATE?.db || globalThis._concordDB });
+
 // ── Phase 8.2: ActivityPub inbox + REST endpoint ─────────────────────────────
 register("federation", "inbox_receive", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };

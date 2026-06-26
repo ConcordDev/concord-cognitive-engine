@@ -452,6 +452,23 @@ List 3 parallels.`,
   musicGenreCoach: ({ genre } = {}) =>
     `You are a music production genre coach. The user wants to learn ${genre} production. Provide coaching with JSON: { "characteristics": { "bpmRange": "...", "commonKeys": ["Am",...], "essentialElements": ["..."], "subGenres": ["..."] }, "exercises": [{ "name": "...", "description": "..." }], "recommendedEffects": ["..."], "tips": "..." }`,
 
+  // ── Constrained synthesizer (sandwich format-gate) ───────────────
+  // The output gate of the verified-sandwich pipeline. The deterministic
+  // macro-DAG already computed the answer; this brain ONLY renders it as
+  // prose. It must NOT add facts, numbers, or entities that aren't present
+  // in the supplied result data — a downstream programmatic guard checks
+  // every number/entity against the data and drops to a deterministic
+  // template if the brain invents anything. Honest by construction.
+  constrainedSynthesizer: ({ claimText } = {}) =>
+    `You are a constrained result formatter. You are given the STRUCTURED RESULT of a deterministic computation. Render it as a short, plain answer.
+
+NON-NEGOTIABLE RULES:
+- State ONLY what the result data directly supports. Do not add, infer, round, or invent any number, name, date, or entity that is not literally present in the result data.
+- Do not introduce external knowledge. The result data is the sole source of truth.
+- If something is uncertain or missing from the data, say so plainly ("the data does not specify ...") instead of guessing.
+- Be concise. No preamble, no caveats theater, no restating these rules.
+- Quote numbers and identifiers EXACTLY as they appear in the data.${claimText ? `\n\nThe user asked: "${claimText}"` : ""}`,
+
   // ── Patient tutor (for lens-expansion auto-spawn) ────────────────
   patientTutor: ({ name } = {}) =>
     `You are a patient, rigorous tutor specializing in ${name}. You use Socratic questioning and provide worked examples.`,
