@@ -1,0 +1,85 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "autotag",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "autotag.analyze",
+      "name": "analyze"
+    },
+    {
+      "_derived": true,
+      "domain": "autotag",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "autotag.apply",
+      "name": "apply"
+    },
+    {
+      "_derived": true,
+      "domain": "autotag",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "autotag.batchProcess",
+      "name": "batchProcess"
+    },
+    {
+      "_derived": true,
+      "domain": "autotag",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "autotag.classify",
+      "name": "classify"
+    },
+    {
+      "_derived": true,
+      "domain": "autotag",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "autotag.retro",
+      "name": "retro"
+    },
+    {
+      "_derived": true,
+      "domain": "autotag",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "autotag.sync_lenses",
+      "name": "sync_lenses"
+    }
+  ],
+  "domain": "autotag",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 6
+}

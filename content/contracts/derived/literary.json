@@ -1,0 +1,150 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.annotate",
+      "name": "annotate"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.crystallize",
+      "name": "crystallize"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.detail",
+      "name": "detail"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.provenance",
+      "name": "provenance"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.resonance",
+      "name": "resonance"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.resonance_graph",
+      "name": "resonance_graph"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.resonance_stats",
+      "name": "resonance_stats"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.salience",
+      "name": "salience"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.search",
+      "name": "search"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.semantic_graph",
+      "name": "semantic_graph"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.stats",
+      "name": "stats"
+    }
+  ],
+  "domain": "literary",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 11
+}

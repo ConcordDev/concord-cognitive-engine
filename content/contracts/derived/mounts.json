@@ -1,0 +1,332 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.applied_profile",
+      "name": "applied_profile"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.care_state",
+      "name": "care_state"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.combat_overlay",
+      "name": "combat_overlay"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.compute_stats",
+      "name": "compute_stats"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.craft_gear",
+      "name": "craft_gear"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.dismount",
+      "name": "dismount"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.equip_gear",
+      "name": "equip_gear"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.evolution_state",
+      "name": "evolution_state"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.gain_xp",
+      "name": "gain_xp"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.get_active_mount",
+      "name": "get_active_mount"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.get_equipped_gear",
+      "name": "get_equipped_gear"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.get_gait",
+      "name": "get_gait"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.get_species",
+      "name": "get_species"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.groom",
+      "name": "groom"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.history",
+      "name": "history"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.list_eligible_nearby",
+      "name": "list_eligible_nearby"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.list_for_player",
+      "name": "list_for_player"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.list_mountable",
+      "name": "list_mountable"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.list_species",
+      "name": "list_species"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.mount",
+      "name": "mount"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.rest",
+      "name": "rest"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.tame",
+      "name": "tame"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.unequip_gear",
+      "name": "unequip_gear"
+    },
+    {
+      "_derived": true,
+      "domain": "mounts",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mounts.validate_gear_recipe",
+      "name": "validate_gear_recipe"
+    }
+  ],
+  "domain": "mounts",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 25
+}

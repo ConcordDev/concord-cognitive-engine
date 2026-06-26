@@ -1,0 +1,46 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "forward_sim",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forward_sim.active",
+      "name": "active"
+    },
+    {
+      "_derived": true,
+      "domain": "forward_sim",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forward_sim.predictions_for_player",
+      "name": "predictions_for_player"
+    },
+    {
+      "_derived": true,
+      "domain": "forward_sim",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forward_sim.predictions_for_subject",
+      "name": "predictions_for_subject"
+    }
+  ],
+  "domain": "forward_sim",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 3
+}

@@ -1,0 +1,202 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.apply_event",
+      "name": "apply_event"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.checkpoint",
+      "name": "checkpoint"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.cognitive_diff",
+      "name": "cognitive_diff"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.compare_worlds",
+      "name": "compare_worlds"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.create_forecast",
+      "name": "create_forecast"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.create_plan",
+      "name": "create_plan"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.create_world_model",
+      "name": "create_world_model"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.decay_forecast",
+      "name": "decay_forecast"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.list_forecasts",
+      "name": "list_forecasts"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.list_plans",
+      "name": "list_plans"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.list_world_models",
+      "name": "list_world_models"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.propose_governance_heal",
+      "name": "propose_governance_heal"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.prune_memory",
+      "name": "prune_memory"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.rollback",
+      "name": "rollback"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.temporal_planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.temporal_planning.status",
+      "name": "status"
+    }
+  ],
+  "domain": "loaf.temporal_planning",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 15
+}

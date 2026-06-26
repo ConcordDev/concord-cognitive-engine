@@ -1,0 +1,137 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.auto",
+      "name": "auto"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.fromSource",
+      "name": "fromSource"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.generate",
+      "name": "generate"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.hybrid",
+      "name": "hybrid"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.manual",
+      "name": "manual"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.recent_mine",
+      "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.sections",
+      "name": "sections"
+    },
+    {
+      "_derived": true,
+      "domain": "forge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forge.validate",
+      "name": "validate"
+    }
+  ],
+  "domain": "forge",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 10
+}

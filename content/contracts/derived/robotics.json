@@ -1,0 +1,20 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.live_arxiv",
+      "name": "live_arxiv"
+    }
+  ],
+  "domain": "robotics",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 1
+}

@@ -1,0 +1,137 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.analogize",
+      "name": "analogize"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.autogen",
+      "name": "autogen"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.cartograph",
+      "name": "cartograph"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.continuity",
+      "name": "continuity"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.dream",
+      "name": "dream"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.evolution",
+      "name": "evolution"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.gapScan",
+      "name": "gapScan"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.promotionTick",
+      "name": "promotionTick"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.synthesize",
+      "name": "synthesize"
+    }
+  ],
+  "domain": "system",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 10
+}

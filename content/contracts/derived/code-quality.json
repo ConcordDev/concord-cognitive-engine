@@ -1,0 +1,163 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "code-quality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code-quality.analyze",
+      "name": "analyze"
+    },
+    {
+      "_derived": true,
+      "domain": "code-quality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code-quality.annotate",
+      "name": "annotate"
+    },
+    {
+      "_derived": true,
+      "domain": "code-quality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code-quality.debt",
+      "name": "debt"
+    },
+    {
+      "_derived": true,
+      "domain": "code-quality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code-quality.decoratePR",
+      "name": "decoratePR"
+    },
+    {
+      "_derived": true,
+      "domain": "code-quality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code-quality.evaluateGate",
+      "name": "evaluateGate"
+    },
+    {
+      "_derived": true,
+      "domain": "code-quality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code-quality.getGate",
+      "name": "getGate"
+    },
+    {
+      "_derived": true,
+      "domain": "code-quality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code-quality.hotspots",
+      "name": "hotspots"
+    },
+    {
+      "_derived": true,
+      "domain": "code-quality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code-quality.listIssues",
+      "name": "listIssues"
+    },
+    {
+      "_derived": true,
+      "domain": "code-quality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code-quality.setGate",
+      "name": "setGate"
+    },
+    {
+      "_derived": true,
+      "domain": "code-quality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code-quality.trackIssue",
+      "name": "trackIssue"
+    },
+    {
+      "_derived": true,
+      "domain": "code-quality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code-quality.trend",
+      "name": "trend"
+    },
+    {
+      "_derived": true,
+      "domain": "code-quality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "code-quality.updateIssue",
+      "name": "updateIssue"
+    }
+  ],
+  "domain": "code-quality",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 12
+}

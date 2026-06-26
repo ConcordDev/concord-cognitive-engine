@@ -1,0 +1,215 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.advance_maturity",
+      "name": "advance_maturity"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.birth",
+      "name": "birth"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.children",
+      "name": "children"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.conceive",
+      "name": "conceive"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.constants",
+      "name": "constants"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.court",
+      "name": "court"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.courtship",
+      "name": "courtship"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.dissolve",
+      "name": "dissolve"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.give_gift",
+      "name": "give_gift"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.list_courtships",
+      "name": "list_courtships"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.marriages",
+      "name": "marriages"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.propose",
+      "name": "propose"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.select_heir",
+      "name": "select_heir"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.spouse_react",
+      "name": "spouse_react"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.spouses",
+      "name": "spouses"
+    },
+    {
+      "_derived": true,
+      "domain": "romance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "romance.wed",
+      "name": "wed"
+    }
+  ],
+  "domain": "romance",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 16
+}

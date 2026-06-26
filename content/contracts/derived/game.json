@@ -1,0 +1,46 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "game",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "game",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game.live_trivia",
+      "name": "live_trivia"
+    },
+    {
+      "_derived": true,
+      "domain": "game",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game.recent_mine",
+      "name": "recent_mine"
+    }
+  ],
+  "domain": "game",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 3
+}

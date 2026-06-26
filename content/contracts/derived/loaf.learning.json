@@ -1,0 +1,85 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.learning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.learning.actor_stats",
+      "name": "actor_stats"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.learning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.learning.assess_reflection",
+      "name": "assess_reflection"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.learning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.learning.clamp_strategy",
+      "name": "clamp_strategy"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.learning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.learning.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.learning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.learning.suppress_outliers",
+      "name": "suppress_outliers"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.learning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.learning.track_contribution",
+      "name": "track_contribution"
+    }
+  ],
+  "domain": "loaf.learning",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 6
+}

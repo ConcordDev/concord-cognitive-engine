@@ -1,0 +1,176 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "politics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "politics.advance_phase",
+      "name": "advance_phase"
+    },
+    {
+      "_derived": true,
+      "domain": "politics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "politics.campaign_event",
+      "name": "campaign_event"
+    },
+    {
+      "_derived": true,
+      "domain": "politics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "politics.campaign_history",
+      "name": "campaign_history"
+    },
+    {
+      "_derived": true,
+      "domain": "politics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "politics.candidates",
+      "name": "candidates"
+    },
+    {
+      "_derived": true,
+      "domain": "politics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "politics.certify",
+      "name": "certify"
+    },
+    {
+      "_derived": true,
+      "domain": "politics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "politics.constants",
+      "name": "constants"
+    },
+    {
+      "_derived": true,
+      "domain": "politics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "politics.declare_candidacy",
+      "name": "declare_candidacy"
+    },
+    {
+      "_derived": true,
+      "domain": "politics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "politics.get_cycle",
+      "name": "get_cycle"
+    },
+    {
+      "_derived": true,
+      "domain": "politics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "politics.list_cycles",
+      "name": "list_cycles"
+    },
+    {
+      "_derived": true,
+      "domain": "politics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "politics.open_cycle",
+      "name": "open_cycle"
+    },
+    {
+      "_derived": true,
+      "domain": "politics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "politics.tally",
+      "name": "tally"
+    },
+    {
+      "_derived": true,
+      "domain": "politics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "politics.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "politics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "politics.withdraw",
+      "name": "withdraw"
+    }
+  ],
+  "domain": "politics",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 13
+}

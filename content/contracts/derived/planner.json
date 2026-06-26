@@ -1,0 +1,72 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "planner",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "planner.advance",
+      "name": "advance"
+    },
+    {
+      "_derived": true,
+      "domain": "planner",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "planner.contingency",
+      "name": "contingency"
+    },
+    {
+      "_derived": true,
+      "domain": "planner",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "planner.draft",
+      "name": "draft"
+    },
+    {
+      "_derived": true,
+      "domain": "planner",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "planner.plan",
+      "name": "plan"
+    },
+    {
+      "_derived": true,
+      "domain": "planner",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "planner.sweep",
+      "name": "sweep"
+    }
+  ],
+  "domain": "planner",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 5
+}

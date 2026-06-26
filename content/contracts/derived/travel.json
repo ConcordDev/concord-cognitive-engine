@@ -1,0 +1,59 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "travel.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "travel.live_nps_parks",
+      "name": "live_nps_parks"
+    },
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "travel.live_zippopotam",
+      "name": "live_zippopotam"
+    },
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "travel.recent_mine",
+      "name": "recent_mine"
+    }
+  ],
+  "domain": "travel",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 4
+}

@@ -1,0 +1,33 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "import",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "import.json",
+      "name": "json"
+    },
+    {
+      "_derived": true,
+      "domain": "import",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "import.markdown",
+      "name": "markdown"
+    }
+  ],
+  "domain": "import",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 2
+}

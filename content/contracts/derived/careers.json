@@ -1,0 +1,111 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "careers",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "careers.accept",
+      "name": "accept"
+    },
+    {
+      "_derived": true,
+      "domain": "careers",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "careers.contracts",
+      "name": "contracts"
+    },
+    {
+      "_derived": true,
+      "domain": "careers",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "careers.counter",
+      "name": "counter"
+    },
+    {
+      "_derived": true,
+      "domain": "careers",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "careers.ladder",
+      "name": "ladder"
+    },
+    {
+      "_derived": true,
+      "domain": "careers",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "careers.offer",
+      "name": "offer"
+    },
+    {
+      "_derived": true,
+      "domain": "careers",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "careers.reject",
+      "name": "reject"
+    },
+    {
+      "_derived": true,
+      "domain": "careers",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "careers.tracks",
+      "name": "tracks"
+    },
+    {
+      "_derived": true,
+      "domain": "careers",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "careers.work",
+      "name": "work"
+    }
+  ],
+  "domain": "careers",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 8
+}

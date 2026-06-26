@@ -1,0 +1,124 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.stability",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.stability.drift_scan",
+      "name": "drift_scan"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.stability",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.stability.identity",
+      "name": "identity"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.stability",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.stability.list_alerts",
+      "name": "list_alerts"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.stability",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.stability.list_constraints",
+      "name": "list_constraints"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.stability",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.stability.list_guardrails",
+      "name": "list_guardrails"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.stability",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.stability.list_tests",
+      "name": "list_tests"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.stability",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.stability.record_failure",
+      "name": "record_failure"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.stability",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.stability.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.stability",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.stability.verify_acceptance",
+      "name": "verify_acceptance"
+    }
+  ],
+  "domain": "loaf.stability",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 9
+}

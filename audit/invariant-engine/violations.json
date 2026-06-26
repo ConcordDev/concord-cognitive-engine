@@ -1,0 +1,130 @@
+{
+  "generatedAt": "2026-06-26T21:19:22.110Z",
+  "durationMs": 181465,
+  "totals": {
+    "macrosEnumerated": 2599,
+    "headlessSafeDriven": 2574,
+    "headlessUnsafeSkipped": 25,
+    "violations": 13,
+    "hardCrashes": 0
+  },
+  "byVector": {
+    "V1": 0,
+    "V2": 6,
+    "V3": 7,
+    "META": 0,
+    "HARD": 0
+  },
+  "byReason": {
+    "fuzz_timeout": 5,
+    "invariant_input_timeout": 5,
+    "non_object_on_fuzz": 1,
+    "invariant_violated": 2
+  },
+  "byDomain": {
+    "detectors": 8,
+    "emergent": 2,
+    "hypothesis": 3
+  },
+  "violations": [
+    {
+      "macro_id": "detectors.diff",
+      "vector": "V2",
+      "reason": "fuzz_timeout",
+      "detail": {
+        "poisonedNumericFields": []
+      }
+    },
+    {
+      "macro_id": "detectors.diff",
+      "vector": "V3",
+      "reason": "invariant_input_timeout",
+      "detail": null
+    },
+    {
+      "macro_id": "detectors.findings",
+      "vector": "V2",
+      "reason": "fuzz_timeout",
+      "detail": {
+        "poisonedNumericFields": []
+      }
+    },
+    {
+      "macro_id": "detectors.findings",
+      "vector": "V3",
+      "reason": "invariant_input_timeout",
+      "detail": null
+    },
+    {
+      "macro_id": "detectors.runAll",
+      "vector": "V2",
+      "reason": "fuzz_timeout",
+      "detail": {
+        "poisonedNumericFields": []
+      }
+    },
+    {
+      "macro_id": "detectors.runAll",
+      "vector": "V3",
+      "reason": "invariant_input_timeout",
+      "detail": null
+    },
+    {
+      "macro_id": "detectors.summary",
+      "vector": "V2",
+      "reason": "fuzz_timeout",
+      "detail": {
+        "poisonedNumericFields": []
+      }
+    },
+    {
+      "macro_id": "detectors.summary",
+      "vector": "V3",
+      "reason": "invariant_input_timeout",
+      "detail": null
+    },
+    {
+      "macro_id": "emergent.repair.prophet",
+      "vector": "V2",
+      "reason": "fuzz_timeout",
+      "detail": {
+        "poisonedNumericFields": []
+      }
+    },
+    {
+      "macro_id": "emergent.repair.prophet",
+      "vector": "V3",
+      "reason": "invariant_input_timeout",
+      "detail": null
+    },
+    {
+      "macro_id": "hypothesis.get",
+      "vector": "V2",
+      "reason": "non_object_on_fuzz",
+      "detail": {
+        "got": "null"
+      }
+    },
+    {
+      "macro_id": "hypothesis.get",
+      "vector": "V3",
+      "reason": "invariant_violated",
+      "detail": {
+        "expr": "output !== null && output !== undefined",
+        "why": "invariant_false",
+        "output": "null"
+      }
+    },
+    {
+      "macro_id": "hypothesis.get",
+      "vector": "V3",
+      "reason": "invariant_violated",
+      "detail": {
+        "expr": "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "why": "eval_throw: Cannot read properties of null (reading 'ok')",
+        "output": "null"
+      }
+    }
+  ],
+  "hardCrashes": []
+}

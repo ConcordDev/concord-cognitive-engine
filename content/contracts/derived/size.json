@@ -1,0 +1,46 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "size",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "size.combat_profile",
+      "name": "combat_profile"
+    },
+    {
+      "_derived": true,
+      "domain": "size",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "size.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "size",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "size.set",
+      "name": "set"
+    }
+  ],
+  "domain": "size",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 3
+}

@@ -1,0 +1,85 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.live_datamuse",
+      "name": "live_datamuse"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.live_dictionary",
+      "name": "live_dictionary"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.live_wiki_search",
+      "name": "live_wiki_search"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.live_wiki_summary",
+      "name": "live_wiki_summary"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.recent_mine",
+      "name": "recent_mine"
+    }
+  ],
+  "domain": "linguistics",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 6
+}

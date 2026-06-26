@@ -1,0 +1,59 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "robolab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robolab.actuate",
+      "name": "actuate"
+    },
+    {
+      "_derived": true,
+      "domain": "robolab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robolab.record_run",
+      "name": "record_run"
+    },
+    {
+      "_derived": true,
+      "domain": "robolab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robolab.run",
+      "name": "run"
+    },
+    {
+      "_derived": true,
+      "domain": "robolab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robolab.runs",
+      "name": "runs"
+    }
+  ],
+  "domain": "robolab",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 4
+}

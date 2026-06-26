@@ -1,0 +1,33 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "all",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "all.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "all",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "all.recent_mine",
+      "name": "recent_mine"
+    }
+  ],
+  "domain": "all",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 2
+}

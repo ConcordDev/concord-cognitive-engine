@@ -1,0 +1,20 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "synth",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "synth.combine",
+      "name": "combine"
+    }
+  ],
+  "domain": "synth",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 1
+}

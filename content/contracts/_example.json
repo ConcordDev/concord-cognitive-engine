@@ -1,0 +1,30 @@
+{
+  "macro_id": "accounting.trialBalance",
+  "domain": "accounting",
+  "name": "trialBalance",
+  "inputs": {
+    "entries": { "type": "array", "required": true },
+    "asOf": { "type": "string" },
+    "precision": { "type": "number", "min": 0, "max": 8 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.lines) || typeof output.balanced === 'boolean'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": { "entries": [] },
+      "expect": { "ok": true }
+    },
+    {
+      "input": { "entries": [{ "account": "cash", "debit": 100, "credit": 0 }, { "account": "equity", "debit": 0, "credit": 100 }] },
+      "expect": { "ok": true }
+    },
+    {
+      "input": {},
+      "expect": { "ok": false }
+    }
+  ],
+  "_note": "EXAMPLE ONLY. This is a worked override illustrating the contract shape from SCHEMA.md. It is not loaded by the engine (filename starts with '_'; overrides must be named '<domain>.<macro>.json'). Copy this shape into content/contracts/overrides/ to pin a real macro."
+}

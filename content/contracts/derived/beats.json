@@ -1,0 +1,46 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "beats",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "beats.find_open_for_subject",
+      "name": "find_open_for_subject"
+    },
+    {
+      "_derived": true,
+      "domain": "beats",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "beats.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "beats",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "beats.realise",
+      "name": "realise"
+    }
+  ],
+  "domain": "beats",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 3
+}

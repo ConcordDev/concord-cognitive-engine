@@ -1,0 +1,176 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.browse",
+      "name": "browse"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.dtu_browse",
+      "name": "dtu_browse"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.heartbeatSync",
+      "name": "heartbeatSync"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.install",
+      "name": "install"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.installed",
+      "name": "installed"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.purchase",
+      "name": "purchase"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.purchaseWithRoyalties",
+      "name": "purchaseWithRoyalties"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.recent_mine",
+      "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.review",
+      "name": "review"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.royalties",
+      "name": "royalties"
+    },
+    {
+      "_derived": true,
+      "domain": "marketplace",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketplace.submit",
+      "name": "submit"
+    }
+  ],
+  "domain": "marketplace",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 13
+}

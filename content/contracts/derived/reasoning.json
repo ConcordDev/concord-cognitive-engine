@@ -1,0 +1,124 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.add_step",
+      "name": "add_step"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.conclude",
+      "name": "conclude"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.create_chain",
+      "name": "create_chain"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.get_trace",
+      "name": "get_trace"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.list_chains",
+      "name": "list_chains"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.recent_mine",
+      "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.validate_step",
+      "name": "validate_step"
+    }
+  ],
+  "domain": "reasoning",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 9
+}

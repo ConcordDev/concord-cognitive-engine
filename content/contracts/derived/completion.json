@@ -1,0 +1,33 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "completion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "completion.exhaustion",
+      "name": "exhaustion"
+    },
+    {
+      "_derived": true,
+      "domain": "completion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "completion.summary",
+      "name": "summary"
+    }
+  ],
+  "domain": "completion",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 2
+}

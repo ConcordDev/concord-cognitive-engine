@@ -1,0 +1,33 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "creatures",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creatures.for_world",
+      "name": "for_world"
+    },
+    {
+      "_derived": true,
+      "domain": "creatures",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creatures.taxonomy",
+      "name": "taxonomy"
+    }
+  ],
+  "domain": "creatures",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 2
+}

@@ -1,0 +1,46 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "scope",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "scope.checkCitations",
+      "name": "checkCitations"
+    },
+    {
+      "_derived": true,
+      "domain": "scope",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "scope.promote",
+      "name": "promote"
+    },
+    {
+      "_derived": true,
+      "domain": "scope",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "scope.royaltyPreview",
+      "name": "royaltyPreview"
+    }
+  ],
+  "domain": "scope",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 3
+}

@@ -1,0 +1,59 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.live_breweries",
+      "name": "live_breweries"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.live_food_search",
+      "name": "live_food_search"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.recent_mine",
+      "name": "recent_mine"
+    }
+  ],
+  "domain": "food",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 4
+}

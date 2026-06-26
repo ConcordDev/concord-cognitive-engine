@@ -1,0 +1,72 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "knowledge_trade",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "knowledge_trade.mentorship_complete_session",
+      "name": "mentorship_complete_session"
+    },
+    {
+      "_derived": true,
+      "domain": "knowledge_trade",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "knowledge_trade.mentorship_list_for_mentor",
+      "name": "mentorship_list_for_mentor"
+    },
+    {
+      "_derived": true,
+      "domain": "knowledge_trade",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "knowledge_trade.mentorship_list_for_student",
+      "name": "mentorship_list_for_student"
+    },
+    {
+      "_derived": true,
+      "domain": "knowledge_trade",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "knowledge_trade.mentorship_request",
+      "name": "mentorship_request"
+    },
+    {
+      "_derived": true,
+      "domain": "knowledge_trade",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "knowledge_trade.witness",
+      "name": "witness"
+    }
+  ],
+  "domain": "knowledge_trade",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 5
+}

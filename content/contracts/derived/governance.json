@@ -1,0 +1,124 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "governance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "governance.cast_vote",
+      "name": "cast_vote"
+    },
+    {
+      "_derived": true,
+      "domain": "governance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "governance.list_all",
+      "name": "list_all"
+    },
+    {
+      "_derived": true,
+      "domain": "governance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "governance.list_governed_constants",
+      "name": "list_governed_constants"
+    },
+    {
+      "_derived": true,
+      "domain": "governance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "governance.list_open",
+      "name": "list_open"
+    },
+    {
+      "_derived": true,
+      "domain": "governance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "governance.open_proposal",
+      "name": "open_proposal"
+    },
+    {
+      "_derived": true,
+      "domain": "governance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "governance.resolve",
+      "name": "resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "governance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "governance.simulate",
+      "name": "simulate"
+    },
+    {
+      "_derived": true,
+      "domain": "governance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "governance.simulation",
+      "name": "simulation"
+    },
+    {
+      "_derived": true,
+      "domain": "governance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "governance.tally",
+      "name": "tally"
+    }
+  ],
+  "domain": "governance",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 9
+}

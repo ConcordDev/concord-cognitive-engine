@@ -14,6 +14,8 @@
     "audit:reachability": "node scripts/audit/gates/lens-reachability.mjs",
     "count-loc": "node scripts/count-loc.mjs",
     "check-doc-claims": "node scripts/check-doc-claims.mjs",
+    "audit:invariants": "node scripts/macro-assassin.mjs",
+    "contracts:derive": "node scripts/contracts/derive-contracts.mjs",
     "grade-macros": "node scripts/grade-macro-depth.mjs",
     "grade-macros:honest": "node scripts/grade-macro-depth.mjs --honest",
     "depth:backlog": "node scripts/depth-backlog.mjs",

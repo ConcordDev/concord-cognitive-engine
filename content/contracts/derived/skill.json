@@ -1,0 +1,20 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "skill",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "skill.create",
+      "name": "create"
+    }
+  ],
+  "domain": "skill",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 1
+}

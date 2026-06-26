@@ -1,0 +1,189 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "crime",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crime.advance_control",
+      "name": "advance_control"
+    },
+    {
+      "_derived": true,
+      "domain": "crime",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crime.bounties_on",
+      "name": "bounties_on"
+    },
+    {
+      "_derived": true,
+      "domain": "crime",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crime.cancel_bounty",
+      "name": "cancel_bounty"
+    },
+    {
+      "_derived": true,
+      "domain": "crime",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crime.claim_bounty",
+      "name": "claim_bounty"
+    },
+    {
+      "_derived": true,
+      "domain": "crime",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crime.constants",
+      "name": "constants"
+    },
+    {
+      "_derived": true,
+      "domain": "crime",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crime.execute_heist",
+      "name": "execute_heist"
+    },
+    {
+      "_derived": true,
+      "domain": "crime",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crime.issue_bounty",
+      "name": "issue_bounty"
+    },
+    {
+      "_derived": true,
+      "domain": "crime",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crime.my_heists",
+      "name": "my_heists"
+    },
+    {
+      "_derived": true,
+      "domain": "crime",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crime.plan_heist",
+      "name": "plan_heist"
+    },
+    {
+      "_derived": true,
+      "domain": "crime",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crime.record",
+      "name": "record"
+    },
+    {
+      "_derived": true,
+      "domain": "crime",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crime.resolve",
+      "name": "resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "crime",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crime.stake_territory",
+      "name": "stake_territory"
+    },
+    {
+      "_derived": true,
+      "domain": "crime",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crime.territories",
+      "name": "territories"
+    },
+    {
+      "_derived": true,
+      "domain": "crime",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crime.wanted",
+      "name": "wanted"
+    }
+  ],
+  "domain": "crime",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 14
+}

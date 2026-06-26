@@ -1,0 +1,215 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.config",
+      "name": "config"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.counterfactual",
+      "name": "counterfactual"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.create_entity",
+      "name": "create_entity"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.create_relation",
+      "name": "create_relation"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.delete_entity",
+      "name": "delete_entity"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.extract_from_dtu",
+      "name": "extract_from_dtu"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.get_entity",
+      "name": "get_entity"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.get_simulation",
+      "name": "get_simulation"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.list_entities",
+      "name": "list_entities"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.list_relations",
+      "name": "list_relations"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.list_simulations",
+      "name": "list_simulations"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.list_snapshots",
+      "name": "list_snapshots"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.simulate",
+      "name": "simulate"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.snapshot",
+      "name": "snapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "worldmodel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "worldmodel.update_entity",
+      "name": "update_entity"
+    }
+  ],
+  "domain": "worldmodel",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 16
+}

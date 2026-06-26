@@ -1,0 +1,189 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "civic_bonds.complete",
+      "name": "complete"
+    },
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "civic_bonds.complete_milestone",
+      "name": "complete_milestone"
+    },
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "civic_bonds.create",
+      "name": "create"
+    },
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "civic_bonds.fail",
+      "name": "fail"
+    },
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "civic_bonds.fund",
+      "name": "fund"
+    },
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "civic_bonds.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "civic_bonds.ledger",
+      "name": "ledger"
+    },
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "civic_bonds.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "civic_bonds.open",
+      "name": "open"
+    },
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "civic_bonds.pledge",
+      "name": "pledge"
+    },
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "civic_bonds.raid",
+      "name": "raid"
+    },
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "civic_bonds.spillover",
+      "name": "spillover"
+    },
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "civic_bonds.unpledge",
+      "name": "unpledge"
+    },
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "civic_bonds.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "civic_bonds",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 14
+}

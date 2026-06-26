@@ -1,0 +1,72 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.verification",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.verification.add_evidence",
+      "name": "add_evidence"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.verification",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.verification.create_bundle",
+      "name": "create_bundle"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.verification",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.verification.get_bundle",
+      "name": "get_bundle"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.verification",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.verification.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.verification",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.verification.verify",
+      "name": "verify"
+    }
+  ],
+  "domain": "loaf.verification",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 5
+}

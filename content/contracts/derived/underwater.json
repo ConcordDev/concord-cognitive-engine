@@ -1,0 +1,72 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "underwater",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "underwater.list_features",
+      "name": "list_features"
+    },
+    {
+      "_derived": true,
+      "domain": "underwater",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "underwater.list_species",
+      "name": "list_species"
+    },
+    {
+      "_derived": true,
+      "domain": "underwater",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "underwater.near_player",
+      "name": "near_player"
+    },
+    {
+      "_derived": true,
+      "domain": "underwater",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "underwater.spawn_feature",
+      "name": "spawn_feature"
+    },
+    {
+      "_derived": true,
+      "domain": "underwater",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "underwater.tick_threat",
+      "name": "tick_threat"
+    }
+  ],
+  "domain": "underwater",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 5
+}

@@ -1,0 +1,85 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "hiddenQuests",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hiddenQuests.define",
+      "name": "define"
+    },
+    {
+      "_derived": true,
+      "domain": "hiddenQuests",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hiddenQuests.evaluate",
+      "name": "evaluate"
+    },
+    {
+      "_derived": true,
+      "domain": "hiddenQuests",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hiddenQuests.fire",
+      "name": "fire"
+    },
+    {
+      "_derived": true,
+      "domain": "hiddenQuests",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hiddenQuests.kinds",
+      "name": "kinds"
+    },
+    {
+      "_derived": true,
+      "domain": "hiddenQuests",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hiddenQuests.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "hiddenQuests",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hiddenQuests.visit",
+      "name": "visit"
+    }
+  ],
+  "domain": "hiddenQuests",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 6
+}

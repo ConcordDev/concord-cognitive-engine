@@ -1,0 +1,33 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "mount",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mount.bond_event",
+      "name": "bond_event"
+    },
+    {
+      "_derived": true,
+      "domain": "mount",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mount.bond_state",
+      "name": "bond_state"
+    }
+  ],
+  "domain": "mount",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 2
+}

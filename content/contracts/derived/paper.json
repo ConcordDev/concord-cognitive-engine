@@ -1,0 +1,111 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.build",
+      "name": "build"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.create",
+      "name": "create"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.export",
+      "name": "export"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.live_crossref",
+      "name": "live_crossref"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.live_openalex",
+      "name": "live_openalex"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.live_openlibrary",
+      "name": "live_openlibrary"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.recent_mine",
+      "name": "recent_mine"
+    }
+  ],
+  "domain": "paper",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 8
+}

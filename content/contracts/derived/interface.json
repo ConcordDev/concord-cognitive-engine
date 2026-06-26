@@ -1,0 +1,20 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "interface",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "interface.tabs",
+      "name": "tabs"
+    }
+  ],
+  "domain": "interface",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 1
+}

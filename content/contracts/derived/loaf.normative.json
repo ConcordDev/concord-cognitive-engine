@@ -1,0 +1,111 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.normative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.normative.create",
+      "name": "create"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.normative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.normative.evaluate",
+      "name": "evaluate"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.normative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.normative.fork",
+      "name": "fork"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.normative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.normative.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.normative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.normative.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.normative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.normative.revert",
+      "name": "revert"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.normative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.normative.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.normative",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.normative.update",
+      "name": "update"
+    }
+  ],
+  "domain": "loaf.normative",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 8
+}

@@ -1,0 +1,111 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "war",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "war.active",
+      "name": "active"
+    },
+    {
+      "_derived": true,
+      "domain": "war",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "war.declare",
+      "name": "declare"
+    },
+    {
+      "_derived": true,
+      "domain": "war",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "war.get_campaign",
+      "name": "get_campaign"
+    },
+    {
+      "_derived": true,
+      "domain": "war",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "war.my_campaigns",
+      "name": "my_campaigns"
+    },
+    {
+      "_derived": true,
+      "domain": "war",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "war.pay_ransom",
+      "name": "pay_ransom"
+    },
+    {
+      "_derived": true,
+      "domain": "war",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "war.rally",
+      "name": "rally"
+    },
+    {
+      "_derived": true,
+      "domain": "war",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "war.rescue",
+      "name": "rescue"
+    },
+    {
+      "_derived": true,
+      "domain": "war",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "war.seek_truce",
+      "name": "seek_truce"
+    }
+  ],
+  "domain": "war",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 8
+}

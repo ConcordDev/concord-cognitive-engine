@@ -1,0 +1,20 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "org",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "org.create",
+      "name": "create"
+    }
+  ],
+  "domain": "org",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 1
+}

@@ -1,0 +1,150 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.approve_action",
+      "name": "approve_action"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.context",
+      "name": "context"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.ground_dtu",
+      "name": "ground_dtu"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.link_calendar",
+      "name": "link_calendar"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.list_sensors",
+      "name": "list_sensors"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.pending_actions",
+      "name": "pending_actions"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.propose_action",
+      "name": "propose_action"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.recent_readings",
+      "name": "recent_readings"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.record_reading",
+      "name": "record_reading"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.register_sensor",
+      "name": "register_sensor"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.status",
+      "name": "status"
+    }
+  ],
+  "domain": "grounding",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 11
+}

@@ -1,0 +1,111 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.live_apod",
+      "name": "live_apod"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.live_iss",
+      "name": "live_iss"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.live_iss_pass",
+      "name": "live_iss_pass"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.live_launches_upcoming",
+      "name": "live_launches_upcoming"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.live_neo",
+      "name": "live_neo"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.live_spaceflight_news",
+      "name": "live_spaceflight_news"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.recent_mine",
+      "name": "recent_mine"
+    }
+  ],
+  "domain": "astronomy",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 8
+}

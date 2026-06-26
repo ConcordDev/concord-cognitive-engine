@@ -1,0 +1,215 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.acknowledge_alert",
+      "name": "acknowledge_alert"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.active_for_player",
+      "name": "active_for_player"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.alerts",
+      "name": "alerts"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.log_event",
+      "name": "log_event"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.map",
+      "name": "map"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.playbook",
+      "name": "playbook"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.playbook_step",
+      "name": "playbook_step"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.resolve",
+      "name": "resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.resource_deploy",
+      "name": "resource_deploy"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.resource_upsert",
+      "name": "resource_upsert"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.resources",
+      "name": "resources"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.team",
+      "name": "team"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.timeline",
+      "name": "timeline"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.triage",
+      "name": "triage"
+    },
+    {
+      "_derived": true,
+      "domain": "crisis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crisis.unassign",
+      "name": "unassign"
+    }
+  ],
+  "domain": "crisis",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 16
+}

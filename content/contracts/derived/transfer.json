@@ -1,0 +1,98 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.apply_pattern",
+      "name": "apply_pattern"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.classify_domain",
+      "name": "classify_domain"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.extract_pattern",
+      "name": "extract_pattern"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.find_analogies",
+      "name": "find_analogies"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.list_patterns",
+      "name": "list_patterns"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.list_transfers",
+      "name": "list_transfers"
+    },
+    {
+      "_derived": true,
+      "domain": "transfer",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "transfer.status",
+      "name": "status"
+    }
+  ],
+  "domain": "transfer",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 7
+}

@@ -1,0 +1,501 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.char_create",
+      "name": "char_create"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.char_death",
+      "name": "char_death"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.char_marry",
+      "name": "char_marry"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.claim_fabricate",
+      "name": "claim_fabricate"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.council_appoint",
+      "name": "council_appoint"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.council_dismiss",
+      "name": "council_dismiss"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.council_list",
+      "name": "council_list"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.decrees_for_region",
+      "name": "decrees_for_region"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.depose_ruler",
+      "name": "depose_ruler"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.diplomacy_list",
+      "name": "diplomacy_list"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.dynasty_tree",
+      "name": "dynasty_tree"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.economy_build",
+      "name": "economy_build"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.economy_collect",
+      "name": "economy_collect"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.economy_get",
+      "name": "economy_get"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.economy_set_tax",
+      "name": "economy_set_tax"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.kingdom_status",
+      "name": "kingdom_status"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.law_get",
+      "name": "law_get"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.law_set",
+      "name": "law_set"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.my_realm",
+      "name": "my_realm"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.propose_decree",
+      "name": "propose_decree"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.recent_mine",
+      "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.recompute_loyalty",
+      "name": "recompute_loyalty"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.revoke_decree",
+      "name": "revoke_decree"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.scheme_advance",
+      "name": "scheme_advance"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.scheme_list",
+      "name": "scheme_list"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.scheme_start",
+      "name": "scheme_start"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.takeover_conquest",
+      "name": "takeover_conquest"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.takeover_election",
+      "name": "takeover_election"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.takeover_inheritance",
+      "name": "takeover_inheritance"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.treaty_propose",
+      "name": "treaty_propose"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.treaty_resolve",
+      "name": "treaty_resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.war_battle",
+      "name": "war_battle"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.war_declare",
+      "name": "war_declare"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.war_end",
+      "name": "war_end"
+    },
+    {
+      "_derived": true,
+      "domain": "kingdoms",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "kingdoms.war_list",
+      "name": "war_list"
+    }
+  ],
+  "domain": "kingdoms",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 38
+}

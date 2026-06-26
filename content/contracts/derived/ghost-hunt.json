@@ -1,0 +1,98 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "ghost-hunt",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ghost-hunt.advance",
+      "name": "advance"
+    },
+    {
+      "_derived": true,
+      "domain": "ghost-hunt",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ghost-hunt.confront",
+      "name": "confront"
+    },
+    {
+      "_derived": true,
+      "domain": "ghost-hunt",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ghost-hunt.detail",
+      "name": "detail"
+    },
+    {
+      "_derived": true,
+      "domain": "ghost-hunt",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ghost-hunt.history",
+      "name": "history"
+    },
+    {
+      "_derived": true,
+      "domain": "ghost-hunt",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ghost-hunt.leaderboard",
+      "name": "leaderboard"
+    },
+    {
+      "_derived": true,
+      "domain": "ghost-hunt",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ghost-hunt.progress",
+      "name": "progress"
+    },
+    {
+      "_derived": true,
+      "domain": "ghost-hunt",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ghost-hunt.residues",
+      "name": "residues"
+    }
+  ],
+  "domain": "ghost-hunt",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 7
+}

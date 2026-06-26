@@ -1,0 +1,137 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.channels",
+      "name": "channels"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.peers",
+      "name": "peers"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.pending",
+      "name": "pending"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.relay",
+      "name": "relay"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.send",
+      "name": "send"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.stats",
+      "name": "stats"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.sync",
+      "name": "sync"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.topology",
+      "name": "topology"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.transfer",
+      "name": "transfer"
+    }
+  ],
+  "domain": "mesh",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 10
+}

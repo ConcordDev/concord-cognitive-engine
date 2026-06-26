@@ -1,0 +1,176 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "sessions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sessions.advance",
+      "name": "advance"
+    },
+    {
+      "_derived": true,
+      "domain": "sessions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sessions.annotate",
+      "name": "annotate"
+    },
+    {
+      "_derived": true,
+      "domain": "sessions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sessions.bulk_close",
+      "name": "bulk_close"
+    },
+    {
+      "_derived": true,
+      "domain": "sessions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sessions.close",
+      "name": "close"
+    },
+    {
+      "_derived": true,
+      "domain": "sessions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sessions.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "sessions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sessions.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "sessions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sessions.pause",
+      "name": "pause"
+    },
+    {
+      "_derived": true,
+      "domain": "sessions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sessions.rename",
+      "name": "rename"
+    },
+    {
+      "_derived": true,
+      "domain": "sessions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sessions.resume",
+      "name": "resume"
+    },
+    {
+      "_derived": true,
+      "domain": "sessions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sessions.search",
+      "name": "search"
+    },
+    {
+      "_derived": true,
+      "domain": "sessions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sessions.stale",
+      "name": "stale"
+    },
+    {
+      "_derived": true,
+      "domain": "sessions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sessions.start",
+      "name": "start"
+    },
+    {
+      "_derived": true,
+      "domain": "sessions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sessions.update_state",
+      "name": "update_state"
+    }
+  ],
+  "domain": "sessions",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 13
+}

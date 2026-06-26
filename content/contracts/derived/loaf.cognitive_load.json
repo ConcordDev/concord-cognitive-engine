@@ -1,0 +1,215 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.balance",
+      "name": "balance"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.debt_summary",
+      "name": "debt_summary"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.decay",
+      "name": "decay"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.detect_canon_divergence",
+      "name": "detect_canon_divergence"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.discover_invariants",
+      "name": "discover_invariants"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.find_unifications",
+      "name": "find_unifications"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.identify_gaps",
+      "name": "identify_gaps"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.list_meta_dtus",
+      "name": "list_meta_dtus"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.record_debt",
+      "name": "record_debt"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.record_load",
+      "name": "record_load"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.register_concept",
+      "name": "register_concept"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.research_agenda",
+      "name": "research_agenda"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.resolve_debt",
+      "name": "resolve_debt"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.synthesize_meta_dtu",
+      "name": "synthesize_meta_dtu"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.cognitive_load",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.cognitive_load.update_coverage",
+      "name": "update_coverage"
+    }
+  ],
+  "domain": "loaf.cognitive_load",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 16
+}

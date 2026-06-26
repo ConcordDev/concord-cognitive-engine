@@ -1,0 +1,150 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "forecast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forecast.accuracy",
+      "name": "accuracy"
+    },
+    {
+      "_derived": true,
+      "domain": "forecast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forecast.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "forecast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forecast.checkAlerts",
+      "name": "checkAlerts"
+    },
+    {
+      "_derived": true,
+      "domain": "forecast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forecast.compose",
+      "name": "compose"
+    },
+    {
+      "_derived": true,
+      "domain": "forecast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forecast.hourly",
+      "name": "hourly"
+    },
+    {
+      "_derived": true,
+      "domain": "forecast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forecast.listAlerts",
+      "name": "listAlerts"
+    },
+    {
+      "_derived": true,
+      "domain": "forecast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forecast.multiDay",
+      "name": "multiDay"
+    },
+    {
+      "_derived": true,
+      "domain": "forecast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forecast.recent",
+      "name": "recent"
+    },
+    {
+      "_derived": true,
+      "domain": "forecast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forecast.regional",
+      "name": "regional"
+    },
+    {
+      "_derived": true,
+      "domain": "forecast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forecast.subscribeAlert",
+      "name": "subscribeAlert"
+    },
+    {
+      "_derived": true,
+      "domain": "forecast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forecast.unsubscribeAlert",
+      "name": "unsubscribeAlert"
+    }
+  ],
+  "domain": "forecast",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 11
+}

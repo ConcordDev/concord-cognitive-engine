@@ -1,0 +1,124 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "cortex",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cortex.anomalies",
+      "name": "anomalies"
+    },
+    {
+      "_derived": true,
+      "domain": "cortex",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cortex.classify",
+      "name": "classify"
+    },
+    {
+      "_derived": true,
+      "domain": "cortex",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cortex.metrics",
+      "name": "metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "cortex",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cortex.privacy.stats",
+      "name": "privacy.stats"
+    },
+    {
+      "_derived": true,
+      "domain": "cortex",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cortex.privacy.verify",
+      "name": "privacy.verify"
+    },
+    {
+      "_derived": true,
+      "domain": "cortex",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cortex.privacy.zones",
+      "name": "privacy.zones"
+    },
+    {
+      "_derived": true,
+      "domain": "cortex",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cortex.spectrum",
+      "name": "spectrum"
+    },
+    {
+      "_derived": true,
+      "domain": "cortex",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cortex.taxonomy",
+      "name": "taxonomy"
+    },
+    {
+      "_derived": true,
+      "domain": "cortex",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cortex.unknown",
+      "name": "unknown"
+    }
+  ],
+  "domain": "cortex",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 9
+}

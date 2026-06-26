@@ -1,0 +1,124 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "schemes",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "schemes.abandon",
+      "name": "abandon"
+    },
+    {
+      "_derived": true,
+      "domain": "schemes",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "schemes.discover_evidence",
+      "name": "discover_evidence"
+    },
+    {
+      "_derived": true,
+      "domain": "schemes",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "schemes.gather_evidence",
+      "name": "gather_evidence"
+    },
+    {
+      "_derived": true,
+      "domain": "schemes",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "schemes.list_against_user",
+      "name": "list_against_user"
+    },
+    {
+      "_derived": true,
+      "domain": "schemes",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "schemes.list_for_user",
+      "name": "list_for_user"
+    },
+    {
+      "_derived": true,
+      "domain": "schemes",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "schemes.list_targets",
+      "name": "list_targets"
+    },
+    {
+      "_derived": true,
+      "domain": "schemes",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "schemes.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "schemes",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "schemes.overheard",
+      "name": "overheard"
+    },
+    {
+      "_derived": true,
+      "domain": "schemes",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "schemes.propose_player_scheme",
+      "name": "propose_player_scheme"
+    }
+  ],
+  "domain": "schemes",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 9
+}

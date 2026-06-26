@@ -1,0 +1,84 @@
+{
+  "generatedAt": "2026-06-26T21:19:22.110Z",
+  "totals": {
+    "macrosEnumerated": 2599,
+    "headlessSafeDriven": 2574,
+    "headlessUnsafeSkipped": 25,
+    "violations": 13,
+    "hardCrashes": 0
+  },
+  "byVector": {
+    "V1": 0,
+    "V2": 6,
+    "V3": 7,
+    "META": 0,
+    "HARD": 0
+  },
+  "fingerprints": {
+    "3a934ddd5fb61455": {
+      "macro_id": "detectors.diff",
+      "vector": "V2",
+      "reason": "fuzz_timeout"
+    },
+    "4ad34eadb52d6f05": {
+      "macro_id": "detectors.diff",
+      "vector": "V3",
+      "reason": "invariant_input_timeout"
+    },
+    "9db43f25a827f3c5": {
+      "macro_id": "detectors.findings",
+      "vector": "V2",
+      "reason": "fuzz_timeout"
+    },
+    "3508547f3aa54916": {
+      "macro_id": "detectors.findings",
+      "vector": "V3",
+      "reason": "invariant_input_timeout"
+    },
+    "44932ae21e10b4b5": {
+      "macro_id": "detectors.runAll",
+      "vector": "V2",
+      "reason": "fuzz_timeout"
+    },
+    "87e65ee9fb1a0f55": {
+      "macro_id": "detectors.runAll",
+      "vector": "V3",
+      "reason": "invariant_input_timeout"
+    },
+    "3e4341069e8eceb6": {
+      "macro_id": "detectors.summary",
+      "vector": "V2",
+      "reason": "fuzz_timeout"
+    },
+    "5f6ccf26783a3d75": {
+      "macro_id": "detectors.summary",
+      "vector": "V3",
+      "reason": "invariant_input_timeout"
+    },
+    "27eac112d1ef67f1": {
+      "macro_id": "emergent.repair.prophet",
+      "vector": "V2",
+      "reason": "fuzz_timeout"
+    },
+    "0f9f71bd6440cbea": {
+      "macro_id": "emergent.repair.prophet",
+      "vector": "V3",
+      "reason": "invariant_input_timeout"
+    },
+    "2caece7ff1291a3f": {
+      "macro_id": "hypothesis.get",
+      "vector": "V2",
+      "reason": "non_object_on_fuzz"
+    },
+    "7ce4c40fbcd2b887": {
+      "macro_id": "hypothesis.get",
+      "vector": "V3",
+      "reason": "invariant_violated"
+    },
+    "e311dfda80e027ed": {
+      "macro_id": "hypothesis.get",
+      "vector": "V3",
+      "reason": "invariant_violated"
+    }
+  }
+}
