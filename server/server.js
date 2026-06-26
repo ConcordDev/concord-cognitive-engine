@@ -8607,6 +8607,13 @@ async function tryInitWebSockets(server) {
       if (!userId) return;
       if (!data || typeof data !== "object") return;
       const now = Date.now();
+      // G10 (anti animation-cancel): this server-side cooldown is the
+      // authoritative attack-rate gate. It uses the SERVER clock + per-class
+      // cooldowns, so a memory-injected client animation-cancel cannot fire
+      // attacks faster than the cooldown — the "infinite attack speed" exploit
+      // is closed here regardless of client-side animation state. (A separate
+      // stun-prevents-action FSM is a fairness-polish follow-up, not a rate
+      // exploit — the rate is already bounded.)
       if (!_checkAttackCooldown(_attackCd, now, data.style || data.actionOverride).allowed) return;
 
       // Flow Combat: derive context modifiers up-front so applyAttack can
