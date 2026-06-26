@@ -157,11 +157,17 @@ export function decayEquippedOnDeath(db, userId) {
 
   const out = [];
   try {
+    // Batch-fetch all equipped items in ONE query (no N+1) + prepare the UPDATE
+    // once, instead of a SELECT-per-item inside the loop.
+    const placeholders = ids.map(() => "?").join(",");
+    let rows = [];
+    try { rows = db.prepare(`SELECT * FROM player_inventory WHERE user_id = ? AND id IN (${placeholders})`).all(userId, ...ids); }
+    catch { rows = []; }
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const updateStmt = db.prepare(`UPDATE player_inventory SET current_durability = ? WHERE id = ? AND user_id = ?`);
     const tx = db.transaction(() => {
       for (const invId of ids) {
-        let item;
-        try { item = db.prepare(`SELECT * FROM player_inventory WHERE id = ? AND user_id = ?`).get(invId, userId); }
-        catch { item = null; }
+        const item = byId.get(invId);
         if (!item) continue;
         // Lazily stamp durability on legacy gear so it decays too.
         ensureDurability(db, item);
@@ -174,8 +180,7 @@ export function decayEquippedOnDeath(db, userId) {
           out.push({ itemId: invId, itemName: item.item_name || "", current: after, max: Number(max), broke: false, broken: after === 0 });
           continue;
         }
-        db.prepare(`UPDATE player_inventory SET current_durability = ? WHERE id = ? AND user_id = ?`)
-          .run(after, invId, userId);
+        updateStmt.run(after, invId, userId);
         out.push({
           itemId: invId,
           itemName: item.item_name || "",

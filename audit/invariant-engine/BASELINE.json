@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-06-26T21:19:22.110Z",
+  "generatedAt": "2026-06-26T21:28:35.257Z",
   "totals": {
     "macrosEnumerated": 2599,
     "headlessSafeDriven": 2574,
     "headlessUnsafeSkipped": 25,
-    "violations": 13,
+    "violations": 11,
     "hardCrashes": 0
   },
   "byVector": {
     "V1": 0,
-    "V2": 6,
-    "V3": 7,
+    "V2": 5,
+    "V3": 6,
     "META": 0,
     "HARD": 0
   },
@@ -65,20 +65,10 @@
       "vector": "V3",
       "reason": "invariant_input_timeout"
     },
-    "2caece7ff1291a3f": {
-      "macro_id": "hypothesis.get",
-      "vector": "V2",
-      "reason": "non_object_on_fuzz"
-    },
-    "7ce4c40fbcd2b887": {
-      "macro_id": "hypothesis.get",
+    "e3f10e5312e35957": {
+      "macro_id": "ocean.live_tides",
       "vector": "V3",
-      "reason": "invariant_violated"
-    },
-    "e311dfda80e027ed": {
-      "macro_id": "hypothesis.get",
-      "vector": "V3",
-      "reason": "invariant_violated"
+      "reason": "invariant_input_timeout"
     }
   }
 }
