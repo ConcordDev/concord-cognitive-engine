@@ -129,6 +129,36 @@ For each pillar: the completeness bar + the retention driver (condensed from the
 
 ---
 
+## Phase 2 — Verification engine + hardening + topology (this initiative, cont.)
+
+Beyond the game-completeness pass above, this initiative added a self-auditing verification layer and
+closed real infrastructure gaps (see `docs/INVARIANT_ENGINE.md`, `docs/DEPLOYMENT_TOPOLOGY.md`):
+
+- **Orchestrated Invariant Engine** — auto-derived contracts for **2,599 macros** (445 domain files from
+  the live registry), an adversarial runner (`macro-assassin`: seed / NaN-Infinity-injection fuzz /
+  invariant proof against the **real `runMacro`**), a live runtime wrapper, and a ratcheted CI gate
+  (`audit:adversarial` + `.github/workflows/adversarial-audit.yml`). First run drove **2,574 macros
+  adversarially → 0 hard crashes**, baseline **11 violations** (mostly heavy-macro timeouts) after fixing
+  the one real bug it caught (`hypothesis.get` null return). Honest: not "all 9,600 flawless" — a working
+  verifier that ratchets violations toward 0 per commit.
+- **Adversarial hardening (real gaps closed)** — `sanitizeVector` + world-bounds teleport wired into the
+  position-ingestion choke point (closed a real exploit: a `NaN` coordinate bypassed the anti-cheat speed
+  gate), JSON-depth guard, socket-event token bucket on `combat:attack`, per-entity TOCTOU locks on
+  craft/trade/gather. 41 adversarial tests.
+- **New game features** — gear durability/repair; Character Sheet / Ability Cooldown HUD / Target
+  Nameplate; event-UI consolidated into `WorldEventBoard`; in-world auction browse; mount summon/stamina
+  HUD. (Friends, player-trade, housing, companion roster were already wired — left intact.)
+- **Deployment topology** — recommendation: keep client-side render (WebGPU opt-in already scaffolded),
+  reserve the RunPod Blackwell GPU for the 5-brain cognition; pixel streaming spec'd as an optional
+  flagged tier (needs a dedicated render GPU). GPU-cognition claims audited: LLM inference is real/
+  maximized; GPU-accelerated JS macros + GPU invariant-eval are category errors (documented, not faked).
+
+**Closeout gates (green):** lens-wiring 258 WIRED / 0 broken · detector ratchet 0 new high/critical ·
+invariant baseline 0 hard crashes · all per-feature test suites pass (gear 16, hardening 41, Wave-A 11,
+game-tails 21, invariant-eval 9, dialogue 12, appearance 11, e2e api-routes 38). Advisory doc-claims
+drift (CLAUDE.md structural counts grew with the new domain/migration) is surfaced by the non-blocking
+`check-doc-claims` monitor — expected, not a regression.
+
 ## Reproduction
 
 - Genre research + per-gap implementation patterns: `docs/research/MMO_RPG_GENRE_RESEARCH.md`
