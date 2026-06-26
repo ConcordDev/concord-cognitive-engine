@@ -29,5 +29,22 @@ export function sceneToWorld<T extends { x: number; z: number }>(p: T): T {
   return { ...p, x: p.x + WORLD_TO_SCENE_OFFSET, z: p.z + WORLD_TO_SCENE_OFFSET };
 }
 
-const coordFrame = { WORLD_TO_SCENE_OFFSET, worldToSceneAxis, sceneToWorldAxis, worldToScene, sceneToWorld };
+/**
+ * Ground height (scene frame) at (sceneX, sceneZ), from the sampler TerrainRenderer
+ * publishes on `window.__concordiaSampleGroundY`. This reads the ACTUAL heightmap
+ * the terrain mesh + physics heightfield were built from (incl. live deformation),
+ * so it's exact — the surface the player walks. Server-spawned entities arrive at
+ * Y=0 but the city plateau renders at ~40m, so anything not planted via this would
+ * be buried under the world. Returns null when the terrain isn't built yet (caller
+ * keeps the current Y); never throws.
+ */
+export function sampleGroundY(sceneX: number, sceneZ: number): number | null {
+  if (typeof window === 'undefined') return null;
+  const fn = (window as unknown as { __concordiaSampleGroundY?: (x: number, z: number) => number | null })
+    .__concordiaSampleGroundY;
+  if (!fn) return null;
+  try { return fn(sceneX, sceneZ); } catch { return null; }
+}
+
+const coordFrame = { WORLD_TO_SCENE_OFFSET, worldToSceneAxis, sceneToWorldAxis, worldToScene, sceneToWorld, sampleGroundY };
 export default coordFrame;

@@ -50,6 +50,7 @@ import { FacialController, resolveNPCEmotion } from '@/lib/concordia/facial-blen
 import { installMoodListener, emotionFor, biasFor } from '@/lib/concordia/mood-registry';
 import { getClientConfigSync } from '@/hooks/useClientConfig';
 import { physicsWorld } from '@/lib/world-lens/physics-world';
+import { sampleGroundY } from '@/lib/world-lens/coord-frame';
 import { accelToward } from '@/lib/world-lens/jump-forgiveness';
 import { applyCelShade } from '@/lib/world-lens/cel-shade';
 import { ART_STYLE } from '@/lib/world-lens/concordia-theme';
@@ -1972,7 +1973,7 @@ export default function AvatarSystem3D({
         });
         if (disposed) return;
 
-        mesh.position.set(other.position.x, other.position.y, other.position.z);
+        mesh.position.set(other.position.x, sampleGroundY(other.position.x, other.position.z) ?? other.position.y, other.position.z);
         mesh.rotation.y = other.rotation;
         mesh.userData = { avatarId: other.id, isOtherPlayer: true, name: other.name };
 
@@ -2015,7 +2016,7 @@ export default function AvatarSystem3D({
         });
         if (disposed) return;
 
-        mesh.position.set(npc.position.x, npc.position.y, npc.position.z);
+        mesh.position.set(npc.position.x, sampleGroundY(npc.position.x, npc.position.z) ?? npc.position.y, npc.position.z);
         mesh.rotation.y = npc.rotation;
         mesh.userData = {
           avatarId: npc.id,
@@ -2739,6 +2740,10 @@ export default function AvatarSystem3D({
         const interpFactor = Math.min(1, delta * INTERPOLATION_RATE);
         for (const [, data] of otherPlayerMeshes) {
           data.mesh.position.lerp(data.targetPos, interpFactor);
+          // Plant on the terrain surface (they arrive at server Y=0; the ground
+          // is ~40m on the plateau). Skip when the sampler isn't ready yet.
+          const gy = sampleGroundY(data.mesh.position.x, data.mesh.position.z);
+          if (gy !== null) data.mesh.position.y = gy;
           let rd = data.targetRot - data.mesh.rotation.y;
           while (rd > Math.PI) rd -= Math.PI * 2;
           while (rd < -Math.PI) rd += Math.PI * 2;
@@ -2749,6 +2754,9 @@ export default function AvatarSystem3D({
         const npcInterpFactor = Math.min(1, delta * NPC_UPDATE_RATE);
         for (const [, data] of npcMeshes) {
           data.mesh.position.lerp(data.targetPos, npcInterpFactor);
+          // Plant on the terrain surface (same reason as other players above).
+          const gy = sampleGroundY(data.mesh.position.x, data.mesh.position.z);
+          if (gy !== null) data.mesh.position.y = gy;
           let rd = data.targetRot - data.mesh.rotation.y;
           while (rd > Math.PI) rd -= Math.PI * 2;
           while (rd < -Math.PI) rd += Math.PI * 2;
