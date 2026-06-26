@@ -12,6 +12,7 @@ import { randomUUID } from "crypto";
 import logger from "../logger.js";
 import { maxFootSpeedFor, agilityLevelFor, awardSprintXp } from "./movement/foot-speed.js";
 import { speedScaledRadius } from "./movement/interest-management.js";
+import { sanitizeVector, clampToWorldBounds } from "./math-safety.js";
 
 // Speedster S3 — last observed speed per user, for the speed-scaled interest
 // radius. Set on each validated move; read by getNearbyUsers when CONCORD_SPEED_AOI.
@@ -295,6 +296,18 @@ function distanceSq(a, b) {
 export function updateUserPosition(userId, { cityId, x, y, z, direction, action, rotation, currentAnimation, districtId, worldId }) {
   const prev = _userPositions.get(userId);
   const now = Date.now();
+
+  // ── Position safety (adversarial-hardening) ──────────────────────────
+  // Coerce NaN/Infinity/non-finite coords to a finite fallback, then clamp
+  // out-of-bounds coords back into the world envelope. A poisoned position
+  // (NaN chunk key, Infinity distance) would silently bypass the anti-cheat
+  // speed checks below (NaN > max === false) and corrupt spatial chunking for
+  // every nearby player. This runs BEFORE validation/storage so a bad value
+  // can never reach the presence map. Cheap: pure arithmetic per move.
+  {
+    const _safe = clampToWorldBounds(sanitizeVector({ x, y, z }));
+    x = _safe.pos.x; y = _safe.pos.y; z = _safe.pos.z;
+  }
 
   // ── Movement validation (anti-cheat / sanity) ────────────────────────
   // Only applies once a player has an existing position — the first

@@ -8643,6 +8643,16 @@ async function tryInitWebSockets(server) {
       // exploit — the rate is already bounded.)
       if (!_checkAttackCooldown(_attackCd, now, data.style || data.actionOverride).allowed) return;
 
+      // Adversarial-hardening: per-user token-bucket cap on combat:attack. The
+      // per-class cooldown above bounds rate per ACTION CLASS; this bounds the
+      // total per-user event rate (burst floods across classes) and refills
+      // smoothly. Exhausted → drop the event (no-op) + a quiet throttle notice.
+      // Never crashes; env-overridable via CONCORD_SOCKET_COMBAT_PER_SEC.
+      if (process.env.CONCORD_SOCKET_RATELIMIT !== "0" && !_combatSocketLimiter.tryConsume(userId, 1, now)) {
+        try { socket.emit("combat:attack:ack", { ok: false, reason: "rate_limited" }); } catch { /* best-effort */ }
+        return;
+      }
+
       // Flow Combat: derive context modifiers up-front so applyAttack can
       // honor them (stamina cost, damage scaling, evade roll) in one place.
       // Falls back to no-op modifiers when the context engine isn't loaded.
@@ -16075,6 +16085,16 @@ async function llmChat(messagesOrCtx, messagesOrOptions = {}, maybeOptions = {})
 // the registry is intentionally light (functional directives only).
 import { BRAIN_IDENTITY, composeSystemPrompt, TASK_PROMPTS } from "./lib/prompt-registry.js";
 import { makeEscalationBudget } from "./lib/affect-salience.js";
+// Adversarial-hardening: per-user token bucket for HOT raw socket events.
+// Raw socket.io events bypass the HTTP rate-limit middleware entirely; this is
+// the per-user cap on combat:attack so a scripted client can't flood the damage
+// math / broadcast fan-out faster than the bucket refills. Module-scoped so it
+// survives reconnects (keyed by userId).
+import { makeSocketRateLimiter, SOCKET_RATE_DEFAULTS } from "./lib/socket-rate-limit.js";
+const _combatSocketLimiter = makeSocketRateLimiter({
+  ratePerSec: SOCKET_RATE_DEFAULTS.combatPerSec,
+  burst: SOCKET_RATE_DEFAULTS.combatBurst,
+});
 import { noteRejection as _noteAntiCheatRejection, clearUser as _clearAntiCheatUser } from "./lib/anti-cheat-monitor.js";
 import { runChatComputePreflight } from "./lib/chat-compute-preflight.js";
 import { hydrateSession, persistChatTurn } from "./lib/chat-session-store.js";

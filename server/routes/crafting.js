@@ -32,6 +32,7 @@ import {
   spendUpgradePoint,
   getCharacterProgress,
 } from "../lib/skills/character-level.js";
+import { withEntityLock } from "../lib/entity-lock.js";
 
 // ── Helper: parse rule_modulators from a world row ───────────────────────────
 function _parseRules(world) {
@@ -132,7 +133,7 @@ export function createCraftingRouter({ db, requireAuth }) {
   });
 
   // ── POST /api/crafting/execute — execute a recipe (auth required) ──────────
-  router.post("/execute", requireAuth, (req, res) => {
+  router.post("/execute", requireAuth, async (req, res) => {
     try {
       const userId = req.user.id;
       const { recipeId, worldId, qualityMultiplier, buildingId } = req.body;
@@ -145,10 +146,13 @@ export function createCraftingRouter({ db, requireAuth }) {
       // its craft-quality raises output potency. No buildingId / hand-craft = 0.
       const stationQuality = stationQualityFor(db, worldId, buildingId);
 
-      const result = executeCraft(db, userId, worldId, recipeId, {
+      // Adversarial-hardening: serialize a user's concurrent craft requests so
+      // two in-flight executes can't both pass the resource check and double-
+      // consume the same inventory slots (consume→produce read-modify-write).
+      const result = await withEntityLock(`craft:${userId}`, () => executeCraft(db, userId, worldId, recipeId, {
         qualityMultiplier: typeof qualityMultiplier === "number" ? qualityMultiplier : undefined,
         stationQuality,
-      });
+      }));
       if (!result.ok) {
         return res.status(422).json(result);
       }

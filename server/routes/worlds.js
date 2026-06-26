@@ -20,6 +20,7 @@ import { travelToWorld, applyWorldRulesToPlayer } from "../lib/transit.js";
 import { spawnWorldNativeEmergent, getWorldEmergents, getCrossWorldEmergents, growAffinity } from "../lib/world-emergents.js";
 import { seedWorldContent } from "../lib/world-seeder.js";
 import { getNearbyNodes, getUndergroundNodes, gatherFromNode, updateSwimState, checkSwimState, respawnExpiredNodes } from "../lib/world-gathering.js";
+import { withEntityLock } from "../lib/entity-lock.js";
 import { getWorldMarket, getResourcePrice, recordTransaction } from "../lib/world-economy.js";
 import { issueDirective, voteOnDirective, getActiveDirectives, getDirectiveHistory } from "../lib/world-governance.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
@@ -1651,12 +1652,19 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const { worldId, nodeId } = req.params;
       const { toolType = 'hands', toolTier = 1, skillLevel = 1, x, z, element } = req.body;
 
+      // Adversarial-hardening: serialize the read-modify-write on this node so
+      // two concurrent gathers (double-click / two shard writers) can't both
+      // run the gather → inventory-upsert window and double-credit. The node
+      // decrement itself is already atomic (world-gathering.js G4); this lock
+      // additionally closes the SELECT-then-INSERT inventory-upsert race that
+      // sits AFTER an `await import(...)` boundary below.
+      const result = await withEntityLock(`gather:${nodeId}`, async () => {
       const result = gatherFromNode(db, nodeId, req.user.id, {
         toolType, toolTier: parseInt(toolTier), skillLevel: parseInt(skillLevel),
         playerPos: (x != null && z != null) ? { x: parseFloat(x), z: parseFloat(z) } : null,
       });
 
-      if (!result.ok) return res.status(400).json(result);
+      if (!result.ok) return result;
 
       // ── Layer 7.5: terrain affinity yield boost ───────────────────────────
       // Earth-aligned (physical) gatherers extract more from stone/ore;
@@ -1709,6 +1717,11 @@ export default function createWorldsRouter({ requireAuth, db }) {
           `).run(req.user.id, item.item, item.quantity, worldId, JSON.stringify({ name: item.name, quality: item.quality }));
         }
       }
+
+      return result;
+      }); // end withEntityLock(gather:nodeId)
+
+      if (!result.ok) return res.status(400).json(result);
 
       // Emit real-time update to other players in the same world
       req.app.locals.io?.to(`world:${worldId}`).emit('world:node-update', {
