@@ -232,7 +232,10 @@ export default function CombatFlowHotbar({
       }));
     } else {
       window.dispatchEvent(new CustomEvent('concordia:spell-cast', {
-        detail: { spellId: slot.spell.id, spellName: slot.spell.name, costs: slot.spell.costs },
+        detail: {
+          spellId: slot.spell.id, spellName: slot.spell.name,
+          element: slot.spell.element, costs: slot.spell.costs,
+        },
       }));
     }
   }, [slots]);

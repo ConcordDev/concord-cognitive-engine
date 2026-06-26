@@ -1173,7 +1173,25 @@ export function getAuthoredDialogue(npcId, questId = null, phase = null) {
     const b = _authoredDialogues.get(`${npcId}:${questId}`);
     if (b) return b;
   }
-  return _authoredDialogues.get(`${npcId}:idle`) ?? null;
+  // Idle fallback. Authored trees are keyed `npcId:questId:phase` (3-part, e.g.
+  // `coalition_enforcer:idle:default`), so a bare 2-part `npcId:idle` lookup
+  // never matched the real keys — the idle path was effectively dead. Try the
+  // canonical 3-part idle key, then the legacy 2-part, then any `npcId:idle:*`.
+  return (
+    _authoredDialogues.get(`${npcId}:idle:default`) ??
+    _authoredDialogues.get(`${npcId}:idle`) ??
+    _firstIdleTree(npcId) ??
+    null
+  );
+}
+
+/** First authored tree whose key starts `${npcId}:idle` (any phase). */
+function _firstIdleTree(npcId) {
+  const prefix = `${npcId}:idle`;
+  for (const [key, val] of _authoredDialogues) {
+    if (key.startsWith(prefix)) return val;
+  }
+  return null;
 }
 
 /** Return all authored NPCs in a given faction. */

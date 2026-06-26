@@ -189,7 +189,7 @@ function buildHandlers(opts: {
     'concordia:buildings-ready': () => { /* startup-readiness signal */ },
     'concordia:sky-weather-ready': () => { /* startup-readiness signal */ },
     'concordia:water-ready': () => { /* startup-readiness signal */ },
-    'concordia:spell-cast': () => { /* scene controller handles */ },
+    'concordia:spell-cast': () => { /* world lens page.tsx handles: cast anim + VFX + combat:attack */ },
     'concordia:quest-marker-add': () => { /* 3D marker layer handles */ },
     'concordia:quest-marker-remove': () => { /* 3D marker layer handles */ },
     'concordia:quest-marker-clear': () => { /* 3D marker layer handles */ },

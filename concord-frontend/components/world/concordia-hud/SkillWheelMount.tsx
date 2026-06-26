@@ -44,6 +44,19 @@ function glyphFor(skill: SkillDTU): string {
   return '✶';
 }
 
+/** Element parsed from the skill's data blob (falls back to a name match), so
+ *  the cast carries a real element instead of defaulting to 'physical'. */
+function elementFor(skill: SkillDTU): string | undefined {
+  try {
+    const d = typeof skill.data === 'string' ? JSON.parse(skill.data) : skill.data;
+    const el = String((d as Record<string, unknown>)?.element || '').toLowerCase();
+    if (el) return el;
+  } catch { /* ignore */ }
+  const name = String(skill.title || skill.name || '').toLowerCase();
+  for (const key of Object.keys(ELEMENT_GLYPH)) if (name.includes(key)) return key;
+  return undefined;
+}
+
 function castSpoke(skill: SkillDTU): WheelSpoke {
   let costs: unknown;
   try {
@@ -51,6 +64,7 @@ function castSpoke(skill: SkillDTU): WheelSpoke {
     costs = (d as Record<string, unknown>)?.costs;
   } catch { /* ignore */ }
   const name = skill.title || skill.name || 'Skill';
+  const element = elementFor(skill);
   return {
     id: skill.id,
     label: name,
@@ -58,7 +72,7 @@ function castSpoke(skill: SkillDTU): WheelSpoke {
     action: () => {
       // Ride the canonical cast channel (same as CombatFlowHotbar).
       window.dispatchEvent(new CustomEvent('concordia:spell-cast', {
-        detail: { spellId: skill.id, spellName: name, costs },
+        detail: { spellId: skill.id, spellName: name, element, costs },
       }));
     },
   };

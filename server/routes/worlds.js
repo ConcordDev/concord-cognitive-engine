@@ -1329,6 +1329,26 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* weaponise consumption best-effort — never blocks dialogue */ }
 
+      // Hand-authored dialogue is canon. The seeder loads branching trees from
+      // content/dialogues/ into _authoredDialogues at boot, but THIS route never
+      // consulted them — it ran deterministic-fallback → LLM and the authored
+      // voice (23 files, the named characters) never reached players. A dead
+      // content wire. Surface the authored greeting (+ opening subtext) here so
+      // it wins over both the LLM and the deterministic fallback. We keep the
+      // canonical action `options` (trade/quest/etc.) — the tree's branch nodes
+      // are a separate conversation surface, not the action-key contract — so
+      // this lifts the authored opener without breaking the option keys.
+      let authoredVoice = false;
+      try {
+        const { getAuthoredDialogue } = await import("../lib/content-seeder.js");
+        const authored = getAuthoredDialogue(npcId);
+        if (authored?.greeting) {
+          greeting = authored.greeting;
+          if (authored.subtext) subtext = authored.subtext;
+          authoredVoice = true;
+        }
+      } catch { /* authored lookup optional — keep computed greeting */ }
+
       // 10. Return structured response (isAgent computed once at fetch — C1 disclosure).
       res.json({
         ok: true, npcId, npcName,
@@ -1336,6 +1356,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         mood,
         options: parsedOptions,
         subtext: subtext || undefined,
+        authoredVoice: authoredVoice || undefined,
         reputation,
         opinion: interactResult.opinion,
         isAgent: isAgentNpc || undefined,

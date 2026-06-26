@@ -65,6 +65,11 @@ const QuestMarker3D = forwardRef<QuestMarker3DAPI, QuestMarker3DProps>(function 
       cameraRef.current = camera;
     }
     window.addEventListener('concordia:scene-ready', onSceneReady);
+    // This layer mounts only once quest objectives exist — i.e. AFTER the
+    // scene's one-shot scene-ready already fired. Without this ping we'd miss
+    // it and sceneRef would stay null (markers never render). ConcordiaScene's
+    // onSceneRequest responder re-emits scene-ready with {scene,camera}.
+    window.dispatchEvent(new CustomEvent('concordia:scene-request-ready'));
     return () => window.removeEventListener('concordia:scene-ready', onSceneReady);
   }, []);
 
