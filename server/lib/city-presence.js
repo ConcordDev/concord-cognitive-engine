@@ -17,6 +17,15 @@ import { speedScaledRadius } from "./movement/interest-management.js";
 // radius. Set on each validated move; read by getNearbyUsers when CONCORD_SPEED_AOI.
 const _lastSpeed = new Map();
 
+// G6 note (speedhack): the per-packet check below IS the server-authoritative
+// distance-over-time gate. dt is measured from the SERVER wall-clock (never a
+// client-supplied delta), and a rejected update never advances lastUpdate/
+// position — so a clock-speed hack shows up as speedMps > maxSpeed and is
+// dropped, and sustained movement is hard-capped at maxSpeed per accepted
+// packet. A rolling-window aggregate would be redundant (any window of
+// per-packet-valid steps already averages ≤ maxSpeed by construction) and would
+// only add false-reject risk on the hot path, so it is intentionally NOT added.
+
 // ── State ───────────────────────────────────────────────────────────────────
 
 /** userId -> { cityId, x, y, z, direction, action, lastUpdate, avatar, dirty } */
