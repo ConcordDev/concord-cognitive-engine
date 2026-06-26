@@ -647,6 +647,17 @@ export async function seedContent({ db = null } = {}) {
     }
     const subLore = readJSON(`${sub.path}/lore.json`);
     if (subLore) results.lore += seedLore(subLore);
+    // Content pillar 1 — authored lore zones (safe plaza / pvp arena / hazard
+    // ruins) → world_zones, so combatRuleFor consults them. Reuses upsertZone
+    // (idempotent on (world_id, name)). Runs after default zones below too;
+    // named authored zones coexist with the default spawn sanctuary.
+    const subZones = readJSON(`${sub.path}/zones.json`);
+    if (Array.isArray(subZones) && db) {
+      try {
+        const { seedZonesFromContent } = await import("./world-zones.js");
+        results.worldZonesAuthored = (results.worldZonesAuthored || 0) + seedZonesFromContent(db, sub.id, subZones);
+      } catch { /* zone seeding best-effort */ }
+    }
   }
 
   // Phase F1.2 — boot-time asymmetric-traits seeding.
