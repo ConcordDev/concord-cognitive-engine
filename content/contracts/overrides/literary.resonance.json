@@ -1,0 +1,22 @@
+{
+  "macro_id": "literary.resonance",
+  "domain": "literary",
+  "name": "resonance",
+  "inputs": {
+    "chunkId": { "type": "string", "maxLength": 120 },
+    "dtuId": { "type": "string", "maxLength": 120 },
+    "limit": { "type": "number", "min": 1, "max": 50 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.edges)",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || typeof output.dtuId === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "not_found" } },
+    { "input": { "chunkId": "__no_such_chunk__" }, "expect": { "ok": false, "reason": "not_found" } }
+  ],
+  "_note": "Cross-domain resonance edges (literary → other lenses) for a chunk/dtu. No chunk/dtu → not_found. Resolves chunkId→DTU then returns recorded bridges."
+}

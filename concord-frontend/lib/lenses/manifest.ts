@@ -113,7 +113,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'codex', label: 'Codex', artifacts: ['entry', 'lore'], macros: { list: 'lens.codex.list', get: 'lens.codex.get' }, exports: ['json'], actions: ['read'], category: 'knowledge' },
   { domain: 'translation', label: 'Translation', artifacts: ['translation'], macros: { list: 'lens.translation.list', get: 'lens.translation.get' }, exports: ['json'], actions: ['translate', 'detect'], category: 'productivity' },
   { domain: 'repair-telemetry', label: 'Repair Telemetry', artifacts: ['report'], macros: { list: 'lens.repair-telemetry.list', get: 'lens.repair-telemetry.get' }, exports: ['json'], actions: ['view'], category: 'system' },
-  { domain: 'move-builder', label: 'Move Builder', artifacts: ['move', 'recipe'], macros: { list: 'lens.move-builder.list', get: 'lens.move-builder.get' }, exports: ['json'], actions: ['compose', 'mint'], category: 'creative' },
+  { domain: 'move-builder', label: 'Move Builder', artifacts: ['move', 'recipe'], macros: { list: 'move-builder.list', get: 'move-builder.get', create: 'move-builder.mint' }, exports: ['json'], actions: ['compose', 'mint'], category: 'creative' },
   { domain: 'civic-bonds', label: 'Civic Bonds', artifacts: ['bond', 'vote'], macros: { list: 'lens.civic-bonds.list', get: 'lens.civic-bonds.get' }, exports: ['json'], actions: ['view', 'vote'], category: 'government' },
 
   // ═══════════════════════════════════════════════════════════════
@@ -246,10 +246,49 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
   },
   {
+    domain: 'literary',
+    label: 'Literary Lattice',
+    // Annotations are the durable, first-class artifact (persist via the generic
+    // lens artifact store as kind='annotation'); passages/works are the corpus
+    // the lens reads over. Each annotation also mints a derivative DTU citing the
+    // source passage (the self-growing-lattice exhaust).
+    artifacts: ['annotation', 'passage', 'work'],
+    macros: { list: 'lens.literary.list', get: 'lens.literary.get', create: 'lens.literary.create', export: 'lens.literary.export' },
+    exports: ['json', 'graphml', 'csv'],
+    // The real server-side engine: hybrid BM25+dense (RRF) search, the resonance
+    // / citation force-graph, cross-domain resonance bridges, the annotation →
+    // DTU crystallization path, and the salience consolidation signal.
+    actions: ['search', 'semantic_graph', 'resonance', 'resonance_graph', 'annotate', 'crystallize', 'salience', 'provenance'],
+    category: 'knowledge',
+    dataTier: 'REAL_FREE',
+    emptyState: {
+      headline: 'No corpus ingested yet.',
+      caption: 'Mirror a public-domain starter set into the lattice, then search returns grounded passages with full provenance and cross-domain resonance.',
+      firstActionLabel: 'Search the lattice',
+    },
+    firstRunGuide: {
+      steps: [
+        { caption: 'Search themes or passages — the badge shows whether dense (Grounded) or keyword-only (BM25) retrieval ran, never faked.' },
+        { caption: 'Select a passage to see its source provenance + license, the cross-domain resonance bridges, and the citation lattice.' },
+        { caption: 'Annotate a passage: your reading mints a derivative DTU citing the source, growing the lattice from engagement. Export the resonance graph as GraphML.' },
+      ],
+    },
+  },
+  {
     domain: 'reasoning',
     label: 'Reasoning',
     artifacts: ['chain', 'premise', 'inference', 'conclusion', 'counterexample'],
-    macros: { list: 'lens.reasoning.list', get: 'lens.reasoning.get', create: 'lens.reasoning.create', update: 'lens.reasoning.update', delete: 'lens.reasoning.delete', run: 'lens.reasoning.run', export: 'lens.reasoning.export' },
+    // Real registered runMacro ids (verified against server.js + server/domains/reasoning.js):
+    //   list  -> reasoning.traces      (HLR trace summaries — server/domains/reasoning.js)
+    //   get   -> reasoning.trace       (one full HLR trace by id — server/domains/reasoning.js)
+    //   run   -> reasoning.run         (execute one HLR pass, records a trace)
+    //   create-> reasoning.create_chain (start a reasoning chain — server.js inline)
+    // By-design absent (NOT faked): there is no `update`/`delete`/`export` macro.
+    // An HLR trace is an immutable record of a reasoning pass — it cannot be edited
+    // or deleted, and the engine emits no export artifact. The lens is a reader /
+    // dashboard + chain starter, so authoring/teardown bits are honestly omitted
+    // rather than pointed at a phantom `lens.reasoning.*` macro.
+    macros: { list: 'reasoning.traces', get: 'reasoning.trace', create: 'reasoning.create_chain', run: 'reasoning.run' },
     exports: ['json', 'md', 'svg'],
     actions: ['validate', 'trace', 'conclude', 'fork', 'detect-fallacy', 'strength-score', 'visualize-chain'],
     category: 'knowledge',
@@ -5064,7 +5103,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'courtship',     label: 'Courtship',          artifacts: ['courtship'],   macros: { list: 'lens.courtship.list',     get: 'lens.courtship.get' },     exports: ['json'], actions: ['interact', 'propose', 'wed', 'conceive'], category: 'lifestyle' },
   { domain: 'creatures',     label: 'Creatures',          artifacts: ['creature'],    macros: { list: 'creatures.roster',        get: 'creatures.taxonomy',     create: 'creatures.breed' },     exports: ['json'], actions: ['roster', 'species', 'breed', 'lineage', 'taxonomy', 'for_world'], category: 'lifestyle' },
   { domain: 'fishing',       label: 'Fishing',            artifacts: ['catch'],       macros: { list: 'lens.fishing.list',       get: 'lens.fishing.get',       create: 'lens.fishing.create' },       exports: ['json'], actions: ['cast', 'reel'], category: 'lifestyle' },
-  { domain: 'garage',        label: 'Garage',             artifacts: ['vehicle'],     macros: { list: 'lens.garage.list',        get: 'lens.garage.get' },        exports: ['json'], actions: [], category: 'lifestyle' },
+  { domain: 'garage',        label: 'Garage',             artifacts: ['vehicle'],     macros: { list: 'garage.list',             get: 'garage.get',           create: 'garage.spawn',     run: 'garage.spawn' },        exports: ['json'], actions: ['spawn', 'mine', 'mount', 'dismount', 'move'], category: 'lifestyle' },
 ];
 
 // ---- Sub-lens auto-registration ----

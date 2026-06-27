@@ -1,0 +1,18 @@
+{
+  "macro_id": "move-builder.get",
+  "domain": "move-builder",
+  "name": "get",
+  "inputs": {
+    "moveId": { "type": "string", "required": true, "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || (output.move && typeof output.move.id === 'string')",
+    "output.ok === false || (output.move && typeof output.move.name === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "no_db" } }
+  ]
+}

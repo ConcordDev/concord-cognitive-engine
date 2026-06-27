@@ -11070,6 +11070,13 @@ async function runMacro(domain, name, input, ctx) {
     detective: new Set(["list", "get", "evidence"]),
     // Operator announcements — the broadcast feed is public read; post is admin.
     announcements: new Set(["list", "get"]),
+    // Garage — the world's vehicle list + a single vehicle are world-visible
+    // (same as creatures); spawn/mine/mount/dismount/move are actor-gated.
+    garage: new Set(["list", "get"]),
+    // Move builder — compose (preview) + catalog (reference move parts) are pure
+    // reads; list/get self-gate on ctx.actor and return no_user when anonymous.
+    // Key is the literal hyphenated macro-domain string. mint (writes a DTU) is gated.
+    "move-builder": new Set(["compose", "catalog", "list", "get"]),
     // WS-CHEMISTRY — the reaction matrix is a read-only reference (apply/ignite/
     // douse mutate and require an actor, so they're NOT here).
     elements: new Set(["matrix"]),
@@ -11176,7 +11183,7 @@ async function runMacro(domain, name, input, ctx) {
     attention: new Set(["status", "get"]),
     metacognition: new Set(["status", "predictions"]),
     metalearning: new Set(["strategies", "status"]),
-    reasoning: new Set(["chains", "steps", "status"]),
+    reasoning: new Set(["chains", "steps", "status", "traces", "trace"]),
     temporal: new Set(["status", "get"]),
     inference: new Set(["status", "traces", "spans", "threads", "checkpoints", "sandboxes", "costs", "query"]),
     // (The dx domain is registered later in this file with the
@@ -25256,6 +25263,18 @@ import registerDetectiveMacros from "./domains/detective.js";
 registerDetectiveMacros(register);
 import registerAnnouncementMacros from "./domains/announcements.js";
 registerAnnouncementMacros(register);
+
+// Per-lens flawless loop batch 5 — garage (vehicle garage, delegates to
+// lib/world-vehicles.js), move-builder (move composer over lib/move-descriptor.js
+// + ED budget), and the reasoning TRACE macros (traces/trace/run over the HLR
+// engine — named export; reasoning.create_chain stays registered inline above).
+// literary was already registered (registerLiteraryMacros) so it needs no line.
+import registerGarageMacros from "./domains/garage.js";
+registerGarageMacros(register);
+import registerMoveBuilderMacros from "./domains/move-builder.js";
+registerMoveBuilderMacros(register);
+import { registerReasoningTraceMacros } from "./domains/reasoning.js";
+registerReasoningTraceMacros(register);
 
 // Maintenance — the operator surface for the autonomic nervous system. Reads the
 // Homeostasis ledger + escalation inbox + Repair Memory stats. Operator-scoped.

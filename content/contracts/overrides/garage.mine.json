@@ -1,0 +1,18 @@
+{
+  "macro_id": "garage.mine",
+  "domain": "garage",
+  "name": "mine",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 64 },
+    "kind": { "type": "string", "maxLength": 32 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.vehicles)",
+    "output.ok === false || output.vehicles.every(v => v.owner_kind === 'player')"
+  ],
+  "fuzz_cases": [
+    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": false, "reason": "no_user" } }
+  ]
+}

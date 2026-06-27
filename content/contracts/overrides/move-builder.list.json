@@ -1,0 +1,18 @@
+{
+  "macro_id": "move-builder.list",
+  "domain": "move-builder",
+  "name": "list",
+  "inputs": {
+    "limit": { "type": "number", "min": 1, "max": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || Array.isArray(output.moves)",
+    "output.ok === false || output.moves.every(m => typeof m.id === 'string' && typeof m.name === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "no_db" } }
+  ]
+}

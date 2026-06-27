@@ -1,0 +1,28 @@
+{
+  "macro_id": "move-builder.compose",
+  "domain": "move-builder",
+  "name": "compose",
+  "inputs": {
+    "skillKind": { "type": "string", "enum": ["fighting_style", "spell", "biopower", "cyber_ability", "psionic", "tech_gadget", "mundane"] },
+    "element": { "type": "string", "maxLength": 32 },
+    "skillLevel": { "type": "number", "min": 1, "max": 300 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "typeof output.skillKind === 'string' && output.skillKind.length > 0",
+    "typeof output.element === 'string' && output.element.length > 0",
+    "output.motion && typeof output.motion.motionFamily === 'string' && output.motion.motionFamily.length > 0",
+    "output.motion && typeof output.motion.effectArchetype === 'string' && output.motion.effectArchetype.length > 0",
+    "output.motion.element === output.element",
+    "output.tier >= 1 && output.tier <= 5",
+    "output.budget && typeof output.budget.spent === 'number' && output.budget.spent >= 0",
+    "output.budget && output.budget.budget >= 6",
+    "output.budget.overspent === (output.budget.spent > output.budget.budget)",
+    "output.ok === !output.budget.overspent"
+  ],
+  "fuzz_cases": [
+    { "input": { "skillKind": "spell", "element": "fire", "skillLevel": 1 }, "expect": { "ok": true } },
+    { "input": { "skillKind": "not_real_kind", "element": "fire" }, "expect": { "ok": true, "skillKind": "spell" } }
+  ]
+}

@@ -29,12 +29,12 @@ score bits justified-absent)
 
 | Lens | score | status | commit | notes |
 |---|---:|---|---|---|
-| reasoning-traces | 0/7 | in-progress | | batch5 agent running; likely reader/dashboard — assess by-design vs real gap |
-| literary | 1/7 | in-progress | | batch5 agent running; |
+| reasoning-traces | 0/7→7/7 | **done** | batch5 | `reasoning` trace macros (traces/trace/run over the HLR engine, named export wired into server.js); real-trace round-trip tests; 4 UX states. (0/7 intel was stale — scorer already saw 7/7; `reasoning.create_chain` IS registered inline at server.js:13501, not a phantom) |
+| literary | 1/7→7/7 | **done** | batch5 | behavioral tests on all 6 driven macros (search/semantic_graph/resonance/resonance_graph/annotate/stats); real GraphML/CSV/JSON export of the live resonance graph; annotate→DTU citation round-trip; +6 contract overrides; macro-assassin 4→0 (fixed poisoned-`limit` fail-open → fail-closed); 4 UX states |
 | foundry | 3/7 | pending | | world-builder substrate (mig 191-192) |
 | saved | 3/7 | pending | | saved/collections reader |
-| move-builder | 3/7 | in-progress | | batch5 agent running (dead-wire: page made 0 backend calls; real domain is `movement`); |
-| garage | 3/7 | in-progress | | batch5 agent running (phantom manifest over real /api/garage/spawn); |
+| move-builder | 3/7→5/7 | **done** | batch5 | new `move-builder` domain (compose/mint/list/get/catalog over move-descriptor.js + ED budget); fixed the DEAD mint (page called `glyph_spells.mint` with wrong payload → always failed) + phantom `lens.move-builder.*` refs; 11 server + 5 UX-state tests |
+| garage | 3/7→5/7 | **done** | batch5 | new `garage` domain (list/get/spawn/mine/mount/dismount/move over lib/world-vehicles.js); fixed 4 fabricated vehicle kinds the backend rejected with `bad_kind` (silent fail) + phantom `lens.garage.*` refs; 7 server + 6 UX-state tests |
 | courtship | 3/7→4/7 | **done** | def0ff4 | dedicated `courtship` domain; fixed propose-threshold 0.60 vs server 0.70 mismatch + Child-column bug; 4 UX states |
 | spectate | 3/7 | pending | | spectator dashboard |
 | mail | 3/7 | **done** | 75031b3 | dedicated `mail` domain; send→inbox→claim single-tx behavioral tests; 4 UX states; wired |
@@ -92,3 +92,9 @@ enumerated here until reached.
   tests; +3 real bugs (detective dangling-macro + arrest_records→trial_records, announcements
   error-swallow UX defect, creatures breed `bond_too_low` no-hybrid bug); all 3 dangling `lens.*`
   manifest refs fixed. verify-lens-backends 258 WIRED / 0 broken. 34 left. 9 bugs total.
+- 2026-06-27: batch 5 DONE (garage, move-builder, reasoning-traces, literary) — 36 server + 24 UX-state
+  tests; +3 real bugs (garage 4 fabricated vehicle kinds silently rejected, move-builder DEAD mint
+  wrong-payload, literary poisoned-`limit` fail-open). Wired garage/move-builder/reasoning-trace macros
+  into server.js + publicReadDomains. Honesty note: a suspected reasoning `create_chain` phantom was a
+  FALSE ALARM — it's registered inline at server.js:13501 (my grep was too narrow); verified before
+  touching. verify-lens-backends 258 WIRED / 0 broken, macroDomains 526. 30 left. 12 bugs total.
