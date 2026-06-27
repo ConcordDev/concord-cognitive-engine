@@ -1,0 +1,28 @@
+{
+  "macro_id": "accounting.generate-invoice",
+  "domain": "accounting",
+  "name": "generate-invoice",
+  "inputs": {
+    "lineItems": { "type": "array", "required": false },
+    "client": { "type": "object", "required": false },
+    "dueDays": { "type": "number", "required": false, "min": 0, "max": 3650 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.subtotal)",
+    "output.ok === false || Number.isFinite(output.result.totalTax)",
+    "output.ok === false || Number.isFinite(output.result.grandTotal)",
+    "output.ok === false || Array.isArray(output.result.lineItems)",
+    "output.ok === false || output.result.lineItems.every(function(l){ return Number.isFinite(l.subtotal) && Number.isFinite(l.total); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "lineItems": [{ "description": "Widget", "quantity": 3, "unitPrice": 10, "taxRate": 0.1 }], "client": { "name": "Acme" } }, "expect": { "ok": true } },
+    { "input": { "lineItems": [], "client": { "name": "Empty" } }, "expect": { "ok": true } },
+    { "input": { "lineItems": [{ "description": "X", "quantity": "1e999", "unitPrice": "Infinity" }], "client": { "name": "Poison" } }, "expect": { "ok": true } },
+    { "input": { "lineItems": [{ "description": "Y", "quantity": "NaN", "unitPrice": 5, "taxRate": "Infinity" }] }, "expect": { "ok": true } },
+    { "input": { "lineItems": "nope" }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'accounting.generate-invoice'. Deterministic pure compute (invoiceNumber uses Math.random for a default, but every numeric output is poison-safe). POISON: quantity/unitPrice/taxRate via finNum so '1e999'/'Infinity'/'NaN' collapse to 0 and subtotal/totalTax/grandTotal stay FINITE. Not assassin-driven (LENS_ACTIONS); authored spec pinned by server/tests/accounting-lens-macros.test.js."
+}

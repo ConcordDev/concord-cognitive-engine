@@ -121,6 +121,19 @@ function moonState(date) {
   const age = ((((lon - sun.lambdaDeg) % 360) + 360) % 360) / 360 * 29.530588853;
   return { ra: ((ra % 360) + 360) % 360, dec, illumination: illum, ageDays: age };
 }
+// Parse a user-supplied numeric, rejecting non-finite poison (Infinity/NaN/
+// 1e308 overflow). Returns the fallback when the value is absent or empty and
+// `null` when the value is present but non-finite — so callers can fail CLOSED
+// instead of leaking Infinity/NaN into computed astronomy results.
+function finiteOr(v, fallback, maxAbs = 1e15) {
+  if (v === undefined || v === null || v === "") return fallback;
+  const n = parseFloat(v);
+  // Reject non-finite (Infinity/NaN) AND absurd magnitudes that overflow
+  // downstream products (e.g. 1e308 × 9.461e12 → Infinity). 1e15 is far
+  // beyond any sane astronomy input (RA/Dec, AU, light-years, solar masses).
+  if (!Number.isFinite(n) || Math.abs(n) > maxAbs) return null;
+  return n;
+}
 const MOON_PHASE_NAMES = [
   "New Moon", "Waxing Crescent", "First Quarter", "Waxing Gibbous",
   "Full Moon", "Waning Gibbous", "Last Quarter", "Waning Crescent",
@@ -149,10 +162,13 @@ function riseSetTimes(raFn, latDeg, lonDeg, baseDate, horizonDeg = 0) {
 export default function registerAstronomyActions(registerLensAction) {
   registerLensAction("astronomy", "celestialPosition", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const ra = parseFloat(data.rightAscension) || 0; // hours
-    const dec = parseFloat(data.declination) || 0; // degrees
-    const lat = parseFloat(data.latitude) || 40.7; // observer latitude
-    const lon = parseFloat(data.longitude) || -74.0;
+    const ra = finiteOr(data.rightAscension, 0); // hours
+    const dec = finiteOr(data.declination, 0); // degrees
+    const lat = finiteOr(data.latitude, 40.7); // observer latitude
+    const lon = finiteOr(data.longitude, -74.0);
+    if (ra === null || dec === null || lat === null || lon === null) {
+      return { ok: false, error: "rightAscension/declination/latitude/longitude must be finite numbers" };
+    }
     const now = new Date();
     // Simplified altitude calculation
     const lst = (now.getUTCHours() + now.getUTCMinutes() / 60 + lon / 15) % 24; // Local Sidereal Time approx
@@ -176,9 +192,12 @@ export default function registerAstronomyActions(registerLensAction) {
 
   registerLensAction("astronomy", "lightTravelTime", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const distanceLY = parseFloat(data.distanceLightYears) || 0;
-    const distancePC = parseFloat(data.distanceParsecs) || 0;
-    const distanceAU = parseFloat(data.distanceAU) || 0;
+    const distanceLY = finiteOr(data.distanceLightYears, 0);
+    const distancePC = finiteOr(data.distanceParsecs, 0);
+    const distanceAU = finiteOr(data.distanceAU, 0);
+    if (distanceLY === null || distancePC === null || distanceAU === null) {
+      return { ok: false, error: "distance must be a finite number" };
+    }
     const lyFinal = distanceLY || distancePC * 3.2616 || distanceAU * 0.0000158;
     if (lyFinal === 0) return { ok: true, result: { message: "Provide distance in light-years, parsecs, or AU." } };
     const lightSpeed = 299792.458; // km/s
@@ -189,9 +208,17 @@ export default function registerAstronomyActions(registerLensAction) {
 
   registerLensAction("astronomy", "orbitalMechanics", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const semiMajorAU = parseFloat(data.semiMajorAxis) || 1; // AU
-    const eccentricity = parseFloat(data.eccentricity) || 0;
-    const massSolar = parseFloat(data.centralMass) || 1; // solar masses
+    const semiMajorRaw = finiteOr(data.semiMajorAxis, 1); // AU
+    const eccRaw = finiteOr(data.eccentricity, 0);
+    const massRaw = finiteOr(data.centralMass, 1); // solar masses
+    if (semiMajorRaw === null || eccRaw === null || massRaw === null) {
+      return { ok: false, error: "semiMajorAxis/eccentricity/centralMass must be finite numbers" };
+    }
+    // Clamp to physically-valid ranges so Kepler's law can't divide-by-zero
+    // or take a root of a negative — fail CLOSED, never emit NaN/Infinity.
+    const semiMajorAU = semiMajorRaw > 0 ? semiMajorRaw : 1;
+    const eccentricity = Math.max(0, Math.min(0.999999, eccRaw));
+    const massSolar = massRaw > 0 ? massRaw : 1;
     // Kepler's third law: T² = a³/M (years, AU, solar masses)
     const periodYears = Math.sqrt(Math.pow(semiMajorAU, 3) / massSolar);
     const perihelion = semiMajorAU * (1 - eccentricity);

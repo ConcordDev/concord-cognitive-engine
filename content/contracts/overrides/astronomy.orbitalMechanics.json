@@ -1,0 +1,26 @@
+{
+  "macro_id": "astronomy.orbitalMechanics",
+  "domain": "astronomy",
+  "name": "orbitalMechanics",
+  "inputs": {
+    "semiMajorAxis": { "type": "number" },
+    "eccentricity": { "type": "number" },
+    "centralMass": { "type": "number" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || Number.isFinite(output.result.periodYears)",
+    "output.ok !== true || Number.isFinite(output.result.perihelionAU)",
+    "output.ok !== true || Number.isFinite(output.result.aphelionAU)",
+    "output.ok !== true || output.result.eccentricity <= 0.999999",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "semiMajorAxis": 1, "eccentricity": 0.0167, "centralMass": 1 }, "expect": { "ok": true } },
+    { "input": { "semiMajorAxis": "Infinity", "eccentricity": 1, "centralMass": 0 }, "expect": { "ok": false } },
+    { "input": { "semiMajorAxis": "1e308", "eccentricity": 0.5, "centralMass": 1 }, "expect": { "ok": false } },
+    { "input": { "semiMajorAxis": 1, "eccentricity": "NaN", "centralMass": 1 }, "expect": { "ok": false } }
+  ],
+  "_note": "astronomy.orbitalMechanics is a pure-compute LENS_ACTIONS handler (server/domains/astronomy.js, registerLensAction → 3-arg (ctx, artifact, params)). It applies Kepler's third law T²=a³/M. The fail-CLOSED contract: any non-finite or overflow-magnitude (>1e15) input is REJECTED via finiteOr() rather than emitting Infinity/NaN into periodYears (which JSON.stringify would silently coerce to null). Eccentricity is clamped to [0, 0.999999] and centralMass/semiMajorAxis defaulted to a positive value, so Kepler's law can never divide-by-zero or root a negative. This macro registers in LENS_ACTIONS only (not the MACROS/runMacro spec map the assassin enumerates), so the assassin drives it statically against this contract; the live lens (/lenses/astronomy SkyChartWorkbench + ActionPanel) reaches it through /api/lens/run."
+}

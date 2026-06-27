@@ -23,8 +23,8 @@ export default function registerAccountingActions(registerLensAction) {
 
       for (const entry of (acct.entries || [])) {
         if (asOfDate && new Date(entry.date) > asOfDate) continue;
-        debitSum += parseFloat(entry.debit) || 0;
-        creditSum += parseFloat(entry.credit) || 0;
+        debitSum += finNum(entry.debit);
+        creditSum += finNum(entry.credit);
       }
 
       const netDebit = Math.round((debitSum - creditSum) * 100) / 100;
@@ -87,8 +87,8 @@ export default function registerAccountingActions(registerLensAction) {
         for (const entry of (acct.entries || [])) {
           const entryDate = new Date(entry.date);
           if (entryDate >= startDate && entryDate <= endDate) {
-            const credit = parseFloat(entry.credit) || 0;
-            const debit = parseFloat(entry.debit) || 0;
+            const credit = finNum(entry.credit);
+            const debit = finNum(entry.debit);
             acctTotal += credit - debit;
           }
         }
@@ -107,8 +107,8 @@ export default function registerAccountingActions(registerLensAction) {
         for (const entry of (acct.entries || [])) {
           const entryDate = new Date(entry.date);
           if (entryDate >= startDate && entryDate <= endDate) {
-            const debit = parseFloat(entry.debit) || 0;
-            const credit = parseFloat(entry.credit) || 0;
+            const debit = finNum(entry.debit);
+            const credit = finNum(entry.credit);
             acctTotal += debit - credit;
           }
         }
@@ -169,7 +169,7 @@ export default function registerAccountingActions(registerLensAction) {
     for (const inv of unpaid) {
       const dueDate = new Date(inv.dueDate);
       const daysOverdue = Math.floor((now - dueDate) / 86400000);
-      const amount = parseFloat(inv.amount) || 0;
+      const amount = finNum(inv.amount);
 
       const entry = {
         invoiceId: inv.invoiceId,
@@ -198,7 +198,7 @@ export default function registerAccountingActions(registerLensAction) {
     for (const inv of unpaid) {
       const dueDate = new Date(inv.dueDate);
       const daysOut = Math.max(0, Math.floor((now - dueDate) / 86400000));
-      const amount = parseFloat(inv.amount) || 0;
+      const amount = finNum(inv.amount);
       weightedDays += daysOut * amount;
     }
     const avgDaysOutstanding = totalOutstanding > 0 ? Math.round(weightedDays / totalOutstanding) : 0;
@@ -235,8 +235,8 @@ export default function registerAccountingActions(registerLensAction) {
     let totalActual = 0;
 
     const lines = budget.map((item) => {
-      const planned = parseFloat(item.planned) || 0;
-      const actual = parseFloat(item.actual) || 0;
+      const planned = finNum(item.planned);
+      const actual = finNum(item.actual);
       const variance = Math.round((actual - planned) * 100) / 100;
       const variancePct = planned !== 0 ? Math.round((variance / Math.abs(planned)) * 10000) / 100 : 0;
 
@@ -309,7 +309,7 @@ export default function registerAccountingActions(registerLensAction) {
 
       const unitDetails = units.map((unit) => {
         totalUnits++;
-        const rent = parseFloat(unit.monthlyRent) || 0;
+        const rent = finNum(unit.monthlyRent);
         const isVacant = !unit.tenant;
         const leaseExpired = unit.leaseEnd ? new Date(unit.leaseEnd) < now : false;
 
@@ -398,8 +398,8 @@ export default function registerAccountingActions(registerLensAction) {
       let dr = 0;
       let cr = 0;
       for (const entry of (acct.entries || [])) {
-        dr += parseFloat(entry.debit) || 0;
-        cr += parseFloat(entry.credit) || 0;
+        dr += finNum(entry.debit);
+        cr += finNum(entry.credit);
       }
       totalDebits += dr;
       totalCredits += cr;
@@ -459,10 +459,10 @@ export default function registerAccountingActions(registerLensAction) {
     const dueDate = new Date(issueDate.getTime() + dueDays * 86_400_000);
 
     const enriched = lineItems.map((li, i) => {
-      const qty = Number(li.quantity) || 0;
-      const unit = Number(li.unitPrice) || 0;
+      const qty = finNum(li.quantity);
+      const unit = finNum(li.unitPrice);
       const subtotal = Math.round(qty * unit * 100) / 100;
-      const taxRate = Number(li.taxRate) || 0;
+      const taxRate = finNum(li.taxRate);
       const tax = Math.round(subtotal * taxRate * 100) / 100;
       return {
         idx: i + 1,
@@ -521,7 +521,7 @@ export default function registerAccountingActions(registerLensAction) {
     const used = new Set();
 
     for (const bl of bankLines) {
-      const blAmt = Number(bl.amount) || 0;
+      const blAmt = finNum(bl.amount);
       const blDate = new Date(bl.date);
       const blTokens = String(bl.description || '').toLowerCase().split(/\W+/).filter(t => t.length >= 3);
 
@@ -529,7 +529,7 @@ export default function registerAccountingActions(registerLensAction) {
       let bestScore = 0;
       for (const tx of transactions) {
         if (used.has(tx.id)) continue;
-        const txAmt = Number(tx.amount) || 0;
+        const txAmt = finNum(tx.amount);
         if (Math.abs(txAmt - blAmt) > 0.01) continue; // exact-amount required
         const txDate = new Date(tx.date);
         const dayDelta = Math.abs((txDate.getTime() - blDate.getTime()) / 86_400_000);
@@ -595,8 +595,8 @@ export default function registerAccountingActions(registerLensAction) {
       let netInPeriod = 0;
       let netBefore = 0;
       for (const entry of (acct.entries || [])) {
-        const dr = parseFloat(entry.debit) || 0;
-        const cr = parseFloat(entry.credit) || 0;
+        const dr = finNum(entry.debit);
+        const cr = finNum(entry.credit);
         const delta = dr - cr;
         net += delta;
         const d = new Date(entry.date);
@@ -807,6 +807,40 @@ export default function registerAccountingActions(registerLensAction) {
   }
   function nowIso() { return new Date().toISOString(); }
 
+  // Fail-CLOSED numeric coercion. `parseFloat("Infinity")`/`Number("1e999")`
+  // both yield Infinity, and `Infinity || 0` is Infinity — so the naive
+  // `parseFloat(x) || 0` lets a poisoned amount flow straight into computed
+  // totals (and `Inf - Inf` / `Inf + Inf` produce NaN/Infinity that corrupt
+  // every downstream sum). These are pure calculators with no wallet, so the
+  // risk is non-finite/NaN output, not minting — but a financial report that
+  // silently emits Infinity is a correctness defect. `finNum` guarantees a
+  // FINITE number: any non-finite (Infinity/-Infinity/NaN) or unparseable
+  // input collapses to 0. Use this everywhere a user-supplied amount enters a
+  // computation. Returns 0 for null/undefined/"" by design (absent line item).
+  //
+  // Beyond FIN_MAX (1e15, a quadrillion) a value is not a real accounting amount
+  // and — more to the point — `amount * 100` (the cents-rounding every report
+  // does) would overflow to Infinity. 1e15 is far above any legitimate ledger
+  // total yet keeps ×100 well under 2^53. A supplied amount past this magnitude
+  // is treated as poison → 0, so even a technically-finite 1e308 can't sneak an
+  // Infinity into a report via the rounding step.
+  const FIN_MAX = 1e15;
+  function finNum(x) {
+    const n = typeof x === "number" ? x : parseFloat(x);
+    if (!Number.isFinite(n) || n > FIN_MAX || n < -FIN_MAX) return 0;
+    return n;
+  }
+  // Strict variant for PERSISTED writes (je-post): a non-finite OR
+  // beyond-FIN_MAX supplied amount is a hard reject (fail-closed) rather than a
+  // silent collapse to 0, so a poisoned 1e999/1e308 can never enter the journal
+  // and corrupt later reports.
+  function finiteOrNull(x) {
+    if (x === null || x === undefined || x === "") return 0;
+    const n = typeof x === "number" ? x : Number(x);
+    if (!Number.isFinite(n) || n > FIN_MAX || n < -FIN_MAX) return null;
+    return n;
+  }
+
   // GAAP-aligned categories with normal-balance side.
   const COA_CATEGORIES = {
     asset:     { label: "Assets",       normal: "debit"  },
@@ -945,8 +979,14 @@ export default function registerAccountingActions(registerLensAction) {
     for (const l of lines) {
       const accountId = String(l.accountId || "");
       if (!coa.has(accountId)) return { ok: false, error: `unknown account: ${accountId}` };
-      const debit = Number(l.debit) || 0;
-      const credit = Number(l.credit) || 0;
+      // Fail-CLOSED on poisoned numerics: a non-finite supplied amount
+      // (Infinity from "1e999"/"Infinity", or NaN) is rejected outright so it
+      // can never enter the persisted journal. `Inf - Inf` is NaN and the
+      // balance guard below (`NaN > 0.01` is false) would otherwise PASS,
+      // silently persisting Infinity and corrupting every later report.
+      const debit = finiteOrNull(l.debit);
+      const credit = finiteOrNull(l.credit);
+      if (debit === null || credit === null) return { ok: false, error: "debit/credit must be a finite number" };
       if (debit < 0 || credit < 0) return { ok: false, error: "debit/credit must be >= 0" };
       if (debit > 0 && credit > 0) return { ok: false, error: "line cannot have both debit and credit" };
       if (debit === 0 && credit === 0) return { ok: false, error: "line must have non-zero debit or credit" };
