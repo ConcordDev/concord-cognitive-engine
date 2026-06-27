@@ -454,6 +454,20 @@ export const LENS_STATUS_MAP: LensStatusEntry[] = [
     rationale: 'Read-only operator dashboard over the repair (autonomic) domain — Homeostasis ledger + escalation inbox + Repair Memory stats. A monitoring surface, not a product: persist/dtu/pipeline are by-design-absent (it observes the repair loop, it does not author). Infrastructure.',
   },
   {
+    id: 'ops-telemetry',
+    status: 'system',
+    mergeTarget: null,
+    postMergeRole: 'standalone',
+    rationale: 'Read-only operator dashboard over the concurrency/threading stack (a Datadog/Grafana analog) — heartbeat module p50/p90/p99 timings, macro + heartbeat worker pool utilisation, brain endpoint inflight/failures, per-world shard status + restart, and 24h inference cost. REST-backed by design: it fetches six admin-gated /api/admin/* routes, NOT the macro system. A monitoring surface, not a product: persistence/engine/pipeline/dtu are by-design-absent (it observes live server state over REST; the one mutation — shard restart — is an operator command on existing infra, not artifact authoring). Infrastructure.',
+  },
+  {
+    id: 'lattice',
+    status: 'system',
+    mergeTarget: null,
+    postMergeRole: 'standalone',
+    rationale: 'Brain self-training operator dashboard (an MLOps / Weights-&-Biases analog for the 4 cognitive brains) — consent corpus snapshot + per-creator training-consent control, per-brain corpus health, active models, run history with eval deltas, eval/loss curves, model rollback, refresh cadence + A/B candidate tests, consent audit log, and drift-monitor alerts. REST-backed by design: it binds to /api/lattice/* (routes/lattice.js) + /api/brains/* (routes/brains.js), NOT the macro system — there is no `lattice` macro domain. A monitoring/ops surface, not a product: pipeline/dtu_exhaust are by-design-absent (it inspects the training corpus and triggers admin refreshes; it does not author new knowledge DTUs). Infrastructure.',
+  },
+  {
     id: 'debug',
     status: 'system',
     mergeTarget: null,
@@ -953,6 +967,14 @@ export const LENS_STATUS_MAP: LensStatusEntry[] = [
   { id: 'geology', status: 'product', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Geological surveys, mapping, sampling.' },
   { id: 'hr', status: 'product', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Human resources: employees, payroll, performance.' },
   { id: 'hvac', status: 'hybrid', mergeTarget: 'trades', postMergeRole: 'mode', rationale: 'Trade specialty.' },
+
+  // ── Reader lens (self-contained authored content; backend-less by design) ──
+  // narrative-walk is a viewer over the 11 authored cinematic JSONs bundled at
+  // build time (concord-frontend/content/cinematics/*.json). It has NO API
+  // surface of its own — verify-lens-backends reports NO-BACKEND-CALL by design.
+  // A reader surfaces authored content; it does not author, persist, or emit a
+  // DTU artifact, so it stays a viewer and never advances to product.
+  { id: 'narrative-walk', status: 'viewer', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Self-contained authored-narrative reader over the 11 bundled cinematic sequences; backend-less by design (NO-BACKEND-CALL is intentional).' },
 ];
 
 // ── Derived helpers ─────────────────────────────────────────────

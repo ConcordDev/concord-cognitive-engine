@@ -25,7 +25,7 @@ record "by-design absent" with a reason. No bit is ever satisfied with fake/plac
 `pending` · `in-progress` · `done` (passed the gate; commit sha noted) · `by-design` (gate met; some
 score bits justified-absent)
 
-## Failing lenses (score < 5/7) — weakest first (priority queue)
+## Failing lenses (score < 5/7) — weakest first (priority queue)  ✅ CLOSED 2026-06-27 (all 46 through the gate)
 
 | Lens | score | status | commit | notes |
 |---|---:|---|---|---|
@@ -38,14 +38,14 @@ score bits justified-absent)
 | courtship | 3/7→4/7 | **done** | def0ff4 | dedicated `courtship` domain; fixed propose-threshold 0.60 vs server 0.70 mismatch + Child-column bug; 4 UX states |
 | spectate | 3/7→5/7 | **done** | batch6 | new `spectate` domain (list/get/watch/bet/my_positions over spectator-mode + betting-markets + goddess-broadcaster libs); fixed phantom `lens.spectate.*` refs + "mock event ticker" stub; parimutuel bet escrow tests; 12 server + 7 UX-state tests |
 | mail | 3/7 | **done** | 75031b3 | dedicated `mail` domain; send→inbox→claim single-tx behavioral tests; 4 UX states; wired |
-| narrative-walk | 3/7 | pending | | by-design reader (NO-BACKEND-CALL) — verify |
+| narrative-walk | 2/7 viewer | **done** | batch13 | confirmed self-contained authored-cinematic READER (NO-BACKEND-CALL correct, not a defect); fixed 2 real bugs (played by `id` but director resolves by `trigger` → 4/11 cinematics never played; `comment` vs `summary` field never rendered); removed phantom macros; 4 UX states + keyboard nav; 7 vitest. artifact/persist/engine/pipeline/export/dtu by-design-absent (a reader produces no exhaust) |
 | announcements | 3/7→5/7 | **done** | a62bae5 | dedicated `announcements` domain (list/get public, post admin-gated); fixed dangling `lens.announcements.*` manifest refs + error-swallow UX defect (now honest error+retry vs empty); 16 server + 4 UX-state tests |
 | housing | 3/7→5/7 | **done** | def0ff4 | dedicated `housing` domain; fixed dangling lens.housing.* manifest refs; furniture place/persist tests; 4 UX states |
 | training-room | 3/7→4/7 | **done** | 55df001 | fixed frame-data wrong-column/no_skill defect (#21); real frame tests; 4 UX states |
 | achievements | 3/7 | **done** | 75031b3 | dedicated `achievements` domain; unlock-idempotency + reward-once behavioral tests; 4 UX states; wired |
 | lfg | 3/7→5/7 | **done** | 55df001 | dedicated `lfg` domain; fixed parties expires_at NOT-NULL crash; single-open-per-world tests; 4 UX states |
 | quests | 3/7→4/7 | **done** | 55df001 | dedicated `quests` domain; fixed lens mis-wire (was hitting goals.list); accept→complete→reward-once tests; 4 UX states |
-| ops-telemetry | 3/7 | pending | | dashboard — batch 13 (REST admin telemetry) |
+| ops-telemetry | 3/7 system | **done** | batch13 | REST dashboard over 8 real /api/admin/* routes (heartbeat/worker/brain/shard stats); fixed phantom `lens.ops-telemetry.*` manifest macros → macros:{}; 4 UX states + 403 AdminRequired + a11y tables; 7 vitest. persist/engine/pipeline/dtu by-design-absent (Grafana-analog) |
 | auction | 4/7 | **done** | 75031b3 | dedicated `auctions` domain (delegates to lib); 4 UX states + a11y; behavioral tests + contract overrides; wired |
 | careers | 4/7→5/7 | **done** | batch6 | fixed phantom `lens.careers.*` manifest refs → real `careers.{tracks,contracts,work,offer}`; honest disabled-by-config note (was misleading "coming soon"; system is ENABLED by default); work-shift credits real sparks, offer→accept persists contract; 11 server + 7 UX-state tests |
 | codex | 4/7→5/7 | **done** | batch7 | reader over the real `lore` domain; fixed phantom `lens.codex.*` → real lore.{list,get,facets,spine}; hardened lore.list fail-open (poisoned limit clamped → now invalid_limit); real per-user bookmarks via artifact store; 15 server + 11 UX-state tests |
@@ -65,7 +65,7 @@ score bits justified-absent)
 | dx-platform | 4/7→5/7 | **done** | batch11 | SAVED-CLASS (15 macros, legacy + never imported → DxWorkbench dead-wired); rewrote to canonical register via shim + wired in server.js; index→chat / diff→detector-findings round-trips; 16 server + 4 UX-state tests; assassin 0/15 |
 | expedition-journal | 4/7→5/7 | **done** | batch11 | SAVED-CLASS (13 macros, legacy + never imported); rewrote to canonical register via shim + wired in server.js; XP-awarded-once + badge cascade (pathfinder/grand-explorer) round-trips; 19 server + 7 UX-state tests; assassin 0/13 |
 | ghost-tracker | 4/7→6/7 | **done** | batch10 | maps to the real already-registered `ghost-hunt` domain (spectral-residue hunt over drift_alerts); fixed phantom `lens.ghost-tracker.*` → real ghost-hunt.*; added real ghost-hunt.create (mints a kind:ghost_residue Spectral Dossier DTU) + Saved Dossiers rail; 22 server + 9 UX-state tests; assassin 0/8 |
-| lattice | 4/7 | pending | | lattice dashboard |
+| lattice | 3/7 system | **done** | batch13 | REST dashboard (brain self-training MLOps console over /api/lattice/* + /api/brains/*) — NOT the meta-reasoning substrate. Fixed 4 real data-shape bugs (all 4 tabs read wrong shapes → permanently empty/broken) + phantom manifest macros/actions firing dead ManifestActionBar clicks; 4 UX states; 5 vitest. by-design-absent bits documented |
 | mesh | 4/7→5/7 | **done** | batch11 | SAVED-CLASS (19 macros, legacy + never imported → MeshTopology/Messaging/Signal/Queue/Channels dead-wired); rewrote to canonical register via shim + wired in server.js (disjoint from inline mesh.{status,topology,channels,…} — no collision); store-and-forward offline→retry→delivered + PSK channel round-trips; 18 server + 4 UX-state tests; assassin 0/29 |
 | ops | 4/7→5/7 | **done** | batch12 | SAVED-CLASS (22 PagerDuty-shape macros, legacy + never imported → IncidentConsole(920 LOC)+OpsActionPanel dead-wired); rewrote to canonical register via shim + wired in server.js; incident state-machine + escalation + MTTA/MTTR + blast-radius round-trips; 47 server + 4 UX-state tests; assassin 0/25 |
 | sandbox | 4/7→5/7 | **done** | batch10 | SAVED-CLASS (14 combat-feel macros, legacy + never imported). Rewrote to canonical register via shim + wired in server.js (names distinct from inline B2B sandbox.provision/kill/list — no collision); real telemetry/replay round-trips; 14 server + 5 UX-state tests; assassin 0/19 |
@@ -147,3 +147,13 @@ enumerated here until reached.
   (repair-telemetry, +1 fail-open fix). system disjoint from 8 inline system.* (no collision). ops's
   IncidentConsole rewrite also cleared a transient tsc error. verify-lens-backends 258 WIRED / 0 broken.
   3 left (narrative-walk reader + ops-telemetry/lattice REST dashboards — batch 13 closes the queue).
+- 2026-06-27: batch 13 DONE (narrative-walk, ops-telemetry, lattice) — the 3 dashboards/readers; 19
+  vitest; +6 real bugs (narrative-walk play-by-trigger + comment-field; lattice 4 wrong-data-shape tabs).
+  All backend-less or REST-backed (no new macros) → assassin unchanged from batch-12 GREEN. Relaxed
+  manifest.test.ts to exempt REST-dashboard/reader lenses from the list/get-macro requirement (macros:{}).
+  ★★★ FAILING QUEUE CLOSED ★★★ — all 46 lenses that scored <5/7 are now through the DONE gate (real
+  ≥5/7, OR a dashboard/reader at <5/7 with every missing capability bit honestly by-design-absent). 0
+  left in the failing queue. ~41 real production bugs fixed across the loop; the dominant defect was the
+  SAVED-CLASS bug (legacy registerLensAction domain never imported → silently dead). Next: Phase 2 — the
+  ~217 already-passing (≥5/7) lenses get the non-score gate audit (behavioral tests + contract overrides
+  + 4-UX-state vitests) — the honest long tail.

@@ -58,10 +58,14 @@ export interface LensManifest {
   label: string;
   /** Artifact types this lens manages */
   artifacts: string[];
-  /** Macro name mappings (follows lens.<domain>.* convention) */
+  /**
+   * Macro name mappings (follows lens.<domain>.* convention).
+   * `list`/`get` are optional: a REST-backed dashboard lens (e.g. ops-telemetry)
+   * has no macro surface at all and declares an empty `{}`.
+   */
   macros: {
-    list: string;
-    get: string;
+    list?: string;
+    get?: string;
     create?: string;
     update?: string;
     delete?: string;
@@ -4630,25 +4634,49 @@ export const LENS_MANIFESTS: LensManifest[] = [
       ],
     },
   },
+  // Lattice is the brain self-training OPERATOR DASHBOARD \u2014 REST-backed by design
+  // (an MLOps / Weights-&-Biases analog for the 4 cognitive brains). The page
+  // (app/lenses/lattice/page.tsx) does NOT call the macro system; it binds to
+  // real HTTP routes registered in server.js:
+  //   /api/lattice/*  (server/routes/lattice.js, mounted server.js:33413):
+  //     GET corpus/stats \u00b7 GET corpus/mine \u00b7 POST dtus/:id/consent \u00b7
+  //     POST dtus/consent-all \u00b7 GET consent-log \u00b7 GET drift-alerts
+  //   /api/brains/*   (server/routes/brains.js, mounted server.js:33422):
+  //     GET stats \u00b7 GET active \u00b7 POST refresh \u00b7 GET runs \u00b7 GET :id/eval-curve \u00b7
+  //     GET :id/history \u00b7 POST :id/rollback \u00b7 GET/POST schedule \u00b7 GET/POST ab-tests \u00b7
+  //     GET :id/corpus-sample
+  // There is NO `lattice` macro domain and that's correct \u2014 training-ops is a REST
+  // surface, not a lensRun authoring path. The prior `lens.lattice.*` macros +
+  // `training_status`/`grant_consent`/`run_pipeline`/\u2026 actions below were PHANTOMS
+  // that resolved to nothing (ManifestActionBar would POST /api/lens/run with a
+  // non-existent domain); they're removed. With no macro surface, `macros` is empty
+  // and `actions` is `[]` \u2014 the consent/refresh verbs live on the page's own real
+  // REST buttons. score-lenses 4/7: the three absent bits are BY-DESIGN-ABSENT for a
+  // monitoring dashboard and no bit is faked \u2014 `persistence` (it reads live server
+  // state over REST + the one persisted artifact is the consent flag it mutates via
+  // POST, not a useLensData authoring hook), `pipeline` (a training-ops surface has
+  // no productization-roadmap pipeline), and `dtu_exhaust` (inspecting the training
+  // corpus is not minting new knowledge DTUs). The `consent_grant`/`training_session`/
+  // `drift_scan` artifacts + `json` export reflect the live data the page surfaces.
   {
     domain: 'lattice',
     label: 'Lattice',
-    artifacts: ['training_session', 'consent_grant', 'pipeline_run', 'drift_scan'],
-    macros: { list: 'lens.lattice.list', get: 'lens.lattice.get', run: 'lens.lattice.run', export: 'lens.lattice.export' },
+    artifacts: ['training_session', 'consent_grant', 'drift_scan'],
+    macros: {},
     exports: ['json'],
-    actions: ['training_status', 'grant_consent', 'revoke_consent', 'run_pipeline', 'view_drift'],
+    actions: [],
     category: 'system',
     dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Training + consent.",
-      caption: "Training sessions, consent grants, pipeline runs, drift scans \u2014 the lattice substrate.",
-      firstActionLabel: "View training status",
+      caption: "Training runs, consent grants, eval curves, drift scans \u2014 the brain self-training dashboard.",
+      firstActionLabel: "View corpus snapshot",
     },
     firstRunGuide: {
       steps: [
-        { caption: "grant_consent + revoke_consent control your data participation per session." },
-        { caption: "run_pipeline kicks off the lattice training run with your consented DTUs." },
-        { caption: "view_drift surfaces what the lattice noticed about its own behavior." },
+        { caption: "Consent: opt your authored DTUs into (or out of) the training corpus account-wide." },
+        { caption: "Refresh: trigger a brain's daily training run over its consented positive interactions." },
+        { caption: "Audit & drift: review your consent history and the drift-monitor's findings." },
       ],
     },
   },
@@ -5233,8 +5261,37 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'housing',       label: 'Housing',            artifacts: ['house'],       macros: { list: 'housing.mine',            get: 'housing.get',          create: 'housing.claim',    run: 'housing.place_furniture' }, exports: ['json'], actions: ['claim', 'place_furniture', 'remove_furniture', 'set_visibility', 'set_lock', 'visit'], category: 'lifestyle' },
   { domain: 'lfg',           label: 'Looking for Group',  artifacts: ['lfg_post'],    macros: { list: 'lfg.list',                get: 'lfg.list',             create: 'lfg.post',         run: 'lfg.join' },            exports: ['json'], actions: ['post', 'join', 'cancel'], category: 'social' },
   { domain: 'mail',          label: 'Mail',               artifacts: ['mail'],        macros: { list: 'mail.list',               get: 'mail.get',             create: 'mail.send',        run: 'mail.claim' },          exports: ['json'], actions: ['send', 'read', 'claim'], category: 'social' },
-  { domain: 'narrative-walk',label: 'Narrative Walk',     artifacts: ['cinematic'],   macros: { list: 'lens.narrative-walk.list',get: 'lens.narrative-walk.get' },exports: ['json'], actions: [], category: 'creative' },
-  { domain: 'ops-telemetry', label: 'Ops Telemetry',      artifacts: ['metric'],      macros: { list: 'lens.ops-telemetry.list', get: 'lens.ops-telemetry.get' }, exports: ['json'], actions: [], category: 'operations' },
+  // narrative-walk is a self-contained authored-narrative READER — it surfaces
+  // the 11 bundled cinematic JSONs (concord-frontend/content/cinematics/*.json)
+  // client-side and has NO server macro surface. The prior `lens.narrative-walk.*`
+  // macros were phantoms (no server registration); a reader manifest legitimately
+  // declares an empty `{}` (the ops-telemetry precedent). verify-lens-backends
+  // reports NO-BACKEND-CALL for this lens by design.
+  { domain: 'narrative-walk',label: 'Narrative Walk',     artifacts: ['cinematic'],   macros: {},                                                                    exports: [],       actions: [], category: 'creative' },
+  // Ops Telemetry is a read-only operator DASHBOARD, REST-backed by design (a
+  // Datadog/Grafana analog). The page (app/lenses/ops-telemetry/page.tsx) does
+  // NOT call the macro system — it fetches six REAL admin-gated HTTP routes,
+  // each registered in server.js behind requireRole("owner","admin",…):
+  //   GET  /api/admin/heartbeat-stats  (server.js:50163)
+  //   GET  /api/admin/inference-costs  (server.js:50218)
+  //   GET  /api/admin/worker-stats     (server.js:50228)
+  //   GET  /api/admin/world-shards     (server.js:52732)
+  //   POST /api/admin/world-shards/:worldId/restart (server.js:52740)
+  //   GET  /api/admin/brain-endpoints  (server.js:52749)
+  //   GET  /api/admin/brain-activity   (server.js:52777)
+  // There is NO `ops-telemetry` macro domain and that's correct — telemetry is a
+  // REST surface, not a lensRun authoring path. The prior `lens.ops-telemetry.*`
+  // macros below were PHANTOMS that resolved to nothing; they're removed. With no
+  // macro surface, `macros` is left empty (the generic shell still resolves the id
+  // from this entry + the registry). score-lenses 3/7: the four absent bits are all
+  // BY-DESIGN-ABSENT for a read-only monitoring dashboard and no bit is faked —
+  // `persistence` (it reads live server state over REST, it owns no persisted
+  // artifact), `engine` (no authoring action — the one mutation, shard restart, is
+  // an operator command on existing infra, not artifact creation), `pipeline` (a
+  // telemetry surface has no productization-roadmap pipeline), and `dtu_exhaust`
+  // (observing the concurrency stack is not minting knowledge). The `metric`
+  // artifact + `json` export reflect the live data the page surfaces.
+  { domain: 'ops-telemetry', label: 'Ops Telemetry',      artifacts: ['metric'],      macros: {}, exports: ['json'], actions: [], category: 'operations' },
   { domain: 'photos',        label: 'Photos',             artifacts: ['photo'],       macros: { list: 'photos.list',             get: 'photos.get', create: 'photos.share' }, exports: ['json'], actions: ['share', 'world'], category: 'creative' },
   { domain: 'quests',        label: 'Quests',             artifacts: ['quest'],       macros: { list: 'quests.mine',             get: 'quests.progress' },        exports: ['json'], actions: ['accept', 'record-progress', 'claim-rewards', 'share'], category: 'lifestyle' },
   { domain: 'spectate',      label: 'Spectate',           artifacts: ['spectacle'],   macros: { list: 'spectate.list',           get: 'spectate.get',         create: 'spectate.watch',   run: 'spectate.bet' },           exports: ['json'], actions: ['watch', 'bet', 'my_positions'], category: 'social' },
