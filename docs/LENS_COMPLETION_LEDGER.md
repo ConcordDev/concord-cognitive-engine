@@ -171,3 +171,18 @@ The loop surfaced 3 "caller with a broken receiver" / robustness defects outside
 - **emergent autogen-pipeline threw on non-string claims** — 4 `.toLowerCase()` on array elements that
   assumed strings; coerced to `String(c ?? "")`. Both throws were caught by the assassin dispatcher
   (HARD=0) but are real robustness gaps. 107/107 related tests green.
+
+## Phase 2 — non-score gate audit of the ~217 PASSING lenses (started 2026-06-27)
+The failing queue is CLOSED. Phase 2 hardens the already-passing (≥5/7, wired, working) lenses for the
+*non-score* gate dimensions: a 4-UX-state vitest + a behavioral test + contract overrides for the macros
+each drives + a no-fake pass. Lighter than the failing queue (no rewrites — these already work).
+
+**Systemic scan (2026-06-27):** of 261 lens dirs, 233 already carry a lens-specific test reference; ~23
+genuinely lack a dedicated UX-state vitest (excluding code-quality/cognition/dx-platform/foundry which
+ARE covered under tests/components, and ux-suite which is by-design NO-BACKEND-CALL nav). Phase-2 backlog
+(weakest-first, real-backend gameplay/economy first):
+- **real-backend:** staking, crafting, deities, sub-worlds, personas, root
+- **economy/world:** black-market, bounties, sponsorship, tournaments, kingdoms, inheritance, genesis,
+  world-creator, worldmodel, federation, sub-worlds
+- **cognitive/misc:** cognition*, understanding, meditation, self, cognitive-replay, gallery, goddess,
+  maker  (*cognition already done in batch 9 — verify)
