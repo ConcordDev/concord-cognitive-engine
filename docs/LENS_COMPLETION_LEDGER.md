@@ -37,16 +37,16 @@ score bits justified-absent)
 | garage | 3/7 | pending | | |
 | courtship | 3/7 | pending | | |
 | spectate | 3/7 | pending | | spectator dashboard |
-| mail | 3/7 | pending | | player-mail backend exists |
+| mail | 3/7 | **done** | 75031b3 | dedicated `mail` domain; send→inbox→claim single-tx behavioral tests; 4 UX states; wired |
 | narrative-walk | 3/7 | pending | | by-design reader (NO-BACKEND-CALL) — verify |
 | announcements | 3/7 | pending | | announcement-broadcaster heartbeat |
 | housing | 3/7 | pending | | player-housing lens |
 | training-room | 3/7 | pending | | combat-frame-data backend |
-| achievements | 3/7 | pending | | achievement-engine backend |
+| achievements | 3/7 | **done** | 75031b3 | dedicated `achievements` domain; unlock-idempotency + reward-once behavioral tests; 4 UX states; wired |
 | lfg | 3/7 | pending | | lfg backend |
 | quests | 3/7 | pending | | quest-engine backend |
 | ops-telemetry | 3/7 | pending | | dashboard — likely by-design |
-| auction | 4/7 | pending | | auctions backend |
+| auction | 4/7 | **done** | 75031b3 | dedicated `auctions` domain (delegates to lib); 4 UX states + a11y; behavioral tests + contract overrides; wired |
 | careers | 4/7 | pending | | |
 | codex | 4/7 | pending | | |
 | ledger | 4/7 | pending | | economy ledger reader |
@@ -83,3 +83,5 @@ enumerated here until reached.
 
 ## Progress log
 - 2026-06-26: ledger created; 46 failing lenses ranked; loop started.
+- 2026-06-27: batch 1 DONE (auction, mail, achievements) @ 75031b3 — 51 behavioral tests, 13
+  UX-state vitests, contract overrides, dedicated domains registered, verifier 258 WIRED. 43 left.
