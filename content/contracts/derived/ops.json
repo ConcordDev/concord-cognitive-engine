@@ -1,6 +1,305 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "ops",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "signature required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "message": "CPU 99%",
+            "signature": "cpu-high"
+          }
+        }
+      ],
+      "inputs": {
+        "message": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "severity": {
+          "maxLength": 8,
+          "type": "string"
+        },
+        "signature": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "sourceSystem": {
+          "maxLength": 60,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.alert && typeof output.result.alert.id === 'string')"
+      ],
+      "macro_id": "ops.alertIngest",
+      "name": "alertIngest"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ops.alertList",
+      "name": "alertList"
+    },
+    {
+      "_derived": false,
+      "domain": "ops",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "invalid_sinceDays",
+            "ok": false
+          },
+          "input": {
+            "sinceDays": -1
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sinceDays": 30
+          }
+        }
+      ],
+      "inputs": {
+        "sinceDays": {
+          "max": 3650,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.totalIncidents === 'number' && output.result.totalIncidents >= 0)",
+        "output.ok === false || (typeof output.result.mttaMinutes === 'number' && typeof output.result.mttrMinutes === 'number')",
+        "output.ok === false || Array.isArray(output.result.weeklyTrend)"
+      ],
+      "macro_id": "ops.analytics",
+      "name": "analytics"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ops.calendarView",
+      "name": "calendarView"
+    },
+    {
+      "_derived": false,
+      "domain": "ops",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "invalid_minutesOpen",
+            "ok": false
+          },
+          "input": {
+            "minutesOpen": -1,
+            "severity": "sev1"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "minutesOpen": 30,
+            "severity": "sev1"
+          }
+        }
+      ],
+      "inputs": {
+        "minutesOpen": {
+          "max": 100000,
+          "min": 0,
+          "type": "number"
+        },
+        "severity": {
+          "maxLength": 8,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.breached === 'boolean')",
+        "output.ok === false || (typeof output.result.thresholdMinutes === 'number' && output.result.thresholdMinutes > 0)",
+        "output.ok === false || (output.result.minutesOpen < output.result.thresholdMinutes) === (output.result.breached === false)"
+      ],
+      "macro_id": "ops.escalationCheck",
+      "name": "escalationCheck"
+    },
+    {
+      "_derived": false,
+      "domain": "ops",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "title required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "severity": "sev1",
+            "title": "Checkout 5xx"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "severity": "nope",
+            "title": "Bad sev"
+          }
+        }
+      ],
+      "inputs": {
+        "serviceId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "severity": {
+          "maxLength": 8,
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.incident && typeof output.result.incident.id === 'string')",
+        "output.ok === false || output.result.incident.status === 'triggered'",
+        "output.ok === false || (['sev1','sev2','sev3','sev4'].indexOf(output.result.incident.severity) >= 0)"
+      ],
+      "macro_id": "ops.incidentCreate",
+      "name": "incidentCreate"
+    },
+    {
+      "_derived": false,
+      "domain": "ops",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "severity": {
+          "maxLength": 8,
+          "type": "string"
+        },
+        "status": {
+          "maxLength": 20,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.incidents))",
+        "output.ok === false || (typeof output.result.total === 'number' && output.result.total === output.result.incidents.length)",
+        "output.ok === false || (typeof output.result.open === 'number' && output.result.open <= output.result.total)"
+      ],
+      "macro_id": "ops.incidentList",
+      "name": "incidentList"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ops.incidentNote",
+      "name": "incidentNote"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ops.incidentTransition",
+      "name": "incidentTransition"
+    },
+    {
       "_derived": true,
       "domain": "ops",
       "fuzz_cases": [],
@@ -23,11 +322,279 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "ops.notifyDispatch",
+      "name": "notifyDispatch"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ops.notifyList",
+      "name": "notifyList"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ops.pageOnCall",
+      "name": "pageOnCall"
+    },
+    {
+      "_derived": false,
+      "domain": "ops",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "name required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "at least one tier required",
+            "ok": false
+          },
+          "input": {
+            "name": "empty"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_tier_afterMinutes",
+            "ok": false
+          },
+          "input": {
+            "name": "Crit",
+            "tiers": [
+              {
+                "afterMinutes": -1,
+                "target": "a"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Crit",
+            "tiers": [
+              {
+                "afterMinutes": 0,
+                "channel": "push",
+                "target": "primary"
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "name": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "tiers": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.policy && Array.isArray(output.result.policy.tiers) && output.result.policy.tiers.length >= 1)"
+      ],
+      "macro_id": "ops.policyCreate",
+      "name": "policyCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ops.policyEvaluate",
+      "name": "policyEvaluate"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ops.policyList",
+      "name": "policyList"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ops.postmortemDraft",
+      "name": "postmortemDraft"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "ops.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ops.runbookLookup",
+      "name": "runbookLookup"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ops.serviceCreate",
+      "name": "serviceCreate"
+    },
+    {
+      "_derived": false,
+      "domain": "ops",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "rootServiceId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.nodes) && Array.isArray(output.result.edges))",
+        "output.ok === false || (typeof output.result.serviceCount === 'number' && output.result.serviceCount === output.result.nodes.length)"
+      ],
+      "macro_id": "ops.serviceGraph",
+      "name": "serviceGraph"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ops.serviceList",
+      "name": "serviceList"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ops.shiftCreate",
+      "name": "shiftCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "ops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ops.shiftOverride",
+      "name": "shiftOverride"
+    },
+    {
+      "_derived": false,
+      "domain": "ops",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.overall === 'string')",
+        "output.ok === false || Array.isArray(output.result.components)",
+        "output.ok === false || (typeof output.result.activeIncidentCount === 'number' && output.result.activeIncidentCount >= 0)"
+      ],
+      "macro_id": "ops.statusPage",
+      "name": "statusPage"
     }
   ],
   "domain": "ops",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 25
 }

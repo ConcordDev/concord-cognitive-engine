@@ -1,53 +1,203 @@
 {
   "contracts": [
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "repair",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "status": "pending"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "status": "acted"
+          }
+        }
+      ],
+      "inputs": {
+        "status": {
+          "maxLength": 40,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true",
+        "Array.isArray(output.escalations)",
+        "output.escalations.every(e => typeof e.id === 'string' && e.id.length > 0)",
+        "output.escalations.every(e => typeof e.message === 'string')",
+        "output.escalations.every(e => typeof e.status === 'string')",
+        "(!input || !input.status || output.escalations.every(e => e.status === input.status))",
+        "(!input || input.status || output.escalations.every(e => e.status === 'pending'))"
       ],
       "macro_id": "repair.escalations",
       "name": "escalations"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "repair",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 25
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "disposition": "escalated"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "limit": 1e+308
+          }
+        }
+      ],
+      "inputs": {
+        "disposition": {
+          "enum": [
+            "healed",
+            "escalated",
+            "noted"
+          ],
+          "type": "string"
+        },
+        "limit": {
+          "max": 200,
+          "min": 1,
+          "type": "number"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.entries.every(e => typeof e.id === 'string' && e.id.length > 0)",
+        "output.ok === false || output.entries.every(e => ['healed','escalated','noted'].includes(e.disposition))",
+        "output.ok === false || output.entries.every(e => ['economy','liveness','arc'].includes(e.category))",
+        "output.ok === false || output.entries.every(e => typeof e.checked_at === 'number')",
+        "output.ok === false || output.entries.every(e => e.detail === undefined || (typeof e.detail === 'object' && e.detail !== null))",
+        "output.ok === false || (() => { const ts = output.entries.map(e => e.checked_at); for (let i = 1; i < ts.length; i++) { if (ts[i] > ts[i-1]) return false; } return true; })()",
+        "output.ok === false || (!input || !input.disposition || output.entries.every(e => e.disposition === input.disposition))",
+        "output.ok === true || typeof output.reason === 'string'"
       ],
       "macro_id": "repair.health_log",
       "name": "health_log"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "repair",
-      "fuzz_cases": [],
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
       "inputs": {},
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "output.stats && typeof output.stats === 'object'",
+        "typeof output.stats.totalPatterns === 'number'",
+        "typeof output.stats.totalRepairs === 'number'",
+        "typeof output.stats.avgSuccessRate === 'number'",
+        "output.stats.avgSuccessRate >= 0 && output.stats.avgSuccessRate <= 1",
+        "typeof output.stats.deprecatedFixes === 'number'",
+        "Array.isArray(output.stats.topPatterns)"
       ],
       "macro_id": "repair.memory",
       "name": "memory"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "repair",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "id": "does-not-exist",
+            "resolution": "approved"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "id": "does-not-exist",
+            "resolution": "dismissed"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "resolution": {
+          "enum": [
+            "approved",
+            "dismissed"
+          ],
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || ['approved','dismissed'].includes(output.resolution)",
+        "output.ok === true || typeof output.reason === 'string'"
       ],
       "macro_id": "repair.resolve_escalation",
       "name": "resolve_escalation"

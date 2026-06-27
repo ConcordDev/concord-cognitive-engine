@@ -130,7 +130,20 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // (text→LLM→output engine isn't in the productization-roadmap registry). No
   // bit is faked.
   { domain: 'translation', label: 'Translation', artifacts: ['translation'], macros: { list: 'translation.languages', get: 'translation.languages', run: 'translation.translate' }, exports: ['json'], actions: ['translate', 'detect', 'languages'], category: 'productivity' },
-  { domain: 'repair-telemetry', label: 'Repair Telemetry', artifacts: ['report'], macros: { list: 'lens.repair-telemetry.list', get: 'lens.repair-telemetry.get' }, exports: ['json'], actions: ['view'], category: 'system' },
+  // Repair Telemetry is a read-only operator DASHBOARD over the REAL `repair`
+  // domain (server/domains/repair.js — registerRepairMacros, registered at
+  // server.js:25305 — register("repair", "health_log"|"escalations"|"memory"|
+  // "resolve_escalation")). The lens id is `repair-telemetry`; the BACKEND
+  // domain is `repair`, so the macro values below point at the real `repair.*`
+  // surface the page drives (lensRun('repair', …)) — NOT the prior phantom
+  // `lens.repair-telemetry.*` ids, which never existed. score-lenses 4/7: the
+  // three remaining bits are BY-DESIGN-ABSENT for a monitoring dashboard and no
+  // bit is faked — `persist` (it reads live server state via lensRun, it owns no
+  // persisted artifact to hold), `dtu` (no DTU mint/`create` verb — observing the
+  // homeostasis loop is not authoring), and `pipeline` (a telemetry surface has
+  // no productization-roadmap pipeline). The operator decision `repair.resolve_escalation`
+  // is a state mutation on an existing escalation, not artifact authoring.
+  { domain: 'repair-telemetry', label: 'Repair Telemetry', artifacts: ['report'], macros: { list: 'repair.health_log', get: 'repair.escalations', run: 'repair.resolve_escalation' }, exports: ['json'], actions: ['health_log', 'escalations', 'memory', 'resolve_escalation'], category: 'system' },
   { domain: 'move-builder', label: 'Move Builder', artifacts: ['move', 'recipe'], macros: { list: 'move-builder.list', get: 'move-builder.get', create: 'move-builder.mint' }, exports: ['json'], actions: ['compose', 'mint'], category: 'creative' },
   // Civic Bonds is a READER+ACTOR over the real `civic_bonds` domain
   // (server/domains/civic-bonds.js — registerCivicBondsMacros, registered at
@@ -4717,24 +4730,38 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
   },
   {
+    // Real macro ids — registered canonically via registerOpsActions(register)
+    // in server.js (server/domains/ops.js). The prior `lens.ops.*` refs here
+    // were PHANTOM (no such macro existed; the whole `ops.*` domain was a dead
+    // saved-class domain that never loaded, so IncidentConsole + OpsActionPanel
+    // hit unknown_macro). The lens is a PagerDuty-shape incident-management
+    // dashboard: live incident lifecycle, alert ingestion, escalation policies,
+    // on-call calendar, notification dispatch, service dependency graph,
+    // MTTA/MTTR analytics, and a public status page — all per-user STATE-backed.
     domain: 'ops',
     label: 'Ops',
-    artifacts: ['dtu_op', 'attention_alloc', 'repair_event', 'physical_state', 'explore_run', 'forge_run', 'cortex_run', 'lattice_run'],
-    macros: { list: 'lens.ops.list', get: 'lens.ops.get', run: 'lens.ops.run', export: 'lens.ops.export' },
+    artifacts: ['incident', 'alert', 'escalation_policy', 'oncall_shift', 'service', 'notification'],
+    macros: {
+      list: 'ops.incidentList',
+      get: 'ops.serviceGraph',
+      create: 'ops.incidentCreate',
+      run: 'ops.statusPage',
+      export: 'ops.analytics',
+    },
     exports: ['json'],
-    actions: ['dtu_metrics', 'attention_status', 'repair_recent', 'physical_status', 'explore_recent', 'forge_recent', 'cortex_recent', 'lattice_recent'],
+    actions: ['incidentCreate', 'alertIngest', 'policyCreate', 'shiftCreate', 'serviceCreate', 'notifyDispatch'],
     category: 'system',
     dataTier: 'REAL_LIVE',
     emptyState: {
-      headline: "Substrate ops.",
-      caption: "DTU ops, attention allocation, repair events, physical state, explore/forge/cortex/lattice runs.",
-      firstActionLabel: "Open the dashboard",
+      headline: "Incident management.",
+      caption: "Trigger incidents, ingest alerts, build escalation policies, schedule on-call, map service dependencies, and read MTTA/MTTR.",
+      firstActionLabel: "Trigger an incident",
     },
     firstRunGuide: {
       steps: [
-        { caption: "dtu_metrics surfaces live consolidation + compression rates." },
-        { caption: "attention_status shows what the brains are working on right now." },
-        { caption: "repair_recent surfaces what the repair brain has fixed in the last hour." },
+        { caption: "Trigger an incident or ingest an alert — alerts auto-map to a service by signature/alert-key." },
+        { caption: "Drive the state machine (triggered → acknowledged → resolved) and page responders along the escalation policy." },
+        { caption: "The Analytics + Status page tabs derive MTTA/MTTR and component health from your real incident history." },
       ],
     },
   },
@@ -4841,22 +4868,33 @@ export const LENS_MANIFESTS: LensManifest[] = [
   {
     domain: 'sentinel',
     label: 'Sentinel',
-    artifacts: ['intel_report', 'shield_event', 'semantic_alert'],
-    macros: { list: 'lens.sentinel.list', get: 'lens.sentinel.get', run: 'lens.sentinel.run', export: 'lens.sentinel.export' },
-    exports: ['json'],
-    actions: ['intel_status', 'shield_status', 'semantic_status', 'list_alerts'],
+    // Real artifacts the operator-workflow layer persists per-user
+    // (server/domains/sentinel.js): triage cases, monitoring alerts, scan rules,
+    // saved semantic-search queries.
+    artifacts: ['case', 'alert', 'rule', 'query'],
+    // Phantom `lens.sentinel.*` refs replaced with the REAL registered macros.
+    // create -> triage.open (the first persisting write the console makes).
+    macros: {
+      list: 'sentinel.triage.list',
+      get: 'sentinel.triage.detail',
+      create: 'sentinel.triage.open',
+      run: 'sentinel.monitor.run',
+      export: 'sentinel.query.export',
+    },
+    exports: ['json', 'csv'],
+    actions: ['triage.open', 'monitor.create', 'scan.rule.add', 'query.save'],
     category: 'system',
     dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Security sentinel.",
-      caption: "Intel reports, shield events, semantic alerts \u2014 the security substrate.",
-      firstActionLabel: "View status",
+      caption: "Promote a detected threat into a triage case, set continuous monitors, write detection rules \u2014 the threat-console workflow over the shield / intel / semantic substrate.",
+      firstActionLabel: "Open a triage case",
     },
     firstRunGuide: {
       steps: [
-        { caption: "intel_status surfaces what sentinel has detected." },
-        { caption: "shield_status shows active defenses." },
-        { caption: "semantic_status flags semantic attacks (prompt injection, supply chain)." },
+        { caption: "Shield surfaces live threats \u2014 promote one into a tracked triage case." },
+        { caption: "Monitors run scheduled scans and drop new findings into the alert inbox." },
+        { caption: "Rules + saved semantic queries make the console yours; Metrics charts the trend." },
       ],
     },
   },
@@ -4892,7 +4930,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     domain: 'system',
     label: 'System',
     artifacts: ['cartograph', 'system_node', 'cross_ref', 'health_metric'],
-    macros: { list: 'lens.system.list', get: 'lens.system.get', run: 'lens.system.run', export: 'lens.system.export' },
+    macros: { list: 'system.metrics', get: 'system.live-status', create: 'system.dashboard-save', run: 'system.sample', export: 'system.history' },
     exports: ['json', 'md'],
     actions: ['cartograph', 'list_nodes', 'show_cross_refs', 'health_status'],
     category: 'system',

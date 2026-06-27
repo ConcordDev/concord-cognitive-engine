@@ -1,0 +1,18 @@
+{
+  "macro_id": "system.alerts",
+  "domain": "system",
+  "name": "alerts",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.rules))",
+    "output.ok === false || (typeof output.result.ruleCount === 'number' && output.result.ruleCount === output.result.rules.length)",
+    "output.ok === false || (Array.isArray(output.result.firing) && output.result.firingCount === output.result.firing.length)",
+    "output.ok === false || output.result.firingCount <= output.result.ruleCount"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Loads monitoring/prometheus/alerts.yml, evaluates the locally-checkable rules against the live sample + heartbeat health, and merges per-user acknowledgements (ctx.actor.userId). If the rules file is absent the rules[] is empty but the call still returns ok:true (NEVER no_db). firingCount never exceeds ruleCount."
+}

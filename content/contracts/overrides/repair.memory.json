@@ -1,0 +1,21 @@
+{
+  "macro_id": "repair.memory",
+  "domain": "repair",
+  "name": "memory",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "output.stats && typeof output.stats === 'object'",
+    "typeof output.stats.totalPatterns === 'number'",
+    "typeof output.stats.totalRepairs === 'number'",
+    "typeof output.stats.avgSuccessRate === 'number'",
+    "output.stats.avgSuccessRate >= 0 && output.stats.avgSuccessRate <= 1",
+    "typeof output.stats.deprecatedFixes === 'number'",
+    "Array.isArray(output.stats.topPatterns)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "repair.memory returns the in-memory Repair Memory learning stats from emergent/repair-cortex.js#getRepairMemoryStats — totalPatterns, totalRepairs, avgSuccessRate (0..1), deprecatedFixes, topPatterns[]. It is a pure read with no DB and no inputs, so it always returns ok:true regardless of payload."
+}

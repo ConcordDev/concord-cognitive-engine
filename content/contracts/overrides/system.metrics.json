@@ -1,0 +1,24 @@
+{
+  "macro_id": "system.metrics",
+  "domain": "system",
+  "name": "metrics",
+  "inputs": {
+    "limit": { "type": "number", "minimum": 1, "maximum": 720 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.samples))",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.samples.length)",
+    "output.ok === false || output.result.count >= 1",
+    "output.ok === false || (output.result.latest && typeof output.result.latest.heapUsedMB === 'number')",
+    "output.ok === false || (typeof output.result.capacity === 'number' && output.result.capacity === 720)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 10 }, "expect": { "ok": true } },
+    { "input": { "limit": "NaN" }, "expect": { "ok": false, "error": "invalid_limit" } },
+    { "input": { "limit": 1e308 }, "expect": { "ok": false, "error": "invalid_limit" } }
+  ],
+  "_note": "Reads the shared process-telemetry ring buffer (real process.memoryUsage()/cpuUsage()). On first read it captures a fresh sample so the buffer is NEVER empty → ok:true with count >= 1 (NEVER no_db). A poisoned numeric limit (NaN/Infinity/1e308/negative) fails CLOSED with invalid_limit before any read."
+}

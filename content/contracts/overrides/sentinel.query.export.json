@@ -1,0 +1,22 @@
+{
+  "macro_id": "sentinel.query.export",
+  "domain": "sentinel",
+  "name": "query.export",
+  "inputs": {
+    "format": { "type": "string", "enum": ["json", "csv"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.payload === 'string')",
+    "output.ok === false || (output.result.format === 'json' || output.result.format === 'csv')",
+    "output.ok === false || (typeof output.result.rowCount === 'number' && output.result.rowCount >= 1)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "results array required" } },
+    { "input": { "results": [] }, "expect": { "ok": false, "error": "results array required" } },
+    { "input": { "results": [{ "id": "r1", "title": "alpha" }], "format": "json" }, "expect": { "ok": true } },
+    { "input": { "results": [{ "id": "r1", "title": "beta, comma" }], "format": "csv" }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure serializer over a caller-supplied result set (no STATE read) — emits a portable CSV/JSON payload. NEVER no_db: it does not touch any store. An empty/absent results array fails-closed; any format other than 'csv' defaults to 'json'; CSV cells with commas/quotes/newlines are RFC-4180 escaped."
+}

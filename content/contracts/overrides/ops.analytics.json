@@ -1,0 +1,21 @@
+{
+  "macro_id": "ops.analytics",
+  "domain": "ops",
+  "name": "analytics",
+  "inputs": {
+    "sinceDays": { "type": "number", "min": 1, "max": 3650 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.totalIncidents === 'number' && output.result.totalIncidents >= 0)",
+    "output.ok === false || (typeof output.result.mttaMinutes === 'number' && typeof output.result.mttrMinutes === 'number')",
+    "output.ok === false || Array.isArray(output.result.weeklyTrend)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "sinceDays": -1 }, "expect": { "ok": false, "error": "invalid_sinceDays" } },
+    { "input": { "sinceDays": 30 }, "expect": { "ok": true } }
+  ],
+  "_note": "Computes MTTA/MTTR + per-severity + weekly-trend over the caller's incidents in per-user STATE. Empty store → all-zero metrics, weeklyTrend [] (NEVER no_db). sinceDays is a fail-CLOSED numeric guard — poisoned value → invalid_sinceDays, never a clamped ok:true."
+}

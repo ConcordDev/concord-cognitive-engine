@@ -447,6 +447,13 @@ export const LENS_STATUS_MAP: LensStatusEntry[] = [
     rationale: 'System administration. Infrastructure.',
   },
   {
+    id: 'repair-telemetry',
+    status: 'system',
+    mergeTarget: null,
+    postMergeRole: 'standalone',
+    rationale: 'Read-only operator dashboard over the repair (autonomic) domain — Homeostasis ledger + escalation inbox + Repair Memory stats. A monitoring surface, not a product: persist/dtu/pipeline are by-design-absent (it observes the repair loop, it does not author). Infrastructure.',
+  },
+  {
     id: 'debug',
     status: 'system',
     mergeTarget: null,

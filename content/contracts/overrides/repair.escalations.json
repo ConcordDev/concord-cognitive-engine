@@ -1,0 +1,25 @@
+{
+  "macro_id": "repair.escalations",
+  "domain": "repair",
+  "name": "escalations",
+  "inputs": {
+    "status": { "type": "string", "maxLength": 40 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true",
+    "Array.isArray(output.escalations)",
+    "output.escalations.every(e => typeof e.id === 'string' && e.id.length > 0)",
+    "output.escalations.every(e => typeof e.message === 'string')",
+    "output.escalations.every(e => typeof e.status === 'string')",
+    "(!input || !input.status || output.escalations.every(e => e.status === input.status))",
+    "(!input || input.status || output.escalations.every(e => e.status === 'pending'))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "status": "pending" }, "expect": { "ok": true } },
+    { "input": { "status": "acted" }, "expect": { "ok": true } }
+  ],
+  "_note": "repair.escalations reads the escalation inbox — the value/arc pathologies the repair cortex refused to auto-heal — from migration 029 initiatives, filtered to trigger_type='system_repair_escalation'. Against a live migrated DB it always returns ok:true with an escalations[] array (empty when nothing is queued), NEVER no_db. status defaults to 'pending' and may be overridden; results are newest-first (created_at DESC) capped at 100."
+}

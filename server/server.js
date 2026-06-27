@@ -25772,6 +25772,22 @@ registerExpeditionJournalActions(register);
 import registerMeshActions from "./domains/mesh.js";
 registerMeshActions(register);
 
+// Per-lens flawless loop batch 12 — ops + sentinel + system, all SAVED-CLASS
+// (legacy registerLensAction convention AND never imported → fully dead,
+// unknown_macro on every call). Each rewritten to canonical register via an
+// internal shim. system's 14 telemetry macros (alerts/history/logs/metrics/
+// sample/traces/dashboard-*/…) are DISJOINT from the inline system.{analogize,
+// autogen,cartograph,continuity,dream,evolution,status,synthesize} introspection
+// set — no collision (assassin-verified). repair-telemetry needed no line (it's a
+// dashboard over the already-registered repair domain). All per-user (no
+// publicReadDomains entry needed).
+import registerOpsActions from "./domains/ops.js";
+registerOpsActions(register);
+import registerSentinelActions from "./domains/sentinel.js";
+registerSentinelActions(register);
+import registerSystemActions from "./domains/system.js";
+registerSystemActions(register);
+
 // Cognitive Fingerprint (#5) — thinking-style profile from real activity.
 import registerMetacogMacros from "./domains/metacog.js";
 registerMetacogMacros(register);

@@ -63,6 +63,7 @@ export function SentinelTriage({ onChanged }: { onChanged?: () => void }) {
   const [byState, setByState] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState<TriageState | 'all'>('all');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
@@ -72,13 +73,24 @@ export function SentinelTriage({ onChanged }: { onChanged?: () => void }) {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const input: Record<string, unknown> = {};
     if (filter !== 'all') input.state = filter;
-    const r = await lensRun('sentinel', 'triage.list', input);
-    const res = r.data?.result as { cases?: TriageCase[]; byState?: Record<string, number> } | null;
-    setCases(res?.cases ?? []);
-    setByState(res?.byState ?? {});
-    setLoading(false);
+    try {
+      const r = await lensRun('sentinel', 'triage.list', input);
+      if (r.data?.ok === false) {
+        setError(r.data?.error || 'Failed to load triage cases.');
+        setLoading(false);
+        return;
+      }
+      const res = r.data?.result as { cases?: TriageCase[]; byState?: Record<string, number> } | null;
+      setCases(res?.cases ?? []);
+      setByState(res?.byState ?? {});
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load triage cases.');
+    } finally {
+      setLoading(false);
+    }
   }, [filter]);
 
   useEffect(() => { load(); }, [load]);
@@ -145,15 +157,38 @@ export function SentinelTriage({ onChanged }: { onChanged?: () => void }) {
         </div>
 
         {loading ? (
-          <p className="flex items-center gap-2 px-3 py-6 text-xs text-blue-600">
+          <p
+            data-testid="sentinel-triage-loading"
+            className="flex items-center gap-2 px-3 py-6 text-xs text-blue-600"
+            role="status"
+            aria-busy="true"
+          >
             <Loader2 className="h-4 w-4 animate-spin" /> Loading cases…
           </p>
+        ) : error ? (
+          <div
+            data-testid="sentinel-triage-error"
+            role="alert"
+            className="rounded border border-rose-900/50 bg-rose-950/20 px-4 py-6 text-center text-xs text-rose-300"
+          >
+            <p>{error}</p>
+            <button
+              onClick={load}
+              aria-label="Retry loading triage cases"
+              className="mt-2 inline-flex items-center gap-1 rounded bg-rose-900/40 px-2 py-1 text-rose-200 hover:bg-rose-900/60"
+            >
+              <RefreshCw className="h-3 w-3" /> Retry
+            </button>
+          </div>
         ) : cases.length === 0 ? (
-          <p className="rounded border border-blue-900/30 bg-blue-950/10 px-4 py-6 text-center text-xs text-blue-600">
+          <p
+            data-testid="sentinel-triage-empty"
+            className="rounded border border-blue-900/30 bg-blue-950/10 px-4 py-6 text-center text-xs text-blue-600"
+          >
             No triage cases. Open one from a Shield threat.
           </p>
         ) : (
-          <ul className="space-y-1.5">
+          <ul data-testid="sentinel-triage-list" className="space-y-1.5">
             {cases.map((c) => (
               <li key={c.caseId}>
                 <button

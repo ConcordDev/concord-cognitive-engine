@@ -1,0 +1,17 @@
+{
+  "macro_id": "ops.statusPage",
+  "domain": "ops",
+  "name": "statusPage",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.overall === 'string')",
+    "output.ok === false || Array.isArray(output.result.components)",
+    "output.ok === false || (typeof output.result.activeIncidentCount === 'number' && output.result.activeIncidentCount >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Derives a public status page from the caller's services + open incidents in per-user STATE. Empty store → overall 'all_systems_operational', components [], activeIncidentCount 0 (NEVER no_db)."
+}

@@ -1,0 +1,23 @@
+{
+  "macro_id": "sentinel.intel.correlate",
+  "domain": "sentinel",
+  "name": "intel.correlate",
+  "inputs": {
+    "caseId": { "type": "string", "maxLength": 80 },
+    "intelDomain": { "type": "string", "maxLength": 60 },
+    "summary": { "type": "string", "maxLength": 400 },
+    "relevance": { "type": "number", "min": 0, "max": 1 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.link && typeof output.result.link.id === 'string')",
+    "output.ok === false || (output.result.link.relevance >= 0 && output.result.link.relevance <= 1)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "caseId required" } },
+    { "input": { "caseId": "ghost", "intelDomain": "d", "summary": "s" }, "expect": { "ok": false, "error": "case not found" } },
+    { "input": { "caseId": "ghost", "intelDomain": "d", "summary": "s", "relevance": 1e308 }, "expect": { "ok": false } }
+  ],
+  "_note": "Links an intel finding to an existing per-user triage case in STATE keyed by ctx.actor.userId. STATE-backed — the assassin's owner actor has no open cases, so a correlate against any caseId fails-closed with 'case not found' (NEVER no_db: the store is read, it is simply empty for a fresh actor). Missing caseId / intelDomain / summary fail-closed; relevance is a fail-CLOSED numeric guard (poisoned NaN/Infinity/-1/1e308 → invalid_relevance) and is then clamped into [0,1]. The 1e308 fuzz case rejects on either the numeric guard or the missing-case check — both are ok:false."
+}

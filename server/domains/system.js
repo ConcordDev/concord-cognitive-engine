@@ -19,6 +19,48 @@ import { listHeartbeatModules } from "../emergent/heartbeat-registry.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+// REGISTRATION (saved-class fix, 2026-06): this file used to register through
+// the legacy `registerLensAction(domain, action, (ctx, artifact, params))`
+// convention AND was NEVER imported by server.js — so every `system.*`
+// telemetry macro (sample / metrics / alerts / logs / heartbeat-health /
+// traces / dashboard-* / history-* / live-status / alert-ack / trace-record)
+// was invisible to runMacro and to POST /api/lens/run → every call hit
+// `unknown_macro`, leaving the System Lens telemetry panels (MetricsPanel,
+// AlertsPanel, LogViewer, HeartbeatHealthPanel, TracesPanel, CustomDashboard,
+// TrendPanel, useLiveStatus) dead-wired. It is now wired through the canonical
+// `register` (MACROS) registry via `registerSystemActions(register)` in
+// server.js — reachable BOTH via POST /api/lens/run AND via runMacro (which the
+// contract engine + macro-assassin + behavior-smoke harness drive).
+//
+// NAME-COLLISION NOTE: server.js ALSO registers a distinct set of inline
+// `system.*` macros (analogize, autogen, cartograph, continuity, dream,
+// evolution, status, synthesize — the cognitive-OS introspection set). This
+// module's macros (the live-observability/telemetry set above) use DISJOINT
+// names — no overlap, no duplicate registration. Verified by grep at fix time.
+//
+// To keep the verified handler bodies below byte-for-byte identical, the
+// default export adapts the canonical 2-arg `(ctx, input)` signature back to
+// the legacy `(ctx, artifact, params)` shape via the `registerLensAction` shim
+// — `params` (and `artifact.data`) carry the input, identical to what
+// `/api/lens/run` would have built.
+//
+// Fail-CLOSED numeric guard: macros that read a numeric `limit` reject a
+// poisoned numeric input (NaN/Infinity/1e308/negative) instead of silently
+// clamping it to an accepted value (the macro-assassin's V2 vector probes
+// exactly this). Copied from server/domains/literary.js.
+
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative). An absent/null
+// field is fine (the handler uses its default). Returns null when clean, else
+// the offending key.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input == null || input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e9) return k;
+  }
+  return null;
+}
+
 // ── State helpers ─────────────────────────────────────────────────────────
 function getSystemState() {
   const STATE = globalThis._concordSTATE;
@@ -246,7 +288,17 @@ async function loadCartographStats() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-export default function registerSystemActions(registerLensAction) {
+export default function registerSystemActions(register) {
+  // Legacy-convention shim: adapt the canonical `register(domain, name,
+  // (ctx, input) => ...)` registry call onto the verified `(ctx, artifact,
+  // params)` handler bodies below, unchanged. `params` (and `artifact.data`)
+  // carry the input — identical to what `/api/lens/run` would have built.
+  const registerLensAction = (domain, action, handler) =>
+    register(domain, action, (ctx, input = {}) => {
+      const inp = input && typeof input === "object" ? input : {};
+      return handler(ctx, { data: inp }, inp);
+    });
+
   // 1. Live time-series — record one real process sample and return it.
   registerLensAction("system", "sample", (_ctx, _artifact, _params) => {
     try {
@@ -263,6 +315,8 @@ export default function registerSystemActions(registerLensAction) {
   // 1b. Time-series read — full ring buffer, optionally windowed.
   registerLensAction("system", "metrics", (_ctx, _artifact, params = {}) => {
     try {
+      const badNum = badNumericField(params, ["limit"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const s = getSystemState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       // Always capture a fresh point so the chart is never empty on first load.
@@ -363,6 +417,8 @@ export default function registerSystemActions(registerLensAction) {
   // 3. Log viewer / search over the in-process logger buffer.
   registerLensAction("system", "logs", (_ctx, _artifact, params = {}) => {
     try {
+      const badNum = badNumericField(params, ["limit"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const filters = {};
       if (params.level && ["error", "warn", "info", "debug"].includes(params.level)) filters.level = params.level;
       if (params.source) filters.source = String(params.source).slice(0, 80);
@@ -415,6 +471,8 @@ export default function registerSystemActions(registerLensAction) {
   //    accepts a manual span (e.g. a lens self-timing its own call).
   registerLensAction("system", "trace-record", (ctx, _artifact, params = {}) => {
     try {
+      const badNum = badNumericField(params, ["durationMs", "status"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const s = getSystemState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const span = {
@@ -437,6 +495,8 @@ export default function registerSystemActions(registerLensAction) {
 
   registerLensAction("system", "traces", (_ctx, _artifact, params = {}) => {
     try {
+      const badNum = badNumericField(params, ["limit"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const s = getSystemState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       // Pull from the global HTTP ring buffer if the server layer populated one.
@@ -591,6 +651,8 @@ export default function registerSystemActions(registerLensAction) {
 
   registerLensAction("system", "history", (_ctx, _artifact, params = {}) => {
     try {
+      const badNum = badNumericField(params, ["limit"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const s = getSystemState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const limit = clamp(parseInt(params.limit, 10) || HISTORY_CAP, 1, HISTORY_CAP);

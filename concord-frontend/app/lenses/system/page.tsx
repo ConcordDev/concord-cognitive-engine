@@ -316,7 +316,12 @@ export default function SystemLensPage() {
   // ── Loading state ──────────────────────────────────────────────────────
   if (isLoading && !data) {
     return (
-      <div className="flex h-screen items-center justify-center bg-black text-cyan-400">
+      <div
+        data-testid="system-overview-loading"
+        role="status"
+        aria-busy="true"
+        className="flex h-screen items-center justify-center bg-black text-cyan-400"
+      >
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
@@ -335,6 +340,7 @@ export default function SystemLensPage() {
     return (
       <div className="flex h-screen items-center justify-center bg-black px-6">
         <motion.div
+          data-testid="system-overview-error"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-lg rounded-lg border border-yellow-500/40 bg-yellow-950/20 p-6 text-yellow-200"
@@ -467,7 +473,19 @@ export default function SystemLensPage() {
               aria-labelledby="overview-heading"
             >
               <h2 id="overview-heading" className="sr-only">Overview</h2>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+              {data.stats.tableCount === 0
+                && data.stats.routeCount === 0
+                && data.stats.macroCount === 0
+                && data.stats.lensCount === 0 ? (
+                <div
+                  data-testid="system-overview-empty"
+                  className="rounded-lg border border-cyan-900/30 bg-cyan-950/10 px-4 py-10 text-center text-sm text-cyan-600"
+                >
+                  No cartograph data yet. Run <code className="text-cyan-400">npm run cartograph:static</code> to inventory the monolith.
+                </div>
+              ) : (
+              <>
+              <div data-testid="system-overview-grid" className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
                 <StatCard label="Tables" value={data.stats.tableCount} sub={`${data.stats.deadTableCount} dead`} icon={Database} />
                 <StatCard label="Routes" value={data.stats.routeCount} icon={Globe} />
                 <StatCard label="Macros" value={data.stats.macroCount} sub={`${data.stats.macroDomainCount} domains`} icon={Zap} />
@@ -487,6 +505,8 @@ export default function SystemLensPage() {
                   <div><dt className="inline text-cyan-700">Drift entries:</dt> <dd className="inline">{data.drift.length}</dd></div>
                 </dl>
               </div>
+              </>
+              )}
             </motion.section>
           )}
 
