@@ -17,6 +17,39 @@ const NHTSA_RECALLS_BASE = "https://api.nhtsa.gov/recalls/recallsByVehicle";
 
 export default function registerAutomotiveActions(registerLensAction) {
   /**
+   * resolveData — normalize the artifact-data payload for the calculator
+   * macros that read `artifact.data.<field>`.
+   *
+   * The /api/lens/run dispatch sets BOTH `artifact.data` and the 3rd
+   * `params` arg to the same `body.input` object. Some frontend callers
+   * (CalcPanel, AutomotiveActionPanel, VehicleHistory) send the input
+   * already shaped as `{ artifact: { data: {...} } }` — so the server's
+   * `artifact.data` ends up being `{ artifact: { data: {...} } }` and a
+   * naive `artifact.data.mileage` reads undefined (the carpentry-class
+   * double-wrap that silently blanks every calculator). Peel exactly one
+   * `{ artifact: { data } }` layer if present, then merge in any direct
+   * params keys so the single-wrap and bare-params shapes also work.
+   */
+  function resolveData(artifact, params = {}) {
+    let data = (artifact && typeof artifact === "object" && artifact.data) || {};
+    // Peel a nested { artifact: { data } } wrapper (one level).
+    if (data && typeof data === "object" && data.artifact && typeof data.artifact === "object" && data.artifact.data && typeof data.artifact.data === "object") {
+      data = data.artifact.data;
+    } else if (data && typeof data === "object" && data.data && typeof data.data === "object" && !Array.isArray(data.data)
+               && data.mileage === undefined && data.odometer === undefined && data.fillups === undefined && data.repairs === undefined) {
+      // tolerate a bare { data: {...} } single-wrap too
+      data = data.data;
+    }
+    // Direct params fields take precedence only when the resolved data lacks them.
+    if (params && typeof params === "object") {
+      for (const k of Object.keys(params)) {
+        if (data[k] === undefined && k !== "artifact" && k !== "data") data[k] = params[k];
+      }
+    }
+    return data;
+  }
+
+  /**
    * diagnosticLookup — DTC (Diagnostic Trouble Code) lookup against the
    * built-in SAE J2012 reference covering 200+ most-cited P-codes.
    * Returns severity, common causes, repair guidance, cost range.
@@ -186,10 +219,10 @@ export default function registerAutomotiveActions(registerLensAction) {
    * common OEM schedules); cost ranges are not synthesized — caller
    * combines with regional shop-rate data.
    */
-  registerLensAction("automotive", "maintenanceSchedule", (_ctx, artifact, _params) => {
+  registerLensAction("automotive", "maintenanceSchedule", (_ctx, artifact, params = {}) => {
   try {
-    const data = artifact?.data || {};
-    const mileage = parseInt(data.mileage || data.odometer, 10) || 0;
+    const data = resolveData(artifact, params);
+    const mileage = parseInt(data.mileage || data.odometer || data.currentMileage, 10) || 0;
     if (!Number.isFinite(mileage) || mileage <= 0) {
       return { ok: false, error: "mileage required (odometer reading > 0)" };
     }
@@ -235,8 +268,8 @@ export default function registerAutomotiveActions(registerLensAction) {
    * fuelEfficiency — Real MPG analysis from user-logged fill-ups. No
    * synthesis; pure computation over inputs.
    */
-  registerLensAction("automotive", "fuelEfficiency", (_ctx, artifact, _params) => {
-    const fillups = artifact?.data?.fillups || [];
+  registerLensAction("automotive", "fuelEfficiency", (_ctx, artifact, params = {}) => {
+    const fillups = resolveData(artifact, params).fillups || [];
     if (fillups.length < 2) {
       return { ok: false, error: "log at least 2 fill-ups with { mileage, gallons, pricePerGallon?, date? }" };
     }
@@ -278,8 +311,8 @@ export default function registerAutomotiveActions(registerLensAction) {
    * repairEstimate — Computes labor + parts from user-supplied repair
    * items + shop rate. Pure compute; no synthesized prices.
    */
-  registerLensAction("automotive", "repairEstimate", (_ctx, artifact, _params) => {
-    const data = artifact?.data || {};
+  registerLensAction("automotive", "repairEstimate", (_ctx, artifact, params = {}) => {
+    const data = resolveData(artifact, params);
     const repairs = data.repairs || [];
     if (repairs.length === 0) {
       return { ok: false, error: "add repair items with { name, partsCost, laborHours, laborRate?, priority? }" };

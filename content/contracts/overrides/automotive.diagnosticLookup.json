@@ -1,0 +1,27 @@
+{
+  "macro_id": "automotive.diagnosticLookup",
+  "domain": "automotive",
+  "name": "diagnosticLookup",
+  "reads_artifact_data": true,
+  "inputs": {
+    "code": { "type": "string", "required": false, "maxLength": 16 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.code === 'string'",
+    "output.ok === false || ['Powertrain','Body','Chassis','Network'].indexOf(output.result.system) !== -1",
+    "output.ok === false || ['critical','moderate','informational'].indexOf(output.result.severity) !== -1",
+    "output.ok === false || ['sae-j2012','generic-sae-interpretation'].indexOf(output.result.source) !== -1",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "code": "P0300" }, "expect": { "ok": true } },
+    { "input": { "code": "p0420" }, "expect": { "ok": true } },
+    { "input": { "code": "U2999" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "code": "XYZ" }, "expect": { "ok": false } },
+    { "input": { "code": "<script>alert(1)</script>" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (path-3 registerLensAction; dispatch key 'automotive.diagnosticLookup'). NOT assassin-enumerated — automotive registers via registerLensAction (LENS_ACTIONS), so the assassin's MACROS walk never drives it; this spec is the authored contract, pinned by server/tests/automotive-lens-macros.test.js. Reads code from data.code/data.dtcCode/params.code (case-insensitive, uppercased). Validates 1-letter (P/B/C/U) + 4 digits — anything malformed is REJECTED (fail-CLOSED on bad format, never a fabricated lookup). Known SAE J2012 codes return source 'sae-j2012'; unknown but valid codes return a grounded 'generic-sae-interpretation' (never invented causes/cost). Pure compute, no STATE, no network."
+}

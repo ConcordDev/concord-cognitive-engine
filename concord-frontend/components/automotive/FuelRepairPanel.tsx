@@ -15,7 +15,7 @@ import { CalcPanel } from '@/components/lens-primitives/CalcPanel';
 
 interface FillUp { date: string; mileage: string; gallons: string; pricePerGallon: string }
 interface Repair { name: string; partsCost: string; laborHours: string; priority: 'low' | 'medium' | 'high' }
-interface FuelResult { avgMPG?: number; bestMPG?: number; worstMPG?: number; totalGallons?: number; totalCost?: number; costPerMile?: number; mpgReadings?: Array<{ date?: string; mpg: number; miles: number; gallons: number }> }
+interface FuelResult { avgMPG?: number; bestMPG?: number; worstMPG?: number; totalGallons?: number; totalFuelCost?: number; costPerMile?: number; readings?: Array<{ date?: string; mpg: number; miles: number; gallons: number }> }
 interface RepairResult { repairs?: Array<{ repair: string; partsCost: number; laborHours: number; laborRate: number; laborCost: number; total: number; priority: string }>; subtotalParts?: number; subtotalLabor?: number; grandTotal?: number; tax?: number; totalWithTax?: number; recommendation?: string }
 
 const today = new Date();
@@ -118,11 +118,11 @@ export function FuelRepairPanel() {
                   <div className="rounded border border-rose-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Worst</div><div className="font-mono text-rose-200">{fuelResult.worstMPG}</div></div>
                   <div className="rounded border border-blue-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">$/mile</div><div className="font-mono text-blue-200">${fuelResult.costPerMile}</div></div>
                 </div>
-                {fuelResult.mpgReadings && fuelResult.mpgReadings.length > 0 && (
+                {fuelResult.readings && fuelResult.readings.length > 0 && (
                   <details className="text-[10px]">
-                    <summary className="cursor-pointer text-zinc-400 hover:text-zinc-300">Per-fillup readings ({fuelResult.mpgReadings.length})</summary>
+                    <summary className="cursor-pointer text-zinc-400 hover:text-zinc-300">Per-fillup readings ({fuelResult.readings.length})</summary>
                     <div className="mt-1 space-y-0.5">
-                      {fuelResult.mpgReadings.map((r, i) => (
+                      {fuelResult.readings.map((r, i) => (
                         <div key={i} className="flex items-center justify-between rounded border border-blue-500/10 bg-zinc-950/40 px-2 py-0.5"><span className="text-zinc-300">{r.date || `Fillup ${i + 2}`}</span><span className="font-mono text-blue-200">{r.mpg} MPG</span></div>
                       ))}
                     </div>
@@ -164,7 +164,7 @@ export function FuelRepairPanel() {
       dtu={{
         apiSource: 'concord-auto-fuel-repair',
         title: (f, r) => `Auto — ${f.avgMPG ?? '—'} MPG · $${r.totalWithTax ?? '—'} repair est`,
-        content: (f, r) => `Fuel:\n  Avg MPG: ${f.avgMPG} (best ${f.bestMPG}, worst ${f.worstMPG})\n  Total gallons: ${f.totalGallons} | Cost: $${f.totalCost?.toFixed?.(2) ?? '—'} | Cost/mile: $${f.costPerMile}\n\nRepair estimate (shop rate $${shopRate}/hr):\n${(r.repairs || []).map((rr) => `  ${rr.repair} — parts $${rr.partsCost} + labor ${rr.laborHours}h ($${rr.laborCost}) = $${rr.total} [${rr.priority}]`).join('\n')}\n  Parts subtotal: $${r.subtotalParts}\n  Labor subtotal: $${r.subtotalLabor}\n  Tax: $${r.tax}\n  Total with tax: $${r.totalWithTax}\n  Note: ${r.recommendation}`,
+        content: (f, r) => `Fuel:\n  Avg MPG: ${f.avgMPG} (best ${f.bestMPG}, worst ${f.worstMPG})\n  Total gallons: ${f.totalGallons} | Cost: $${f.totalFuelCost?.toFixed?.(2) ?? '—'} | Cost/mile: $${f.costPerMile}\n\nRepair estimate (shop rate $${shopRate}/hr):\n${(r.repairs || []).map((rr) => `  ${rr.repair} — parts $${rr.partsCost} + labor ${rr.laborHours}h ($${rr.laborCost}) = $${rr.total} [${rr.priority}]`).join('\n')}\n  Parts subtotal: $${r.subtotalParts}\n  Labor subtotal: $${r.subtotalLabor}\n  Tax: $${r.tax}\n  Total with tax: $${r.totalWithTax}\n  Note: ${r.recommendation}`,
         tags: () => ['automotive', 'fuel-economy', 'repair'],
         rawData: (f, r) => ({ fillups, repairs, shopRate, fuelResult: f, repairResult: r }),
       }}

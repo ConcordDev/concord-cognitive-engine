@@ -383,6 +383,34 @@ MACROS-registered lenses (e.g. codex/lore, ledger) ARE assassin-driven. A future
 could add LENS_ACTIONS enumeration to fuzz the ~8k path-3 macros — a larger separate task.
 36 lenses now through the non-score gate (batches 1–9). The loop continues.
 
+### Phase-2 batch 10 DONE (2026-06-27): billing, chem, construction, cooking, automotive
+138 server + 25 UX-state tests. Five path-3 compute lenses. A SYSTEMIC bug class surfaced —
+the **double-wrapped-input dead-calculator** — found in 4 of the 5 (carpentry batch-9 was the first):
+- **billing**: real money fail-open — invoiceCalculation/revenueRecognition/churnPrediction leaked
+  Infinity/1e999 into subtotal/total/revenue (parseFloat||0 truthy + ×100 overflow); finNum guard
+  across all numeric inputs. 32 server + 5 vitest + 6 overrides.
+- **cooking**: double-wrapped-input dead-calculator — CookingActionPanel posted {artifact:{data}} →
+  scaleRecipe/nutritionEstimate/substitution silently returned empty for every panel call; recipeData()
+  unwrap. + recipes-scale Infinity clamp. 26 server + 5 vitest + 6 overrides.
+- **construction**: same dead-calculator (ConstructionActionPanel + ProcorePanel, {input:{artifact:
+  {data}}}, all 4 calculators) + takeoffEstimate/progressReport fail-opens + ganttSchedule Invalid-Date
+  throw. 17 server + 5 vitest + 5 overrides.
+- **automotive**: same dead-calculator (fuelEfficiency/repairEstimate/maintenanceSchedule) + 3 result-
+  card field-mismatch sets (items→services, due→services, totalCost→totalFuelCost) + swallowed-fetch.
+  32 server + 5 vitest + 6 overrides.
+- **chem**: no live defect; reported a latent server.js shadowing-dup (molecularAnalysis/balanceReaction/
+  solutionChemistry re-registered after domainModules.forEach — math-lens bug class; flagged, not a
+  live frontend defect since the UI uses hyphenated names). 31 server + 5 vitest + 5 overrides.
+Assassin ratchet GREEN; 258 WIRED; tsc 0.
+**SYSTEMIC FINDING — double-wrapped-input dead-calculator:** *ActionPanel components that post
+`{input:{artifact:{data}}}` or `{artifact:{data}}` cause the live /api/lens/run dispatch to double-nest
+(virtualArtifact.data = body.input), so calculator macros read artifact.data.X === undefined and silently
+return the empty/default result IN PRODUCTION while the lens "looks wired." Confirmed in carpentry,
+cooking, construction, automotive. A proactive grep sweep for this pattern across all `components/**/
+*ActionPanel.tsx` + `*Panel.tsx` should prioritize the remaining affected lenses. The robust fix is a
+one-layer-unwrap normalizer in the domain handler (peels {artifact:{data}}, tolerates flat input).
+41 lenses now through the non-score gate (batches 1–10). The loop continues.
+
 **NAMED PHASE-2 BACKLOG CLOSED (2026-06-27):** all 6 batches done (24 lenses through the non-score
 gate across batches 1–6). Real defects fixed across the run: 2 CC money bugs (sponsorship.create,
 inheritance value/open_listing) + 1 in-game-currency treasury fail-open (kingdoms) + ~6 numeric
