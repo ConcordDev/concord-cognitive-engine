@@ -42,7 +42,10 @@ describe('Curtain dossier', () => {
 describe('Ledger lens', () => {
   const src = read('app/lenses/ledger/page.tsx');
   it('reads the anomalies macro (the flows the Curtain hides)', () => {
-    expect(src).toMatch(/lensRun\('ledger', 'anomalies'/);
+    // Optional TS generic: the flawless-loop rewrite types the call as
+    // lensRun<Anomalies>('ledger', 'anomalies', …) — the intent (the page reads
+    // the real ledger.anomalies macro) is unchanged; allow the generic.
+    expect(src).toMatch(/lensRun(<[^>]+>)?\('ledger', 'anomalies'/);
   });
   it('renders both managed-parity and extraction-lien sections', () => {
     expect(src).toMatch(/data-testid="managed-parity"/);

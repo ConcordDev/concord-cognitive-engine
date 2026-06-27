@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-06-27T10:09:58.380Z",
-  "durationMs": 139127,
+  "generatedAt": "2026-06-27T10:37:43.474Z",
+  "durationMs": 158785,
   "totals": {
-    "macrosEnumerated": 2718,
-    "headlessSafeDriven": 2604,
-    "headlessUnsafeSkipped": 114,
+    "macrosEnumerated": 2757,
+    "headlessSafeDriven": 2642,
+    "headlessUnsafeSkipped": 115,
     "violations": 10,
     "hardCrashes": 0
   },

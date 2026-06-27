@@ -1,0 +1,29 @@
+{
+  "macro_id": "civic_bonds.pledge",
+  "domain": "civic_bonds",
+  "name": "pledge",
+  "inputs": {
+    "bondId": { "type": "string" },
+    "amount": { "type": "number", "min": 1, "max": 1000000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.reason !== 'no_db'",
+    "output.ok || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": { "bondId": "does_not_exist", "amount": 100 },
+      "expect": { "ok": false }
+    },
+    {
+      "input": { "bondId": "does_not_exist", "amount": 1e+308 },
+      "expect": { "ok": false, "reason": "bad_numeric_field" }
+    },
+    {
+      "input": { "bondId": "does_not_exist", "amount": -500 },
+      "expect": { "ok": false, "reason": "bad_numeric_field" }
+    }
+  ]
+}

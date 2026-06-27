@@ -10,6 +10,202 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "wellness.cbt-prompts",
+      "name": "cbt-prompts"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.cbt-record-create",
+      "name": "cbt-record-create"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.cbt-record-list",
+      "name": "cbt-record-list"
+    },
+    {
+      "_derived": false,
+      "domain": "wellness",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "date": "2026-06-01"
+          }
+        }
+      ],
+      "inputs": {
+        "date": {
+          "maxLength": 32,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.recoveryScore === 'number')",
+        "output.ok === false || ['green','yellow','red'].includes(output.result.band)",
+        "output.ok === false || Array.isArray(output.result.recommendations)",
+        "output.ok === false || output.result.recommendations.length >= 1",
+        "output.ok === false || typeof output.result.focus === 'string'"
+      ],
+      "macro_id": "wellness.daily-recommendation",
+      "name": "daily-recommendation"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.goals-create",
+      "name": "goals-create"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.goals-delete",
+      "name": "goals-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.goals-list",
+      "name": "goals-list"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.goals-update-progress",
+      "name": "goals-update-progress"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.habits-archive",
+      "name": "habits-archive"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.habits-checkin",
+      "name": "habits-checkin"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.habits-create",
+      "name": "habits-create"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.habits-list",
+      "name": "habits-list"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.hrvTrend",
+      "name": "hrvTrend"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "wellness.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +219,484 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "wellness.metrics-list",
+      "name": "metrics-list"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.metrics-log",
+      "name": "metrics-log"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.metrics-trend",
+      "name": "metrics-trend"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.mood-correlate",
+      "name": "mood-correlate"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.mood-list",
+      "name": "mood-list"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.mood-log",
+      "name": "mood-log"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "wellness.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "wellness",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "date": "2026-06-01"
+          }
+        }
+      ],
+      "inputs": {
+        "date": {
+          "maxLength": 32,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.score === 'number')",
+        "output.ok === false || (output.result.score >= 0 && output.result.score <= 100)",
+        "output.ok === false || ['green','yellow','red'].includes(output.result.band)",
+        "output.ok === false || Array.isArray(output.result.inputsUsed)",
+        "output.ok === false || typeof output.result.hasEnoughData === 'boolean'"
+      ],
+      "macro_id": "wellness.recovery-score",
+      "name": "recovery-score"
+    },
+    {
+      "_derived": false,
+      "domain": "wellness",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "hrvMs and rhrBpm required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "baselineHrvMs": 60,
+            "baselineRhrBpm": 60,
+            "hrvMs": 70,
+            "rhrBpm": 50,
+            "sleepScore": 90
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_rhrBpm",
+            "ok": false
+          },
+          "input": {
+            "hrvMs": 60,
+            "rhrBpm": -1
+          }
+        }
+      ],
+      "inputs": {
+        "baselineHrvMs": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "baselineRhrBpm": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "hrvMs": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "rhrBpm": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "sleepScore": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.recoveryPct === 'number')",
+        "output.ok === false || (output.result.recoveryPct >= 0 && output.result.recoveryPct <= 100)",
+        "output.ok === false || ['green','yellow','red'].includes(output.result.band)",
+        "output.ok === false || typeof output.result.recommendation === 'string'"
+      ],
+      "macro_id": "wellness.recoveryReport",
+      "name": "recoveryReport"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.self-field-compose",
+      "name": "self-field-compose"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.self-field-deactivate",
+      "name": "self-field-deactivate"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.self-field-list",
+      "name": "self-field-list"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.session-catalogue",
+      "name": "session-catalogue"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.session-complete",
+      "name": "session-complete"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.session-history",
+      "name": "session-history"
+    },
+    {
+      "_derived": false,
+      "domain": "wellness",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "minutesAsleep required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "disturbances": 1,
+            "minutesAsleep": 450,
+            "minutesInBed": 480
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_minutesAsleep",
+            "ok": false
+          },
+          "input": {
+            "minutesAsleep": -1
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "minutesAsleep": 400,
+            "minutesInBed": "Infinity"
+          }
+        }
+      ],
+      "inputs": {
+        "disturbances": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "minutesAsleep": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "minutesInBed": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.score === 'number')",
+        "output.ok === false || (output.result.score >= 0 && output.result.score <= 100)",
+        "output.ok === false || ['excellent','good','ok','poor'].includes(output.result.band)",
+        "output.ok === false || (typeof output.result.efficiencyPct === 'number' && output.result.efficiencyPct >= 0)"
+      ],
+      "macro_id": "wellness.sleepScore",
+      "name": "sleepScore"
+    },
+    {
+      "_derived": false,
+      "domain": "wellness",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "minutesByZone": {
+              "z3": 40,
+              "z4": 20,
+              "z5": 10
+            }
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_z1",
+            "ok": false
+          },
+          "input": {
+            "minutesByZone": {
+              "z1": "Infinity"
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "minutesByZone": {
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.strain === 'number')",
+        "output.ok === false || (output.result.strain >= 0 && output.result.strain <= 21)",
+        "output.ok === false || ['all-out','strenuous','moderate','light','minimal'].includes(output.result.band)",
+        "output.ok === false || (typeof output.result.totalActiveMin === 'number' && output.result.totalActiveMin >= 0)"
+      ],
+      "macro_id": "wellness.strainLog",
+      "name": "strainLog"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.wearable-import",
+      "name": "wearable-import"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.wearable-sync-history",
+      "name": "wearable-sync-history"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.wellness-dashboard-summary",
+      "name": "wellness-dashboard-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.workouts-delete",
+      "name": "workouts-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.workouts-list",
+      "name": "workouts-list"
+    },
+    {
+      "_derived": true,
+      "domain": "wellness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "wellness.workouts-log",
+      "name": "workouts-log"
     }
   ],
   "domain": "wellness",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 37
 }

@@ -1,0 +1,28 @@
+{
+  "macro_id": "civic_bonds.create",
+  "domain": "civic_bonds",
+  "name": "create",
+  "inputs": {
+    "worldId": { "type": "string" },
+    "title": { "type": "string" },
+    "targetAmount": { "type": "number", "min": 1, "max": 1000000000 },
+    "denomination": { "type": "number", "min": 1, "max": 1000000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.reason !== 'no_db'",
+    "output.ok || typeof output.reason === 'string'",
+    "!output.ok || (typeof output.bondId === 'string' && output.bondId.length > 0)"
+  ],
+  "fuzz_cases": [
+    {
+      "input": { "worldId": "concordia-hub", "title": "Test Drive", "targetAmount": 10000, "denomination": 100 },
+      "expect": { "ok": true }
+    },
+    {
+      "input": { "worldId": "concordia-hub", "title": "Bad", "targetAmount": 1e+308 },
+      "expect": { "ok": false, "reason": "bad_numeric_field" }
+    }
+  ]
+}

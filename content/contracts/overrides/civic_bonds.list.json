@@ -1,0 +1,29 @@
+{
+  "macro_id": "civic_bonds.list",
+  "domain": "civic_bonds",
+  "name": "list",
+  "inputs": {
+    "worldId": { "type": "string" },
+    "realmId": { "type": "string" },
+    "status": { "type": "string" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.reason !== 'no_db'",
+    "!output.ok || Array.isArray(output.bonds)",
+    "!output.ok || output.bonds.every(b => typeof b.id === 'string' && b.id.length > 0)",
+    "!output.ok || output.bonds.every(b => typeof b.target_amount === 'number' && b.target_amount >= 0)",
+    "!output.ok || output.bonds.every(b => typeof b.current_pledged === 'number' && b.current_pledged >= 0)"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": { "ok": true }
+    },
+    {
+      "input": { "worldId": "concordia-hub" },
+      "expect": { "ok": true }
+    }
+  ]
+}

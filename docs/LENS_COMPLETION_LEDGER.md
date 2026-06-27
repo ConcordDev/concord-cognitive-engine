@@ -50,13 +50,13 @@ score bits justified-absent)
 | careers | 4/7→5/7 | **done** | batch6 | fixed phantom `lens.careers.*` manifest refs → real `careers.{tracks,contracts,work,offer}`; honest disabled-by-config note (was misleading "coming soon"; system is ENABLED by default); work-shift credits real sparks, offer→accept persists contract; 11 server + 7 UX-state tests |
 | codex | 4/7→5/7 | **done** | batch7 | reader over the real `lore` domain; fixed phantom `lens.codex.*` → real lore.{list,get,facets,spine}; hardened lore.list fail-open (poisoned limit clamped → now invalid_limit); real per-user bookmarks via artifact store; 15 server + 11 UX-state tests |
 | ledger | 4/7→5/7 | **done** | batch7 | fixed real wiring bug (page read `r.data` not `r.data.result` → always rendered empty even with real anomalies); repointed phantom `lens.ledger.*` → real ledger.{anomalies,faction_economy,flow_summary}; CREDIT_ROW_PREDICATE no-double-credit regression test; 10 server + 5 UX-state tests |
-| forecast | 4/7 | pending | | forecast backend |
-| civic-bonds | 4/7 | pending | | civic-bonds backend |
+| forecast | 4/7→5/7 | **done** | batch8 | wired page to real inline `forecast.*` macros (over lib/world-forecast.js); fixed phantom `lens.forecast.*` + a stale duplicate manifest entry; fixed silent-clamp fail-open in world-forecast.js (multiDay/hourly/accuracy/archive → invalid_* on poisoned input); 16 server + 5 UX-state tests |
+| civic-bonds | 4/7→5/7 | **done** | batch8 | fixed real domain-name MISMATCH (manifest `civic-bonds` hyphen + phantom refs vs real backend `civic_bonds` underscore) → repointed to real civic_bonds.*; full bond lifecycle round-trip test (create→vote→pledge→fund 110%-gate→complete); 8 server + 7 UX-state tests |
 | detective | 4/7→5/7 | **done** | a62bae5 | dedicated `detective` domain delegating to lib (Obra-Dinn 2-of-3 + suspect_match lock-in); fixed dangling `lens.detective.*` manifest refs; added non-culprit-leaking `getCrimeWithEvidence`; 10 server + 5 UX-state tests |
 | photos | 4/7→5/7 | **done** | batch7 | new `photos` domain (list/get/world/share over lib/photo-gallery.js; share mints a kind='photo' DTU) + registered in server.js (publicRead: world only); fixed phantom `lens.photos.*` refs; 10 server + 4 UX-state tests |
 | fishing | 4/7→5/7 | **done** | def0ff4 | dedicated `fishing` domain; fixed buffOnCook [object Object] render; cast→reel→catch tests; 4 UX states |
 | creatures | 4/7→5/7 | **done** | a62bae5 | extended `creatures` domain (+species/roster/lineage/breed) delegating to creature-crossbreeding + species-taxonomy; fixed dangling `lens.creatures.*` refs + the breed `bond_too_low` bug (thin parents lacked physics blueprints → no hybrid ever produced); 8 server + 4 UX-state tests |
-| translation | 4/7 | pending | | |
+| translation | 4/7→5/7 | **done** | batch8 | SAVED-CLASS: legacy registerLensAction + NEVER imported → fully dead (unknown_macro). Rewrote to canonical register + wired in server.js; added a real deterministic offline language detector (translate/batch keep honest {ok:false} offline); 27 server + 5 UX-state tests |
 | repair-telemetry | 4/7 | pending | | dashboard — likely by-design |
 | code-quality | 4/7 | pending | | dashboard |
 | cognition | 4/7 | pending | | |
@@ -74,7 +74,7 @@ score bits justified-absent)
 | society | 4/7 | pending | | |
 | system | 4/7 | pending | | system dashboard |
 | tools | 4/7 | pending | | |
-| wellness | 4/7 | pending | | |
+| wellness | 4/7→5/7 | **done** | batch8 | SAVED-CLASS: legacy registerLensAction + NEVER imported → fully dead. Rewrote 35 macros to canonical register + wired in server.js; real computed metrics (sleepScore/strainLog/recoveryReport/hrvTrend) + range-aware guards; 37 server + 5 UX-state tests |
 
 ## Passing lenses (score ≥ 5/7) — 217
 Already pass the capability gate. The loop revisits them ONLY for the non-score gate dimensions
@@ -116,3 +116,12 @@ enumerated here until reached.
   foundry REDO succeeded via the lightweight-hermetic-test rule (16 tests in 0.29s, no boot — the dead
   agent's hang is gone). photos registered in server.js (publicRead: world). verify-lens-backends 258
   WIRED / 0 broken, macroDomains 528. 23 left. 18 bugs total.
+- 2026-06-27: batch 8 DONE (forecast, civic-bonds, translation, wellness) — 88 server + 22 UX-state
+  tests; +4 real bugs (forecast fail-open + phantom/dup manifest, civic-bonds hyphen/underscore domain
+  mismatch, translation + wellness BOTH saved-class fully-dead legacy-convention-never-imported). Wired
+  translation + wellness in server.js; added forecast + civic_bonds publicReadDomains read entries.
+  ALSO caught + fixed 2 broader-suite regressions my OWN earlier batches introduced but per-lens vitests
+  missed: manifest.test.ts (mandated the phantom lens.<domain>.* convention — RED since batch 6) and
+  sere-frontend.test.ts (brittle anomalies regex broke on batch-7's typed lensRun<Anomalies>). Lesson:
+  run the full frontend suite per batch, not just per-lens vitests. verify-lens-backends 258 WIRED / 0
+  broken, macroDomains 528. 19 left. 22 bugs total.

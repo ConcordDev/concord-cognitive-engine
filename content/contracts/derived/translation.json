@@ -1,0 +1,199 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "translation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "items[] required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "targetLanguage required",
+            "ok": false
+          },
+          "input": {
+            "items": [
+              "x"
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "formality": {
+          "enum": [
+            "neutral",
+            "formal",
+            "informal"
+          ],
+          "type": "string"
+        },
+        "items": {
+          "type": "array"
+        },
+        "targetLanguage": {
+          "maxLength": 60,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.translations))",
+        "output.ok === false || output.result.translations.length === output.result.count"
+      ],
+      "macro_id": "translation.batch",
+      "name": "batch"
+    },
+    {
+      "_derived": false,
+      "domain": "translation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": "el gato esta en la casa y no quiere salir"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": "the quick brown fox is jumping over the lazy dog"
+          }
+        },
+        {
+          "expect": {
+            "error": "text required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "text required",
+            "ok": false
+          },
+          "input": {
+            "text": "   "
+          }
+        }
+      ],
+      "inputs": {
+        "text": {
+          "maxLength": 8000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.language === 'string')",
+        "output.ok === false || output.result.code === null || typeof output.result.code === 'string'",
+        "output.ok === false || typeof output.result.confidence === 'number'",
+        "output.ok === false || (output.result.confidence >= 0 && output.result.confidence <= 1)",
+        "output.ok === false || typeof output.result.method === 'string'"
+      ],
+      "macro_id": "translation.detect",
+      "name": "detect"
+    },
+    {
+      "_derived": false,
+      "domain": "translation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.languages)",
+        "output.ok === false || output.result.languages.length === output.result.count",
+        "output.ok === false || output.result.languages.every(l => typeof l.code === 'string' && typeof l.name === 'string')",
+        "output.ok === false || Array.isArray(output.result.formalities)"
+      ],
+      "macro_id": "translation.languages",
+      "name": "languages"
+    },
+    {
+      "_derived": false,
+      "domain": "translation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "text required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "targetLanguage required",
+            "ok": false
+          },
+          "input": {
+            "text": "hello"
+          }
+        }
+      ],
+      "inputs": {
+        "formality": {
+          "enum": [
+            "neutral",
+            "formal",
+            "informal"
+          ],
+          "type": "string"
+        },
+        "sourceLanguage": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "targetLanguage": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 8000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.translated === 'string')",
+        "output.ok === false || typeof output.result.targetLanguage === 'string'",
+        "output.ok === false || typeof output.result.chars === 'number'"
+      ],
+      "macro_id": "translation.translate",
+      "name": "translate"
+    }
+  ],
+  "domain": "translation",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 4
+}

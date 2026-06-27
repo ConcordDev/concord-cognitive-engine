@@ -1,144 +1,501 @@
 {
   "contracts": [
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "forecast",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 30
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": -1
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 100,
+          "min": 1,
+          "type": "number"
+        },
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.summary && typeof output.summary.sample_count === 'number')",
+        "output.ok === false || Array.isArray(output.comparisons)"
       ],
       "macro_id": "forecast.accuracy",
       "name": "accuracy"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "forecast",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 60
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": -1
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 200,
+          "min": 1,
+          "type": "number"
+        },
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.entries)",
+        "output.ok === false || Array.isArray(output.trend)",
+        "output.ok === false || typeof output.count === 'number'",
+        "output.ok === false || output.entries.length === output.count"
       ],
       "macro_id": "forecast.archive",
       "name": "archive"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "forecast",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.triggered)",
+        "output.ok === false || typeof output.subscriptionCount === 'number'"
       ],
       "macro_id": "forecast.checkAlerts",
       "name": "checkAlerts"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "forecast",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "persist": true,
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "persist": {
+          "type": "boolean"
+        },
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.forecast && typeof output.forecast === 'object')",
+        "output.ok === false || output.forecast.window_hours === 24",
+        "output.ok === false || Array.isArray(output.forecast.factions)",
+        "output.ok === false || Array.isArray(output.forecast.events)"
       ],
       "macro_id": "forecast.compose",
       "name": "compose"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "forecast",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "hours": 12
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_hours",
+            "ok": false
+          },
+          "input": {
+            "hours": -1
+          }
+        }
+      ],
+      "inputs": {
+        "hours": {
+          "max": 48,
+          "min": 6,
+          "type": "number"
+        },
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.breakdown)",
+        "output.ok === false || typeof output.hours === 'number'",
+        "output.ok === false || output.breakdown.length === output.hours"
       ],
       "macro_id": "forecast.hourly",
       "name": "hourly"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "forecast",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.subscriptions)",
+        "output.ok === false || typeof output.count === 'number'",
+        "output.ok === false || output.count === output.subscriptions.length"
       ],
       "macro_id": "forecast.listAlerts",
       "name": "listAlerts"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "forecast",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "days": 5
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_days",
+            "ok": false
+          },
+          "input": {
+            "days": -1
+          }
+        }
+      ],
+      "inputs": {
+        "days": {
+          "max": 14,
+          "min": 2,
+          "type": "number"
+        },
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.outlook)",
+        "output.ok === false || typeof output.days === 'number'",
+        "output.ok === false || output.outlook.length === output.days"
       ],
       "macro_id": "forecast.multiDay",
       "name": "multiDay"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "forecast",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.worldId === 'string'",
+        "output.ok === false || output.forecast === null || (typeof output.forecast === 'object')"
       ],
       "macro_id": "forecast.recent",
       "name": "recent"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "forecast",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.regions)",
+        "output.ok === false || output.regions.every(r => typeof r.id === 'string' && r.anchor && typeof r.anchor.x === 'number')"
       ],
       "macro_id": "forecast.regional",
       "name": "regional"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "forecast",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "kind": "drift",
+            "minConfidence": 0.7
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "bad_kind"
+          },
+          "input": {
+            "kind": "nonsense"
+          }
+        }
+      ],
+      "inputs": {
+        "kind": {
+          "enum": [
+            "severe_event",
+            "drift",
+            "weather",
+            "any"
+          ],
+          "type": "string"
+        },
+        "minConfidence": {
+          "max": 1,
+          "min": 0,
+          "type": "number"
+        },
+        "weatherKinds": {
+          "type": "array"
+        },
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.subscription && typeof output.subscription.id === 'string')",
+        "output.ok === false || ['severe_event','drift','weather','any'].includes(output.subscription.kind)"
       ],
       "macro_id": "forecast.subscribeAlert",
       "name": "subscribeAlert"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "forecast",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_inputs"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "subscriptionId": "fas_does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "subscriptionId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'"
       ],
       "macro_id": "forecast.unsubscribeAlert",
       "name": "unsubscribeAlert"

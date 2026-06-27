@@ -1,0 +1,22 @@
+{
+  "macro_id": "wellness.daily-recommendation",
+  "domain": "wellness",
+  "name": "daily-recommendation",
+  "inputs": {
+    "date": { "type": "string", "maxLength": 32 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.recoveryScore === 'number')",
+    "output.ok === false || ['green','yellow','red'].includes(output.result.band)",
+    "output.ok === false || Array.isArray(output.result.recommendations)",
+    "output.ok === false || output.result.recommendations.length >= 1",
+    "output.ok === false || typeof output.result.focus === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "date": "2026-06-01" }, "expect": { "ok": true } }
+  ],
+  "_note": "Folds the actor's day signals (sleep/HRV/RHR/strain/mood/mindfulness/open-records) into a prioritized plan over the in-memory wellness store. With no data it still returns at least one tracking recommendation — ok:true, never no_db (memory-backed). The assassin's internal owner actor sees its own empty bucket → ok:true."
+}

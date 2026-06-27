@@ -1,0 +1,17 @@
+{
+  "macro_id": "forecast.unsubscribeAlert",
+  "domain": "forecast",
+  "name": "unsubscribeAlert",
+  "inputs": {
+    "subscriptionId": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_inputs" } },
+    { "input": { "subscriptionId": "fas_does_not_exist" }, "expect": { "ok": false } }
+  ],
+  "_note": "forecast.unsubscribeAlert removes a per-user alert subscription by id. A missing subscriptionId rejects missing_inputs; an unknown id returns ok:false (removed:0) — only the OWNER's row is deletable. It never throws or returns no_db with the assassin's live DB + owner actor."
+}

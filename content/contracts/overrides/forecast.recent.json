@@ -1,0 +1,19 @@
+{
+  "macro_id": "forecast.recent",
+  "domain": "forecast",
+  "name": "recent",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.worldId === 'string'",
+    "output.ok === false || output.forecast === null || (typeof output.forecast === 'object')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": true } }
+  ],
+  "_note": "forecast.recent returns the most-recent persisted forecast for a world (world-public read). worldId defaults to 'concordia-hub'. With a live migrated DB + the assassin's internal owner actor, {} returns ok:true with forecast:null when nothing has been persisted yet — never no_db. forecast is either null or the composed 24h shape."
+}

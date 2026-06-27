@@ -32,10 +32,24 @@ describe('LENS_MANIFESTS', () => {
     }
   });
 
-  it('every manifest has macros following lens.<domain>.* convention', () => {
+  it('every manifest has list/get macros that are non-empty dotted ids', () => {
+    // The original assertion required the phantom `lens.<domain>.list`
+    // namespace. The per-lens flawless-loop batches (saved/photos/spectate/
+    // wellness/…) deliberately map the generic CRUD verbs onto REAL registered
+    // macros (e.g. `saved.list`, `wellness.metrics-list`) so the lens resolves
+    // via /api/lens/run + runMacro. Assert the canonical shape instead: a
+    // non-empty `<segment>.<segment>` id (the `lens.` prefix is no longer
+    // required, and was never a real registered macro).
+    // Accept BOTH the legacy `lens.<domain>.<verb>` form (lenses not yet
+    // through the flawless loop) AND a real `<domain>.<macro>` registered id
+    // (the canonical form the loop migrates to — e.g. saved.list,
+    // wellness.metrics-list, where `get` may reuse the list macro). The only
+    // thing that is wrong is an empty / non-dotted id.
+    const isDottedId = (id: unknown) =>
+      typeof id === 'string' && id.length > 0 && /\./.test(id);
     for (const m of LENS_MANIFESTS) {
-      expect(m.macros.list).toMatch(new RegExp(`^lens\\.${m.domain}\\.list$`));
-      expect(m.macros.get).toMatch(new RegExp(`^lens\\.${m.domain}\\.get$`));
+      expect(isDottedId(m.macros.list), `${m.domain}.macros.list = ${m.macros.list}`).toBe(true);
+      expect(isDottedId(m.macros.get), `${m.domain}.macros.get = ${m.macros.get}`).toBe(true);
     }
   });
 

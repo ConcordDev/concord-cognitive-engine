@@ -1,0 +1,18 @@
+{
+  "macro_id": "translation.languages",
+  "domain": "translation",
+  "name": "languages",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.languages)",
+    "output.ok === false || output.result.languages.length === output.result.count",
+    "output.ok === false || output.result.languages.every(l => typeof l.code === 'string' && typeof l.name === 'string')",
+    "output.ok === false || Array.isArray(output.result.formalities)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "translation.languages is a pure ISO 639-1 catalog read — no DB, no actor, no LLM. Always ok:true; count === languages.length. Public-read (in publicReadDomains so the UI dropdown loads unauthenticated)."
+}

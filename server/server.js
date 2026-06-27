@@ -11422,7 +11422,12 @@ async function runMacro(domain, name, input, ctx) {
     goddess: new Set(["recent"]),
     betting: new Set(["list_open"]),
     // Phase 9.3 — voice / music / foresight
-    forecast: new Set(["recent", "compose"]),
+    forecast: new Set(["recent", "compose", "multiDay", "hourly", "regional", "accuracy", "archive"]),
+    // civic_bonds — the public transparency ledger reads (the lens id is the
+    // hyphenated `civic-bonds`; the macro domain is the underscore `civic_bonds`).
+    // Reads only; pledge/vote/fund/etc. stay actor-gated. Gated behind
+    // CONCORD_CIVIC_BONDS — these resolve only when the kill-switch is enabled.
+    civic_bonds: new Set(["list", "get", "spillover", "ledger"]),
     sonic_glyph: new Set(["spell_to_chord"]),
     // Phase 9.4 — economy primitives (auth-gated for write ops; reads here)
     sponsorship: new Set(["list_for_user"]),
@@ -25701,6 +25706,19 @@ registerSavedMacros(register);
 // public world feed is a public read; mine/get/share are per-user/owner-gated.
 import registerPhotosMacros from "./domains/photos.js";
 registerPhotosMacros(register);
+
+// Per-lens flawless loop batch 8 — translation + wellness. Both had the
+// saved-class bug: legacy registerLensAction convention (invisible to runMacro)
+// AND never imported here at all → every translation.*/wellness.* call hit
+// unknown_macro. Rewritten to the canonical register(domain,name,(ctx,input)=>...)
+// convention and wired onto the runMacro + /api/lens/run path. forecast +
+// civic-bonds needed no line (forecast inline-registered; civic_bonds already
+// imported). Both are per-user (translation.languages already public; wellness
+// is per-user in-memory) — no new publicReadDomains entry required for these two.
+import registerTranslationMacros from "./domains/translation.js";
+registerTranslationMacros(register);
+import registerWellnessMacros from "./domains/wellness.js";
+registerWellnessMacros(register);
 
 // Cognitive Fingerprint (#5) — thinking-style profile from real activity.
 import registerMetacogMacros from "./domains/metacog.js";

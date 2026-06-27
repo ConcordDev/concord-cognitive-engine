@@ -1,0 +1,20 @@
+{
+  "macro_id": "forecast.listAlerts",
+  "domain": "forecast",
+  "name": "listAlerts",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.subscriptions)",
+    "output.ok === false || typeof output.count === 'number'",
+    "output.ok === false || output.count === output.subscriptions.length"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": true } }
+  ],
+  "_note": "forecast.listAlerts returns the CALLER's persisted forecast alert subscriptions (per-user). The assassin runs with an internal owner actor, so {} returns ok:true with an empty subscriptions array — never no_user / no_db. count equals subscriptions.length."
+}

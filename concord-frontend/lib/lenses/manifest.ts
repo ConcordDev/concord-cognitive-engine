@@ -119,10 +119,35 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // lore.* reads (list/facets/spine); the lens persists per-user bookmarks of the
   // canon through the generic /api/lens/codex artifact store (see page.tsx).
   { domain: 'codex', label: 'Codex', artifacts: ['entry', 'lore', 'bookmark'], macros: { list: 'lore.list', get: 'lore.get' }, exports: ['json'], actions: ['list', 'facets', 'spine'], category: 'knowledge' },
-  { domain: 'translation', label: 'Translation', artifacts: ['translation'], macros: { list: 'lens.translation.list', get: 'lens.translation.get' }, exports: ['json'], actions: ['translate', 'detect'], category: 'productivity' },
+  // Real translation.* macros (registered via registerTranslationMacros in server.js).
+  // Action lens: `list`/`get` map to the languages catalog read and `run` to
+  // translate, so the ManifestActionBar verbs resolve to LIVE macros instead of
+  // the prior phantom lens.translation.*. Persistence is the page's "Save
+  // translation" feature over the per-user, server-LOCAL lens artifact store
+  // (sovereignty intact — text never egresses). score-lenses 5/7: the two
+  // remaining bits are BY-DESIGN-ABSENT — `dtu` (no DTU mint/`create` verb;
+  // minting would contradict "text never leaves your server") and `pipeline`
+  // (text→LLM→output engine isn't in the productization-roadmap registry). No
+  // bit is faked.
+  { domain: 'translation', label: 'Translation', artifacts: ['translation'], macros: { list: 'translation.languages', get: 'translation.languages', run: 'translation.translate' }, exports: ['json'], actions: ['translate', 'detect', 'languages'], category: 'productivity' },
   { domain: 'repair-telemetry', label: 'Repair Telemetry', artifacts: ['report'], macros: { list: 'lens.repair-telemetry.list', get: 'lens.repair-telemetry.get' }, exports: ['json'], actions: ['view'], category: 'system' },
   { domain: 'move-builder', label: 'Move Builder', artifacts: ['move', 'recipe'], macros: { list: 'move-builder.list', get: 'move-builder.get', create: 'move-builder.mint' }, exports: ['json'], actions: ['compose', 'mint'], category: 'creative' },
-  { domain: 'civic-bonds', label: 'Civic Bonds', artifacts: ['bond', 'vote'], macros: { list: 'lens.civic-bonds.list', get: 'lens.civic-bonds.get' }, exports: ['json'], actions: ['view', 'vote'], category: 'government' },
+  // Civic Bonds is a READER+ACTOR over the real `civic_bonds` domain
+  // (server/domains/civic-bonds.js — registerCivicBondsMacros, registered at
+  // server.js:25551 — register("civic_bonds", "list"|"get"|"spillover"|"ledger"|
+  // "pledge"|"vote"|"fund"|…)). NOTE THE NAME MISMATCH: the backend domain id is
+  // `civic_bonds` (UNDERSCORE); the manifest key / lens id is `civic-bonds`
+  // (HYPHEN, used by getLensManifest('civic-bonds') + the /lenses/civic-bonds
+  // route). The prior `lens.civic-bonds.*` macros were phantoms that resolved to
+  // nothing, so the lens was dead-wired. Like codex→lore, the key stays the lens
+  // id while macros point at the REAL registered `civic_bonds.*` surface; the
+  // page calls lensRun('civic_bonds', …) directly (underscore) to reach it.
+  // `create` → civic_bonds.create is the real DTU-minting verb (a ruler opening
+  // a bond drive). score-lenses 5/7: the two BY-DESIGN-ABSENT bits are `persist`
+  // (the lens persists through the real civic_bonds.* DB tables via lensRun, not
+  // the generic useLensData artifact store — same as codex) and `pipeline` (not
+  // in the productization-roadmap registry). No bit is faked.
+  { domain: 'civic-bonds', label: 'Civic Bonds', artifacts: ['bond', 'vote'], macros: { list: 'civic_bonds.list', get: 'civic_bonds.get', create: 'civic_bonds.create', run: 'civic_bonds.pledge' }, exports: ['json'], actions: ['view', 'pledge', 'vote', 'fund'], category: 'government' },
 
   // ═══════════════════════════════════════════════════════════════
   // WORLD LENS (3D City)
@@ -5027,7 +5052,6 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'dreams', label: 'Dreams', artifacts: ['dream'], macros: { list: 'lens.dreams.list', get: 'lens.dreams.get', create: 'lens.dreams.create', update: 'lens.dreams.update', delete: 'lens.dreams.delete', run: 'lens.dreams.run', export: 'lens.dreams.export' }, exports: ['json'], actions: ['publish', 'browse'], category: 'knowledge' },
   { domain: 'event-timeline', label: 'Event Timeline', artifacts: ['timeline_event'], macros: { list: 'lens.event-timeline.list', get: 'lens.event-timeline.get', create: 'lens.event-timeline.create', update: 'lens.event-timeline.update', delete: 'lens.event-timeline.delete', run: 'lens.event-timeline.run', export: 'lens.event-timeline.export' }, exports: ['json'], actions: ['scrub', 'export'], category: 'social' },
   { domain: 'expert-mode', label: 'Expert Mode', artifacts: ['expert_query', 'research_session'], macros: { list: 'lens.expert-mode.list', get: 'lens.expert-mode.get', create: 'lens.expert-mode.create', update: 'lens.expert-mode.update', delete: 'lens.expert-mode.delete', run: 'lens.expert-mode.run', export: 'lens.expert-mode.export' }, exports: ['json', 'md'], actions: ['query', 'export_session'], category: 'system' },
-  { domain: 'forecast', label: 'World Forecast', artifacts: ['world_forecast'], macros: { list: 'lens.forecast.list', get: 'lens.forecast.get', create: 'lens.forecast.create', update: 'lens.forecast.update', delete: 'lens.forecast.delete', run: 'lens.forecast.run', export: 'lens.forecast.export' }, exports: ['json'], actions: ['view', 'share'], category: 'social' },
   { domain: 'gallery', label: 'Compression Art Gallery', artifacts: ['compression_art_sigil', 'mega_dtu'], macros: { list: 'lens.gallery.list', get: 'lens.gallery.get', create: 'lens.gallery.create', update: 'lens.gallery.update', delete: 'lens.gallery.delete', run: 'lens.gallery.run', export: 'lens.gallery.export' }, exports: ['json', 'svg'], actions: ['view', 'mint'], category: 'creative' },
   { domain: 'goddess', label: 'Goddess Broadcast', artifacts: ['goddess_dispatch'], macros: { list: 'lens.goddess.list', get: 'lens.goddess.get', create: 'lens.goddess.create', update: 'lens.goddess.update', delete: 'lens.goddess.delete', run: 'lens.goddess.run', export: 'lens.goddess.export' }, exports: ['json'], actions: ['listen', 'subscribe'], category: 'social' },
   { domain: 'inheritance', label: 'NPC Inheritance Market', artifacts: ['npc_inheritance_link'], macros: { list: 'lens.inheritance.list', get: 'lens.inheritance.get', create: 'lens.inheritance.create', update: 'lens.inheritance.update', delete: 'lens.inheritance.delete', run: 'lens.inheritance.run', export: 'lens.inheritance.export' }, exports: ['json'], actions: ['browse', 'lock_heir'], category: 'social' },
@@ -5040,7 +5064,12 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'staking', label: 'CC Staking', artifacts: ['cc_stake'], macros: { list: 'lens.staking.list', get: 'lens.staking.get', create: 'lens.staking.create', update: 'lens.staking.update', delete: 'lens.staking.delete', run: 'lens.staking.run', export: 'lens.staking.export' }, exports: ['json'], actions: ['stake', 'redeem'], category: 'finance' },
   { domain: 'sub-worlds', label: 'Sub-Worlds (Research Zones)', artifacts: ['sub_world'], macros: { list: 'lens.sub-worlds.list', get: 'lens.sub-worlds.get', create: 'lens.sub-worlds.create', update: 'lens.sub-worlds.update', delete: 'lens.sub-worlds.delete', run: 'lens.sub-worlds.run', export: 'lens.sub-worlds.export' }, exports: ['json'], actions: ['spawn', 'travel'], category: 'knowledge' },
   { domain: 'sync', label: 'Cross-Device Sync', artifacts: ['sync_session'], macros: { list: 'lens.sync.list', get: 'lens.sync.get', create: 'lens.sync.create', update: 'lens.sync.update', delete: 'lens.sync.delete', run: 'lens.sync.run', export: 'lens.sync.export' }, exports: ['json'], actions: ['enable', 'sync'], category: 'system' },
-  { domain: 'wellness', label: 'Refusal Field Wellness', artifacts: ['active_refusal_field'], macros: { list: 'lens.wellness.list', get: 'lens.wellness.get', create: 'lens.wellness.create', update: 'lens.wellness.update', delete: 'lens.wellness.delete', run: 'lens.wellness.run', export: 'lens.wellness.export' }, exports: ['json'], actions: ['view', 'disable'], category: 'lifestyle' },
+  // Real wellness.* macros (registered via registerWellnessMacros in server.js,
+  // canonical register convention → reachable via /api/lens/run AND runMacro).
+  // The prior `lens.wellness.*` macro ids were PHANTOM (never registered); the
+  // generic CRUD verbs now map onto real macros: list/get → metrics-list,
+  // create → metrics-log, update → goals-update-progress, delete → goals-delete.
+  { domain: 'wellness', label: 'Wellness', artifacts: ['metric', 'habit', 'mood', 'workout', 'goal', 'self_field', 'thought_record', 'session'], macros: { list: 'wellness.metrics-list', get: 'wellness.metrics-list', create: 'wellness.metrics-log', update: 'wellness.goals-update-progress', delete: 'wellness.goals-delete' }, exports: ['json'], actions: ['sleepScore', 'strainLog', 'recoveryReport', 'hrvTrend', 'metrics-log', 'metrics-list', 'metrics-trend', 'habits-create', 'habits-checkin', 'mood-log', 'mood-correlate', 'workouts-log', 'recovery-score', 'goals-create', 'self-field-compose', 'cbt-record-create', 'wearable-import', 'session-complete', 'daily-recommendation'], category: 'lifestyle' },
   // Phase V — game-mode dispatch targets.
   { domain: 'crisis-ops', label: 'Crisis Ops', artifacts: ['world_crisis', 'skill_recommendation'], macros: { list: 'lens.crisis-ops.list', get: 'lens.crisis-ops.get', run: 'lens.crisis-ops.run' }, exports: ['json'], actions: ['active_for_player', 'resolve'], category: 'social' },
   { domain: 'expedition-journal', label: 'Expedition Journal', artifacts: ['expedition_stage'], macros: { list: 'lens.expedition-journal.list', get: 'lens.expedition-journal.get', run: 'lens.expedition-journal.run' }, exports: ['json'], actions: ['advance_stage', 'mark_visited'], category: 'knowledge' },
@@ -5074,7 +5103,10 @@ export const LENS_MANIFESTS: LensManifest[] = [
     domain: 'forecast',
     label: 'Forecast',
     artifacts: ['world_forecast'],
-    macros: { list: 'lens.forecast.list', get: 'lens.forecast.get', run: 'lens.forecast.run' },
+    // Real inline-registered server.js macros (forecast.*) — NOT phantom lens.forecast.*.
+    // `create`/`run` map to compose (the macro that mints + persists a forecast row);
+    // `list`/`get` map to recent (the most-recent persisted read); `export` to archive.
+    macros: { list: 'forecast.recent', get: 'forecast.recent', create: 'forecast.compose', run: 'forecast.compose', export: 'forecast.archive' },
     exports: ['json'],
     actions: ['compose', 'recent', 'multiDay', 'hourly', 'regional', 'accuracy', 'archive', 'subscribeAlert', 'listAlerts', 'unsubscribeAlert', 'checkAlerts'],
     category: 'knowledge',
