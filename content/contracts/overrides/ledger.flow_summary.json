@@ -1,0 +1,21 @@
+{
+  "macro_id": "ledger.flow_summary",
+  "domain": "ledger",
+  "name": "flow_summary",
+  "inputs": {
+    "limit": { "type": "number", "required": false, "min": 0, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.byType)",
+    "output.ok === false || output.byType.every(r => typeof r.type === 'string' && typeof r.n === 'number')",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 10 }, "expect": { "ok": true } },
+    { "input": { "limit": -1 }, "expect": { "ok": false } },
+    { "input": { "limit": "NaN" }, "expect": { "ok": false } }
+  ]
+}

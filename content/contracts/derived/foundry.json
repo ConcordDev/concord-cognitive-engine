@@ -79,14 +79,26 @@
       "name": "blueprint_get"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "foundry",
-      "fuzz_cases": [],
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
       "inputs": {},
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "Array.isArray(output.nodeKinds)",
+        "Array.isArray(output.eventTypes)",
+        "Array.isArray(output.actionTypes)"
       ],
       "macro_id": "foundry.blueprint_kinds",
       "name": "blueprint_kinds"
@@ -183,14 +195,44 @@
       "name": "compose_rule"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "foundry",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_name"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Assassin Test World"
+          }
+        }
+      ],
+      "inputs": {
+        "description": {
+          "required": false,
+          "type": "string"
+        },
+        "name": {
+          "required": true,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.world && typeof output.world.id === 'string')",
+        "output.ok === false || output.world.status === 'draft'",
+        "output.ok === true || typeof output.reason === 'string'"
       ],
       "macro_id": "foundry.create",
       "name": "create"
@@ -209,27 +251,78 @@
       "name": "delete"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "foundry",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "id": "fw_does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "required": true,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (output.world && typeof output.world.id === 'string')"
       ],
       "macro_id": "foundry.get",
       "name": "get"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "foundry",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 10
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "required": false,
+          "type": "number"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.worlds)",
+        "output.ok === false || typeof output.count === 'number'",
+        "output.ok === false || output.worlds.length === output.count"
       ],
       "macro_id": "foundry.list",
       "name": "list"
@@ -430,14 +523,40 @@
       "name": "system_schema"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "foundry",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "category": "world"
+          }
+        }
+      ],
+      "inputs": {
+        "category": {
+          "required": false,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.systems)",
+        "output.ok === false || typeof output.total === 'number'",
+        "output.ok === false || output.systems.length === output.count",
+        "output.ok === false || output.systems.every(s => typeof s.id === 'string' && s.id.length > 0)"
       ],
       "macro_id": "foundry.systems",
       "name": "systems"

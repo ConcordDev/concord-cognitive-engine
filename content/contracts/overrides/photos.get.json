@@ -1,0 +1,19 @@
+{
+  "macro_id": "photos.get",
+  "domain": "photos",
+  "name": "get",
+  "inputs": {
+    "id": { "type": "string", "required": true, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.photo && typeof output.photo.id === 'string')",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_id" } },
+    { "input": { "id": "__no_such_photo__" }, "expect": { "ok": false, "reason": "not_found" } }
+  ],
+  "_note": "photos.get returns ONE photo row from the live user_photos table. The owner sees any of their own photos; non-owners only see a photo that has been shared public (a private photo of another user reports not_found so its existence is not disclosed). A missing id rejects missing_id; an unknown id rejects not_found. The assassin's internal owner actor owns no photos, so an arbitrary id returns not_found — never no_db."
+}

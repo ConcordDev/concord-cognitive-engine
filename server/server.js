@@ -11083,6 +11083,9 @@ async function runMacro(domain, name, input, ctx) {
     // reads; list/get self-gate on ctx.actor and return no_user when anonymous.
     // Key is the literal hyphenated macro-domain string. mint (writes a DTU) is gated.
     "move-builder": new Set(["compose", "catalog", "list", "get"]),
+    // Photos — only the public world gallery feed is world-visible; mine/get/share
+    // are per-user / owner-gated and intentionally NOT listed.
+    photos: new Set(["world"]),
     // WS-CHEMISTRY — the reaction matrix is a read-only reference (apply/ignite/
     // douse mutate and require an actor, so they're NOT here).
     elements: new Set(["matrix"]),
@@ -25691,6 +25694,13 @@ registerSpectateMacros(register);
 // onto the runMacro + /api/lens/run path. Per-user private (no publicReadDomains).
 import registerSavedMacros from "./domains/saved.js";
 registerSavedMacros(register);
+
+// Per-lens flawless loop batch 7 — photos (gallery: list/get/world/share over
+// lib/photo-gallery.js; share mints a kind='photo' DTU). foundry/ledger/codex
+// needed no line (foundry already registered; ledger + lore auto-load). Only the
+// public world feed is a public read; mine/get/share are per-user/owner-gated.
+import registerPhotosMacros from "./domains/photos.js";
+registerPhotosMacros(register);
 
 // Cognitive Fingerprint (#5) — thinking-style profile from real activity.
 import registerMetacogMacros from "./domains/metacog.js";

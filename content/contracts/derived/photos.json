@@ -1,0 +1,157 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "photos",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "id": "__no_such_photo__"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.photo && typeof output.photo.id === 'string')",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "photos.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "photos",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 10
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_limit"
+          },
+          "input": {
+            "limit": -1
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_limit"
+          },
+          "input": {
+            "limit": "abc"
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 1000000,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.photos)",
+        "output.ok === false || (typeof output.count === 'number' && output.count === output.photos.length)",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "photos.list",
+      "name": "list"
+    },
+    {
+      "_derived": false,
+      "domain": "photos",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_photoId"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "no_photo"
+          },
+          "input": {
+            "photoId": "__no_such_photo__"
+          }
+        }
+      ],
+      "inputs": {
+        "photoId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.dtuId === 'string'",
+        "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+      ],
+      "macro_id": "photos.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "photos",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "photos.world",
+      "name": "world"
+    }
+  ],
+  "domain": "photos",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 4
+}

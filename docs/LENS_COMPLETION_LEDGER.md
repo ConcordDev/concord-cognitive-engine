@@ -31,7 +31,7 @@ score bits justified-absent)
 |---|---:|---|---|---|
 | reasoning-traces | 0/7→7/7 | **done** | batch5 | `reasoning` trace macros (traces/trace/run over the HLR engine, named export wired into server.js); real-trace round-trip tests; 4 UX states. (0/7 intel was stale — scorer already saw 7/7; `reasoning.create_chain` IS registered inline at server.js:13501, not a phantom) |
 | literary | 1/7→7/7 | **done** | batch5 | behavioral tests on all 6 driven macros (search/semantic_graph/resonance/resonance_graph/annotate/stats); real GraphML/CSV/JSON export of the live resonance graph; annotate→DTU citation round-trip; +6 contract overrides; macro-assassin 4→0 (fixed poisoned-`limit` fail-open → fail-closed); 4 UX states |
-| foundry | 3/7 | pending | | world-builder substrate (mig 191-192). batch-6 agent DIED mid-work (5h-stale, hanging test that boots the WHOLE server + LLM oracle calls); partial work REVERTED. Redo with explicit lightweight in-memory-DB test harness (no full server boot, no LLM). |
+| foundry | 3/7→5/7 | **done** | batch7 | REDO success (prior agent died on a full-server-boot hanging test). Wired the page-level macro loop (FoundryWorldsPanel + useLensData over real foundry.{list,create,get,delete}); fixed phantom `run`→`validate`; fail-closed guards on all numeric inputs. 16 server (0.29s, hermetic) + 5 UX-state tests; assassin clean across 40 macros |
 | saved | 3/7→5/7 | **done** | batch6 | MAJOR fix: `saved` was UNREGISTERED + used legacy `registerLensAction` (invisible to runMacro) → every saved.* call hit `unknown_macro`; rewrote to canonical `register` 2-arg convention + wired in server.js. Fixed header crash (`stats.byState.unread` unguarded). 38 server + 4 UX-state tests |
 | move-builder | 3/7→5/7 | **done** | batch5 | new `move-builder` domain (compose/mint/list/get/catalog over move-descriptor.js + ED budget); fixed the DEAD mint (page called `glyph_spells.mint` with wrong payload → always failed) + phantom `lens.move-builder.*` refs; 11 server + 5 UX-state tests |
 | garage | 3/7→5/7 | **done** | batch5 | new `garage` domain (list/get/spawn/mine/mount/dismount/move over lib/world-vehicles.js); fixed 4 fabricated vehicle kinds the backend rejected with `bad_kind` (silent fail) + phantom `lens.garage.*` refs; 7 server + 6 UX-state tests |
@@ -48,12 +48,12 @@ score bits justified-absent)
 | ops-telemetry | 3/7 | pending | | dashboard — likely by-design |
 | auction | 4/7 | **done** | 75031b3 | dedicated `auctions` domain (delegates to lib); 4 UX states + a11y; behavioral tests + contract overrides; wired |
 | careers | 4/7→5/7 | **done** | batch6 | fixed phantom `lens.careers.*` manifest refs → real `careers.{tracks,contracts,work,offer}`; honest disabled-by-config note (was misleading "coming soon"; system is ENABLED by default); work-shift credits real sparks, offer→accept persists contract; 11 server + 7 UX-state tests |
-| codex | 4/7 | pending | | |
-| ledger | 4/7 | pending | | economy ledger reader |
+| codex | 4/7→5/7 | **done** | batch7 | reader over the real `lore` domain; fixed phantom `lens.codex.*` → real lore.{list,get,facets,spine}; hardened lore.list fail-open (poisoned limit clamped → now invalid_limit); real per-user bookmarks via artifact store; 15 server + 11 UX-state tests |
+| ledger | 4/7→5/7 | **done** | batch7 | fixed real wiring bug (page read `r.data` not `r.data.result` → always rendered empty even with real anomalies); repointed phantom `lens.ledger.*` → real ledger.{anomalies,faction_economy,flow_summary}; CREDIT_ROW_PREDICATE no-double-credit regression test; 10 server + 5 UX-state tests |
 | forecast | 4/7 | pending | | forecast backend |
 | civic-bonds | 4/7 | pending | | civic-bonds backend |
 | detective | 4/7→5/7 | **done** | a62bae5 | dedicated `detective` domain delegating to lib (Obra-Dinn 2-of-3 + suspect_match lock-in); fixed dangling `lens.detective.*` manifest refs; added non-culprit-leaking `getCrimeWithEvidence`; 10 server + 5 UX-state tests |
-| photos | 4/7 | pending | | photo gallery backend |
+| photos | 4/7→5/7 | **done** | batch7 | new `photos` domain (list/get/world/share over lib/photo-gallery.js; share mints a kind='photo' DTU) + registered in server.js (publicRead: world only); fixed phantom `lens.photos.*` refs; 10 server + 4 UX-state tests |
 | fishing | 4/7→5/7 | **done** | def0ff4 | dedicated `fishing` domain; fixed buffOnCook [object Object] render; cast→reel→catch tests; 4 UX states |
 | creatures | 4/7→5/7 | **done** | a62bae5 | extended `creatures` domain (+species/roster/lineage/breed) delegating to creature-crossbreeding + species-taxonomy; fixed dangling `lens.creatures.*` refs + the breed `bond_too_low` bug (thin parents lacked physics blueprints → no hybrid ever produced); 8 server + 4 UX-state tests |
 | translation | 4/7 | pending | | |
@@ -111,3 +111,8 @@ enumerated here until reached.
   agents shipped fail-closed numeric guards + live-DB-accurate contracts (assassin self-checks clean).
   foundry's agent DIED mid-work (hanging full-server-boot test) → reverted, requeued with a lightweight-
   test instruction. verify-lens-backends 258 WIRED / 0 broken, macroDomains 527. 27 left. 15 bugs total.
+- 2026-06-27: batch 7 DONE (foundry-redo, photos, ledger, codex) — 51 server + 25 UX-state tests; +3
+  real bugs (ledger envelope-unwrap → always-empty, lore.list fail-open, all phantom manifest refs).
+  foundry REDO succeeded via the lightweight-hermetic-test rule (16 tests in 0.29s, no boot — the dead
+  agent's hang is gone). photos registered in server.js (publicRead: world). verify-lens-backends 258
+  WIRED / 0 broken, macroDomains 528. 23 left. 18 bugs total.

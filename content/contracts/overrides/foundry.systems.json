@@ -1,0 +1,18 @@
+{
+  "macro_id": "foundry.systems",
+  "domain": "foundry",
+  "name": "systems",
+  "inputs": { "category": { "type": "string", "required": false } },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.systems)",
+    "output.ok === false || typeof output.total === 'number'",
+    "output.ok === false || output.systems.length === output.count",
+    "output.ok === false || output.systems.every(s => typeof s.id === 'string' && s.id.length > 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "category": "world" }, "expect": { "ok": true } }
+  ]
+}

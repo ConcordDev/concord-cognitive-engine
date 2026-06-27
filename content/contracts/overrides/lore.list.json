@@ -1,0 +1,27 @@
+{
+  "macro_id": "lore.list",
+  "domain": "lore",
+  "name": "list",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 80 },
+    "type": { "type": "string", "maxLength": 60 },
+    "era": { "type": "string", "maxLength": 80 },
+    "q": { "type": "string", "maxLength": 400 },
+    "limit": { "type": "number", "min": 1, "max": 1000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.events)",
+    "output.ok === false || output.events.every(e => typeof e.id === 'string' && typeof e.title === 'string')",
+    "output.ok === false || output.events.every(e => !('hidden_truth' in e))",
+    "output.ok === false || output.events.length <= 1000"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "type": "primordial", "limit": 5 }, "expect": { "ok": true } },
+    { "input": { "worldId": "tunya" }, "expect": { "ok": true } },
+    { "input": { "limit": -1 }, "expect": { "ok": false, "reason": "invalid_limit" } }
+  ],
+  "_note": "lore.list browses the hand-authored cosmology canon read straight off content/world/**/lore.json (no DB — file-backed, so {} returns ok:true with the real seeded events, never no_db). hidden_truth is author-only and STRIPPED in lib/authored-lore.js — it can never appear on a returned event. limit is a fail-CLOSED numeric guard: a poisoned value returns ok:false invalid_limit, never a clamped ok:true."
+}

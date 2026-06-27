@@ -109,8 +109,16 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // with a known lensId (no firstRunGuide/emptyState by design).
   // ═══════════════════════════════════════════════════════════════
   { domain: 'careers', label: 'Careers', artifacts: ['contract', 'shift'], macros: { list: 'careers.tracks', get: 'careers.contracts', create: 'careers.work', run: 'careers.offer' }, exports: ['json'], actions: ['browse', 'work', 'offer', 'accept'], category: 'lifestyle' },
-  { domain: 'ledger', label: 'Ledger', artifacts: ['entry', 'transaction'], macros: { list: 'lens.ledger.list', get: 'lens.ledger.get' }, exports: ['json', 'csv'], actions: ['view'], category: 'finance' },
-  { domain: 'codex', label: 'Codex', artifacts: ['entry', 'lore'], macros: { list: 'lens.codex.list', get: 'lens.codex.get' }, exports: ['json'], actions: ['read'], category: 'knowledge' },
+  { domain: 'ledger', label: 'Ledger', artifacts: ['anomaly', 'lien'], macros: { list: 'ledger.anomalies', get: 'ledger.faction_economy', run: 'ledger.flow_summary' }, exports: ['json', 'csv'], actions: ['view', 'audit', 'export'], category: 'finance' },
+  // The Codex is a READER over the real `lore` domain (server/domains/lore.js —
+  // register("lore", "list"|"get"|"facets"|"spine")). There is NO `codex` domain;
+  // the page calls lensRun('lore', …) directly. The manifest key stays 'codex'
+  // (the lens id, used by getLensManifest('codex')), but the macros now point at
+  // the REAL registered lore.* surface — the prior `lens.codex.*` were phantoms
+  // that resolved to nothing. Actions are read-only verbs that map onto real
+  // lore.* reads (list/facets/spine); the lens persists per-user bookmarks of the
+  // canon through the generic /api/lens/codex artifact store (see page.tsx).
+  { domain: 'codex', label: 'Codex', artifacts: ['entry', 'lore', 'bookmark'], macros: { list: 'lore.list', get: 'lore.get' }, exports: ['json'], actions: ['list', 'facets', 'spine'], category: 'knowledge' },
   { domain: 'translation', label: 'Translation', artifacts: ['translation'], macros: { list: 'lens.translation.list', get: 'lens.translation.get' }, exports: ['json'], actions: ['translate', 'detect'], category: 'productivity' },
   { domain: 'repair-telemetry', label: 'Repair Telemetry', artifacts: ['report'], macros: { list: 'lens.repair-telemetry.list', get: 'lens.repair-telemetry.get' }, exports: ['json'], actions: ['view'], category: 'system' },
   { domain: 'move-builder', label: 'Move Builder', artifacts: ['move', 'recipe'], macros: { list: 'move-builder.list', get: 'move-builder.get', create: 'move-builder.mint' }, exports: ['json'], actions: ['compose', 'mint'], category: 'creative' },
@@ -5099,7 +5107,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'mail',          label: 'Mail',               artifacts: ['mail'],        macros: { list: 'mail.list',               get: 'mail.get',             create: 'mail.send',        run: 'mail.claim' },          exports: ['json'], actions: ['send', 'read', 'claim'], category: 'social' },
   { domain: 'narrative-walk',label: 'Narrative Walk',     artifacts: ['cinematic'],   macros: { list: 'lens.narrative-walk.list',get: 'lens.narrative-walk.get' },exports: ['json'], actions: [], category: 'creative' },
   { domain: 'ops-telemetry', label: 'Ops Telemetry',      artifacts: ['metric'],      macros: { list: 'lens.ops-telemetry.list', get: 'lens.ops-telemetry.get' }, exports: ['json'], actions: [], category: 'operations' },
-  { domain: 'photos',        label: 'Photos',             artifacts: ['photo'],       macros: { list: 'lens.photos.list',        get: 'lens.photos.get' },        exports: ['json'], actions: ['share'], category: 'creative' },
+  { domain: 'photos',        label: 'Photos',             artifacts: ['photo'],       macros: { list: 'photos.list',             get: 'photos.get', create: 'photos.share' }, exports: ['json'], actions: ['share', 'world'], category: 'creative' },
   { domain: 'quests',        label: 'Quests',             artifacts: ['quest'],       macros: { list: 'quests.mine',             get: 'quests.progress' },        exports: ['json'], actions: ['accept', 'record-progress', 'claim-rewards', 'share'], category: 'lifestyle' },
   { domain: 'spectate',      label: 'Spectate',           artifacts: ['spectacle'],   macros: { list: 'spectate.list',           get: 'spectate.get',         create: 'spectate.watch',   run: 'spectate.bet' },           exports: ['json'], actions: ['watch', 'bet', 'my_positions'], category: 'social' },
   { domain: 'training-room', label: 'Training Room',      artifacts: ['frame_data'],  macros: { list: 'lens.training-room.list_skills', get: 'lens.training-room.frame_data' }, exports: ['json'], actions: ['frame_data', 'kind_frame_data', 'list_kinds', 'list_skills'], category: 'lifestyle' },
