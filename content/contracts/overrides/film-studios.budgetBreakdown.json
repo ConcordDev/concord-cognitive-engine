@@ -1,0 +1,27 @@
+{
+  "macro_id": "film-studios.budgetBreakdown",
+  "domain": "film-studios",
+  "name": "budgetBreakdown",
+  "inputs": {
+    "totalBudget": { "type": "string", "maxLength": 32 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "Number.isFinite(output.result.totalBudget) && output.result.totalBudget >= 0",
+    "Array.isArray(output.result.breakdown)",
+    "output.result.breakdown.every(b => Number.isFinite(b.percentage) && Number.isFinite(b.amount) && b.amount >= 0)",
+    "Math.abs(output.result.breakdown.reduce((a,b)=>a+b.percentage,0) - 100) < 0.0001",
+    "output.result.breakdown.reduce((a,b)=>a+b.amount,0) <= output.result.totalBudget + 0.01"
+  ],
+  "fuzz_cases": [
+    { "input": { "totalBudget": 2000000 }, "expect": { "ok": true } },
+    { "input": { "totalBudget": "50000" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "totalBudget": "Infinity" }, "expect": { "ok": true } },
+    { "input": { "totalBudget": "1e400" }, "expect": { "ok": true } },
+    { "input": { "totalBudget": "NaN" }, "expect": { "ok": true } },
+    { "input": { "totalBudget": -5 }, "expect": { "ok": true } }
+  ],
+  "_note": "film-studios.budgetBreakdown is a PURE money-ish calculator registered via registerLensAction (LENS_ACTIONS / domains/filmstudios.js PATH 3, dispatched as handler(ctx, virtualArtifact, input) with input under artifact.data). It splits a totalBudget across 5 fixed-percentage categories (25/40/15/15/5 = 100%). NO wallet, no DB, no CC moved — so this is a CORRECTNESS contract, not a money-mint guard. FAIL-CLOSED (landed 2026-06-27): the prior `parseFloat(data.totalBudget) || 0` passed Infinity / 1e400(→Infinity) straight through (a truthy non-finite that `|| 0` cannot catch), minting non-finite breakdown amounts. The handler now clamps to a finite, non-negative budget before any math (`Number.isFinite(parsed) && parsed > 0 ? parsed : 0`), so a poisoned numeric clamps to 0 and EVERY output amount stays finite + non-negative + bounded by totalBudget. It returns ok:true (a calculator degrades gracefully, it does not reject) — totalBudget is declared `string` not `number` here precisely because the fail-closed mode is clamp-to-0, not reject, so it is correct (not a V2 ok_true_on_poisoned_number defect). The percentage sum is exactly 100 and the amount sum equals totalBudget by construction."
+}

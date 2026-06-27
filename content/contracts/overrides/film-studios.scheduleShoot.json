@@ -1,0 +1,22 @@
+{
+  "macro_id": "film-studios.scheduleShoot",
+  "domain": "film-studios",
+  "name": "scheduleShoot",
+  "inputs": {
+    "scenes": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result === 'object' && output.result !== null",
+    "output.result.message !== undefined || (Number.isFinite(output.result.totalShootDays) && Number.isFinite(output.result.totalWeeks))",
+    "output.result.locations === undefined || output.result.locations.every(l => Number.isFinite(l.scenes) && Number.isFinite(l.estimatedDays) && l.estimatedDays >= 0 && Array.isArray(l.cast))"
+  ],
+  "fuzz_cases": [
+    { "input": { "scenes": [{ "location": "Beach", "cast": ["A"] }, { "location": "Beach", "cast": ["B"] }] }, "expect": { "ok": true } },
+    { "input": { "scenes": [] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "scenes": [{ "cast": ["X"] }] }, "expect": { "ok": true } }
+  ],
+  "_note": "film-studios.scheduleShoot is a PURE grouping calculator (LENS_ACTIONS / domains/filmstudios.js, input under artifact.data, reads data.scenes). It buckets scenes by location, estimates days = ceil(sceneCount/3), weeks = ceil(days/5), and unions cast per location. No DB / no money. Empty or missing scenes degrade gracefully to { message: 'Add scenes …' } (never throws). avgScenesPerDay divides by totalShootDays which is >= 1 whenever scenes is non-empty (every location yields >= 1 estimatedDay via ceil), so no divide-by-zero / non-finite output is reachable. scenes is declared `array` (not numeric) — there are no numeric params for the assassin to poison; robustness is pinned by the empty/missing/location-less fuzz cases."
+}

@@ -315,6 +315,25 @@ dead-caller (wrong-domain / phantom) fixes, swallowed-fetch fixed in all three:
 Assassin ratchet GREEN (no new violations vs baseline, incl. inheritance.open_listing); 258 WIRED;
 tsc 0; manifest+sere green.
 
+### Phase-2 batch 7 DONE (2026-06-27): film-studios, game-design, urban-planning — long-tail untested lenses
+102 server + 15 UX-state tests. Three previously-UNtested lenses (no dedicated behavioral/UX-state
+test before this pass), all path-3 with a HYPHENATED domain string registered from a non-hyphenated
+file (filmstudios.js→'film-studios', gamedesign.js→'game-design', urbanplanning.js→'urban-planning').
+Three real fail-open fixes + the swallowed-fetch UX defect fixed in all three:
+- **film-studios**: 2 calculator fail-opens — budgetBreakdown + castAnalysis took `parseFloat(x)||0`
+  which lets Infinity/1e400 through into non-finite breakdown amounts; finite/non-negative clamps.
+  Also un-swallowed the discover query (`.catch(()=>[])` resolved success, hiding network failures).
+  24 server + 5 vitest + 5 overrides.
+- **game-design**: GameDesignSection.refreshGames had no try/catch → a failed game-list froze the
+  section on the spinner forever; try/catch/finally + role=status/alert + Retry. 42 server + 5 vitest
+  + 6 overrides.
+- **urban-planning**: zoningAnalysis fail-open (`parseFloat(Infinity)||5000` → lotSize Infinity →
+  maxBuildableSqFt Infinity); finite-guard. Also fixed a swallowed scenario-list failure hidden
+  behind the empty CTA → dedicated loadError + Retry. 36 server + 5 vitest + 7 overrides.
+Assassin ratchet GREEN (no new violations vs baseline); 258 WIRED; tsc 0; manifest+sere green.
+27 lenses now through the non-score gate (batches 1–7); the loop continues into the remaining
+untested long tail.
+
 **NAMED PHASE-2 BACKLOG CLOSED (2026-06-27):** all 6 batches done (24 lenses through the non-score
 gate across batches 1–6). Real defects fixed across the run: 2 CC money bugs (sponsorship.create,
 inheritance value/open_listing) + 1 in-game-currency treasury fail-open (kingdoms) + ~6 numeric

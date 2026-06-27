@@ -1,0 +1,23 @@
+{
+  "macro_id": "film-studios.castAnalysis",
+  "domain": "film-studios",
+  "name": "castAnalysis",
+  "inputs": {
+    "cast": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result === 'object' && output.result !== null",
+    "output.result.message !== undefined || Number.isFinite(output.result.totalCastBudget)",
+    "output.result.cast === undefined || output.result.cast.every(c => Number.isFinite(c.totalCost) && c.totalCost >= 0 && Number.isFinite(c.dailyRate) && Number.isFinite(c.scenes))"
+  ],
+  "fuzz_cases": [
+    { "input": { "cast": [{ "name": "Lead", "role": "lead", "sceneCount": 30, "dailyRate": 1500 }] }, "expect": { "ok": true } },
+    { "input": { "cast": [] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "cast": [{ "name": "X", "sceneCount": 10, "dailyRate": "Infinity" }] }, "expect": { "ok": true } },
+    { "input": { "cast": [{ "name": "X", "sceneCount": "1e400", "dailyRate": "1e400" }] }, "expect": { "ok": true } }
+  ],
+  "_note": "film-studios.castAnalysis is a PURE per-cast cost calculator (LENS_ACTIONS / domains/filmstudios.js, input under artifact.data, reads data.cast[]). totalCost = sceneCount * dailyRate / 3, summed to totalCastBudget. No DB / no money moved. FAIL-CLOSED (landed 2026-06-27): the prior `parseFloat(c.dailyRate) || 0` passed a poisoned dailyRate (Infinity / 1e400→Infinity) through, minting a non-finite totalCost / totalCastBudget. The handler now clamps each numeric leaf to finite + non-negative (`Number.isFinite(n) && n > 0 ? n : 0`) before the math, so every cost stays finite. Per-cast numerics live INSIDE the cast array (not top-level numeric params) and the clamp returns ok:true with 0 (graceful degrade, not reject), so cast is declared `array` — not a V2 ok_true_on_poisoned_number defect. Empty cast degrades to { message: 'Add cast …' }."
+}
