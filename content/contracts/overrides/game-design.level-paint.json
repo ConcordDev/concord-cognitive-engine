@@ -1,0 +1,24 @@
+{
+  "macro_id": "game-design.level-paint",
+  "domain": "game-design",
+  "name": "level-paint",
+  "inputs": {
+    "levelId": { "type": "string", "required": true, "maxLength": 80 },
+    "layerId": { "type": "string", "required": true, "maxLength": 80 },
+    "index": { "type": "number", "required": true },
+    "tile": { "type": "string", "required": false, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.index === 'number'",
+    "output.ok === false || output.result.tile === null || typeof output.result.tile === 'string' || typeof output.result.tile === 'number'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "levelId": "ghost", "layerId": "ghost", "index": 0, "tile": "grass" }, "expect": { "ok": false } },
+    { "input": { "levelId": "ghost", "layerId": "ghost", "index": 1e308, "tile": "grass" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "game-design.level-paint paints one cell of a tile/intgrid layer. LENS_ACTIONS handler, 3-arg params path, in-memory per-user. FAIL-CLOSED on the cell value: the tile id is resolved against the VALID set (built-ins GD_TILES + the game's custom tiles) — an unknown id resolves to null (cleared), never persisted raw; an out-of-range or poisoned (1e308/NaN via Math.round(gdNum(...,-1))) index rejects 'cell index out of range'; an unknown level/layer rejects 'not found'. No DB / LLM / network. Not driven by the assassin (no derived base for this LENS_ACTIONS macro); authored spec pinned by server/tests/game-design-lens-macros.test.js (tile-id validation + index-range + round-trip)."
+}

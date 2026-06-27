@@ -1,0 +1,23 @@
+{
+  "macro_id": "game-design.runtime-compile",
+  "domain": "game-design",
+  "name": "runtime-compile",
+  "inputs": {
+    "levelId": { "type": "string", "required": true, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.scene === 'object'",
+    "output.ok === false || (typeof output.result.scene.cols === 'number' && Number.isFinite(output.result.scene.cols))",
+    "output.ok === false || (typeof output.result.scene.spawn.x === 'number' && Number.isFinite(output.result.scene.spawn.x))",
+    "output.ok === false || (Array.isArray(output.result.scene.collision.solid) && typeof output.result.scene.collision.solidCount === 'number')",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "levelId": "ghost" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "levelId": "<script>" }, "expect": { "ok": false } }
+  ],
+  "_note": "game-design.runtime-compile walks a level's layers + the game's entities into a deterministic, JSON-serialisable runtime scene: a bounded solid/hazard collision grid (from intgrid + collision config), a spawn point (player object instance, else first non-solid cell), placed actors, and the advertised mechanics. LENS_ACTIONS handler, 3-arg params path, in-memory per-user. Wrapped in try/catch → returns {ok:false, error:'handler_error'} on any throw, never crashes the runner. Gravity is clamped to [0,4000]; the grid is cols*rows where cols/rows were themselves clamped to [4,64] at level-create, so no runaway allocation is reachable. An unknown level rejects 'level not found'. No DB / LLM / network. Not driven by the assassin (LENS_ACTIONS, no derived base); pinned by server/tests/game-design-lens-macros.test.js (collision grid + spawn derivation)."
+}

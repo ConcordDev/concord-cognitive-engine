@@ -1,0 +1,21 @@
+{
+  "macro_id": "game-design.narrative-graph",
+  "domain": "game-design",
+  "name": "narrative-graph",
+  "inputs": {
+    "gameId": { "type": "string", "required": true, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.totalNodes === 'number'",
+    "output.ok === false || output.result.totalNodes === 0 || (Array.isArray(output.result.unreachable) && Array.isArray(output.result.orphans))",
+    "output.ok === false || output.result.totalNodes === 0 || Number.isFinite(output.result.maxDepth)"
+  ],
+  "fuzz_cases": [
+    { "input": { "gameId": "anything" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "gameId": "<script>" }, "expect": { "ok": true } }
+  ],
+  "_note": "game-design.narrative-graph runs a BFS over the game's narrative nodes + links to surface reachability/structure: start/ending counts, orphan titles (indeg 0 ∧ outdeg 0), unreachable titles (not reached from any start), a finite maxDepth, and a health string. LENS_ACTIONS handler, 3-arg params path, in-memory per-user, read-only, wrapped in try/catch → {ok:false,'handler_error'} on any throw. DEGRADE-GRACEFUL: an empty graph (unknown/empty gameId) returns ok:true with totalNodes:0 + an 'Add narrative nodes…' message. No DB / LLM / network. Not driven by the assassin (LENS_ACTIONS, no derived base); pinned by server/tests/game-design-lens-macros.test.js (BFS reachability + orphan detection)."
+}
