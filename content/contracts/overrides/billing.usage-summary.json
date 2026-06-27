@@ -1,0 +1,24 @@
+{
+  "macro_id": "billing.usage-summary",
+  "domain": "billing",
+  "name": "usage-summary",
+  "inputs": {
+    "subscriptionId": { "type": "string", "required": false, "maxLength": 80 },
+    "tiers": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.totalQuantity)",
+    "output.ok === false || Number.isFinite(output.result.totalCharge)",
+    "output.ok === false || Array.isArray(output.result.tierBreakdown)",
+    "output.ok === false || output.result.tierBreakdown.every(function(t){ return Number.isFinite(t.charge) && Number.isFinite(t.units); })"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "subscriptionId": "sub_none" }, "expect": { "ok": true } },
+    { "input": { "subscriptionId": "sub_none", "tiers": [{ "upTo": "Infinity", "unitPrice": "1e999" }] }, "expect": { "ok": true } },
+    { "input": { "subscriptionId": "sub_none", "tiers": [{ "upTo": 1000, "unitPrice": "NaN" }] }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/billing.js, dispatch key 'billing.usage-summary'); SubscriptionBillingSuite calls it via lensRun. In-memory per-user state. totalQuantity is summed from STORED usage records — and usage-record fail-CLOSES at the write boundary (billNum(quantity) then reject `quantity <= 0`, so a poisoned 'Infinity'/'NaN' collapses to 0 and is rejected, never persisted). Tier prices route through billNum (non-finite → 0). The assassin's fresh state has no recorded usage, so summary returns totalQuantity:0 / totalCharge:0 with an empty breakdown — finite by construction. Pinned by server/tests/billing-lens-macros.test.js (exact 5000-unit graduated rollup = 8.00 + poison-quantity rejection)."
+}

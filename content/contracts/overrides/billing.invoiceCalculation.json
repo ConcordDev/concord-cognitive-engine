@@ -1,0 +1,31 @@
+{
+  "macro_id": "billing.invoiceCalculation",
+  "domain": "billing",
+  "name": "invoiceCalculation",
+  "inputs": {
+    "lineItems": { "type": "array", "required": false },
+    "pricingTiers": { "type": "array", "required": false },
+    "discountRules": { "type": "array", "required": false },
+    "taxRate": { "type": "number", "required": false, "min": 0 },
+    "currency": { "type": "string", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.subtotal)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.afterDiscount)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.tax.taxAmount)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.total)",
+    "output.ok === false || output.result.message !== undefined || output.result.lineItems.every(function(l){ return Number.isFinite(l.lineTotal); })"
+  ],
+  "fuzz_cases": [
+    { "input": { "lineItems": [{ "description": "W", "quantity": 3, "unitPrice": 10, "taxable": true }], "taxRate": 0.1 }, "expect": { "ok": true } },
+    { "input": { "lineItems": [{ "description": "A", "quantity": 10, "unitPrice": 10 }], "discountRules": [{ "type": "percentage", "value": 0.1 }], "taxRate": 0.1 }, "expect": { "ok": true } },
+    { "input": { "lineItems": [] }, "expect": { "ok": true } },
+    { "input": { "lineItems": [{ "description": "Poison", "quantity": "1e999", "unitPrice": "Infinity", "taxable": true }], "taxRate": "Infinity" }, "expect": { "ok": true } },
+    { "input": { "lineItems": [{ "description": "Huge", "quantity": 1, "unitPrice": 1e308 }] }, "expect": { "ok": true } },
+    { "input": { "lineItems": [{ "description": "B", "quantity": 2, "unitPrice": 25 }], "discountRules": [{ "type": "fixed", "value": "NaN" }] }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/billing.js, registerLensAction → dispatch key 'billing.invoiceCalculation'); the /lenses/billing page reaches it via useRunArtifact (artifact path) with input as both artifact.data and params. Deterministic pure compute, no DB/LLM. MONEY-PATH GUARD (2026-06-27): every numeric input (quantity/unitPrice/taxRate/tier.pricePerUnit/discount.value/exchangeRate) routes through `finNum` — parseFloat then collapse non-finite OR |v|>1e12 to 0 — so a poisoned '1e999'/'Infinity'/'NaN' or a finite-but-absurd 1e308 (which overflows to Infinity at the ×100 cents step) can never poison subtotal/afterDiscount/tax/total; every aggregate stays FINITE (fail-CLOSED on the compute path). Pinned by server/tests/billing-lens-macros.test.js. Not assassin-driven (LENS_ACTIONS path); authored spec."
+}

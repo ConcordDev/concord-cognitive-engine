@@ -1,0 +1,29 @@
+{
+  "macro_id": "billing.tax-calculate",
+  "domain": "billing",
+  "name": "tax-calculate",
+  "inputs": {
+    "jurisdiction": { "type": "string", "required": true, "maxLength": 16 },
+    "amount": { "type": "number", "required": false, "min": 0 },
+    "b2b": { "type": "boolean", "required": false },
+    "taxId": { "type": "string", "required": false, "maxLength": 32 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.netAmount)",
+    "output.ok === false || Number.isFinite(output.result.taxAmount)",
+    "output.ok === false || Number.isFinite(output.result.grossAmount)",
+    "output.ok === false || output.result.taxAmount >= 0",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "jurisdiction": "US-CA", "amount": 100 }, "expect": { "ok": true } },
+    { "input": { "jurisdiction": "EU-DE", "amount": 100, "b2b": true, "taxId": "DE123456789" }, "expect": { "ok": true } },
+    { "input": { "jurisdiction": "MARS-1", "amount": 100 }, "expect": { "ok": false } },
+    { "input": { "jurisdiction": "US-CA", "amount": "Infinity" }, "expect": { "ok": true } },
+    { "input": { "jurisdiction": "GB", "amount": "1e999" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/billing.js, dispatch key 'billing.tax-calculate'); SubscriptionBillingSuite calls it via lensRun. Pure compute against a fixed TAX_RATES table, no DB/LLM. amount routes through billNum (non-finite → 0) and an unknown jurisdiction rejects with a string error, so taxAmount/grossAmount stay FINITE and non-negative regardless of a poisoned amount — fail-CLOSED. EU/GB VAT reverse-charges to 0 tax for B2B with a VAT id. Pinned by server/tests/billing-lens-macros.test.js."
+}

@@ -1,0 +1,26 @@
+{
+  "macro_id": "billing.revenueRecognition",
+  "domain": "billing",
+  "name": "revenueRecognition",
+  "inputs": {
+    "contracts": { "type": "array", "required": false },
+    "recognitionDate": { "type": "string", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalContractValue)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalRecognizedRevenue)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalDeferredRevenue)",
+    "output.ok === false || output.result.message !== undefined || output.result.contracts.every(function(c){ return Number.isFinite(c.recognizedRevenue) && Number.isFinite(c.deferredRevenue); })"
+  ],
+  "fuzz_cases": [
+    { "input": { "contracts": [{ "id": "c1", "customer": "Acme", "totalValue": 1000, "startDate": "2026-01-01", "endDate": "2026-12-31", "deliverables": [{ "name": "Setup", "standalonePrice": 250, "deliveredDate": "2026-01-02" }, { "name": "Support", "standalonePrice": 750 }] }], "recognitionDate": "2026-06-01" }, "expect": { "ok": true } },
+    { "input": { "contracts": [] }, "expect": { "ok": true } },
+    { "input": { "contracts": [{ "id": "c", "customer": "A", "totalValue": "Infinity", "startDate": "2026-01-01", "endDate": "2026-12-31" }] }, "expect": { "ok": true } },
+    { "input": { "contracts": [{ "id": "c", "customer": "A", "totalValue": 1e308, "startDate": "2026-01-01", "endDate": "2026-12-31", "deliverables": [{ "name": "X", "standalonePrice": "1e999" }] }] }, "expect": { "ok": true } },
+    { "input": { "contracts": [{ "id": "c", "customer": "A", "totalValue": 500, "startDate": "2026-01-01", "endDate": "2026-12-31", "billingSchedule": [{ "date": "2026-02-01", "amount": "NaN" }] }] }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/billing.js, dispatch key 'billing.revenueRecognition'); the /lenses/billing page reaches it via useRunArtifact. ASC-606 deterministic compute (relative-standalone-price allocation + pro-rata schedule), no DB/LLM. MONEY-PATH GUARD (2026-06-27): contract.totalValue, deliverable.standalonePrice and billingSchedule.amount route through `finNum`, so a poisoned 'Infinity'/'1e999'/'NaN'/1e308 collapses to 0 and totalContractValue / totalRecognizedRevenue / totalDeferredRevenue / per-contract recognized+deferred stay FINITE (was fail-OPEN via parseFloat||0 letting Infinity through). Pinned by server/tests/billing-lens-macros.test.js."
+}

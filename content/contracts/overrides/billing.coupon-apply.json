@@ -1,0 +1,27 @@
+{
+  "macro_id": "billing.coupon-apply",
+  "domain": "billing",
+  "name": "coupon-apply",
+  "inputs": {
+    "code": { "type": "string", "required": true, "maxLength": 64 },
+    "amount": { "type": "number", "required": false, "min": 0 },
+    "redeem": { "type": "boolean", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.discount)",
+    "output.ok === false || Number.isFinite(output.result.originalAmount)",
+    "output.ok === false || Number.isFinite(output.result.finalAmount)",
+    "output.ok === false || output.result.finalAmount >= 0",
+    "output.ok === false || output.result.discount <= output.result.originalAmount",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "code": "NOPE", "amount": 100 }, "expect": { "ok": false } },
+    { "input": { "code": "", "amount": 100 }, "expect": { "ok": false } },
+    { "input": { "code": "NOPE", "amount": "Infinity" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/billing.js, dispatch key 'billing.coupon-apply'); SubscriptionBillingSuite calls it via lensRun. In-memory per-user state. amount routes through billNum (non-finite → 0) and the coupon value is clamped at create (percent ≤ 100, fixed round2-clamped), so discount is min(amount, value)/percentage and finalAmount = amount − discount stays FINITE and ≥ 0 — fail-CLOSED. The assassin's fresh state has no coupons, so every fuzz call rejects ok:false with a string error ('invalid coupon code' / 'value …'). Pinned by server/tests/billing-lens-macros.test.js (exact 20%/fixed discount math + maxRedemptions deactivation + poison amount)."
+}
