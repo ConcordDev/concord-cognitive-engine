@@ -249,3 +249,26 @@ One real CC money-path bug + two robustness defects fixed:
   behavioral test (30) + 4-UX-state surface (5 vitest) + 12 overrides. Committed @ 379975a.
 Assassin ratchet GREEN (no new violations vs baseline); 258 WIRED; tsc 0; full frontend manifest+sere
 green. ~9 Phase-2 lenses left in the backlog.
+
+### Phase-2 batch 4 DONE (2026-06-27): tournaments, goddess, understanding, worldmodel
+137 server + 23 UX-state tests. All four wired via PATH 3 (domains/index.js). Three fail-open
+robustness fixes, the swallowed-fetch→silent-empty UX defect fixed in all four, AND a real
+dual-registration wiring defect fixed at integration:
+- **tournaments** (committed @ 4b643c6): pure in-memory (no wallet; computePayouts conserves the
+  pool) — defense-in-depth fail-closed isSaneCc guards on prizePoolCc/payoutSplit. 26 server + 6
+  vitest + 6 overrides.
+- **goddess**: fixed swallowed-fetch (unreachable feed read as "goddess has not spoken" — a false
+  empty). DUAL registration (path-3 domain for detail/archive/react/subscribe; server.js inline
+  `recent`/`compose_now` MACROS). 24 server + 7 vitest + 5 overrides.
+- **understanding**: fixed a `diff` fail-open (poisoned from/to → non-finite revision index) + a real
+  DUAL-REGISTRATION WIRING DEFECT found at integration — the page's engine-facing Browse tab called
+  `understanding.list`, but the notes-substrate LENS_ACTION shadows that name for /api/lens/run
+  (dispatcher prefers LENS_ACTIONS), so Browse always got notes-shaped data and rendered empty. Fixed
+  by adding a non-colliding `understanding.engine_list` MACROS alias (server.js) and pointing BrowseTab
+  at it; the notes tab keeps `list`. 25 server (88 full understanding suite) + 4 vitest + 7 overrides.
+- **worldmodel**: fixed a non-finite trajectory overflow (compounding growth → Infinity poisoned the
+  trajectory/total) with a VALUE_CAP=1e12 magnitude clamp. No name shadowing (lens names disjoint from
+  the 16 server.js MACROS). 22 server + 6 vitest + 5 overrides.
+Assassin ratchet GREEN (no new violations vs baseline, incl. the new engine_list); 258 WIRED; tsc 0;
+manifest+sere green. ~5 Phase-2 lenses left (genesis, inheritance, kingdoms, self, world-creator,
+app-maker, cognitive-replay — child/REST-driven, need discovery).

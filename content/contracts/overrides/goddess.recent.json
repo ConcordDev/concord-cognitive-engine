@@ -1,0 +1,19 @@
+{
+  "macro_id": "goddess.recent",
+  "domain": "goddess",
+  "name": "recent",
+  "_note": "limit is a clamped pagination convenience (Math.min(100,Math.max(1,...))) — NOT a fail-closed numeric, so it is intentionally not declared as a numeric input (declaring it makes the V2 fuzzer expect rejection of a value the macro correctly clamps).",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 128 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.dispatches)",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "worldId": "ghost-world-no-rows", "limit": 5 }, "expect": { "ok": true } }
+  ]
+}

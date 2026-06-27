@@ -258,8 +258,11 @@ function BrowseTab({ subjectKinds }: { subjectKinds: SubjectKind[] }) {
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
+      // engine_list (not the bare "list") — the notes-substrate LENS_ACTION
+      // shadows "list" for /api/lens/run; engine_list reaches the real
+      // understanding-engine list this Browse tab is built around.
       const r = await macro<{ ok: boolean; rows?: Understanding[] }>(
-        'understanding', 'list',
+        'understanding', 'engine_list',
         filterKind === 'all' ? {} : { subjectKind: filterKind }
       );
       setRows(r.rows ?? []);

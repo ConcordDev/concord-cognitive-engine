@@ -424,12 +424,20 @@ export default function registerUnderstandingActions(registerLensAction) {
     if (!note) return { ok: false, error: "note not found" };
     const revs = note.revisions;
     if (revs.length < 1) return { ok: false, error: "no revisions" };
+    // Clamp a requested revision index into [0, revs.length-1]. A poisoned
+    // value (NaN / Infinity / non-numeric) falls back to the provided default
+    // rather than propagating a non-finite index into the diff output.
+    const clampIdx = (raw, fallback) => {
+      const v = parseInt(raw, 10);
+      if (!Number.isFinite(v)) return fallback;
+      return Math.max(0, Math.min(revs.length - 1, v));
+    };
     // Default: compare the previous revision against the latest.
     const toIdx = params.to != null
-      ? Math.max(0, Math.min(revs.length - 1, parseInt(params.to, 10)))
+      ? clampIdx(params.to, revs.length - 1)
       : revs.length - 1;
     const fromIdx = params.from != null
-      ? Math.max(0, Math.min(revs.length - 1, parseInt(params.from, 10)))
+      ? clampIdx(params.from, Math.max(0, toIdx - 1))
       : Math.max(0, toIdx - 1);
     const a = (revs[fromIdx]?.body || "").split("\n");
     const b = (revs[toIdx]?.body || "").split("\n");

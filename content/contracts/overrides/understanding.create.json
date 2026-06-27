@@ -1,0 +1,25 @@
+{
+  "macro_id": "understanding.create",
+  "domain": "understanding",
+  "name": "create",
+  "inputs": {
+    "title": { "type": "string", "required": true },
+    "body": { "type": "string" },
+    "tags": { "type": "array", "items": { "type": "string" } }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.note.id === 'string' && output.result.note.id.length > 0)",
+    "output.ok === false || (typeof output.result.note.title === 'string' && output.result.note.title.length > 0)",
+    "output.ok === false || Array.isArray(output.result.note.tags)",
+    "output.ok === false || output.result.note.tags.length <= 32",
+    "output.ok === false || output.result.note.revisionCount === 1",
+    "output.ok === true || (typeof output.error === 'string' && output.error.length > 0)"
+  ],
+  "fuzz_cases": [
+    { "input": { "title": "Spaced repetition", "body": "Recall over time.", "tags": ["memory"] }, "expect": { "ok": true } },
+    { "input": { "title": "" }, "expect": { "ok": false } },
+    { "input": { "title": "   " }, "expect": { "ok": false } }
+  ]
+}

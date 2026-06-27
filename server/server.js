@@ -16466,6 +16466,14 @@ async function initGhostFleet() {
     register("understanding", "list", (_ctx, input = {}) =>
       ({ ok: true, rows: und.listUnderstandings(db, input) }));
 
+    // engine_list: a NON-COLLIDING alias for the engine-understandings list.
+    // The bare "list" name is shadowed for /api/lens/run by the notes-substrate
+    // LENS_ACTION (server/domains/understanding.js), which the dispatcher prefers,
+    // so the lens's engine-facing Browse tab could never reach this engine list.
+    // The notes tab keeps "list"; the Browse tab calls "engine_list".
+    register("understanding", "engine_list", (_ctx, input = {}) =>
+      ({ ok: true, rows: und.listUnderstandings(db, input) }));
+
     register("understanding", "recompose", async (_ctx, input = {}) => {
       try {
         let dtu = input.dtu;

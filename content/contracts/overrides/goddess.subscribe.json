@@ -1,0 +1,21 @@
+{
+  "macro_id": "goddess.subscribe",
+  "domain": "goddess",
+  "name": "subscribe",
+  "inputs": {
+    "tone": { "type": "string", "enum": ["exalted", "warm", "neutral", "cold", "mourning"], "required": true },
+    "worldId": { "type": "string", "maxLength": 128 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.subscription !== null && typeof output.result.subscription === 'object')",
+    "output.ok === false || typeof output.result.subscription.tone === 'string'",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "tone": "radiant" }, "expect": { "ok": false } },
+    { "input": { "tone": "warm", "worldId": "concordia-hub" }, "expect": { "ok": true } }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "macro_id": "goddess.compose_now",
+  "domain": "goddess",
+  "name": "compose_now",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 128 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.dispatch !== null && typeof output.dispatch === 'object')",
+    "output.ok === false || (typeof output.dispatch.tone === 'string' && typeof output.dispatch.body === 'string')",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": true } }
+  ]
+}
