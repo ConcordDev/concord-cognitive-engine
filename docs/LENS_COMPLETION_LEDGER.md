@@ -35,12 +35,12 @@ score bits justified-absent)
 | saved | 3/7 | pending | | saved/collections reader |
 | move-builder | 3/7 | pending | | |
 | garage | 3/7 | pending | | |
-| courtship | 3/7 | pending | | |
+| courtship | 3/7→4/7 | **done** | def0ff4 | dedicated `courtship` domain; fixed propose-threshold 0.60 vs server 0.70 mismatch + Child-column bug; 4 UX states |
 | spectate | 3/7 | pending | | spectator dashboard |
 | mail | 3/7 | **done** | 75031b3 | dedicated `mail` domain; send→inbox→claim single-tx behavioral tests; 4 UX states; wired |
 | narrative-walk | 3/7 | pending | | by-design reader (NO-BACKEND-CALL) — verify |
 | announcements | 3/7 | pending | | announcement-broadcaster heartbeat |
-| housing | 3/7 | pending | | player-housing lens |
+| housing | 3/7→5/7 | **done** | def0ff4 | dedicated `housing` domain; fixed dangling lens.housing.* manifest refs; furniture place/persist tests; 4 UX states |
 | training-room | 3/7→4/7 | **done** | 55df001 | fixed frame-data wrong-column/no_skill defect (#21); real frame tests; 4 UX states |
 | achievements | 3/7 | **done** | 75031b3 | dedicated `achievements` domain; unlock-idempotency + reward-once behavioral tests; 4 UX states; wired |
 | lfg | 3/7→5/7 | **done** | 55df001 | dedicated `lfg` domain; fixed parties expires_at NOT-NULL crash; single-open-per-world tests; 4 UX states |
@@ -54,7 +54,7 @@ score bits justified-absent)
 | civic-bonds | 4/7 | pending | | civic-bonds backend |
 | detective | 4/7 | pending | | detective game backend |
 | photos | 4/7 | pending | | photo gallery backend |
-| fishing | 4/7 | pending | | fishing backend |
+| fishing | 4/7→5/7 | **done** | def0ff4 | dedicated `fishing` domain; fixed buffOnCook [object Object] render; cast→reel→catch tests; 4 UX states |
 | creatures | 4/7 | pending | | creatures/breeding backend |
 | translation | 4/7 | pending | | |
 | repair-telemetry | 4/7 | pending | | dashboard — likely by-design |
@@ -86,3 +86,5 @@ enumerated here until reached.
 - 2026-06-27: batch 1 DONE (auction, mail, achievements) @ 75031b3. 43 left.
 - 2026-06-27: batch 2 DONE (quests, lfg, training-room) @ 55df001 — 42 behavioral + 17 UX-state
   tests; surfaced + fixed 3 real bugs (parties expires_at crash, quests mis-wire, frame-data no_skill). 40 left.
+- 2026-06-27: batch 3 DONE (housing, courtship, fishing) @ def0ff4 — 26 behavioral + 14 UX-state
+  tests; +3 real bugs (courtship threshold mismatch, housing dangling macros, fishing object-render). 37 left. 6 bugs total.
