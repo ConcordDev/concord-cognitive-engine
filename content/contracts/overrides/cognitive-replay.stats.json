@@ -1,0 +1,26 @@
+{
+  "macro_id": "cognitive-replay.stats",
+  "domain": "cognitive-replay",
+  "name": "stats",
+  "inputs": {
+    "sinceDays": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result === 'object' && output.result !== null)",
+    "output.ok === false || (output.result.sinceDays >= 1 && output.result.sinceDays <= 365)",
+    "output.ok === false || (Number.isFinite(output.result.turns) && output.result.turns >= 0)",
+    "output.ok === false || Number.isFinite(output.result.totalTokens)",
+    "output.ok === false || Number.isFinite(output.result.avgTokensPerTurn)",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "sinceDays": 7 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "sinceDays": 1e308 }, "expect": { "ok": true } },
+    { "input": { "sinceDays": -1 }, "expect": { "ok": true } },
+    { "input": { "sinceDays": "9999999999999999999999" }, "expect": { "ok": true } }
+  ],
+  "_note": "cognitive-replay.stats is a LENS_ACTIONS domain handler (server/domains/cognitive-replay.js, PATH 3 via server/domains/index.js → 3-arg registerLensAction(ctx, artifact, params)). It aggregates the caller's live chat-session corpus on globalThis._concordSTATE.sessions — no DB, no user-supplied amount. sinceDays is fail-CLOSED clamped to [1,365] (Number(x)||7 then Math.min(365,Math.max(1,…))), so 1e308/Infinity/NaN/-1 can never produce a non-finite or out-of-range result. Degrade-graceful: an empty corpus returns ok:true with zeroed totals, never no_db. The assassin runs with an internal owner actor so ok:true is reachable (no no_actor)."
+}

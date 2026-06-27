@@ -80,9 +80,14 @@ export function FilteredTimeline({ onJump }: { onJump: (eventId: string) => void
           </button>
         )}
       </div>
-      {error && <div className="rounded border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">{error}</div>}
+      {error && (
+        <div role="alert" className="flex items-center justify-between gap-3 rounded border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">
+          <span>{error}</span>
+          <button onClick={load} className="rounded border border-rose-500/40 px-2 py-0.5 font-medium text-rose-100 hover:bg-rose-500/20">Retry</button>
+        </div>
+      )}
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Filtering…</div>
+        <div role="status" aria-live="polite" className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Filtering…</div>
       ) : data && data.events.length === 0 ? (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-4 text-xs text-zinc-400">No turns match these filters.</div>
       ) : (

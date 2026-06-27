@@ -182,24 +182,48 @@ export default function GenesisLens() {
   const [typeBreakdown, setTypeBreakdown] = useState<Record<string, number>>({});
   const [feedFilter, setFeedFilter] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [isLive, setIsLive] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<DetailTab>('timeline');
 
   const { on, off, isConnected } = useSocket({ autoConnect: true });
 
-  // Initial data load — roster + event-type-filtered feed.
+  // Initial data load — roster + event-type-filtered feed. A fetch failure
+  // surfaces a real error state with a working Retry (bump reloadKey) rather
+  // than silently degrading to an empty page.
   useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setLoadError(null);
     Promise.all([
-      fetch('/api/emergents').then((r) => r.json()).catch(() => ({ emergents: [] })),
-      fetch('/api/emergents/feed/filtered?limit=120').then((r) => r.json()).catch(() => ({ events: [], typeBreakdown: {} })),
-    ]).then(([emergentsData, feedData]) => {
-      setEmergents(emergentsData.emergents || []);
-      setFeed(feedData.events || []);
-      setTypeBreakdown(feedData.typeBreakdown || {});
-      setLoading(false);
-    });
-  }, []);
+      fetch('/api/emergents').then((r) => {
+        if (!r.ok) throw new Error(`roster ${r.status}`);
+        return r.json();
+      }),
+      fetch('/api/emergents/feed/filtered?limit=120').then((r) => {
+        if (!r.ok) throw new Error(`feed ${r.status}`);
+        return r.json();
+      }),
+    ])
+      .then(([emergentsData, feedData]) => {
+        if (!alive) return;
+        if (emergentsData?.ok === false || feedData?.ok === false) {
+          throw new Error(emergentsData?.error || feedData?.error || 'backend error');
+        }
+        setEmergents(emergentsData.emergents || []);
+        setFeed(feedData.events || []);
+        setTypeBreakdown(feedData.typeBreakdown || {});
+        setLoading(false);
+      })
+      .catch((e: unknown) => {
+        if (!alive) return;
+        setLoadError(e instanceof Error ? e.message : 'Failed to reach the observatory');
+        setLoading(false);
+      });
+    return () => { alive = false; };
+  }, [reloadKey]);
 
   // Live feed via WebSocket.
   useEffect(() => {
@@ -317,11 +341,42 @@ export default function GenesisLens() {
             )}
 
             {loading ? (
-              <p className="text-gray-400 text-sm">Loading feed…</p>
+              <p role="status" className="text-gray-400 text-sm">Loading feed…</p>
+            ) : loadError ? (
+              <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                <p className="mb-2">Could not load the observatory ({loadError}).</p>
+                <button
+                  type="button"
+                  onClick={() => setReloadKey((k) => k + 1)}
+                  className="rounded border border-red-400/40 bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-200 hover:bg-red-500/30"
+                >
+                  Retry
+                </button>
+              </div>
             ) : visibleFeed.length === 0 ? (
-              <p className="text-gray-400 text-sm">
-                {feedFilter.length > 0 ? 'No events match the selected types.' : 'No activity yet. Emergents are waking up.'}
-              </p>
+              <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-4 py-6 text-center">
+                <p className="text-gray-400 text-sm">
+                  {feedFilter.length > 0
+                    ? 'No events match the selected types.'
+                    : 'No activity yet. Emergents are waking up.'}
+                </p>
+                {feedFilter.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setFeedFilter([])}
+                    className="mt-2 rounded border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs text-zinc-300 hover:text-white"
+                  >
+                    Clear filters
+                  </button>
+                ) : (
+                  <Link
+                    href="/lenses/genesis#roster"
+                    className="mt-2 inline-block rounded border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-500/20"
+                  >
+                    Explore the roster
+                  </Link>
+                )}
+              </div>
             ) : (
               <div className="space-y-0">
                 <AnimatePresence initial={false}>

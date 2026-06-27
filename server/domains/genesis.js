@@ -55,6 +55,19 @@ function parseJson(raw, fallback) {
   try { return JSON.parse(raw); } catch { return fallback; }
 }
 
+/**
+ * Fail-CLOSED limit clamp. Poisoned query params (`1e308`, `Infinity`,
+ * `NaN`, `-5`, `0`) must never reach SQLite's LIMIT as-is — a negative or
+ * zero limit makes SQLite return EVERY row (unbounded), a fail-open DoS.
+ * Floor at 1, cap at `max`, default to `def` when the value is missing or
+ * non-finite. Always returns a safe positive integer in [1, max].
+ */
+function clampLimit(raw, def, max) {
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n <= 0) return Math.min(def, max);
+  return Math.min(n, max);
+}
+
 function isArtifactObservation(obs) {
   return typeof obs?.observation === "string" && obs.observation.startsWith("[artifact:");
 }
@@ -108,7 +121,7 @@ export function computeIdentityDetail(db, target, opts = {}) {
   const identity = loadIdentity(db, target, STATE);
   if (!identity) return { ok: false, error: "emergent_not_found" };
   const eid = identity.emergent_id;
-  const limit = Math.min(parseInt(opts.limit, 10) || 120, 400);
+  const limit = clampLimit(opts.limit, 120, 400);
 
   const observations = db.prepare(
     "SELECT * FROM emergent_observations WHERE emergent_id = ? ORDER BY created_at DESC LIMIT ?"
@@ -231,7 +244,7 @@ export function computeRosterSearch(db, params = {}) {
 /** Undirected weighted communication graph between emergent identities. */
 export function computeRelationshipGraph(db, params = {}) {
   const STATE = params.STATE;
-  const limit = Math.min(parseInt(params.limit, 10) || 500, 2000);
+  const limit = clampLimit(params.limit, 500, 2000);
   let comms = [];
   try {
     comms = db.prepare(
@@ -280,7 +293,7 @@ export function computeRelationshipGraph(db, params = {}) {
 /** Event-type-filtered activity feed + type breakdown. */
 export function computeFeedFiltered(db, params = {}) {
   const STATE = params.STATE;
-  const limit = Math.min(parseInt(params.limit, 10) || 80, 300);
+  const limit = clampLimit(params.limit, 80, 300);
   const types = Array.isArray(params.types)
     ? params.types.map((t) => String(t))
     : params.type ? [String(params.type)] : null;

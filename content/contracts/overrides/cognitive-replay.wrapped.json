@@ -1,0 +1,24 @@
+{
+  "macro_id": "cognitive-replay.wrapped",
+  "domain": "cognitive-replay",
+  "name": "wrapped",
+  "inputs": {
+    "sinceDays": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.sinceDays >= 1 && output.result.sinceDays <= 365)",
+    "output.ok === false || typeof output.result.archetype === 'string'",
+    "output.ok === false || (Number.isInteger(output.result.peakHour) && output.result.peakHour >= 0 && output.result.peakHour <= 23)",
+    "output.ok === false || (Array.isArray(output.result.cards) && output.result.cards.length === 8)",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "sinceDays": 7 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "sinceDays": 1e308 }, "expect": { "ok": true } },
+    { "input": { "sinceDays": -99 }, "expect": { "ok": true } }
+  ],
+  "_note": "cognitive-replay.wrapped composes Spotify-Wrapped-style summary cards over the caller's live corpus. Every card value is computed (turns/tokens/top brain/archetype/busiest day/peak hour/citations/tools) — no fabricated rows. sinceDays clamps to [1,365]; peakHour is always a valid hour 0..23 even on an empty corpus (defaults to 0). An empty corpus yields archetype 'The Generalist' with zeroed cards, ok:true (degrade-graceful)."
+}
