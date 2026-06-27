@@ -355,6 +355,34 @@ untested long tail.
 Assassin ratchet GREEN (no new violations vs baseline); 258 WIRED; tsc 0.
 31 lenses now through the non-score gate (batches 1–8). The loop continues.
 
+### Phase-2 batch 9 DONE (2026-06-27): accounting, agriculture, astronomy, carpentry, calendar
+164 server + 22 UX-state tests. Five path-3 compute lenses (all prior had only a domain-parity test).
+Three real fail-open fixes + two real silent-empty/dead-calculator wiring fixes:
+- **accounting** (path-3; the "2 inline registers" were DTU schema-migration transformers, not macros):
+  🔴 real LEDGER-CORRUPTION fail-open — je-post's balance guard let Infinity−Infinity=NaN pass the
+  |debit−credit|>0.01 check, persisting Infinity into the journal and corrupting every later report;
+  parseFloat(x)||0 also leaked Infinity into totals. finNum/finiteOrNull across 12 sites. 22 server +
+  5 vitest + 5 overrides.
+- **astronomy** (path-3; live_* in astronomy-live.js): fail-opens in celestialPosition/lightTravelTime/
+  orbitalMechanics → finiteOr guard + eccentricity clamp + Kepler mass/semi-major>0 guards; live_*
+  tested reject-without-fetch. 35 server + 4 vitest + 6 overrides.
+- **carpentry**: real DEAD-CALCULATOR wiring bug — CarpentryShop double-wrapped input as
+  {input:{artifact:{data}}} so the backend saw artifact.data={artifact:{data}} → every board-foot/
+  joint/wood calculator silently returned the empty default and result cards rendered nothing in
+  production; plus a wrong price field (pricePerBoardFoot vs pricePerBF) and result cards reading
+  fields the backend never emits. All fixed in the caller. 20 server + 5 vitest + 6 overrides.
+- **agriculture**: no defect (per-handler try/catch robust). 48 server + 4 vitest + 6 overrides.
+- **calendar** (the 5 server.js inline blocks are also registerLensAction → LENS_ACTIONS, not MACROS):
+  no defect (scheduleOptimize verified correct; connector paths reject-without-network). 39 server +
+  4 vitest + 6 overrides.
+Assassin ratchet GREEN (no new violations vs baseline); 258 WIRED; tsc 0.
+NOTE (accurate coverage boundary): path-3 LENS_ACTIONS macros are NOT enumerated by the macro-assassin
+(it drives the runMacro/MACROS registry only), so for path-3 lenses the behavioral test is the
+load-bearing proof and the contract overrides are documented contracts (valid but not assassin-driven).
+MACROS-registered lenses (e.g. codex/lore, ledger) ARE assassin-driven. A future harness enhancement
+could add LENS_ACTIONS enumeration to fuzz the ~8k path-3 macros — a larger separate task.
+36 lenses now through the non-score gate (batches 1–9). The loop continues.
+
 **NAMED PHASE-2 BACKLOG CLOSED (2026-06-27):** all 6 batches done (24 lenses through the non-score
 gate across batches 1–6). Real defects fixed across the run: 2 CC money bugs (sponsorship.create,
 inheritance value/open_listing) + 1 in-game-currency treasury fail-open (kingdoms) + ~6 numeric

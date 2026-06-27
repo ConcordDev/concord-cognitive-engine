@@ -1,0 +1,26 @@
+{
+  "macro_id": "carpentry.jointStrength",
+  "domain": "carpentry",
+  "name": "jointStrength",
+  "inputs": {
+    "jointType": { "type": "string", "maxLength": 40 },
+    "species": { "type": "string", "maxLength": 40 },
+    "glued": { "type": "boolean" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (Number.isFinite(output.result.baseStrength) && output.result.baseStrength > 0)",
+    "output.ok === false || (Number.isFinite(output.result.effectiveStrength) && output.result.effectiveStrength >= 0)",
+    "output.ok === false || ['excellent','good','moderate','weak'].includes(output.result.rating)",
+    "output.ok === false || (output.result.glueBonus === 'none' || output.result.glueBonus === '+20')"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "jointType": "dovetail", "species": "oak", "glued": true } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "jointType": "butt", "species": "pine", "glued": false } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "jointType": "made-up", "species": "unobtanium" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "effectiveStrength = round(baseStrength × speciesMultiplier) + glueBonus, where glueBonus is +20 unless glued:false. Unknown jointType falls to base 30; unknown species to 0.85×. rating bands: >=80 excellent, >=50 good, >=30 moderate, else weak. Reads from artifact.data (CarpentryShop channel). Pure compute, no STATE, deterministic."
+}

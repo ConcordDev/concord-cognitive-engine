@@ -1,0 +1,23 @@
+{
+  "macro_id": "carpentry.boardFootCalc",
+  "domain": "carpentry",
+  "name": "boardFootCalc",
+  "inputs": {
+    "pieces": { "type": "array", "maxLength": 5000 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.totalBoardFeet === undefined || (Number.isFinite(output.result.totalBoardFeet) && output.result.totalBoardFeet >= 0)",
+    "output.ok === false || output.result.pieces === undefined || Array.isArray(output.result.pieces)",
+    "output.ok === false || output.result.totalWithWaste === undefined || Number.isFinite(output.result.totalWithWaste)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "pieces": [{ "thickness": 1, "width": 6, "length": 96, "quantity": 2, "pricePerBF": 5 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "pieces": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "pieces": [{ "thickness": "x", "width": null, "length": "oops", "quantity": "two" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Reads pieces from artifact.data.pieces (CarpentryShop sends {input: data}, the route mirrors data onto the virtual artifact). BF = (t×w×l)/144 × qty with t/w/l/qty defaulting to 1/6/96/1 on garbage. wasteAllowance = total×0.15, totalWithWaste = total×1.15. Per-piece cost is null (never a fake $0) when no pricePerBF; totalCost falls back to the honest 'Price per BF not specified' string. Empty pieces returns an honest prompt message, not a fabricated tally. Pure compute, no STATE, no NaN leak."
+}

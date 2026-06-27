@@ -1,0 +1,28 @@
+{
+  "macro_id": "carpentry.estimateToInvoice",
+  "domain": "carpentry",
+  "name": "estimateToInvoice",
+  "inputs": {
+    "estimateId": { "type": "string", "required": true, "maxLength": 120 },
+    "amount": { "type": "number", "min": 0.01, "max": 100000000 },
+    "client": { "type": "string", "maxLength": 160 },
+    "taxPct": { "type": "number", "min": 0, "max": 25 },
+    "depositPct": { "type": "number", "min": 0, "max": 100 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.invoice && typeof output.result.invoice.invoiceNumber === 'string')",
+    "output.ok === false || (Number.isFinite(output.result.invoice.total) && output.result.invoice.total >= output.result.invoice.subtotal)",
+    "output.ok === false || (Number.isFinite(output.result.invoice.tax) && output.result.invoice.tax >= 0)",
+    "output.ok === false || output.result.invoice.status === 'issued'",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "estimateId": "est1", "client": "Acme", "amount": 1000, "taxPct": 10, "depositPct": 25 }, "expect": { "ok": true } },
+    { "input": { "estimateId": "x", "amount": 0 }, "expect": { "ok": false } },
+    { "input": { "amount": 10 }, "expect": { "ok": false } },
+    { "input": { "estimateId": "x", "amount": "not-money" }, "expect": { "ok": false } }
+  ],
+  "_note": "STATE-backed. Requires a non-empty estimateId and a positive finite amount (NaN/Infinity/string → 0 → rejected). total = round(amount×(1+taxPct/100)); depositDue = round(total×depositPct/100). invoiceNumber auto-increments from INV-1001. Degrade-graceful: when globalThis._concordSTATE is absent, returns {ok:false, error:'STATE unavailable'} — never throws, never no_db."
+}

@@ -1,0 +1,30 @@
+{
+  "macro_id": "carpentry.materialTakeoff",
+  "domain": "carpentry",
+  "name": "materialTakeoff",
+  "inputs": {
+    "projectName": { "type": "string", "maxLength": 160 },
+    "items": { "type": "array", "maxLength": 5000 },
+    "wastePct": { "type": "number", "min": 0, "max": 50 },
+    "laborHours": { "type": "number", "min": 0, "max": 100000 },
+    "laborRate": { "type": "number", "min": 0, "max": 100000 },
+    "overheadPct": { "type": "number", "min": 0, "max": 60 },
+    "marginPct": { "type": "number", "min": 0, "max": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (Number.isFinite(output.result.materialSubtotal) && output.result.materialSubtotal >= 0)",
+    "output.ok === false || (Number.isFinite(output.result.laborCost) && output.result.laborCost >= 0)",
+    "output.ok === false || (Number.isFinite(output.result.total) && output.result.total >= 0)",
+    "output.ok === false || Array.isArray(output.result.items)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "projectName": "Deck", "items": [{ "name": "2x6", "quantity": 10, "unitCost": 8 }], "wastePct": 0, "laborHours": 4, "laborRate": 50, "overheadPct": 0, "marginPct": 0 }, "expect": { "ok": true } },
+    { "input": { "items": [] }, "expect": { "ok": false } },
+    { "input": { "items": [{ "quantity": 0, "unitCost": 5 }] }, "expect": { "ok": false } },
+    { "input": { "items": [{ "name": "x", "quantity": 10, "unitCost": "abc" }], "laborHours": -4, "laborRate": "x", "wastePct": null, "marginPct": -99 }, "expect": { "ok": true } }
+  ],
+  "_note": "Rolls qty×unitCost line items → +waste → +labor → +overhead → +margin to an exact total. All percent + cost inputs sanitised+clamped (wastePct 0..50, overheadPct 0..60, marginPct 0..80; negative labor floors to 0). Rows with non-positive quantity are dropped; an empty surviving set rejects with 'no valid takeoff items'. Poisoned numerics never produce a NaN or negative total. Pure compute, no STATE."
+}
