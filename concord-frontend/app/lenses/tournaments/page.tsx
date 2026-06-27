@@ -47,6 +47,7 @@ export default function TournamentsPage() {
   const [detail, setDetail] = useState<Tournament | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useLensCommand(
     [
@@ -57,25 +58,48 @@ export default function TournamentsPage() {
   );
 
   const fetchList = useCallback(async () => {
-    const input = statusFilter === 'all' ? {} : { status: statusFilter };
-    const r = await lensRun<{ tournaments: Tournament[]; counts: CountMap }>('tournaments', 'list', input);
-    if (r.data.ok && r.data.result) {
-      setTournaments(r.data.result.tournaments || []);
-      setCounts(r.data.result.counts || {});
-    } else {
-      setError(r.data.error || 'list_failed');
+    setLoading(true);
+    setError(null);
+    try {
+      const input = statusFilter === 'all' ? {} : { status: statusFilter };
+      const r = await lensRun<{ tournaments: Tournament[]; counts: CountMap }>('tournaments', 'list', input);
+      if (r.data.ok && r.data.result) {
+        setTournaments(r.data.result.tournaments || []);
+        setCounts(r.data.result.counts || {});
+      } else {
+        setError(r.data.error || 'list_failed');
+      }
+    } catch {
+      // Don't swallow a transport/network failure into a silently-empty page.
+      setError('list_failed');
+    } finally {
+      setLoading(false);
     }
   }, [statusFilter]);
 
   const fetchDetail = useCallback(async (id: string) => {
-    const r = await lensRun<{ tournament: Tournament }>('tournaments', 'get', { id });
-    if (r.data.ok && r.data.result?.tournament) setDetail(r.data.result.tournament);
-    else setError(r.data.error || 'get_failed');
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await lensRun<{ tournament: Tournament }>('tournaments', 'get', { id });
+      if (r.data.ok && r.data.result?.tournament) setDetail(r.data.result.tournament);
+      else setError(r.data.error || 'get_failed');
+    } catch {
+      setError('get_failed');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  const retry = useCallback(() => {
+    if (view === 'detail' && activeId) fetchDetail(activeId);
+    else fetchList();
+  }, [view, activeId, fetchDetail, fetchList]);
 
   useEffect(() => {
     if (view === 'list') fetchList();
-    if (view === 'detail' && activeId) fetchDetail(activeId);
+    else if (view === 'detail' && activeId) fetchDetail(activeId);
+    else setLoading(false);
   }, [view, activeId, statusFilter, fetchList, fetchDetail]);
 
   // Spectator deep-link: ?spectate=<shareSlug> opens read-only detail.
@@ -142,13 +166,28 @@ export default function TournamentsPage() {
           </header>
 
           {error && (
-            <div className="mb-4 flex items-center justify-between rounded bg-rose-950/40 px-3 py-2 text-sm text-rose-300">
-              <span>{error}</span>
-              <button onClick={() => setError(null)} aria-label="Dismiss error"><X className="h-4 w-4" /></button>
+            <div role="alert" className="mb-4 flex items-center justify-between rounded bg-rose-950/40 px-3 py-2 text-sm text-rose-300">
+              <span>Couldn&apos;t load tournaments ({error}).</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={retry}
+                  className="rounded bg-rose-800/60 px-2 py-0.5 text-xs font-medium hover:bg-rose-700/60"
+                >
+                  Retry
+                </button>
+                <button onClick={() => setError(null)} aria-label="Dismiss error"><X className="h-4 w-4" /></button>
+              </div>
             </div>
           )}
 
-          {view === 'list' && (
+          {loading && !error && (
+            <div role="status" className="rounded-lg border border-slate-800 bg-slate-900 p-12 text-center text-slate-400">
+              <Trophy className="mx-auto mb-3 h-10 w-10 animate-pulse text-slate-700" />
+              Loading tournaments…
+            </div>
+          )}
+
+          {!loading && !error && view === 'list' && (
             <TournamentList
               tournaments={tournaments}
               counts={counts}
@@ -157,7 +196,7 @@ export default function TournamentsPage() {
               onPick={(id) => { setActiveId(id); setDetail(null); setView('detail'); }}
             />
           )}
-          {view === 'detail' && detail && (
+          {!loading && view === 'detail' && detail && (
             <TournamentDetail
               t={detail}
               busy={busy}
@@ -165,7 +204,7 @@ export default function TournamentsPage() {
               onRefresh={() => activeId && fetchDetail(activeId)}
             />
           )}
-          {view === 'create' && (
+          {!loading && view === 'create' && (
             <TournamentCreate
               busy={busy}
               run={run}

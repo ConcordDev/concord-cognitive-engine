@@ -36,6 +36,13 @@ export default function registerTournamentsActions(registerLensAction) {
   const actor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const clean = (v, max = 160) => String(v == null ? "" : v).trim().slice(0, max);
   const num = (v, def = 0) => { const n = Number(v); return Number.isFinite(n) ? n : def; };
+  // Fail-CLOSED bound for any CC-denominated amount (prize pool, payout split
+  // weights). Rejects NaN/Infinity AND finite-but-absurd values (e.g. 1e308)
+  // BEFORE they are stored or reach payout math — same guard the sibling
+  // economy lenses (staking/bounties/sponsorship) needed. `num()` already maps
+  // NaN/Infinity → def, so this catches the finite-absurd injection path.
+  const CC_MAX = 1e6;
+  const isSaneCc = (v) => { const n = Number(v); return Number.isFinite(n) && n >= 0 && n <= CC_MAX; };
   const list = (s, userId) => { if (!s.tournaments.has(userId)) s.tournaments.set(userId, []); return s.tournaments.get(userId); };
   function find(s, userId, id) {
     return (s.tournaments.get(userId) || []).find((t) => t.id === id) || null;
@@ -329,6 +336,13 @@ export default function registerTournamentsActions(registerLensAction) {
       const s = getState();
       const userId = actor(ctx);
       const p = { ...(artifact?.data || {}), ...(params || {}) };
+      // Fail-CLOSED on any poisoned CC amount before persisting anything.
+      if (p.prizePoolCc != null && !isSaneCc(p.prizePoolCc)) {
+        return { ok: false, error: "invalid_prize_pool" };
+      }
+      if (Array.isArray(p.payoutSplit) && p.payoutSplit.some((x) => !isSaneCc(x))) {
+        return { ok: false, error: "invalid_payout_split" };
+      }
       const t = emptyTournament(p);
       list(s, userId).unshift(t);
       pushLog(t, `Created ${t.format} tournament "${t.title}"`);
@@ -587,6 +601,9 @@ export default function registerTournamentsActions(registerLensAction) {
       if (!t) return { ok: false, error: "tournament_not_found" };
       if (t.status !== "completed") return { ok: false, error: "tournament_not_completed" };
       if (Array.isArray(p.payoutSplit) && p.payoutSplit.length) {
+        if (p.payoutSplit.some((x) => !isSaneCc(x))) {
+          return { ok: false, error: "invalid_payout_split" };
+        }
         t.payoutSplit = p.payoutSplit.map((x) => Math.max(0, num(x, 0)));
       }
       t.payouts = computePayouts(t);

@@ -1,0 +1,23 @@
+{
+  "macro_id": "tournaments.addEntrant",
+  "domain": "tournaments",
+  "name": "addEntrant",
+  "inputs": {
+    "id": { "type": "string", "required": true, "maxLength": 64 },
+    "name": { "type": "string", "maxLength": 60 },
+    "rating": { "type": "number", "min": 0, "max": 5000 },
+    "roster": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string'",
+    "output.ok === false || (output.result && output.result.entrant && typeof output.result.entrant.id === 'string')",
+    "output.ok === false || (typeof output.result.entrant.seed === 'number' && output.result.entrant.seed >= 1)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "tournament_not_found" } },
+    { "input": { "id": "__nope__", "name": "Mallory" }, "expect": { "ok": false, "error": "tournament_not_found" } }
+  ],
+  "_note": "tournaments.addEntrant registers a solo entrant or team into a tournament owned by the caller. Unknown id (or another user's id) → 'tournament_not_found' (per-user isolated). Registration only while status 'upcoming' and not locked, else 'registration_closed'; full bracket → 'tournament_full'; empty name → 'name_required'; team mode with no roster → 'roster_required'. New entrants get a sequential seed; rating is clamped [0,5000]. No money moves."
+}
