@@ -39,7 +39,7 @@ score bits justified-absent)
 | spectate | 3/7 | pending | | spectator dashboard |
 | mail | 3/7 | **done** | 75031b3 | dedicated `mail` domain; send→inbox→claim single-tx behavioral tests; 4 UX states; wired |
 | narrative-walk | 3/7 | pending | | by-design reader (NO-BACKEND-CALL) — verify |
-| announcements | 3/7 | pending | | announcement-broadcaster heartbeat |
+| announcements | 3/7→5/7 | **done** | batch4 | dedicated `announcements` domain (list/get public, post admin-gated); fixed dangling `lens.announcements.*` manifest refs + error-swallow UX defect (now honest error+retry vs empty); 16 server + 4 UX-state tests |
 | housing | 3/7→5/7 | **done** | def0ff4 | dedicated `housing` domain; fixed dangling lens.housing.* manifest refs; furniture place/persist tests; 4 UX states |
 | training-room | 3/7→4/7 | **done** | 55df001 | fixed frame-data wrong-column/no_skill defect (#21); real frame tests; 4 UX states |
 | achievements | 3/7 | **done** | 75031b3 | dedicated `achievements` domain; unlock-idempotency + reward-once behavioral tests; 4 UX states; wired |
@@ -52,10 +52,10 @@ score bits justified-absent)
 | ledger | 4/7 | pending | | economy ledger reader |
 | forecast | 4/7 | pending | | forecast backend |
 | civic-bonds | 4/7 | pending | | civic-bonds backend |
-| detective | 4/7 | pending | | detective game backend |
+| detective | 4/7→5/7 | **done** | batch4 | dedicated `detective` domain delegating to lib (Obra-Dinn 2-of-3 + suspect_match lock-in); fixed dangling `lens.detective.*` manifest refs; added non-culprit-leaking `getCrimeWithEvidence`; 10 server + 5 UX-state tests |
 | photos | 4/7 | pending | | photo gallery backend |
 | fishing | 4/7→5/7 | **done** | def0ff4 | dedicated `fishing` domain; fixed buffOnCook [object Object] render; cast→reel→catch tests; 4 UX states |
-| creatures | 4/7 | pending | | creatures/breeding backend |
+| creatures | 4/7→5/7 | **done** | batch4 | extended `creatures` domain (+species/roster/lineage/breed) delegating to creature-crossbreeding + species-taxonomy; fixed dangling `lens.creatures.*` refs + the breed `bond_too_low` bug (thin parents lacked physics blueprints → no hybrid ever produced); 8 server + 4 UX-state tests |
 | translation | 4/7 | pending | | |
 | repair-telemetry | 4/7 | pending | | dashboard — likely by-design |
 | code-quality | 4/7 | pending | | dashboard |
@@ -88,3 +88,7 @@ enumerated here until reached.
   tests; surfaced + fixed 3 real bugs (parties expires_at crash, quests mis-wire, frame-data no_skill). 40 left.
 - 2026-06-27: batch 3 DONE (housing, courtship, fishing) @ def0ff4 — 26 behavioral + 14 UX-state
   tests; +3 real bugs (courtship threshold mismatch, housing dangling macros, fishing object-render). 37 left. 6 bugs total.
+- 2026-06-27: batch 4 DONE (detective, announcements, creatures) — 34 behavioral + 13 UX-state
+  tests; +3 real bugs (detective dangling-macro + arrest_records→trial_records, announcements
+  error-swallow UX defect, creatures breed `bond_too_low` no-hybrid bug); all 3 dangling `lens.*`
+  manifest refs fixed. verify-lens-backends 258 WIRED / 0 broken. 34 left. 9 bugs total.

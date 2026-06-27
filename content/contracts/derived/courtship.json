@@ -1,0 +1,293 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "courtship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "courtship.birth",
+      "name": "birth"
+    },
+    {
+      "_derived": true,
+      "domain": "courtship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "courtship.children",
+      "name": "children"
+    },
+    {
+      "_derived": true,
+      "domain": "courtship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "courtship.conceive",
+      "name": "conceive"
+    },
+    {
+      "_derived": true,
+      "domain": "courtship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "courtship.constants",
+      "name": "constants"
+    },
+    {
+      "_derived": true,
+      "domain": "courtship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "courtship.dissolve",
+      "name": "dissolve"
+    },
+    {
+      "_derived": true,
+      "domain": "courtship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "courtship.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "courtship",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "partnerId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "partnerKind": {
+          "enum": [
+            "player",
+            "npc"
+          ],
+          "type": "string"
+        },
+        "sentiment": {
+          "max": 1,
+          "min": -1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.affinity === 'number' && output.affinity >= -1 && output.affinity <= 1)",
+        "output.ok === false || typeof output.status === 'string'"
+      ],
+      "macro_id": "courtship.interact",
+      "name": "interact"
+    },
+    {
+      "_derived": false,
+      "domain": "courtship",
+      "fuzz_cases": [],
+      "inputs": {
+        "status": {
+          "enum": [
+            "acquainted",
+            "courting",
+            "engaged",
+            "married",
+            "widowed",
+            "estranged"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.courtships)",
+        "output.ok === false || output.courtships.every(c => typeof c.affinity === 'number' && c.affinity >= -1 && c.affinity <= 1)"
+      ],
+      "macro_id": "courtship.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "courtship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "courtship.marriages",
+      "name": "marriages"
+    },
+    {
+      "_derived": false,
+      "domain": "courtship",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "no_courtship"
+          },
+          "input": {
+            "partnerId": "no_such_courtship",
+            "partnerKind": "npc"
+          }
+        }
+      ],
+      "inputs": {
+        "partnerId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "partnerKind": {
+          "enum": [
+            "player",
+            "npc"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.reason !== 'affinity_too_low' || (typeof output.required === 'number' && output.required > 0 && output.required <= 1)",
+        "output.reason !== 'affinity_too_low' || output.got < output.required",
+        "output.ok === false || output.status === 'engaged'"
+      ],
+      "macro_id": "courtship.propose",
+      "name": "propose"
+    },
+    {
+      "_derived": true,
+      "domain": "courtship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "courtship.spouse_react",
+      "name": "spouse_react"
+    },
+    {
+      "_derived": true,
+      "domain": "courtship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "courtship.spouses",
+      "name": "spouses"
+    },
+    {
+      "_derived": false,
+      "domain": "courtship",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "no_courtship"
+          },
+          "input": {
+            "partnerId": "no_such_courtship",
+            "partnerKind": "npc"
+          }
+        }
+      ],
+      "inputs": {
+        "partnerId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "partnerKind": {
+          "enum": [
+            "player",
+            "npc"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.reason !== 'affinity_too_low' || (typeof output.required === 'number' && output.required > 0 && output.required <= 1)",
+        "output.ok === false || output.status === 'married'",
+        "output.ok === false || typeof output.marriageId === 'string'"
+      ],
+      "macro_id": "courtship.wed",
+      "name": "wed"
+    }
+  ],
+  "domain": "courtship",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 13
+}

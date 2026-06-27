@@ -11,7 +11,14 @@
 // taxonomy   — the taxonomy record for one species id.
 // Public-read (world-visible).
 
-import { taxonomyForSpecies, isAquaticSpecies } from "../lib/species-taxonomy.js";
+import { taxonomyForSpecies, isAquaticSpecies, topologyForSpecies, speciesCatalog } from "../lib/species-taxonomy.js";
+import { generateCreature } from "../lib/procedural-creature.js";
+import {
+  recordEncounter,
+  ensureCrossbreedingTables,
+  generateHybrid,
+  getLineage,
+} from "../lib/creature-crossbreeding.js";
 
 // Deterministic coat colour from species id + dominant affinity, so a steam
 // variant reads cool-grey, a magma variant red, etc. — no per-species art asset.
@@ -93,4 +100,143 @@ export default function registerCreatureMacros(register) {
     if (!speciesId) return { ok: false, reason: "missing_species_id" };
     return { ok: true, taxonomy: taxonomyForSpecies(speciesId) };
   }, { note: "taxonomy record (clade/topology/diet) for a species id" });
+
+  // ── Lens surface ────────────────────────────────────────────────────
+  // The creatures lens browses populations + the species library and breeds.
+  // These delegate to the real libs (species-taxonomy + creature-crossbreeding);
+  // no breeding logic is duplicated here.
+
+  /**
+   * creatures.species — the authored species library (the real catalog the
+   * lens picks parents from). Read-only, world-agnostic.
+   */
+  register("creatures", "species", async (_ctx, _input = {}) => {
+    const catalog = speciesCatalog();
+    return { ok: true, species: catalog, count: catalog.length };
+  }, { note: "the authored species library (clade/topology/diet per species)" });
+
+  /**
+   * creatures.roster — the live populations in a world (per-biome fauna).
+   * input: { worldId, limit? }
+   */
+  register("creatures", "roster", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const worldId = input.worldId || input.world_id;
+    if (!worldId) return { ok: false, reason: "missing_world_id" };
+    const limit = Math.min(Math.max(Number(input.limit) || 100, 1), 500);
+    let rows = [];
+    try {
+      rows = db.prepare(`
+        SELECT id, world_id, biome, species_id, lifestyle, current_count, target_count
+        FROM creature_population WHERE world_id = ?
+        ORDER BY current_count DESC LIMIT ?
+      `).all(worldId, limit);
+    } catch { return { ok: true, populations: [], count: 0 }; }
+    // Enrich each population with its real taxonomy so the UI reads richly.
+    const populations = rows.map((r) => ({
+      ...r,
+      topology: topologyForSpecies(r.species_id),
+      clade: taxonomyForSpecies(r.species_id).clade,
+      aquatic: isAquaticSpecies(r.species_id),
+    }));
+    return { ok: true, populations, count: populations.length };
+  }, { note: "live per-biome creature populations in a world (taxonomy-enriched)" });
+
+  /**
+   * creatures.lineage — a creature's parents + descendants.
+   * input: { creatureId }
+   */
+  register("creatures", "lineage", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const creatureId = input.creatureId || input.creature_id;
+    if (!creatureId) return { ok: false, reason: "missing_creature_id" };
+    return { ok: true, lineage: getLineage(db, creatureId) || { self: null, descendants: [] } };
+  }, { note: "lineage (self + descendants) for a creature id" });
+
+  /**
+   * creatures.breed — the crossbreeding pen. The lens passes two SPECIES
+   * (with optional ids + a shared biome). We synthesize a real, physics-valid
+   * parent blueprint per species from the procedural generator (so mass /
+   * topology / parts are real, not faked), seed the bond past the breeding
+   * threshold for an explicit pen-pairing, then delegate to generateHybrid()
+   * — the single real breeding path. Same-biome pairings get the bond bonus
+   * (sameEnvironmentBonus → SAME_ENV_BONUS) so they cross more readily.
+   *
+   * input: {
+   *   a: { id?, species_id, lifestyle? },
+   *   b: { id?, species_id, lifestyle? },
+   *   environment?: string (biome),
+   *   sameEnvironmentBonus?: boolean,
+   *   worldId?: string,
+   * }
+   */
+  register("creatures", "breed", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const a = input.a, b = input.b;
+    const speciesA = a?.species_id || a?.speciesId;
+    const speciesB = b?.species_id || b?.speciesId;
+    if (!a || !b || !speciesA || !speciesB) return { ok: false, reason: "missing_parents" };
+    const worldId = input.worldId || input.world_id || "concordia-hub";
+    const biome = input.environment || null;
+    const sameEnv = input.sameEnvironmentBonus === true;
+
+    try {
+      ensureCrossbreedingTables(db);
+
+      // Build a real parent blueprint per species via the procedural generator.
+      // The generator returns { id, worldId, topology, massKg, heightM, parts, ... }
+      // — everything generateHybrid needs. Stable id when the caller supplies one.
+      const buildParent = (parent, speciesId) => {
+        const bp = generateCreature({
+          description: speciesId,
+          worldId,
+          topology: topologyForSpecies(speciesId),
+          origin: "pen-pairing",
+        });
+        if (parent?.id) bp.id = String(parent.id);
+        bp.species_id = speciesId;
+        return bp;
+      };
+      const pa = buildParent(a, speciesA);
+      const pb = buildParent(b, speciesB);
+      if (pa.id === pb.id) return { ok: false, reason: "self_pair" };
+
+      // An explicit pen-pairing is an intentional, sustained encounter: seed the
+      // bond past the same-world threshold in one shot (the wild path builds it
+      // over many co-located ticks via recordEncounter). Same-biome carries the
+      // env bonus so the cross is more reliable.
+      for (let i = 0; i < 24; i++) {
+        recordEncounter(db, {
+          aId: pa.id, bId: pb.id, worldA: worldId, worldB: worldId,
+          environment: biome, sameEnvironmentBonus: sameEnv,
+        });
+      }
+
+      const environment = biome ? { kind: biome } : null;
+      const result = generateHybrid(db, { a: pa, b: pb, environment });
+      if (!result.ok) return result;
+      // Surface a lean, UI-friendly hybrid shape alongside the full blueprint.
+      return {
+        ok: true,
+        hybrid: {
+          id: result.hybrid.id,
+          species_id: result.hybrid.species_id || result.hybrid.provenance?.description || "hybrid",
+          topology: result.hybrid.topology,
+          massKg: result.hybrid.massKg,
+          variant: result.hybrid.variant || result.hybrid.genotype?.variant || null,
+        },
+        stability: result.stability,
+        crossWorld: result.crossWorld,
+        inheritedSkillIds: result.inheritedSkillIds,
+        generation: result.generation,
+        parents: result.parents,
+        sameEnvironmentBonus: sameEnv,
+      };
+    } catch (e) {
+      return { ok: false, reason: "breed_failed", error: e?.message };
+    }
+  }, { note: "crossbreed two species → a real physics-valid hybrid (delegates to creature-crossbreeding)" });
 }

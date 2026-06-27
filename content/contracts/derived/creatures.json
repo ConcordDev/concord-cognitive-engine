@@ -1,6 +1,56 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "creatures",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "a": {
+              "species_id": "wolf"
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "environment": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "sameEnvironmentBonus": {
+          "type": "boolean"
+        },
+        "worldId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.hybrid && typeof output.hybrid.id === 'string' && output.hybrid.id.length > 0)",
+        "output.ok === false || (typeof output.hybrid.massKg === 'number' && output.hybrid.massKg > 0)",
+        "output.ok === false || (typeof output.stability === 'number' && output.stability > 0 && output.stability <= 1)",
+        "output.ok === false || ['quadruped','winged_quadruped','winged_biped','humanoid','serpentine','amorphous','polyped','eel','shark','fish','cephalopod','biped'].includes(output.hybrid.topology)",
+        "output.ok === false || Array.isArray(output.parents)",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "creatures.breed",
+      "name": "breed"
+    },
+    {
       "_derived": true,
       "domain": "creatures",
       "fuzz_cases": [],
@@ -23,11 +73,98 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "creatures.lineage",
+      "name": "lineage"
+    },
+    {
+      "_derived": false,
+      "domain": "creatures",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "concordia-hub"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 500,
+          "min": 1,
+          "type": "number"
+        },
+        "worldId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.populations)",
+        "output.ok === false || output.count === output.populations.length",
+        "output.ok === false || output.populations.every(p => typeof p.species_id === 'string')",
+        "output.ok === false || output.populations.every(p => typeof p.topology === 'string')",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "creatures.roster",
+      "name": "roster"
+    },
+    {
+      "_derived": false,
+      "domain": "creatures",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "Array.isArray(output.species)",
+        "output.species.length > 0",
+        "output.count === output.species.length",
+        "output.species.every(s => typeof s.species_id === 'string' && s.species_id.length > 0)",
+        "output.species.every(s => typeof s.topology === 'string' && s.topology.length > 0)",
+        "output.species.every(s => typeof s.clade === 'string' && typeof s.diet === 'string')"
+      ],
+      "macro_id": "creatures.species",
+      "name": "species"
+    },
+    {
+      "_derived": true,
+      "domain": "creatures",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "creatures.taxonomy",
       "name": "taxonomy"
     }
   ],
   "domain": "creatures",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 6
 }

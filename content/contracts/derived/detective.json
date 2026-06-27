@@ -1,0 +1,187 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "detective",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "detective.create",
+      "name": "create"
+    },
+    {
+      "_derived": false,
+      "domain": "detective",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "no_crime",
+            "ok": false
+          },
+          "input": {
+            "crimeId": "no_such_crime",
+            "suspectId": "x"
+          }
+        }
+      ],
+      "inputs": {
+        "crimeId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "motive": {
+          "maxLength": 280,
+          "type": "string"
+        },
+        "suspectId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "weapon": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "(typeof output.ok === 'boolean')",
+        "output.ok === false || typeof output.solved === 'boolean'",
+        "output.ok === false || (typeof output.correctCount === 'number' && output.correctCount >= 0 && output.correctCount <= 3)",
+        "output.ok === false || Array.isArray(output.reasons)",
+        "output.ok === false || output.solved === false || (output.correctCount >= 2 && output.reasons.includes('suspect_match'))",
+        "output.ok === false || output.reasons.includes('suspect_match') || output.solved === false"
+      ],
+      "macro_id": "detective.deduce",
+      "name": "deduce"
+    },
+    {
+      "_derived": true,
+      "domain": "detective",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "detective.evidence",
+      "name": "evidence"
+    },
+    {
+      "_derived": false,
+      "domain": "detective",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_inputs"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "no_crime"
+          },
+          "input": {
+            "crimeId": "no_such_crime"
+          }
+        }
+      ],
+      "inputs": {
+        "crimeId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.crime === 'object' && output.crime !== null)",
+        "output.ok === false || Array.isArray(output.evidence)",
+        "output.ok === false || output.crime.criminal_id === undefined"
+      ],
+      "macro_id": "detective.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "detective",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_world"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "nowhere_world"
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 200,
+          "min": 1,
+          "type": "number"
+        },
+        "worldId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.crimes)",
+        "output.ok === false || output.crimes.every(c => c.criminal_id === undefined)"
+      ],
+      "macro_id": "detective.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "detective",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "detective.mine",
+      "name": "mine"
+    }
+  ],
+  "domain": "detective",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 6
+}

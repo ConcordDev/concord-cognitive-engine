@@ -11062,8 +11062,14 @@ async function runMacro(domain, name, input, ctx) {
     // stripped in the lib); the codex reads it without auth.
     lore: new Set(["list", "get", "facets", "spine"]),
     // Wave 6 — creatures in a world are world-visible; the CreatureSystem reads
-    // them without auth (same as resource nodes).
-    creatures: new Set(["for_world", "taxonomy"]),
+    // them without auth (same as resource nodes). `species` is the read-only
+    // taxonomy catalog; roster/lineage/breed are player-scoped and stay gated.
+    creatures: new Set(["for_world", "taxonomy", "species"]),
+    // Detective board — open cases + their evidence are world-public (the
+    // deduction surface is meant to be browsed); deduce/mine are actor-gated.
+    detective: new Set(["list", "get", "evidence"]),
+    // Operator announcements — the broadcast feed is public read; post is admin.
+    announcements: new Set(["list", "get"]),
     // WS-CHEMISTRY — the reaction matrix is a read-only reference (apply/ignite/
     // douse mutate and require an actor, so they're NOT here).
     elements: new Set(["matrix"]),
@@ -25240,6 +25246,16 @@ import registerCourtshipMacros from "./domains/courtship.js";
 registerCourtshipMacros(register);
 import registerFishingMacros from "./domains/fishing.js";
 registerFishingMacros(register);
+
+// Per-lens flawless loop batch 4 — detective (Obra-Dinn deduction board) +
+// announcements (operator broadcast feed). Each delegates to its real lib
+// (lib/detective.js, lib/announcements.js); creatures was already registered
+// above. These repoint the lenses' previously-dangling lens.* manifest macros
+// at the real detective.*/announcements.* domains.
+import registerDetectiveMacros from "./domains/detective.js";
+registerDetectiveMacros(register);
+import registerAnnouncementMacros from "./domains/announcements.js";
+registerAnnouncementMacros(register);
 
 // Maintenance — the operator surface for the autonomic nervous system. Reads the
 // Homeostasis ledger + escalation inbox + Repair Memory stats. Operator-scoped.

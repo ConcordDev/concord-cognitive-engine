@@ -26,6 +26,22 @@ function catalog() {
 }
 export function _resetTaxonomyCache() { _catalog = null; }
 
+/**
+ * The full authored species catalog as a list of taxonomy records. This is the
+ * real species library (content/species-taxonomy.json) — the single source of
+ * truth the creatures lens browses. Returns [] only if the file is missing.
+ */
+export function speciesCatalog() {
+  const cat = catalog();
+  return Object.entries(cat).map(([id, rec]) => ({
+    species_id: id,
+    clade: rec.clade || "mammal",
+    topology: rec.topology || "quadruped",
+    diet: rec.diet || "omnivore",
+    aquatic: ["fish", "eel", "shark", "cephalopod"].includes(rec.topology),
+  }));
+}
+
 // Keyword → topology inference for unknown species (mirrors procedural-creature's
 // TOPOLOGY_KEYWORDS, kept local so this lib stays import-light).
 const TOPOLOGY_KEYWORDS = [

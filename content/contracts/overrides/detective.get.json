@@ -1,0 +1,19 @@
+{
+  "macro_id": "detective.get",
+  "domain": "detective",
+  "name": "get",
+  "inputs": {
+    "crimeId": { "type": "string", "required": true, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.crime === 'object' && output.crime !== null)",
+    "output.ok === false || Array.isArray(output.evidence)",
+    "output.ok === false || output.crime.criminal_id === undefined"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_inputs" } },
+    { "input": { "crimeId": "no_such_crime" }, "expect": { "ok": false, "reason": "no_crime" } }
+  ]
+}

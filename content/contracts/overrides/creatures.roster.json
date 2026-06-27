@@ -1,0 +1,22 @@
+{
+  "macro_id": "creatures.roster",
+  "domain": "creatures",
+  "name": "roster",
+  "inputs": {
+    "worldId": { "type": "string", "required": true, "maxLength": 80 },
+    "limit": { "type": "number", "min": 1, "max": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.populations)",
+    "output.ok === false || output.count === output.populations.length",
+    "output.ok === false || output.populations.every(p => typeof p.species_id === 'string')",
+    "output.ok === false || output.populations.every(p => typeof p.topology === 'string')",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } }
+  ]
+}
