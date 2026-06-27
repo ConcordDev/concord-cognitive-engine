@@ -41,10 +41,10 @@ score bits justified-absent)
 | narrative-walk | 3/7 | pending | | by-design reader (NO-BACKEND-CALL) — verify |
 | announcements | 3/7 | pending | | announcement-broadcaster heartbeat |
 | housing | 3/7 | pending | | player-housing lens |
-| training-room | 3/7 | pending | | combat-frame-data backend |
+| training-room | 3/7→4/7 | **done** | 55df001 | fixed frame-data wrong-column/no_skill defect (#21); real frame tests; 4 UX states |
 | achievements | 3/7 | **done** | 75031b3 | dedicated `achievements` domain; unlock-idempotency + reward-once behavioral tests; 4 UX states; wired |
-| lfg | 3/7 | pending | | lfg backend |
-| quests | 3/7 | pending | | quest-engine backend |
+| lfg | 3/7→5/7 | **done** | 55df001 | dedicated `lfg` domain; fixed parties expires_at NOT-NULL crash; single-open-per-world tests; 4 UX states |
+| quests | 3/7→4/7 | **done** | 55df001 | dedicated `quests` domain; fixed lens mis-wire (was hitting goals.list); accept→complete→reward-once tests; 4 UX states |
 | ops-telemetry | 3/7 | pending | | dashboard — likely by-design |
 | auction | 4/7 | **done** | 75031b3 | dedicated `auctions` domain (delegates to lib); 4 UX states + a11y; behavioral tests + contract overrides; wired |
 | careers | 4/7 | pending | | |
@@ -83,5 +83,6 @@ enumerated here until reached.
 
 ## Progress log
 - 2026-06-26: ledger created; 46 failing lenses ranked; loop started.
-- 2026-06-27: batch 1 DONE (auction, mail, achievements) @ 75031b3 — 51 behavioral tests, 13
-  UX-state vitests, contract overrides, dedicated domains registered, verifier 258 WIRED. 43 left.
+- 2026-06-27: batch 1 DONE (auction, mail, achievements) @ 75031b3. 43 left.
+- 2026-06-27: batch 2 DONE (quests, lfg, training-room) @ 55df001 — 42 behavioral + 17 UX-state
+  tests; surfaced + fixed 3 real bugs (parties expires_at crash, quests mis-wire, frame-data no_skill). 40 left.
