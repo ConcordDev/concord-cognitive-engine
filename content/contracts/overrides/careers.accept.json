@@ -1,0 +1,18 @@
+{
+  "macro_id": "careers.accept",
+  "domain": "careers",
+  "name": "accept",
+  "inputs": {
+    "contractId": { "type": "string", "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || output.status === 'active'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "not_found" } },
+    { "input": { "contractId": "ctr_does_not_exist" }, "expect": { "ok": false, "reason": "not_found" } }
+  ]
+}

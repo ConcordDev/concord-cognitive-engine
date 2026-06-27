@@ -58,6 +58,7 @@ export default function SavedLensPage() {
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
 
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [notice, setNotice] = useState('');
 
@@ -91,6 +92,9 @@ export default function SavedLensPage() {
       setItems(r.data.result.items || []);
       setMatched(r.data.result.matched || 0);
       setTotal(r.data.result.total || 0);
+      setError(null);
+    } else {
+      setError(r.data.error || 'Could not load your saved items.');
     }
     setLoading(false);
   }, [query, kind, stateFilter, activeTag, activeFolder, sortBy, order]);
@@ -198,7 +202,7 @@ export default function SavedLensPage() {
             <h1 className="text-base font-semibold">Saved</h1>
             {stats && (
               <span className="text-[10px] text-zinc-400 font-mono">
-                {stats.total} items · {stats.byState.unread || 0} to read · {stats.folders} collections
+                {stats.total ?? 0} items · {stats.byState?.unread || 0} to read · {stats.folders ?? 0} collections
               </span>
             )}
             <div className="ml-auto flex items-center gap-3">
@@ -343,11 +347,38 @@ export default function SavedLensPage() {
               </div>
             </div>
 
-            {/* Item list */}
-            {loading && items.length === 0 ? (
-              <p className="text-xs text-zinc-400 py-8 text-center">Loading…</p>
+            {/* Item list — four UX states: error / loading / empty / populated */}
+            {error ? (
+              <div
+                data-testid="saved-error"
+                role="alert"
+                className="rounded-lg border border-rose-700/50 bg-rose-950/30 py-8 px-4 text-center"
+              >
+                <p className="text-sm text-rose-200">Couldn&apos;t load your saved items.</p>
+                <p className="text-xs text-rose-300/80 mt-1 font-mono">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => loadItems()}
+                  className="mt-3 inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-rose-600/50 text-rose-200 hover:bg-rose-900/40"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Retry
+                </button>
+              </div>
+            ) : loading && items.length === 0 ? (
+              <p
+                data-testid="saved-loading"
+                role="status"
+                aria-busy="true"
+                aria-live="polite"
+                className="text-xs text-zinc-400 py-8 text-center"
+              >
+                Loading your saved items…
+              </p>
             ) : items.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-zinc-800 bg-zinc-950/40 py-10 text-center">
+              <div
+                data-testid="saved-empty"
+                className="rounded-lg border border-dashed border-zinc-800 bg-zinc-950/40 py-10 text-center"
+              >
                 <Bookmark className="w-7 h-7 mx-auto text-zinc-700 mb-2" />
                 <p className="text-sm text-zinc-400">
                   {filtersActive ? 'No saved items match your filters.' : 'Nothing saved yet.'}
@@ -359,7 +390,7 @@ export default function SavedLensPage() {
                 </p>
               </div>
             ) : (
-              <ul className="space-y-2">
+              <ul data-testid="saved-list" className="space-y-2">
                 {items.map((it) => (
                   <li key={it.id}>
                     <SavedItemCard

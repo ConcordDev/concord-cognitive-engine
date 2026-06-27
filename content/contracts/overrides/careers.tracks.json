@@ -1,0 +1,17 @@
+{
+  "macro_id": "careers.tracks",
+  "domain": "careers",
+  "name": "tracks",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.categories)",
+    "output.ok === false || Array.isArray(output.tracks)",
+    "output.ok === false || output.tracks.every(t => typeof t.id === 'string' && t.id.length > 0)",
+    "output.ok === false || output.tracks.every(t => typeof t.activity === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ]
+}

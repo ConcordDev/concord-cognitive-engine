@@ -54,6 +54,17 @@ const _skipDestructive =
 export const DESTRUCTIVE_HINT_RE =
   /^(delete|destroy|reset|wipe|clear|purge|drop|kill|terminate|revoke|unpublish)$|^(forceDelete|hardDelete|nuke)/i;
 
+// External-IO macros make a real outbound HTTP call to a third-party API
+// (NASA/MET/GBIF/PubMed/FRED/crypto/dictionary/… — every `live_*` macro lives
+// in a *-live.js / free-api-live.js domain file). They are NOT headless-safe to
+// fuzz: the network call (a) times out non-deterministically under load, so a
+// V2 vector produces a flaky `fuzz_timeout` that is timing — not a code defect —
+// and (b) it would hammer a third party with adversarial payloads (NaN/1e308/
+// <script>). Like LLM-hint + destructive macros, they get a STATIC contract only,
+// never an adversarial drive. (The lone internal `live_*` — cognition.live_understanding,
+// a pure state read with no numeric input — is harmless to skip too.)
+export const EXTERNAL_IO_HINT_RE = /^live_/i;
+
 export const SKIP_DOMAINS_DEFAULT = new Set(["oracle", "concordance"]);
 
 // Per-(domain,name) fixture overrides — copied from the smoke harness so the
@@ -90,6 +101,7 @@ export function buildDefaultInput(domain, name) {
  */
 export function shouldSkip(domain, name) {
   if (SKIP_DOMAINS_DEFAULT.has(domain)) return { skip: true, reason: "skip_domain" };
+  if (EXTERNAL_IO_HINT_RE.test(name)) return { skip: true, reason: "external_io" };
   if (_skipDestructive && DESTRUCTIVE_HINT_RE.test(name)) return { skip: true, reason: "destructive" };
   if (!_llmEnabled && LLM_HINT_RE.test(name)) return { skip: true, reason: "llm_hint" };
   return { skip: false };

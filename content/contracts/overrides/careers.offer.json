@@ -1,0 +1,25 @@
+{
+  "macro_id": "careers.offer",
+  "domain": "careers",
+  "name": "offer",
+  "inputs": {
+    "workerId": { "type": "string", "maxLength": 200 },
+    "employerId": { "type": "string", "maxLength": 200 },
+    "trackId": { "type": "string", "maxLength": 64 },
+    "tier": { "type": "number", "min": 1, "max": 10 },
+    "baseWage": { "type": "number", "min": 0, "max": 1000000 },
+    "signingBonus": { "type": "number", "min": 0, "max": 1000000 },
+    "durationDays": { "type": "number", "min": 1, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || (typeof output.contractId === 'string' && output.contractId.length > 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_parties" } },
+    { "input": { "workerId": "n1", "trackId": "ghost" }, "expect": { "ok": false, "reason": "unknown_track" } },
+    { "input": { "workerId": "n1", "trackId": "chef", "baseWage": "Infinity" }, "expect": { "ok": false, "reason": "invalid_baseWage" } }
+  ]
+}

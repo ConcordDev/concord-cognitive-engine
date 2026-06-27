@@ -9,17 +9,18 @@
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerSavedActions from "../domains/saved.js";
+import registerSavedMacros from "../domains/saved.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
-function call(name, ctx, params = {}) {
+function call(name, ctx, input = {}) {
   const fn = ACTIONS.get(`saved.${name}`);
   if (!fn) throw new Error(`saved.${name} not registered`);
-  return fn(ctx, { id: null, data: {}, meta: {} }, params);
+  // Canonical (ctx, input) macro convention (register/runMacro path).
+  return fn(ctx, input);
 }
 
-before(() => { registerSavedActions(register); });
+before(() => { registerSavedMacros(register); });
 
 beforeEach(() => {
   // Fresh per-user state for every test.

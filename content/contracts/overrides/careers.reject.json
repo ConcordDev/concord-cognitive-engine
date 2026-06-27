@@ -1,0 +1,18 @@
+{
+  "macro_id": "careers.reject",
+  "domain": "careers",
+  "name": "reject",
+  "inputs": {
+    "contractId": { "type": "string", "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || output.status === 'rejected'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "not_found" } },
+    { "input": { "contractId": "ctr_missing" }, "expect": { "ok": false, "reason": "not_found" } }
+  ]
+}

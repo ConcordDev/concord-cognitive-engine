@@ -1,0 +1,25 @@
+{
+  "macro_id": "careers.work",
+  "domain": "careers",
+  "name": "work",
+  "inputs": {
+    "trackId": { "type": "string", "maxLength": 64 },
+    "tier": { "type": "number", "min": 1, "max": 10 },
+    "attribute": { "type": "number", "min": 0, "max": 1 },
+    "skillInput": { "type": "number", "min": 0, "max": 1 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || (typeof output.wage === 'number' && output.wage >= 0)",
+    "output.ok === false || (typeof output.performanceScore === 'number' && output.performanceScore >= 0 && output.performanceScore <= 1)",
+    "output.ok === false || (typeof output.xp === 'number' && output.xp >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "unknown_track" } },
+    { "input": { "trackId": "chef", "tier": 5, "attribute": 0.8, "skillInput": 0.8 }, "expect": { "ok": true } },
+    { "input": { "trackId": "chef", "tier": "1e308" }, "expect": { "ok": false, "reason": "invalid_tier" } },
+    { "input": { "trackId": "ghost_job" }, "expect": { "ok": false, "reason": "unknown_track" } }
+  ]
+}

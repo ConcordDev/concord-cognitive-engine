@@ -1,0 +1,16 @@
+{
+  "macro_id": "spectate.my_positions",
+  "domain": "spectate",
+  "name": "my_positions",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.positions)",
+    "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Caller's spectate bet positions (open + resolved). Actor-gated: an internal/owner actor returns ok:true with their (possibly empty) position list; an anonymous caller yields reason:no_actor."
+}

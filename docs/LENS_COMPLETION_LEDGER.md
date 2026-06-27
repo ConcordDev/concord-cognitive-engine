@@ -31,12 +31,12 @@ score bits justified-absent)
 |---|---:|---|---|---|
 | reasoning-traces | 0/7→7/7 | **done** | batch5 | `reasoning` trace macros (traces/trace/run over the HLR engine, named export wired into server.js); real-trace round-trip tests; 4 UX states. (0/7 intel was stale — scorer already saw 7/7; `reasoning.create_chain` IS registered inline at server.js:13501, not a phantom) |
 | literary | 1/7→7/7 | **done** | batch5 | behavioral tests on all 6 driven macros (search/semantic_graph/resonance/resonance_graph/annotate/stats); real GraphML/CSV/JSON export of the live resonance graph; annotate→DTU citation round-trip; +6 contract overrides; macro-assassin 4→0 (fixed poisoned-`limit` fail-open → fail-closed); 4 UX states |
-| foundry | 3/7 | pending | | world-builder substrate (mig 191-192) |
-| saved | 3/7 | pending | | saved/collections reader |
+| foundry | 3/7 | pending | | world-builder substrate (mig 191-192). batch-6 agent DIED mid-work (5h-stale, hanging test that boots the WHOLE server + LLM oracle calls); partial work REVERTED. Redo with explicit lightweight in-memory-DB test harness (no full server boot, no LLM). |
+| saved | 3/7→5/7 | **done** | batch6 | MAJOR fix: `saved` was UNREGISTERED + used legacy `registerLensAction` (invisible to runMacro) → every saved.* call hit `unknown_macro`; rewrote to canonical `register` 2-arg convention + wired in server.js. Fixed header crash (`stats.byState.unread` unguarded). 38 server + 4 UX-state tests |
 | move-builder | 3/7→5/7 | **done** | batch5 | new `move-builder` domain (compose/mint/list/get/catalog over move-descriptor.js + ED budget); fixed the DEAD mint (page called `glyph_spells.mint` with wrong payload → always failed) + phantom `lens.move-builder.*` refs; 11 server + 5 UX-state tests |
 | garage | 3/7→5/7 | **done** | batch5 | new `garage` domain (list/get/spawn/mine/mount/dismount/move over lib/world-vehicles.js); fixed 4 fabricated vehicle kinds the backend rejected with `bad_kind` (silent fail) + phantom `lens.garage.*` refs; 7 server + 6 UX-state tests |
 | courtship | 3/7→4/7 | **done** | def0ff4 | dedicated `courtship` domain; fixed propose-threshold 0.60 vs server 0.70 mismatch + Child-column bug; 4 UX states |
-| spectate | 3/7 | pending | | spectator dashboard |
+| spectate | 3/7→5/7 | **done** | batch6 | new `spectate` domain (list/get/watch/bet/my_positions over spectator-mode + betting-markets + goddess-broadcaster libs); fixed phantom `lens.spectate.*` refs + "mock event ticker" stub; parimutuel bet escrow tests; 12 server + 7 UX-state tests |
 | mail | 3/7 | **done** | 75031b3 | dedicated `mail` domain; send→inbox→claim single-tx behavioral tests; 4 UX states; wired |
 | narrative-walk | 3/7 | pending | | by-design reader (NO-BACKEND-CALL) — verify |
 | announcements | 3/7→5/7 | **done** | a62bae5 | dedicated `announcements` domain (list/get public, post admin-gated); fixed dangling `lens.announcements.*` manifest refs + error-swallow UX defect (now honest error+retry vs empty); 16 server + 4 UX-state tests |
@@ -47,7 +47,7 @@ score bits justified-absent)
 | quests | 3/7→4/7 | **done** | 55df001 | dedicated `quests` domain; fixed lens mis-wire (was hitting goals.list); accept→complete→reward-once tests; 4 UX states |
 | ops-telemetry | 3/7 | pending | | dashboard — likely by-design |
 | auction | 4/7 | **done** | 75031b3 | dedicated `auctions` domain (delegates to lib); 4 UX states + a11y; behavioral tests + contract overrides; wired |
-| careers | 4/7 | pending | | |
+| careers | 4/7→5/7 | **done** | batch6 | fixed phantom `lens.careers.*` manifest refs → real `careers.{tracks,contracts,work,offer}`; honest disabled-by-config note (was misleading "coming soon"; system is ENABLED by default); work-shift credits real sparks, offer→accept persists contract; 11 server + 7 UX-state tests |
 | codex | 4/7 | pending | | |
 | ledger | 4/7 | pending | | economy ledger reader |
 | forecast | 4/7 | pending | | forecast backend |
@@ -105,3 +105,9 @@ enumerated here until reached.
   the live-DB+actor reality. Ratchet now GREEN (0 new vs the 11-known baseline; 10 residual are the
   pre-existing detectors/emergent TIMEOUT baseline). 129/129 domain tests green. LESSON: each batch's
   agents now self-run the assassin against their own domain before reporting (literary did → was clean).
+- 2026-06-27: batch 6 — 3 DONE (saved, spectate, careers), 1 REVERTED (foundry). 61 server + 18 UX-state
+  tests; +3 real bugs (saved fully UNREGISTERED+legacy-convention → unknown_macro, saved header crash,
+  careers misleading "coming soon" → honest disabled-by-config). Hardening-by-construction held: all 3
+  agents shipped fail-closed numeric guards + live-DB-accurate contracts (assassin self-checks clean).
+  foundry's agent DIED mid-work (hanging full-server-boot test) → reverted, requeued with a lightweight-
+  test instruction. verify-lens-backends 258 WIRED / 0 broken, macroDomains 527. 27 left. 15 bugs total.

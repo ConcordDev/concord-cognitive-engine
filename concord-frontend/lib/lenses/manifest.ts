@@ -108,7 +108,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // UTILITY / ADMIN LENSES — minimal contracts so they mount <LensShell>
   // with a known lensId (no firstRunGuide/emptyState by design).
   // ═══════════════════════════════════════════════════════════════
-  { domain: 'careers', label: 'Careers', artifacts: ['job', 'application'], macros: { list: 'lens.careers.list', get: 'lens.careers.get' }, exports: ['json'], actions: ['browse', 'apply'], category: 'lifestyle' },
+  { domain: 'careers', label: 'Careers', artifacts: ['contract', 'shift'], macros: { list: 'careers.tracks', get: 'careers.contracts', create: 'careers.work', run: 'careers.offer' }, exports: ['json'], actions: ['browse', 'work', 'offer', 'accept'], category: 'lifestyle' },
   { domain: 'ledger', label: 'Ledger', artifacts: ['entry', 'transaction'], macros: { list: 'lens.ledger.list', get: 'lens.ledger.get' }, exports: ['json', 'csv'], actions: ['view'], category: 'finance' },
   { domain: 'codex', label: 'Codex', artifacts: ['entry', 'lore'], macros: { list: 'lens.codex.list', get: 'lens.codex.get' }, exports: ['json'], actions: ['read'], category: 'knowledge' },
   { domain: 'translation', label: 'Translation', artifacts: ['translation'], macros: { list: 'lens.translation.list', get: 'lens.translation.get' }, exports: ['json'], actions: ['translate', 'detect'], category: 'productivity' },
@@ -159,22 +159,25 @@ export const LENS_MANIFESTS: LensManifest[] = [
   {
     domain: 'saved',
     label: 'Saved',
-    artifacts: ['bookmark', 'post'],
-    macros: { list: 'lens.saved.list', get: 'lens.saved.get' },
-    exports: ['json'],
-    actions: [],
+    artifacts: ['bookmark', 'collection'],
+    // Real saved.* macros (registered via registerSavedMacros in server.js).
+    // `get` reuses saved.list (the lens has no single-item read); `create` maps
+    // to saved.add so DTU-exhaust + the ManifestActionBar "Save" verb resolve.
+    macros: { list: 'saved.list', get: 'saved.list', create: 'saved.add', update: 'saved.update', delete: 'saved.remove' },
+    exports: ['json', 'csv'],
+    actions: ['add', 'remove', 'update', 'folderCreate', 'folderUpdate', 'folderDelete', 'export'],
     category: 'social',
     dataTier: 'REAL_LIVE',
     emptyState: {
-      headline: 'No bookmarks yet.',
-      caption: 'Click the bookmark icon on any post or DTU to save it for later. Bookmarks live in the social substrate and are private to you.',
+      headline: 'Nothing saved yet.',
+      caption: 'Save posts, DTUs, articles, links — anything — into collections, tag them, and flip read-later / archive states. Your saved list is private to you.',
       firstActionLabel: 'Browse Social',
     },
     firstRunGuide: {
       steps: [
-        { caption: 'Bookmarks toggle on/off via the bookmark icon on every post and DTU.' },
-        { caption: 'This page shows every post you\'ve saved, newest first — react, comment, share, or remove the bookmark inline.' },
-        { caption: 'Deleted posts show a "Post unavailable" placeholder so you can prune the orphans.' },
+        { caption: 'Save anything — posts, DTUs, articles, links — with the Save form, or bookmark a post via its bookmark icon.' },
+        { caption: 'Organise saved items into Collections, tag them freely, and search / sort / filter the whole list.' },
+        { caption: 'Flip items between unread, read, and archived — then export the full list as JSON or CSV.' },
       ],
     },
   },
@@ -4530,8 +4533,8 @@ export const LENS_MANIFESTS: LensManifest[] = [
     label: 'Foundry',
     artifacts: ['foundry_world', 'worldspec', 'system_registry'],
     macros: { list: 'lens.foundry.list', get: 'lens.foundry.get', create: 'lens.foundry.create', update: 'lens.foundry.update', delete: 'lens.foundry.delete', run: 'lens.foundry.run' },
-    exports: [],
-    actions: ['systems', 'system_schema', 'validate_systems', 'create', 'update', 'get', 'list', 'delete', 'validate', 'publish', 'unpublish'],
+    exports: ['json'],
+    actions: ['systems', 'system_schema', 'validate_systems', 'create', 'update', 'get', 'list', 'delete', 'validate', 'publish', 'unpublish', 'preview', 'compose_rule', 'templates', 'marketplace', 'rate', 'analytics', 'multiplayer_set', 'asset_import', 'blueprint_save', 'playtest_start', 'collab_add'],
     category: 'creative',
     dataTier: 'REAL_LIVE',
     emptyState: {
@@ -5098,7 +5101,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'ops-telemetry', label: 'Ops Telemetry',      artifacts: ['metric'],      macros: { list: 'lens.ops-telemetry.list', get: 'lens.ops-telemetry.get' }, exports: ['json'], actions: [], category: 'operations' },
   { domain: 'photos',        label: 'Photos',             artifacts: ['photo'],       macros: { list: 'lens.photos.list',        get: 'lens.photos.get' },        exports: ['json'], actions: ['share'], category: 'creative' },
   { domain: 'quests',        label: 'Quests',             artifacts: ['quest'],       macros: { list: 'quests.mine',             get: 'quests.progress' },        exports: ['json'], actions: ['accept', 'record-progress', 'claim-rewards', 'share'], category: 'lifestyle' },
-  { domain: 'spectate',      label: 'Spectate',           artifacts: ['spectacle'],   macros: { list: 'lens.spectate.list',      get: 'lens.spectate.get' },      exports: ['json'], actions: ['bet'], category: 'social' },
+  { domain: 'spectate',      label: 'Spectate',           artifacts: ['spectacle'],   macros: { list: 'spectate.list',           get: 'spectate.get',         create: 'spectate.watch',   run: 'spectate.bet' },           exports: ['json'], actions: ['watch', 'bet', 'my_positions'], category: 'social' },
   { domain: 'training-room', label: 'Training Room',      artifacts: ['frame_data'],  macros: { list: 'lens.training-room.list_skills', get: 'lens.training-room.frame_data' }, exports: ['json'], actions: ['frame_data', 'kind_frame_data', 'list_kinds', 'list_skills'], category: 'lifestyle' },
   { domain: 'courtship',     label: 'Courtship',          artifacts: ['courtship'],   macros: { list: 'lens.courtship.list',     get: 'lens.courtship.get' },     exports: ['json'], actions: ['interact', 'propose', 'wed', 'conceive'], category: 'lifestyle' },
   { domain: 'creatures',     label: 'Creatures',          artifacts: ['creature'],    macros: { list: 'creatures.roster',        get: 'creatures.taxonomy',     create: 'creatures.breed' },     exports: ['json'], actions: ['roster', 'species', 'breed', 'lineage', 'taxonomy', 'for_world'], category: 'lifestyle' },

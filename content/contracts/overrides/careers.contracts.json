@@ -1,0 +1,15 @@
+{
+  "macro_id": "careers.contracts",
+  "domain": "careers",
+  "name": "contracts",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.contracts)",
+    "output.ok === false || output.contracts.every(c => typeof c.id === 'string' && typeof c.status === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ]
+}

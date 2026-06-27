@@ -11073,6 +11073,12 @@ async function runMacro(domain, name, input, ctx) {
     // Garage — the world's vehicle list + a single vehicle are world-visible
     // (same as creatures); spawn/mine/mount/dismount/move are actor-gated.
     garage: new Set(["list", "get"]),
+    // Spectate — live world spectacles + open betting markets are world-public
+    // (the Twitch-shape index reads them anonymously). `watch` opens a read-only
+    // spectator session (anonymous watching allowed; viewer_user_id stays null).
+    // bet/my_positions debit a real per-user SPARKS balance, so they stay
+    // actor-gated (NOT listed here).
+    spectate: new Set(["list", "get", "watch"]),
     // Move builder — compose (preview) + catalog (reference move parts) are pure
     // reads; list/get self-gate on ctx.actor and return no_user when anonymous.
     // Key is the literal hyphenated macro-domain string. mint (writes a DTU) is gated.
@@ -25669,6 +25675,22 @@ registerLiteraryMacros(register);
 // chains them with LRL grounding into one verifiable research loop (rnd.run).
 import registerRndMacros from "./domains/rnd.js";
 registerRndMacros(register);
+
+// Spectate lens — read-only window onto live world spectacles + the spectator
+// betting surface. Thin delegator over lib/spectator-mode.js (watcher counts),
+// lib/betting-markets.js (parimutuel SPARKS markets, migration 162), and
+// lib/goddess-broadcaster.js (dispatch flavor). list/get are public reads;
+// bet/my_positions are actor-gated. See domains/spectate.js.
+import registerSpectateMacros from "./domains/spectate.js";
+registerSpectateMacros(register);
+
+// Per-lens flawless loop batch 6 — saved (bookmark/collections workspace).
+// saved.js was UNREGISTERED and used the legacy registerLensAction convention
+// (invisible to runMacro) → every saved.* call hit unknown_macro. Rewritten to
+// the canonical register(domain,name,(ctx,input)=>...) convention; this wires it
+// onto the runMacro + /api/lens/run path. Per-user private (no publicReadDomains).
+import registerSavedMacros from "./domains/saved.js";
+registerSavedMacros(register);
 
 // Cognitive Fingerprint (#5) — thinking-style profile from real activity.
 import registerMetacogMacros from "./domains/metacog.js";
