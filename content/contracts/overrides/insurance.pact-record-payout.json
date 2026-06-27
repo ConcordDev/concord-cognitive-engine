@@ -11,7 +11,10 @@
     "typeof output.ok === 'boolean'",
     "output.ok === false || (output.result && output.result.payout && typeof output.result.payout.id === 'string')",
     "output.ok === false || Array.isArray(output.result.payout.splits)",
-    "output.ok === false || typeof output.result.payout.totalSparks === 'number'"
+    "output.ok === false || typeof output.result.payout.totalSparks === 'number'",
+    "output.ok === false || Number.isFinite(output.result.payout.totalSparks)",
+    "output.ok === false || output.result.payout.splits.every(s => Number.isFinite(s.sparks) && s.sparks >= 0)",
+    "output.ok === false || output.result.payout.splits.reduce((a, s) => a + s.sparks, 0) === output.result.payout.totalSparks"
   ],
   "fuzz_cases": [
     { "input": {}, "expect": { "ok": false, "error": "pact not found" } },
