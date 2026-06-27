@@ -1,0 +1,20 @@
+{
+  "macro_id": "agriculture.grain-bins-create",
+  "domain": "agriculture",
+  "name": "grain-bins-create",
+  "inputs": {
+    "name": { "type": "string", "required": true, "maxLength": 60 },
+    "capacityBushels": { "type": "number", "required": true, "min": 1 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.bin && output.result.bin.capacityBushels > 0)",
+    "output.ok === false || output.result.bin.currentBushels === 0",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "name": "Bin 1", "capacityBushels": 1000, "crop": "corn" }, "expect": { "ok": true } },
+    { "input": { "name": "Bad", "capacityBushels": 0 }, "expect": { "ok": false } }
+  ]
+}

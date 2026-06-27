@@ -1,0 +1,23 @@
+{
+  "macro_id": "agriculture.field-create",
+  "domain": "agriculture",
+  "name": "field-create",
+  "inputs": {
+    "name": { "type": "string", "required": true, "maxLength": 60 },
+    "acreage": { "type": "number", "required": true, "min": 1 },
+    "lat": { "type": "number", "required": true, "min": -90 },
+    "lng": { "type": "number", "required": true, "min": -180 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.field && typeof output.result.field.id === 'string')",
+    "output.ok === false || (Number.isFinite(output.result.field.acreage) && output.result.field.acreage > 0)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "name": "North 40", "acreage": 40, "lat": 41.5, "lng": -93.5 }, "expect": { "ok": true } },
+    { "input": { "name": "X", "acreage": 0, "lat": 0, "lng": 0 }, "expect": { "ok": false } },
+    { "input": { "name": "X", "acreage": 10, "lat": 95, "lng": 0 }, "expect": { "ok": false } }
+  ]
+}

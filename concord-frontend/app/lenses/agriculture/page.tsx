@@ -665,6 +665,9 @@ export default function AgricultureLensPage() {
         <div className={cn(ds.panel, 'text-center py-12')}>
           <Wheat className="w-10 h-10 text-gray-600 mx-auto mb-3" />
           <p className={ds.textMuted}>No {activeTab} found. Create one to get started.</p>
+          <button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-4 mx-auto')}>
+            <Plus className="w-4 h-4" /> Create your first {activeArtifactType}
+          </button>
         </div>
       ) : (
         <div className={ds.grid3}>
@@ -1417,6 +1420,12 @@ export default function AgricultureLensPage() {
               <p className="text-sm text-gray-400 mt-1">
                 Create your first farm item to get started
               </p>
+              <button
+                onClick={openCreate}
+                className="mt-4 text-xs px-3 py-1.5 rounded border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10"
+              >
+                Create your first farm item →
+              </button>
             </div>
           ) : (
             items.slice(0, 5).map((item) => {
@@ -1447,7 +1456,7 @@ export default function AgricultureLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8" role="status" aria-live="polite" aria-busy="true">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-lime-500 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm text-gray-400">Loading field data...</p>
@@ -1458,8 +1467,8 @@ export default function AgricultureLensPage() {
 
   if (isError) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message} onRetry={refetch} />
+      <div className="flex items-center justify-center h-full p-8" role="alert">
+        <ErrorState error={error?.message} onRetry={() => refetch()} />
       </div>
     );
   }

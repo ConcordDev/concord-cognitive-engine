@@ -1,0 +1,21 @@
+{
+  "macro_id": "agriculture.plan-crop",
+  "domain": "agriculture",
+  "name": "plan-crop",
+  "inputs": {
+    "soilType": { "type": "string", "maxLength": 24 },
+    "region": { "type": "string", "maxLength": 40 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result.recommended === 'string' && output.result.recommended.length > 0",
+    "output.result.plantingWindow && typeof output.result.plantingWindow.start === 'string'",
+    "Array.isArray(output.result.candidates)"
+  ],
+  "fuzz_cases": [
+    { "input": { "soilType": "loam" }, "expect": { "ok": true } },
+    { "input": { "soilType": "clay", "region": "midwest" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ]
+}

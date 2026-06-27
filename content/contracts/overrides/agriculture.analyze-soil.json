@@ -1,0 +1,15 @@
+{
+  "macro_id": "agriculture.analyze-soil",
+  "domain": "agriculture",
+  "name": "analyze-soil",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.recommendations))",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } }
+  ]
+}
