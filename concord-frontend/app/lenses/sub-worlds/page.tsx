@@ -40,6 +40,8 @@ export default function SubWorldsPage() {
   const [worlds, setWorlds] = useState<SubWorld[]>([]);
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // discovery filters
   const [query, setQuery] = useState('');
@@ -72,15 +74,26 @@ export default function SubWorldsPage() {
   }, [tab]);
 
   const refresh = useCallback(async () => {
-    if (tab === 'discover') {
-      const r = await lensRun('sub_worlds', 'discover', { query, kind: kindFilter, sort });
-      if (r.data?.ok) setWorlds((r.data.result as any).worlds || []);
-    } else if (tab === 'mine') {
-      const r = await lensRun('sub_worlds', 'list', {});
-      if (r.data?.ok) setWorlds((r.data.result as any).worlds || []);
-    } else {
-      const r = await lensRun('sub_worlds', 'my_favorites', {});
-      if (r.data?.ok) setWorlds((r.data.result as any).worlds || []);
+    setLoading(true);
+    setError(null);
+    try {
+      let r;
+      if (tab === 'discover') {
+        r = await lensRun('sub_worlds', 'discover', { query, kind: kindFilter, sort });
+      } else if (tab === 'mine') {
+        r = await lensRun('sub_worlds', 'list', {});
+      } else {
+        r = await lensRun('sub_worlds', 'my_favorites', {});
+      }
+      if (r.data?.ok) {
+        setWorlds((r.data.result as any)?.worlds || []);
+      } else {
+        setError(r.data?.error || 'Could not load sub-worlds.');
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Could not load sub-worlds.');
+    } finally {
+      setLoading(false);
     }
   }, [tab, query, kindFilter, sort]);
 
@@ -275,15 +288,50 @@ export default function SubWorldsPage() {
           </div>
         )}
 
-        {/* World grid */}
-        {worlds.length === 0 ? (
-          <div className="rounded-xl border border-zinc-800 py-10 text-center text-sm italic text-zinc-400">
+        {/* World grid — four UX states: loading / error / empty / populated */}
+        {loading ? (
+          <div
+            data-testid="sub-worlds-loading"
+            role="status"
+            aria-busy="true"
+            aria-live="polite"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+          >
+            <span className="sr-only">Loading sub-worlds…</span>
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                aria-hidden="true"
+                className="h-32 animate-pulse rounded-xl border border-zinc-800 bg-zinc-900/60"
+              />
+            ))}
+          </div>
+        ) : error ? (
+          <div
+            data-testid="sub-worlds-error"
+            role="alert"
+            className="rounded-xl border border-red-800/60 bg-red-950/40 px-4 py-6 text-center text-sm text-red-200"
+          >
+            <p className="mb-3">Could not load sub-worlds: {error}</p>
+            <button
+              type="button"
+              onClick={() => { void refresh(); }}
+              className="rounded-lg bg-red-800 hover:bg-red-700 px-4 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              Retry
+            </button>
+          </div>
+        ) : worlds.length === 0 ? (
+          <div
+            data-testid="sub-worlds-empty"
+            className="rounded-xl border border-zinc-800 py-10 text-center text-sm italic text-zinc-400"
+          >
             {tab === 'discover' && 'No public sub-worlds match. Spawn one above.'}
             {tab === 'mine' && 'You have not spawned any sub-worlds yet.'}
             {tab === 'favorites' && 'No favorites yet — star a world to pin it here.'}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div data-testid="sub-worlds-list" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {worlds.map((w) => (
               <WorldCard
                 key={w.world_id}

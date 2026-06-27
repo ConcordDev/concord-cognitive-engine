@@ -1,0 +1,20 @@
+{
+  "macro_id": "staking.list_pools",
+  "domain": "staking",
+  "name": "list_pools",
+  "inputs": {
+    "months": { "type": "number", "min": 1, "max": 60 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (Array.isArray(output.result.pools) && output.result.pools.length >= 3)",
+    "output.ok === false || output.result.pools.every(p => typeof p.id === 'string' && typeof p.previewAprPct === 'number' && Number.isFinite(p.previewAprPct))",
+    "output.ok === false || output.result.pools.every(p => typeof p.minStake === 'number' && p.minStake >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "months": 12 }, "expect": { "ok": true } }
+  ],
+  "_note": "list_pools is a PURE catalog READ (no actor). Always returns the flex/core/growth pools with a preview APR clamped to each pool's cap. months defaults to 12 and is internally clamped [1,60] so even a poisoned value yields a finite previewAprPct (catalog enum, no write to guard)."
+}

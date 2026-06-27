@@ -1,0 +1,19 @@
+{
+  "macro_id": "sub_worlds.set_status",
+  "domain": "sub_worlds",
+  "name": "set_status",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 80 },
+    "status": { "type": "string", "enum": ["active", "paused"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.world && ['active','paused'].includes(output.result.world.status))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "world not found" } },
+    { "input": { "worldId": "does_not_exist", "status": "paused" }, "expect": { "ok": false, "error": "world not found" } }
+  ],
+  "_note": "sub_worlds.set_status pauses/resumes a world the actor owns or co-edits. status must be 'active' or 'paused' (archive is a separate macro). A missing/unknown worldId returns ok:false 'world not found'; an unauthorized actor returns ok:false 'not authorized'. The assassin drives it with no live world, so ok:false is correct (not no_db). Live STATE + actor — never no_db."
+}

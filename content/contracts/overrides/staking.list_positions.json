@@ -1,0 +1,18 @@
+{
+  "macro_id": "staking.list_positions",
+  "domain": "staking",
+  "name": "list_positions",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.positions)",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.positions.length)",
+    "output.ok === false || (typeof output.result.totalPrincipalCc === 'number' && output.result.totalPrincipalCc >= 0)",
+    "output.ok === false || (typeof output.result.totalAccruedYieldCc === 'number' && output.result.totalAccruedYieldCc >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "list_positions is a user-scoped READ. The assassin's internal owner actor means {} returns ok:true with an empty positions[] (count 0) for a fresh user — never no_actor, never no_db (state is in-memory globalThis._concordSTATE.stakingPositions). accruedYield is computed live from elapsed time."
+}

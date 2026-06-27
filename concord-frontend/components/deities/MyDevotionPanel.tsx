@@ -58,7 +58,7 @@ export function MyDevotionPanel({
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
-  if (loading) return <div className="text-xs text-zinc-400 italic">Loading devotion…</div>;
+  if (loading) return <div role="status" aria-live="polite" aria-busy="true" className="text-xs text-zinc-400 italic">Loading devotion…</div>;
   if (!devotion || devotion.patronCount === 0) {
     return <p className="text-xs italic text-zinc-400">No patron deities yet. Make a pilgrimage to begin.</p>;
   }

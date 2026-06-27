@@ -104,6 +104,20 @@ function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
 }
 
+// Fail-CLOSED numeric guard. Rejects poisoned NaN/Infinity/1e308/negative
+// BEFORE any state write. Returns the offending key name, or null when clean.
+// (Copied shape from server/domains/literary.js#badNumericField.) Without it,
+// `Number(Infinity) || 0` → Infinity passes `Infinity < minStake` and an
+// Infinity principal would be locked into a position.
+function badNumericField(params, keys) {
+  for (const k of keys) {
+    if (params[k] === undefined || params[k] === null || params[k] === "") continue;
+    const n = Number(params[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e9) return k;
+  }
+  return null;
+}
+
 // Accrued yield is computed live from elapsed time so positions are always
 // fresh without a heartbeat. APR is per-second prorated.
 function accruedYield(pos, now) {
@@ -185,6 +199,8 @@ export default function registerStakingActions(registerLensAction) {
   // ── estimate_rewards — annual/monthly breakdown before staking ──────────
   registerLensAction("staking", "estimate_rewards", (ctx, artifact, params = {}) => {
     try {
+      const bad = badNumericField(params, ["principalCc", "months"]);
+      if (bad) return { ok: false, error: `invalid_${bad}` };
       const poolId = String(params.poolId || "core");
       const pool = poolById(poolId);
       if (!pool) return { ok: false, error: "unknown_pool" };
@@ -235,6 +251,8 @@ export default function registerStakingActions(registerLensAction) {
     try {
       const userId = ctx?.actor?.userId || ctx?.userId;
       if (!userId) return { ok: false, error: "no_actor" };
+      const bad = badNumericField(params, ["principalCc", "months"]);
+      if (bad) return { ok: false, error: `invalid_${bad}` };
       const poolId = String(params.poolId || "core");
       const pool = poolById(poolId);
       if (!pool) return { ok: false, error: "unknown_pool" };

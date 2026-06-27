@@ -1,0 +1,20 @@
+{
+  "macro_id": "sub_worlds.list",
+  "domain": "sub_worlds",
+  "name": "list",
+  "inputs": {
+    "status": { "type": "string", "enum": ["active", "paused", "archived"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.worlds)",
+    "output.ok === false || output.result.worlds.every(w => typeof w.world_id === 'string')",
+    "output.ok === false || output.result.worlds.every(w => w.is_owner === true)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "status": "active" }, "expect": { "ok": true } }
+  ],
+  "_note": "sub_worlds.list returns the calling actor's OWN worlds from in-memory STATE (per-user scoping like answers/message/whiteboard). Empty input ⇒ ok:true with the actor's world array (possibly empty). Optional status filter restricts to active/paused/archived. Every returned world has is_owner === true because list is self-scoped. Live STATE + actor — never no_db."
+}

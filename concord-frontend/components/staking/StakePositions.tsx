@@ -48,10 +48,24 @@ export function StakePositions({
   const [data, setData] = useState<PositionList | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
-    const r = await lensRun<PositionList>('staking', 'list_positions', {});
-    if (r.data?.ok && r.data.result) setData(r.data.result);
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await lensRun<PositionList>('staking', 'list_positions', {});
+      if (r.data?.ok && r.data.result) {
+        setData(r.data.result);
+      } else {
+        setError(r.data?.error || 'Could not load positions.');
+      }
+    } catch {
+      setError('Could not reach the staking service.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -101,8 +115,38 @@ export function StakePositions({
     window.setTimeout(() => setStatus(null), 4000);
   };
 
+  if (loading && !data) {
+    return (
+      <div role="status" aria-live="polite" className="text-xs text-zinc-400 py-3">
+        Loading positions…
+      </div>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <div
+        role="alert"
+        className="flex flex-wrap items-center gap-3 rounded-lg border border-rose-800/60 bg-rose-950/40 px-3 py-3 text-xs text-rose-200"
+      >
+        <span>Could not load your positions: {error}</span>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="rounded bg-rose-800 px-2.5 py-1 text-white hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   if (!data) {
-    return <div className="text-xs text-zinc-400 py-3">Loading positions…</div>;
+    return (
+      <div role="status" aria-live="polite" className="text-xs text-zinc-400 py-3">
+        Loading positions…
+      </div>
+    );
   }
 
   return (
@@ -118,11 +162,14 @@ export function StakePositions({
         <SummaryStat label="Accruing" value={`${data.totalAccruedYieldCc} CC`} tone="text-emerald-300" />
       </div>
       {data.positions.length === 0 ? (
-        <div className="rounded-lg border border-zinc-800 px-3 py-6 text-center text-xs italic text-zinc-400">
+        <div
+          role="status"
+          className="rounded-lg border border-zinc-800 px-3 py-6 text-center text-xs italic text-zinc-400"
+        >
           No positions yet. Open a stake above.
         </div>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-2" aria-label="Your staking positions">
           {data.positions.map((p) => (
             <li
               key={p.id}

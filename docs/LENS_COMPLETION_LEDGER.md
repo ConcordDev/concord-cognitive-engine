@@ -186,3 +186,20 @@ ARE covered under tests/components, and ux-suite which is by-design NO-BACKEND-C
   world-creator, worldmodel, federation, sub-worlds
 - **cognitive/misc:** cognition*, understanding, meditation, self, cognitive-replay, gallery, goddess,
   maker  (*cognition already done in batch 9 — verify)
+
+### Phase-2 batch 1 DONE (2026-06-27): staking, crafting, deities, sub-worlds
+61 server + 25 UX-state tests. Even these ALREADY-PASSING lenses each carried a real defect — the audit
+is clearly worthwhile:
+- **staking**: 🔴 real money bug — `Number(Infinity) || 0` → Infinity passed the min-stake check, so an
+  Infinity principal could be locked into a position. Fixed with a fail-closed `badNumericField` guard
+  (open_stake + estimate_rewards). Also fixed a StakePositions panel that hung on "Loading…" forever on
+  any error. 14 server + 6 vitest; assassin 0/5.
+- **crafting**: phantom `lens.crafting.*` manifest refs → real `crafting.{list,counts}` + 4 UX states.
+  13 server + 6 vitest; assassin 0/2.
+- **deities** (lens-id≠domain `deity`): page swallowed all load errors (no loading/error/retry) → fixed.
+  Documented the 5 shadow server.js register("deity") DB macros vs the state-Map domain handlers
+  (LENS_ACTIONS wins on /api/lens/run). 20 server + 6 vitest; assassin 0/5.
+- **sub-worlds** (lens-id≠domain `sub_worlds`): 3 defects — registered only into LENS_ACTIONS so
+  runMacro/assassin saw 0 macros (fixed via a dual-bus mirror through globalThis._concordMACROS) +
+  fail-open numerics + phantom manifest. 14 server + 7 vitest; assassin 0/15.
+No server.js edits. ~19 Phase-2 lenses left in the recorded backlog.

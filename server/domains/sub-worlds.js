@@ -15,7 +15,34 @@
 // surfaced cross-user by the discovery gallery; private worlds never are.
 // Handlers never throw — they return { ok, result?, error? }.
 
-export default function registerSubWorldsActions(registerLensAction) {
+export default function registerSubWorldsActions(registerLensActionRaw) {
+  // Dual-bus registration. The frontend reaches these handlers through
+  // /api/lens/run → LENS_ACTIONS (the registerLensAction registry). But the
+  // MACROS bus (runMacro / MCP host / the contract-derivation + macro-assassin
+  // pipeline) is a SEPARATE map — a registerLensAction-only handler is invisible
+  // to runMacro (it threw "macro domain not found: sub_worlds") and to the
+  // assassin (no derived contract ⇒ 0 driven). This is the exact concord.math
+  // CAS reachability bug noted in server.js:39139. We mirror every registration
+  // into MACROS via globalThis._concordMACROS with a thin signature adapter so
+  // the handlers are reachable on BOTH buses with byte-identical behavior —
+  // LENS_ACTIONS signature is (ctx, artifact, params); the MACROS/runMacro
+  // signature is (ctx, input). The adapter maps (ctx, input) → handler(ctx,
+  // virtualArtifact, input). No handler logic changes.
+  const registerLensAction = (domain, name, handler, spec) => {
+    registerLensActionRaw(domain, name, handler, spec);
+    try {
+      const MACROS = globalThis._concordMACROS;
+      if (MACROS && typeof MACROS.set === "function") {
+        if (!MACROS.has(domain)) MACROS.set(domain, new Map());
+        const adapter = (ctx, input = {}) =>
+          handler(ctx, { id: null, domain, type: "domain_action", data: input || {}, meta: {} }, input || {});
+        MACROS.get(domain).set(name, {
+          fn: adapter,
+          spec: { domain, name, note: "sub_worlds dual-bus (LENS_ACTIONS + MACROS)", ...(spec || {}) },
+        });
+      }
+    } catch (_e) { /* MACROS mirror is best-effort; LENS_ACTIONS is the canonical path */ }
+  };
   function getState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
@@ -36,6 +63,19 @@ export default function registerSubWorldsActions(registerLensAction) {
   const actor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const clean = (v, max = 280) => String(v == null ? "" : v).trim().slice(0, max);
   const num = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  // Fail-CLOSED numeric guard (copied from domains/literary.js): any provided
+  // numeric field must be a finite, non-negative, in-range value. An ABSENT
+  // field is fine (the macro uses its default). A hostile NaN / Infinity / -1 /
+  // 1e308 capacity is REJECTED rather than silently coerced to the default —
+  // so a poisoned numeric param can never round-trip as { ok:true }.
+  const badNumericField = (input, keys) => {
+    for (const k of keys) {
+      if (input == null || input[k] === undefined || input[k] === null) continue;
+      const n = Number(input[k]);
+      if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+    }
+    return null;
+  };
   const PRIVACY = new Set(["public", "unlisted", "private"]);
   const KINDS = new Set(["physics_simulator", "research_zone", "concord_substrate"]);
   const STATUS = new Set(["active", "paused", "archived"]);
@@ -93,6 +133,8 @@ export default function registerSubWorldsActions(registerLensAction) {
   // blank substrate and author it here.
   registerLensAction("sub_worlds", "spawn", (ctx, _a, params = {}) => {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const badNum = badNumericField(params, ["capacity"]);
+    if (badNum) return { ok: false, error: "bad_numeric_field", field: badNum };
     const name = clean(params.name, 120);
     if (name.length < 3) return { ok: false, error: "name must be at least 3 characters" };
     const kind = KINDS.has(params.kind) ? params.kind : "physics_simulator";
@@ -138,6 +180,8 @@ export default function registerSubWorldsActions(registerLensAction) {
   registerLensAction("sub_worlds", "discover", (ctx, _a, params = {}) => {
   try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const badNum = badNumericField(params, ["limit"]);
+    if (badNum) return { ok: false, error: "bad_numeric_field", field: badNum };
     const me = actor(ctx);
     const query = clean(params.query, 120).toLowerCase();
     const kindFilter = KINDS.has(params.kind) ? params.kind : null;
@@ -171,6 +215,8 @@ export default function registerSubWorldsActions(registerLensAction) {
   registerLensAction("sub_worlds", "update_settings", (ctx, _a, params = {}) => {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
+    const badNum = badNumericField(params, ["capacity"]);
+    if (badNum) return { ok: false, error: "bad_numeric_field", field: badNum };
     const hit = findWorld(s, clean(params.worldId, 80));
     if (!hit) return { ok: false, error: "world not found" };
     if (!canEdit(hit.world, me)) return { ok: false, error: "not authorized" };

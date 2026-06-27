@@ -1,0 +1,35 @@
+{
+  "macro_id": "deity.tone_vector",
+  "domain": "deity",
+  "name": "tone_vector",
+  "inputs": {
+    "deityId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 64
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.toneVector !== null && typeof output.toneVector === 'object')",
+    "output.ok === false || Array.isArray(output.templates)",
+    "output.ok === false || (output.thresholds !== null && typeof output.thresholds === 'object')",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": false,
+        "reason": "missing_deityId"
+      }
+    },
+    {
+      "input": { "deityId": "does-not-exist-9999" },
+      "expect": {
+        "ok": false
+      }
+    }
+  ]
+}

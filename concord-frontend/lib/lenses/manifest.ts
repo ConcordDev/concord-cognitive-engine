@@ -4261,7 +4261,13 @@ export const LENS_MANIFESTS: LensManifest[] = [
     domain: 'crafting',
     label: 'Crafting',
     artifacts: ['recipe', 'fighting_style_recipe', 'spell_recipe', 'blueprint', 'tier_listing', 'craft_session'],
-    macros: { list: 'lens.crafting.list', get: 'lens.crafting.get', create: 'lens.crafting.create', update: 'lens.crafting.update', delete: 'lens.crafting.delete', run: 'lens.crafting.run', export: 'lens.crafting.export' },
+    // list/get point at the REAL crafting.* macros (registered via
+    // domains/crafting.js → registerLensAction, reachable through
+    // /api/lens/run); the prior `lens.crafting.list`/`.get` ids were PHANTOM
+    // (never registered). create/update/delete/run/export stay on the generic
+    // `lens.*` artifact runtime (register("lens","create",{domain:"crafting"}))
+    // the page already drives via useCreateArtifact / runMacro("lens","create").
+    macros: { list: 'crafting.list', get: 'crafting.counts', create: 'lens.create', update: 'lens.update', delete: 'lens.delete', run: 'lens.run', export: 'lens.export' },
     exports: ['json', 'pdf'],
     actions: ['cook', 'brew', 'forge', 'list_for_marketplace', 'set_tier_pricing', 'apply_recipe'],
     category: 'creative',
@@ -5158,7 +5164,12 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'sponsorship', label: 'NPC Sponsorship', artifacts: ['npc_sponsorship', 'npc_dispatch'], macros: { list: 'lens.sponsorship.list', get: 'lens.sponsorship.get', create: 'lens.sponsorship.create', update: 'lens.sponsorship.update', delete: 'lens.sponsorship.delete', run: 'lens.sponsorship.run', export: 'lens.sponsorship.export' }, exports: ['json'], actions: ['sponsor', 'cancel'], category: 'social' },
   { domain: 'schemes', label: 'Schemes', artifacts: ['npc_scheme', 'hook_artifact'], macros: { list: 'lens.schemes.list', get: 'lens.schemes.get', create: 'lens.schemes.create', update: 'lens.schemes.update', delete: 'lens.schemes.delete', run: 'lens.schemes.run', export: 'lens.schemes.export' }, exports: ['json'], actions: ['propose', 'gather_evidence', 'move', 'abandon', 'discover_evidence'], category: 'social' },
   { domain: 'staking', label: 'CC Staking', artifacts: ['cc_stake'], macros: { list: 'lens.staking.list', get: 'lens.staking.get', create: 'lens.staking.create', update: 'lens.staking.update', delete: 'lens.staking.delete', run: 'lens.staking.run', export: 'lens.staking.export' }, exports: ['json'], actions: ['stake', 'redeem'], category: 'finance' },
-  { domain: 'sub-worlds', label: 'Sub-Worlds (Research Zones)', artifacts: ['sub_world'], macros: { list: 'lens.sub-worlds.list', get: 'lens.sub-worlds.get', create: 'lens.sub-worlds.create', update: 'lens.sub-worlds.update', delete: 'lens.sub-worlds.delete', run: 'lens.sub-worlds.run', export: 'lens.sub-worlds.export' }, exports: ['json'], actions: ['spawn', 'travel'], category: 'knowledge' },
+  // Real sub_worlds.* macros (registered via domains/sub-worlds.js, loaded
+  // through domains/index.js → registerLensAction, reachable via /api/lens/run).
+  // The prior `lens.sub-worlds.*` ids were PHANTOM (never registered). Lens-id
+  // is `sub-worlds`; the macro DOMAIN is `sub_worlds` (underscore) — distinct
+  // and correct. Slots map onto the real handlers the page drives.
+  { domain: 'sub-worlds', label: 'Sub-Worlds (Research Zones)', artifacts: ['sub_world'], macros: { list: 'sub_worlds.list', get: 'sub_worlds.discover', create: 'sub_worlds.spawn', update: 'sub_worlds.update_settings', delete: 'sub_worlds.archive', run: 'sub_worlds.visit' }, exports: ['json'], actions: ['spawn', 'discover', 'visit', 'favorite', 'set_status', 'analytics'], category: 'knowledge' },
   { domain: 'sync', label: 'Cross-Device Sync', artifacts: ['sync_session'], macros: { list: 'lens.sync.list', get: 'lens.sync.get', create: 'lens.sync.create', update: 'lens.sync.update', delete: 'lens.sync.delete', run: 'lens.sync.run', export: 'lens.sync.export' }, exports: ['json'], actions: ['enable', 'sync'], category: 'system' },
   // Real wellness.* macros (registered via registerWellnessMacros in server.js,
   // canonical register convention → reachable via /api/lens/run AND runMacro).

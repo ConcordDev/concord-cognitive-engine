@@ -1,0 +1,46 @@
+{
+  "macro_id": "deity.compose",
+  "domain": "deity",
+  "name": "compose",
+  "inputs": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "maxLength": 80
+    },
+    "domainTitle": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "creed": {
+      "type": "string",
+      "maxLength": 600
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.deityId !== undefined && output.deityId !== null)",
+    "output.ok === false || typeof output.name === 'string'",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {
+        "name": "Veyra",
+        "toneVector": { "warmth": 0.7, "refusal": 0.2, "mystery": 0.6 }
+      },
+      "expect": {
+        "ok": true,
+        "name": "Veyra"
+      }
+    },
+    {
+      "input": {},
+      "expect": {
+        "ok": false,
+        "reason": "missing_name"
+      }
+    }
+  ]
+}
