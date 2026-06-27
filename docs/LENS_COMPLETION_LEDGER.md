@@ -294,3 +294,33 @@ the swallowed-fetch UX defect fixed in all four, AND a real dead-caller (phantom
   Grep-proof: zero phantom-macro calls remain. 17 server + 10 vitest.
 Assassin ratchet GREEN (no new violations vs baseline); 258 WIRED; tsc 0; manifest+sere green.
 ~3 Phase-2 lenses left (inheritance, world-creator, app-maker — child-component-driven, need discovery).
+
+### Phase-2 batch 6 DONE (2026-06-27): inheritance, world-creator, app-maker — NAMED BACKLOG CLOSED
+80 server + 18 UX-state tests. Three child-component-driven lenses. One real money fix, two real
+dead-caller (wrong-domain / phantom) fixes, swallowed-fetch fixed in all three:
+- **inheritance** (DUAL registration; wealth/will TRANSFER money path): fixed 3 fail-open value
+  writes in domains/inheritance.js (add_asset.valueCc, track_lock.priceCc, amend_lock.priceCc) +
+  the server.js inline `inheritance.open_listing` heir-slot CC market write (poisoned
+  heirSlotPriceCc → invalid_numeric; was an unguarded INSERT into a CC value column) with
+  fail-closed badCc guards. Asset-value + escrow conservation pinned. 25 server + 6 vitest + 5 overrides.
+- **world-creator** (mixed: world-creator.* macros + /api/anomalies + /api/worlds REST): fixed 2
+  swallowed-fetch defects (anomalies public-fetch + DraftGallery draft-list dropped failures →
+  misleading empty/perpetual-loading); real loading/error/Retry. No backend defect. 30 server + 6
+  vitest + 4 overrides.
+- **app-maker** (lens-id ≠ domain: backend domain is `app-maker` WITH hyphen, registered in
+  domains/appmaker.js): fixed a real WRONG-DOMAIN DEAD CALLER — the page's action panel called the
+  non-existent `'appmaker'` (no-hyphen) domain, so the Scaffold/UI-Complexity/Wireframe buttons all
+  hit unknown_macro; repointed to the real `'app-maker'`. Also fixed swallowed loadApps failure.
+  25 server (48 with parity) + 6 vitest + 3 overrides.
+Assassin ratchet GREEN (no new violations vs baseline, incl. inheritance.open_listing); 258 WIRED;
+tsc 0; manifest+sere green.
+
+**NAMED PHASE-2 BACKLOG CLOSED (2026-06-27):** all 6 batches done (24 lenses through the non-score
+gate across batches 1–6). Real defects fixed across the run: 2 CC money bugs (sponsorship.create,
+inheritance value/open_listing) + 1 in-game-currency treasury fail-open (kingdoms) + ~6 numeric
+fail-opens (gallery, tournaments, understanding diff, worldmodel overflow, genesis negative-limit DoS,
+inheritance ×3) + 3 dead-caller wiring fixes (understanding engine_list shadow, self phantom
+cross-substrate macros, app-maker wrong-domain) + the swallowed-fetch→silent-empty UX anti-pattern
+fixed in ~12 lenses. Ratchet GREEN every batch. The remaining ~230 lenses are the long tail of the
+"all 258" loop — each already WIRED + smoke-covered; this pass hardened the highest-signal subset
+(the failing queue + the named passing-but-thin/economy lenses).
