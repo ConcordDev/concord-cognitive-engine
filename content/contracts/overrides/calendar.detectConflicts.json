@@ -1,0 +1,17 @@
+{
+  "macro_id": "calendar.detectConflicts",
+  "domain": "calendar",
+  "name": "detectConflicts",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || typeof output.result === 'object'",
+    "output.ok !== true || output.result.message !== undefined || (Array.isArray(output.result.conflicts) && Number.isFinite(output.result.conflictCount) && typeof output.result.conflictFree === 'boolean')",
+    "output.ok !== true || !Array.isArray(output.result.conflicts) || output.result.conflicts.every(c => Number.isFinite(c.overlapMinutes))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "calendar.detectConflicts is a LENS_ACTIONS (PATH 3) handler reading events from artifact.data.events. It sorts events by start, finds pairwise overlaps (touching boundaries end==start do NOT count), and reports exact overlapMinutes per conflict; a missing end defaults to start+1h. <2 events returns a guidance message (no conflict array). Pure-compute, no STATE/DB/network — works even when globalThis._concordSTATE is absent. macro-assassin drives runMacro (which does not resolve LENS_ACTIONS), so this contract documents the /api/lens/run path the lens uses; the behavioral suite is the real driver. No side effects."
+}

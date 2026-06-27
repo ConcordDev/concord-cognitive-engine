@@ -1,0 +1,18 @@
+{
+  "macro_id": "calendar.accounts-push-event",
+  "domain": "calendar",
+  "name": "accounts-push-event",
+  "external_io": true,
+  "inputs": {
+    "accountId": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "account not found" } }
+  ],
+  "_note": "calendar.accounts-push-event is a LENS_ACTIONS (PATH 3) handler that pushes an event back to Google Calendar via writeGoogleCalendarEvent → connectorFetch (server/lib/connector-client.js) — EXTERNAL-IO, so it is marked external_io:true and driven for its network-FREE validation-rejection paths ONLY. ALL of these reject BEFORE connectorFetch is ever reached: unknown accountId → 'account not found'; a pull-only account → reason 'direction_pull_no_push'; a non-google provider → reason 'push_unsupported_provider'; a google push with no event.title → 'event.title required'. Only a valid google two-way push with a real stored OAuth token would hit the network (and returns honest no_token/connector_not_configured when absent). The behavioral suite asserts every pre-network rejection. macro-assassin drives runMacro, which does NOT resolve LENS_ACTIONS, so it never touches this handler; the empty-input case here documents the deterministic 'account not found' rejection. No CC; the SSRF guard lives on the connectorFetch chokepoint."
+}
