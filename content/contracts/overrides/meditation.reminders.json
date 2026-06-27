@@ -1,0 +1,19 @@
+{
+  "macro_id": "meditation.reminders",
+  "domain": "meditation",
+  "name": "reminders",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.reminders)",
+    "output.ok === false || typeof output.result.count === 'number'",
+    "output.ok === false || output.result.reminders.length === output.result.count",
+    "output.ok === false || typeof output.result.dueToday === 'number'",
+    "output.ok === false || output.result.nextFire === null || typeof output.result.nextFire.iso === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Lists the caller's scheduled-practice reminders from STATE and computes the next fire time + dueToday count. No reminders → ok:true, empty list, nextFire null — never no_db."
+}

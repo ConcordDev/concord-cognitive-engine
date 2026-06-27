@@ -1,0 +1,17 @@
+{
+  "macro_id": "meditation.courses",
+  "domain": "meditation",
+  "name": "courses",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.courses)",
+    "output.ok === false || typeof output.result.count === 'number'",
+    "output.ok === false || output.result.courses.length === output.result.count"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Lists the structured multi-day programs with the caller's per-course enrollment/completion overlaid from STATE. With no enrollment every course reads enrolled:false, completedDays:0 — ok:true, never no_db."
+}

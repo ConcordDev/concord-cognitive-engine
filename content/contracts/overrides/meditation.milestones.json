@@ -1,0 +1,19 @@
+{
+  "macro_id": "meditation.milestones",
+  "domain": "meditation",
+  "name": "milestones",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.badges)",
+    "output.ok === false || typeof output.result.unlockedCount === 'number'",
+    "output.ok === false || typeof output.result.totalCount === 'number'",
+    "output.ok === false || output.result.unlockedCount <= output.result.totalCount",
+    "output.ok === false || output.result.badges.length === output.result.totalCount"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Computes badge progress from the caller's accrued sessions/minutes/streak/categories in STATE. Empty ledger → ok:true, unlockedCount 0, all badge progress 0 — never no_db. unlockedCount never exceeds totalCount."
+}

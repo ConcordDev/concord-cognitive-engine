@@ -1,0 +1,22 @@
+{
+  "macro_id": "meditation.recommendations",
+  "domain": "meditation",
+  "name": "recommendations",
+  "inputs": {
+    "hour": { "type": "number", "min": 0, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.goal === 'string'",
+    "output.ok === false || typeof output.result.reason === 'string'",
+    "output.ok === false || Array.isArray(output.result.recommendations)",
+    "output.ok === false || output.result.recommendations.length <= 4",
+    "output.ok === false || typeof output.result.basedOn === 'object'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "hour": 23 }, "expect": { "ok": true } }
+  ],
+  "_note": "Mood+history-adaptive recommendations from the caller's STATE ledger. hour clamps into [0,23]; goal is inferred from recent mood + time of day. Empty ledger → ok:true with up to 4 fresh-track picks, never no_db."
+}

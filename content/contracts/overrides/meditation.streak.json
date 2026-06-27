@@ -1,0 +1,21 @@
+{
+  "macro_id": "meditation.streak",
+  "domain": "meditation",
+  "name": "streak",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.currentStreak === 'number'",
+    "output.ok === false || output.result.currentStreak >= 0",
+    "output.ok === false || typeof output.result.totalSessions === 'number'",
+    "output.ok === false || output.result.totalSessions >= 0",
+    "output.ok === false || typeof output.result.totalMinutes === 'number'",
+    "output.ok === false || output.result.totalMinutes >= 0",
+    "output.ok === false || typeof output.result.practicedToday === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Reads the caller's per-user practice ledger from globalThis._concordSTATE.meditationLens. The assassin runs with an internal owner actor, so {} returns ok:true with zeroed streak/totals on an empty ledger — never no_db. All counters are non-negative."
+}

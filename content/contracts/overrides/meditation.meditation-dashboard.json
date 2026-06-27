@@ -1,0 +1,20 @@
+{
+  "macro_id": "meditation.meditation-dashboard",
+  "domain": "meditation",
+  "name": "meditation-dashboard",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.totalSessions === 'number'",
+    "output.ok === false || output.result.totalSessions >= 0",
+    "output.ok === false || typeof output.result.totalMinutes === 'number'",
+    "output.ok === false || output.result.totalMinutes >= 0",
+    "output.ok === false || typeof output.result.currentStreak === 'number'",
+    "output.ok === false || typeof output.result.byCategory === 'object'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Aggregate practice summary for the caller from STATE: totals, current streak, per-category counts, mood check-in count. Empty ledger → all zero, ok:true, never no_db."
+}
