@@ -1,4 +1,66 @@
-export default function registerInsuranceActions(registerLensAction) {
+// server/domains/insurance.js
+//
+// insurance lens — two surfaces on one domain:
+//   • /lenses/insurance       — real-world policy/claim/agency-management
+//                               workbench (policy-list, coverageGap, FNOL…).
+//   • /lenses/death-insurance — sparks-only inheritance pacts
+//                               (pact-write/list/revoke/claim/notifications…).
+//
+// REGISTRATION (saved-class fix): this file used to register through the
+// legacy `registerLensAction(domain, action, (ctx, artifact, params))`
+// convention AND was NEVER imported by server.js — so every `insurance.*`
+// macro it defines (both lenses' entire backends) was invisible to runMacro
+// and to POST /api/lens/run → every call hit unknown_macro. It is now wired
+// through the canonical `register` (MACROS) registry —
+// `registerInsuranceActions(register)` in server.js — so the macros are
+// reachable both via POST /api/lens/run AND via runMacro (which the contract
+// engine + macro-assassin drive).
+//
+// To keep the file's verified handler bodies byte-for-byte identical we adapt
+// the canonical 2-arg `(ctx, input)` signature back to the legacy
+// `(ctx, artifact, params)` shape via the `registerLensAction` shim below:
+//   • `params` is the input (so `lensRun('insurance','pact-write', {...})`
+//     reads the same fields it always did);
+//   • `artifact` is `input.artifact` when the caller passes one (the
+//     real-world analytical macros — coverageGap/lossRatioReport/… — are
+//     invoked as `callMacro(name, { artifact })`), else a virtual artifact
+//     wrapping the input. Identical to what `/api/lens/run` would have built.
+//
+// Persistence is STATE-backed (globalThis._concordSTATE) keyed by
+// ctx.actor.userId, surviving restart via the debounced state-saver and
+// staying per-user. Handlers return a `{ ok, result }` envelope (the
+// dispatcher's `_unwrapLensEnvelope` strips the `result` layer so the
+// frontend reads `r.data.result.<field>`).
+//
+// Fail-CLOSED numeric guard: every macro that WRITES from a numeric input
+// (premium / coverage / payout / sparks) calls `badNumericField` BEFORE the
+// write, rejecting NaN/Infinity/1e308/negative instead of clamping them to a
+// silently-accepted row (the macro-assassin's V2 vector probes exactly this).
+
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) BEFORE writing.
+// An absent/null field is fine (the macro uses its default). Returns null when
+// clean, else the offending key. Copied from server/domains/literary.js.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input == null || input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e9) return k;
+  }
+  return null;
+}
+
+export default function registerInsuranceActions(register) {
+  // Legacy-convention shim: adapt canonical register(ctx, input) → the
+  // verified (ctx, artifact, params) handler bodies below, unchanged.
+  const registerLensAction = (domain, action, handler) =>
+    register(domain, action, (ctx, input = {}) => {
+      const inp = input && typeof input === "object" ? input : {};
+      const artifact = inp.artifact && typeof inp.artifact === "object"
+        ? inp.artifact
+        : { id: null, domain, type: "domain_action", data: inp, meta: {} };
+      return handler(ctx, artifact, inp);
+    });
+
   registerLensAction("insurance", "coverageGap", (ctx, artifact, _params) => {
     const policies = artifact.data?.policies || [artifact.data];
     const coverageTypes = ['health', 'auto', 'home', 'life', 'liability', 'umbrella'];
@@ -237,6 +299,8 @@ export default function registerInsuranceActions(registerLensAction) {
     const carrier = String(params.carrier || "").trim();
     const policyNumber = String(params.policyNumber || "").trim();
     if (!carrier || !policyNumber) return { ok: false, error: "carrier and policyNumber required" };
+    const badNum = badNumericField(params, ["annualPremium", "deductible", "liabilityLimit"]);
+    if (badNum) return { ok: false, error: `invalid_${badNum}` };
     if (!state.policies.has(userId)) state.policies.set(userId, []);
     const policy = {
       id: `pol_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -272,6 +336,8 @@ export default function registerInsuranceActions(registerLensAction) {
     const carrier = String(params.carrier || "").trim();
     const description = String(params.description || "").trim();
     if (!carrier || !description) return { ok: false, error: "carrier and description required" };
+    const badNum = badNumericField(params, ["claimAmount"]);
+    if (badNum) return { ok: false, error: `invalid_${badNum}` };
     if (!state.claims.has(userId)) state.claims.set(userId, []);
     const claim = {
       id: `clm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -432,6 +498,8 @@ export default function registerInsuranceActions(registerLensAction) {
     const s = getInsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const policy = findPolicy(s, insAid(ctx), params.policyId);
     if (!policy) return { ok: false, error: "policy not found" };
+    const badNum = badNumericField(params, ["amount"]);
+    if (badNum) return { ok: false, error: `invalid_${badNum}` };
     const amount = insNum(params.amount);
     if (amount <= 0) return { ok: false, error: "amount must be > 0" };
     const payment = {
@@ -778,6 +846,10 @@ export default function registerInsuranceActions(registerLensAction) {
   registerLensAction("insurance", "pact-write", (ctx, _a, params = {}) => {
     const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pactUid(ctx);
+    // Fail-CLOSED: reject poisoned numeric input (NaN/Infinity/1e308/negative)
+    // BEFORE any write, rather than clamping it into a silently-accepted pact.
+    const badNum = badNumericField(params, ["payoutSparks", "premiumSparks", "durationDays"]);
+    if (badNum) return { ok: false, error: `invalid_${badNum}` };
     const payoutSparks = pactInt(params.payoutSparks);
     const premiumSparks = pactInt(params.premiumSparks);
     if (payoutSparks <= 0) return { ok: false, error: "payoutSparks must be > 0" };
@@ -867,6 +939,8 @@ export default function registerInsuranceActions(registerLensAction) {
     const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const pact = (s.pacts.get(pactUid(ctx)) || []).find((p) => p.id === params.pactId);
     if (!pact) return { ok: false, error: "pact not found" };
+    const badNum = badNumericField(params, ["durationDays"]);
+    if (badNum) return { ok: false, error: `invalid_${badNum}` };
     const st = pactStatus(pact);
     if (st === "revoked" || st === "fired") return { ok: false, error: `cannot renew a ${st} pact` };
     const extraDays = Math.max(1, pactInt(params.durationDays, pact.durationDays));
@@ -1040,6 +1114,8 @@ export default function registerInsuranceActions(registerLensAction) {
   try {
     const s = getPactState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pactUid(ctx);
+    const badNum = badNumericField(params, ["windowDays"]);
+    if (badNum) return { ok: false, error: `invalid_${badNum}` };
     const windowDays = Math.max(1, pactInt(params.windowDays, 7));
     const now = pactNow();
     const horizon = now + windowDays * PACT_DAY;
@@ -1182,6 +1258,8 @@ export default function registerInsuranceActions(registerLensAction) {
     const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const line = insClean(params.line, 30).toLowerCase();
     if (!line) return { ok: false, error: "line required (auto, home, life…)" };
+    const badNum = badNumericField(params, ["basePremium", "riskFactor"]);
+    if (badNum) return { ok: false, error: `invalid_${badNum}` };
     const basePremium = Math.max(0, insNum(params.basePremium));
     if (basePremium <= 0) return { ok: false, error: "basePremium must be > 0 — your underwriting estimate" };
     const riskFactor = Math.max(0.5, Math.min(3, insNum(params.riskFactor, 1)));

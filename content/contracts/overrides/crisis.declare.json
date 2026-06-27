@@ -1,0 +1,50 @@
+{
+  "macro_id": "crisis.declare",
+  "domain": "crisis",
+  "name": "declare",
+  "inputs": {
+    "type": {
+      "type": "string",
+      "required": true,
+      "maxLength": 64,
+      "enum": [
+        "substrate_corruption",
+        "emergent_uprising",
+        "knowledge_extinction",
+        "faction_war",
+        "dark_world"
+      ]
+    },
+    "worldId": {
+      "type": "string",
+      "maxLength": 80
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || (output.result && typeof output.result.crisisId === 'string')",
+    "output.ok === false || output.result.type === input.type",
+    "output.reason !== 'no_db'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": false,
+        "reason": "missing_type"
+      }
+    },
+    {
+      "input": {
+        "type": "not_a_type"
+      },
+      "expect": {
+        "ok": false,
+        "reason": "unknown_crisis_type"
+      }
+    }
+  ],
+  "_note": "The crisis-ops 'create' verb: declares a civilization-level crisis by delegating to world-crisis.js#triggerCrisis (real INSERT INTO world_crises + world:crisis emit). type must be one of CRISIS_TYPES; unknown \u2192 unknown_crisis_type; missing \u2192 missing_type. A second declare of an already-active type returns ok:false crisis_already_active (idempotency guard in the lib)."
+}

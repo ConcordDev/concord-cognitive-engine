@@ -4521,9 +4521,14 @@ export const LENS_MANIFESTS: LensManifest[] = [
     domain: 'cognition',
     label: 'Cognition',
     artifacts: ['hlr_trace', 'hlm_topology', 'cluster', 'drift_alert', 'forgetting_event'],
-    macros: { list: 'lens.cognition.list', get: 'lens.cognition.get', run: 'lens.cognition.run', export: 'lens.cognition.export' },
+    // Real cognition.* macros (registered via registerCognitionMacros in
+    // server.js). `list`/`get` map to the saved-trace-export ledger;
+    // `create`/`run` map to compareModes (a side-by-side HLR run); `export`
+    // maps to exportTrace so DTU-exhaust + the ManifestActionBar verbs resolve.
+    // The phantom `lens.cognition.*` ids that used to sit here never existed.
+    macros: { list: 'cognition.listExports', get: 'cognition.getExport', create: 'cognition.compareModes', run: 'cognition.compareModes', export: 'cognition.exportTrace', delete: 'cognition.deleteExport' },
     exports: ['json'],
-    actions: ['run_hlr', 'show_hlm', 'list_clusters', 'list_drift_alerts', 'forgetting_status'],
+    actions: ['compareModes', 'recommendMode', 'exportTrace', 'listExports', 'getExport', 'deleteExport', 'driftAlerts'],
     category: 'system',
     dataTier: 'REAL_LIVE',
     emptyState: {
@@ -4988,28 +4993,6 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
   },
   {
-    domain: 'sessions',
-    label: 'Sessions',
-    artifacts: ['session', 'session_event'],
-    macros: { list: 'lens.sessions.list', get: 'lens.sessions.get', create: 'lens.sessions.create', update: 'lens.sessions.update', delete: 'lens.sessions.delete', run: 'lens.sessions.run', export: 'lens.sessions.export' },
-    exports: ['json'],
-    actions: ['start', 'advance', 'update_state', 'list_mine', 'get', 'close'],
-    category: 'productivity',
-    dataTier: 'REAL_LIVE',
-    emptyState: {
-      headline: "No sessions yet.",
-      caption: "Sessions persist multi-step work across visits — open a kingdoms war campaign, a research arc, a podcast season. Real, resumable.",
-      firstActionLabel: "Browse session-aware lenses",
-    },
-    firstRunGuide: {
-      steps: [
-        { caption: "Every session belongs to a user and a lens. State is opaque JSON the lens owns." },
-        { caption: "Filter by status (open / paused / completed / abandoned); each row shows live step + transition count." },
-        { caption: "Resume jumps back to the owning lens; Complete or Abandon closes the session and emits a final event." },
-      ],
-    },
-  },
-  {
     domain: 'dx-platform',
     label: 'DX Platform',
     artifacts: ['codebase', 'finding', 'repair_proposal', 'usage_row', 'quota'],
@@ -5047,7 +5030,12 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'classroom', label: 'Classroom', artifacts: ['homework_submission', 'peer_review', 'academic_transcript'], macros: { list: 'lens.classroom.list', get: 'lens.classroom.get', create: 'lens.classroom.create', update: 'lens.classroom.update', delete: 'lens.classroom.delete', run: 'lens.classroom.run', export: 'lens.classroom.export' }, exports: ['json', 'pdf'], actions: ['enrol', 'submit_homework', 'peer_review', 'transcript'], category: 'knowledge' },
   { domain: 'byo-keys', label: 'BYO API Keys', artifacts: ['api_key_grant'], macros: { list: 'lens.byo-keys.list', get: 'lens.byo-keys.get', create: 'lens.byo-keys.create', update: 'lens.byo-keys.update', delete: 'lens.byo-keys.delete', run: 'lens.byo-keys.run', export: 'lens.byo-keys.export' }, exports: ['json'], actions: ['add_key', 'remove_key', 'test_key'], category: 'system' },
   { domain: 'bounties', label: 'Bounties', artifacts: ['bounty_stake', 'autofix_proposal'], macros: { list: 'lens.bounties.list', get: 'lens.bounties.get', create: 'lens.bounties.create', update: 'lens.bounties.update', delete: 'lens.bounties.delete', run: 'lens.bounties.run', export: 'lens.bounties.export' }, exports: ['json'], actions: ['stake', 'vote', 'resolve'], category: 'social' },
-  { domain: 'death-insurance', label: 'Death-Lottery Insurance', artifacts: ['insurance_contract'], macros: { list: 'lens.death-insurance.list', get: 'lens.death-insurance.get', create: 'lens.death-insurance.create', update: 'lens.death-insurance.update', delete: 'lens.death-insurance.delete', run: 'lens.death-insurance.run', export: 'lens.death-insurance.export' }, exports: ['json'], actions: ['write_contract', 'claim'], category: 'social' },
+  // The /lenses/death-insurance lens maps onto the real `insurance` domain
+  // (lens-id ≠ domain, like codex→lore). Its backend lives in
+  // server/domains/insurance.js (the sparks-only `pact-*` macros), now wired
+  // through the canonical `register` registry. The prior `lens.death-insurance.*`
+  // macro ids were phantoms (no such macros are registered anywhere).
+  { domain: 'death-insurance', label: 'Death-Lottery Insurance', artifacts: ['insurance_contract'], macros: { list: 'insurance.pact-list', get: 'insurance.pact-list', create: 'insurance.pact-write', update: 'insurance.pact-renew', delete: 'insurance.pact-revoke', run: 'insurance.pact-notifications', export: 'insurance.pact-payout-history' }, exports: ['json'], actions: ['pact-write', 'pact-revoke', 'pact-record-payout', 'pact-respond'], category: 'social' },
   { domain: 'deities', label: 'Deities', artifacts: ['player_deity', 'pilgrimage'], macros: { list: 'lens.deities.list', get: 'lens.deities.get', create: 'lens.deities.create', update: 'lens.deities.update', delete: 'lens.deities.delete', run: 'lens.deities.run', export: 'lens.deities.export' }, exports: ['json'], actions: ['compose', 'pilgrimage'], category: 'social' },
   { domain: 'dreams', label: 'Dreams', artifacts: ['dream'], macros: { list: 'lens.dreams.list', get: 'lens.dreams.get', create: 'lens.dreams.create', update: 'lens.dreams.update', delete: 'lens.dreams.delete', run: 'lens.dreams.run', export: 'lens.dreams.export' }, exports: ['json'], actions: ['publish', 'browse'], category: 'knowledge' },
   { domain: 'event-timeline', label: 'Event Timeline', artifacts: ['timeline_event'], macros: { list: 'lens.event-timeline.list', get: 'lens.event-timeline.get', create: 'lens.event-timeline.create', update: 'lens.event-timeline.update', delete: 'lens.event-timeline.delete', run: 'lens.event-timeline.run', export: 'lens.event-timeline.export' }, exports: ['json'], actions: ['scrub', 'export'], category: 'social' },
@@ -5071,17 +5059,32 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // create → metrics-log, update → goals-update-progress, delete → goals-delete.
   { domain: 'wellness', label: 'Wellness', artifacts: ['metric', 'habit', 'mood', 'workout', 'goal', 'self_field', 'thought_record', 'session'], macros: { list: 'wellness.metrics-list', get: 'wellness.metrics-list', create: 'wellness.metrics-log', update: 'wellness.goals-update-progress', delete: 'wellness.goals-delete' }, exports: ['json'], actions: ['sleepScore', 'strainLog', 'recoveryReport', 'hrvTrend', 'metrics-log', 'metrics-list', 'metrics-trend', 'habits-create', 'habits-checkin', 'mood-log', 'mood-correlate', 'workouts-log', 'recovery-score', 'goals-create', 'self-field-compose', 'cbt-record-create', 'wearable-import', 'session-complete', 'daily-recommendation'], category: 'lifestyle' },
   // Phase V — game-mode dispatch targets.
-  { domain: 'crisis-ops', label: 'Crisis Ops', artifacts: ['world_crisis', 'skill_recommendation'], macros: { list: 'lens.crisis-ops.list', get: 'lens.crisis-ops.get', run: 'lens.crisis-ops.run' }, exports: ['json'], actions: ['active_for_player', 'resolve'], category: 'social' },
+  // Crisis Ops is a READER+ACTOR over the real `crisis` domain
+  // (server/domains/crisis.js — registerCrisisMacros, registered at
+  // server.js:26048 — register("crisis", "active_for_player"|"resolve"|"map"|
+  // "triage"|"playbook"|"assign"|"team"|"timeline"|"alerts"|"resources"|… )).
+  // The macro DOMAIN the page calls via lensRun is `crisis`; the manifest key /
+  // lens id is `crisis-ops` (used by getLensManifest('crisis-ops') + the
+  // /lenses/crisis-ops route). The prior `lens.crisis-ops.*` macros were
+  // phantoms that resolved to nothing — repointed here to the REAL `crisis.*`
+  // surface. `create` → crisis.declare is the real crisis-declaring verb (it
+  // INSERTs a world_crises row via the world-crisis lib + emits world:crisis),
+  // which the lens persists through the real `crisis.*` DB tables via lensRun.
+  { domain: 'crisis-ops', label: 'Crisis Ops', artifacts: ['world_crisis', 'skill_recommendation'], macros: { list: 'crisis.active_for_player', get: 'crisis.timeline', create: 'crisis.declare', run: 'crisis.resolve', export: 'crisis.map' }, exports: ['json'], actions: ['active_for_player', 'resolve', 'declare', 'map', 'triage', 'playbook', 'playbook_step', 'assign', 'team', 'unassign', 'log_event', 'timeline', 'alerts', 'acknowledge_alert', 'resources', 'resource_upsert', 'resource_deploy'], category: 'social' },
   { domain: 'expedition-journal', label: 'Expedition Journal', artifacts: ['expedition_stage'], macros: { list: 'lens.expedition-journal.list', get: 'lens.expedition-journal.get', run: 'lens.expedition-journal.run' }, exports: ['json'], actions: ['advance_stage', 'mark_visited'], category: 'knowledge' },
   { domain: 'ghost-tracker', label: 'Ghost Tracker', artifacts: ['drift_alert', 'ghost_residue'], macros: { list: 'lens.ghost-tracker.list', get: 'lens.ghost-tracker.get', run: 'lens.ghost-tracker.run' }, exports: ['json'], actions: ['residues', 'confront'], category: 'knowledge' },
   // Phase 5 — cross-lens multi-step workflow session index.
+  // Real sessions.* macros (registerSessionsMacros, canonical register convention
+  // → reachable via /api/lens/run AND runMacro). The prior `lens.sessions.*` macro
+  // ids were PHANTOM (never registered). Generic CRUD verbs map onto real macros:
+  // list → list_mine, get → get, create → start, run → advance, export → search.
   {
     domain: 'sessions',
     label: 'Sessions',
     artifacts: ['lens_session'],
-    macros: { list: 'lens.sessions.list', get: 'lens.sessions.get', run: 'lens.sessions.run' },
+    macros: { list: 'sessions.list_mine', get: 'sessions.get', create: 'sessions.start', run: 'sessions.advance', export: 'sessions.search' },
     exports: ['json'],
-    actions: ['search', 'pause', 'resume', 'rename', 'annotate', 'detail', 'stale', 'bulk_close'],
+    actions: ['start', 'advance', 'update_state', 'list_mine', 'get', 'close', 'search', 'pause', 'resume', 'rename', 'annotate', 'stale', 'bulk_close'],
     category: 'productivity',
     dataTier: 'REAL_LIVE',
     sessionTable: 'lens_sessions',

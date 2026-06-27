@@ -31,6 +31,19 @@ function payloadByteLength(json) {
   catch { return Infinity; }
 }
 
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
+// silently clamp through the Math.min/max bounds. A caller that PASSES a numeric
+// field at all must pass a finite, non-negative one — an absent field is fine
+// (the macro uses its default). Returns null when clean, or the offending key.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 /**
  * Recursive deep-merge for plain objects. Arrays + non-object values
  * are replaced (not merged). null in patch deletes the key.
@@ -224,6 +237,8 @@ export default function registerSessionsMacros(register) {
 
     const sessionId = String(input.sessionId || "").trim();
     if (!sessionId) return { ok: false, reason: "missing_session_id" };
+    const badEvt = badNumericField(input, ["eventLimit"]);
+    if (badEvt) return { ok: false, reason: `invalid_${badEvt}` };
 
     const row = db.prepare(`SELECT * FROM lens_sessions WHERE id = ? AND user_id = ?`).get(sessionId, userId);
     if (!row) return { ok: false, reason: "not_found" };
@@ -265,6 +280,9 @@ export default function registerSessionsMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctx?.actor?.userId;
     if (!userId) return { ok: false, reason: "no_user" };
+
+    const badLim = badNumericField(input, ["limit"]);
+    if (badLim) return { ok: false, reason: `invalid_${badLim}` };
 
     const lensId = input.lensId ? String(input.lensId).slice(0, 64) : null;
     const status = input.status ? String(input.status).slice(0, 16) : null;
@@ -350,6 +368,9 @@ export default function registerSessionsMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctx?.actor?.userId;
     if (!userId) return { ok: false, reason: "no_user" };
+
+    const badLim = badNumericField(input, ["limit"]);
+    if (badLim) return { ok: false, reason: `invalid_${badLim}` };
 
     const query = input.query != null ? String(input.query).trim().slice(0, 120) : "";
     const lensId = input.lensId ? String(input.lensId).slice(0, 64) : null;
@@ -545,6 +566,9 @@ export default function registerSessionsMacros(register) {
     const userId = ctx?.actor?.userId;
     if (!userId) return { ok: false, reason: "no_user" };
 
+    const badIdle = badNumericField(input, ["idleDays"]);
+    if (badIdle) return { ok: false, reason: `invalid_${badIdle}` };
+
     const idleDays = Math.min(Math.max(Number(input.idleDays) || 7, 1), 365);
     const now = Math.floor(Date.now() / 1000);
     const cutoff = now - idleDays * 86400;
@@ -588,6 +612,9 @@ export default function registerSessionsMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctx?.actor?.userId;
     if (!userId) return { ok: false, reason: "no_user" };
+
+    const badIdle = badNumericField(input, ["idleDays"]);
+    if (badIdle) return { ok: false, reason: `invalid_${badIdle}` };
 
     const outcome = String(input.outcome || "").trim();
     if (outcome !== "completed" && outcome !== "abandoned") {

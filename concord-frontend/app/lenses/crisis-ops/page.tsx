@@ -29,6 +29,8 @@ import { TeamPanel } from '@/components/crisis-ops/TeamPanel';
 import { TimelinePanel } from '@/components/crisis-ops/TimelinePanel';
 import { AlertsPanel } from '@/components/crisis-ops/AlertsPanel';
 import { ResourcePanel } from '@/components/crisis-ops/ResourcePanel';
+import { IncidentReportPanel } from '@/components/crisis-ops/IncidentReportPanel';
+import { useLensData } from '@/lib/hooks/use-lens-data';
 
 interface Crisis {
   id: string;
@@ -51,6 +53,9 @@ export default function CrisisOpsPage() {
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [selected, setSelected] = useState<Crisis | null>(null);
+
+  // Persisted incident reports (durable after-action record — real artifact CRUD).
+  const reports = useLensData('crisis-ops', 'incident_report', { noSeed: true, limit: 50 });
 
   useLensCommand([
     { id: 'refresh', keys: 'r', description: 'Refresh', category: 'navigation', action: () => refresh() },
@@ -100,6 +105,11 @@ export default function CrisisOpsPage() {
               Operational crisis-response console — map, triage, playbooks, command and resources.
             </p>
           </div>
+          {reports.items.length > 0 && (
+            <span className="ml-auto rounded-full border border-amber-500/40 bg-amber-900/20 px-3 py-1 text-xs text-amber-200">
+              {reports.items.length} incident report{reports.items.length === 1 ? '' : 's'} on file
+            </span>
+          )}
         </header>
 
         <div className="grid gap-5 lg:grid-cols-3">
@@ -210,15 +220,23 @@ export default function CrisisOpsPage() {
               <div className="rounded-lg border border-white/10 bg-black/20 p-3">
                 <ResourcePanel crisisId={selected.id} />
               </div>
+              <div className="rounded-lg border border-white/10 bg-black/20 p-3 lg:col-span-2">
+                <IncidentReportPanel crisisId={selected.id} />
+              </div>
             </div>
           </section>
         )}
 
-        {/* Resource inventory when no crisis is selected */}
+        {/* Resource inventory + incident log when no crisis is selected */}
         {!selected && (
-          <section className="mt-5 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <ResourcePanel />
-          </section>
+          <div className="mt-5 grid gap-5 lg:grid-cols-2">
+            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <ResourcePanel />
+            </section>
+            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <IncidentReportPanel />
+            </section>
+          </div>
         )}
 
         <section className="mt-5 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

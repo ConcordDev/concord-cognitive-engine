@@ -1,0 +1,18 @@
+{
+  "macro_id": "crisis.resources",
+  "domain": "crisis",
+  "name": "resources",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.resources)",
+    "output.ok === false || typeof output.result.totals.total === 'number'",
+    "output.ok === false || typeof output.result.totals.available === 'number'",
+    "output.error !== 'no_db'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Lists the caller's deployable resource inventory + computed totals (total/deployed/available/kinds). Per-user in-memory store; a fresh user reads {} → ok:true with resources:[] and zeroed totals."
+}

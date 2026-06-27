@@ -1,0 +1,21 @@
+{
+  "macro_id": "sessions.update_state",
+  "domain": "sessions",
+  "name": "update_state",
+  "inputs": {
+    "sessionId": { "type": "string", "maxLength": 64 },
+    "statePatch": { "type": "object" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.state && typeof output.state === 'object')",
+    "output.ok === false || typeof output.updatedAt === 'number'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_session_id" } },
+    { "input": { "sessionId": "x" }, "expect": { "ok": false, "reason": "missing_state_patch" } },
+    { "input": { "sessionId": "does-not-exist", "statePatch": { "k": 1 } }, "expect": { "ok": false, "reason": "not_found" } }
+  ],
+  "_note": "sessions.update_state deep-merges a state patch into a caller-owned session without advancing the step. Requires sessionId + a non-null object statePatch; a foreign/unknown id → not_found. A write {} returns a real validation reason, NEVER no_db."
+}

@@ -1,0 +1,19 @@
+{
+  "macro_id": "sessions.resume",
+  "domain": "sessions",
+  "name": "resume",
+  "inputs": {
+    "sessionId": { "type": "string", "maxLength": 64 },
+    "note": { "type": "string", "maxLength": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.status === 'open'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_session_id" } },
+    { "input": { "sessionId": "does-not-exist" }, "expect": { "ok": false, "reason": "not_found" } }
+  ],
+  "_note": "sessions.resume transitions a caller-owned paused session back to open. Requires sessionId; a foreign/unknown id → not_found; an already-open row → already_open; a closed row → session_not_paused. A write {} returns a real validation reason, NEVER no_db."
+}

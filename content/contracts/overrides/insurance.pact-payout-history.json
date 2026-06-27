@@ -1,0 +1,18 @@
+{
+  "macro_id": "insurance.pact-payout-history",
+  "domain": "insurance",
+  "name": "pact-payout-history",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.paidOut))",
+    "output.ok === false || Array.isArray(output.result.received)",
+    "output.ok === false || typeof output.result.totalPaidOutSparks === 'number'",
+    "output.ok === false || typeof output.result.totalReceivedSparks === 'number'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "insurance.pact-payout-history reads the caller's fired-pact payout ledger from globalThis._concordSTATE.inheritPacts.payouts — payouts from pacts they WROTE (paidOut) and splits they RECEIVED as a beneficiary (received). STATE-backed, per-user via the internal owner actor, so {} returns ok:true with empty arrays and zero totals (NEVER no_db)."
+}

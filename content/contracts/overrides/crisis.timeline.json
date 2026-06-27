@@ -1,0 +1,37 @@
+{
+  "macro_id": "crisis.timeline",
+  "domain": "crisis",
+  "name": "timeline",
+  "inputs": {
+    "crisisId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.events)",
+    "output.ok === false || typeof output.result.count === 'number'",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": false,
+        "error": "missing_crisis_id"
+      }
+    },
+    {
+      "input": {
+        "crisisId": "cr_unknown"
+      },
+      "expect": {
+        "ok": true
+      }
+    }
+  ],
+  "_note": "Chronological event record for a crisis (DB-seeded 'started' head when the world_crises row exists, plus the in-memory event log, sorted by time). Unknown crisis with no DB row + no events \u2192 ok:true count:0. Missing crisisId \u2192 missing_crisis_id."
+}

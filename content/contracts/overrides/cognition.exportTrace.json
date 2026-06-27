@@ -1,0 +1,22 @@
+{
+  "macro_id": "cognition.exportTrace",
+  "domain": "cognition",
+  "name": "exportTrace",
+  "inputs": {
+    "trace": { "type": "object" },
+    "title": { "type": "string", "maxLength": 200 },
+    "note": { "type": "string", "maxLength": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.exportId === 'string')",
+    "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 1)",
+    "output.ok === false || (output.result.export && output.result.export.trace === undefined)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "trace_required" } },
+    { "input": { "trace": { "traceId": "t1", "mode": "deductive", "input": { "question": "Q" } }, "title": "My run" }, "expect": { "ok": true } }
+  ],
+  "_note": "Persists a client-held reasoning trace into the caller's per-user export ledger (globalThis._concordSTATE.cognitionLens, keyed by actor.userId). Empty/non-object trace fails-closed with 'trace_required'. The returned export metadata strips the heavy trace body (trace: undefined). The macro-assassin's internal owner actor writes into its own bucket → ok:true; never no_db (memory-backed)."
+}

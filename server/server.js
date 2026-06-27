@@ -25720,6 +25720,19 @@ registerTranslationMacros(register);
 import registerWellnessMacros from "./domains/wellness.js";
 registerWellnessMacros(register);
 
+// Per-lens flawless loop batch 9 — cognition + insurance. Both were SAVED-CLASS
+// (legacy registerLensAction convention AND never imported here → fully dead,
+// unknown_macro on every call). insurance.js (1777 LOC) dead-wired BOTH the
+// /lenses/death-insurance pact surface AND the /lenses/insurance workbench — its
+// 65 macros (policy-*/claim-*/pact-*/fnol-*/…, none colliding with the inline
+// insurance.{write_contract,revoke,list_for_user}) are adapted to canonical
+// register via an internal shim. cognition exposes mode-compare/recommend +
+// per-user trace exports + drift alerts. sessions + crisis needed no line.
+import registerCognitionMacros from "./domains/cognition.js";
+registerCognitionMacros(register);
+import registerInsuranceActions from "./domains/insurance.js";
+registerInsuranceActions(register);
+
 // Cognitive Fingerprint (#5) — thinking-style profile from real activity.
 import registerMetacogMacros from "./domains/metacog.js";
 registerMetacogMacros(register);

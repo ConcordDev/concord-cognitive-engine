@@ -165,21 +165,45 @@ export function TraceExports({
         )}
       </div>
 
-      {error && <p className="text-xs text-rose-400">{error}</p>}
+      {error && (
+        <div
+          role="alert"
+          data-testid="trace-exports-error"
+          className="flex items-center justify-between gap-3 rounded border border-rose-800/40 bg-rose-950/20 px-3 py-2"
+        >
+          <p className="text-xs text-rose-300">{error}</p>
+          <button
+            onClick={refresh}
+            className="shrink-0 rounded border border-rose-700/50 px-2 py-1 text-[11px] text-rose-200 hover:bg-rose-900/40 focus:outline-none focus:ring-2 focus:ring-rose-400"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       <div>
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-violet-300">
             Saved exports
           </h3>
-          {loading && (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
-          )}
         </div>
-        {!loading && exports.length === 0 && (
-          <p className="text-xs text-violet-700">No exports yet.</p>
+        {loading && (
+          <div
+            role="status"
+            aria-busy="true"
+            data-testid="trace-exports-loading"
+            className="flex items-center gap-2 text-xs text-violet-500"
+          >
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <span>Loading saved exports…</span>
+          </div>
         )}
-        <ul className="space-y-1">
+        {!loading && !error && exports.length === 0 && (
+          <p data-testid="trace-exports-empty" className="text-xs text-violet-700">
+            No exports yet — run a reasoning pass and save it above.
+          </p>
+        )}
+        <ul data-testid="trace-exports-list" className="space-y-1">
           {exports.map((e) => (
             <li
               key={e.id}

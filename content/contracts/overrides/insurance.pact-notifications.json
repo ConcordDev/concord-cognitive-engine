@@ -1,0 +1,22 @@
+{
+  "macro_id": "insurance.pact-notifications",
+  "domain": "insurance",
+  "name": "pact-notifications",
+  "inputs": {
+    "windowDays": { "type": "number", "min": 1, "max": 1000000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.notifications))",
+    "output.ok === false || typeof output.result.count === 'number'",
+    "output.ok === false || output.result.count === output.result.notifications.length",
+    "output.ok === false || typeof output.result.unreadHigh === 'number'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "windowDays": 14 }, "expect": { "ok": true } },
+    { "input": { "windowDays": 1e308 }, "expect": { "ok": false, "error": "invalid_windowDays" } }
+  ],
+  "_note": "insurance.pact-notifications surfaces expiry / premium-due / handshake / fired / payout-received alerts for the caller's inheritance pacts. STATE-backed, per-user via the internal owner actor, so {} returns ok:true with an empty notifications list (NEVER no_db). windowDays is a fail-CLOSED numeric guard. count equals notifications.length; unreadHigh counts high-severity notes."
+}

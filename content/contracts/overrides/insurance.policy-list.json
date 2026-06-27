@@ -1,0 +1,15 @@
+{
+  "macro_id": "insurance.policy-list",
+  "domain": "insurance",
+  "name": "policy-list",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.policies))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "insurance.policy-list reads the caller's real-world insurance policies for the /lenses/insurance workbench from globalThis._concordSTATE.insLens. STATE-backed, per-user via the internal owner actor, so {} returns ok:true with an empty policies array — NEVER no_db."
+}

@@ -1,0 +1,21 @@
+{
+  "macro_id": "sessions.stale",
+  "domain": "sessions",
+  "name": "stale",
+  "inputs": {
+    "idleDays": { "type": "number", "min": 1, "max": 365 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.sessions)",
+    "output.ok === false || (typeof output.idleDays === 'number' && output.idleDays >= 1)",
+    "output.ok === false || (typeof output.total === 'number' && output.total >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "idleDays": 30 }, "expect": { "ok": true } },
+    { "input": { "idleDays": -1 }, "expect": { "ok": false, "reason": "invalid_idleDays" } }
+  ],
+  "_note": "sessions.stale lists the caller's own long-idle open/paused sessions (per-user scoped). {} returns ok:true with the default 7-day window and an empty list for the assassin actor. idleDays is a fail-CLOSED numeric guard (invalid_idleDays). Pure read; never no_db / no_user under the assassin."
+}

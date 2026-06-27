@@ -1,0 +1,30 @@
+{
+  "macro_id": "insurance.pact-write",
+  "domain": "insurance",
+  "name": "pact-write",
+  "inputs": {
+    "beneficiaryUserId": { "type": "string", "maxLength": 80 },
+    "payoutSparks": { "type": "number", "min": 1, "max": 1000000000 },
+    "premiumSparks": { "type": "number", "min": 1, "max": 1000000000 },
+    "durationDays": { "type": "number", "min": 1, "max": 1000000000 },
+    "premiumFrequency": { "type": "string", "enum": ["upfront", "weekly", "monthly"] },
+    "autoRenew": { "type": "boolean" },
+    "requireHandshake": { "type": "boolean" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.pact && typeof output.result.pact.id === 'string')",
+    "output.ok === false || output.result.pact.payoutSparks > 0",
+    "output.ok === false || output.result.pact.premiumSparks > 0",
+    "output.ok === false || Array.isArray(output.result.pact.beneficiaries)",
+    "output.ok === false || output.result.pact.status === 'active'"
+  ],
+  "fuzz_cases": [
+    { "input": { "beneficiaryUserId": "friend_1", "payoutSparks": 500, "premiumSparks": 50, "durationDays": 30 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "beneficiaryUserId": "friend_1", "payoutSparks": 0, "premiumSparks": 50 }, "expect": { "ok": false, "error": "payoutSparks must be > 0" } },
+    { "input": { "beneficiaryUserId": "friend_1", "payoutSparks": 1e308, "premiumSparks": 50 }, "expect": { "ok": false, "error": "invalid_payoutSparks" } }
+  ],
+  "_note": "insurance.pact-write writes a sparks-only inheritance pact for the /lenses/death-insurance lens into globalThis._concordSTATE.inheritPacts. Fail-CLOSED: poisoned numeric input (NaN/Infinity/1e308/negative) for payoutSparks/premiumSparks/durationDays returns ok:false invalid_<field> BEFORE the write; zero/missing sparks returns the '<field> must be > 0' reason. A beneficiary cannot equal the insured (self_pact_blocked). STATE-backed with an internal actor — an empty {} returns a real validation reason, NEVER no_db."
+}

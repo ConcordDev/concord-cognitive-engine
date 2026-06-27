@@ -1,196 +1,737 @@
 {
   "contracts": [
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "missing_alert_id",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "alertId": "alert:cr_x"
+          }
+        }
+      ],
+      "inputs": {
+        "alertId": {
+          "maxLength": 160,
+          "required": true,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.result.acknowledged === true",
+        "output.ok === false || output.result.alertId === input.alertId",
+        "output.ok === true || typeof output.error === 'string'"
       ],
       "macro_id": "crisis.acknowledge_alert",
       "name": "acknowledge_alert"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_world_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "worldId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.crises)",
+        "output.ok === false || Array.isArray(output.suggestions)",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.reason !== 'no_db'"
       ],
       "macro_id": "crisis.active_for_player",
       "name": "active_for_player"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "bad_numeric_field"
+          },
+          "input": {
+            "sinceMs": "not-a-number"
+          }
+        }
+      ],
+      "inputs": {
+        "sinceMs": {
+          "max": 1000000000000000,
+          "min": 0,
+          "type": "number"
+        },
+        "worldId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.alerts)",
+        "output.ok === false || typeof output.result.unacknowledged === 'number'",
+        "output.ok === false || typeof output.result.cursor === 'number'",
+        "output.error !== 'no_db'"
       ],
       "macro_id": "crisis.alerts",
       "name": "alerts"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "missing_crisis_or_responder",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "crisisId": "cr_x",
+            "responder": "Maya",
+            "role": "bogus_role"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "crisisId": "cr_x2",
+            "responder": "Lee",
+            "role": "incident_commander"
+          }
+        }
+      ],
+      "inputs": {
+        "crisisId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        },
+        "responder": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "role": {
+          "maxLength": 40,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.entry.id === 'string'",
+        "output.ok === false || output.result.roles.includes(output.result.entry.role)",
+        "output.ok === false || output.result.teamSize >= 1",
+        "output.ok === true || typeof output.error === 'string'"
       ],
       "macro_id": "crisis.assign",
       "name": "assign"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_type"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "unknown_crisis_type"
+          },
+          "input": {
+            "type": "not_a_type"
+          }
+        }
+      ],
+      "inputs": {
+        "type": {
+          "enum": [
+            "substrate_corruption",
+            "emergent_uprising",
+            "knowledge_extinction",
+            "faction_war",
+            "dark_world"
+          ],
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (output.result && typeof output.result.crisisId === 'string')",
+        "output.ok === false || output.result.type === input.type",
+        "output.reason !== 'no_db'"
+      ],
+      "macro_id": "crisis.declare",
+      "name": "declare"
+    },
+    {
+      "_derived": false,
+      "domain": "crisis",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "missing_crisis_or_note",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "crisisId": "cr_x",
+            "note": "Shelter opened"
+          }
+        }
+      ],
+      "inputs": {
+        "crisisId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        },
+        "kind": {
+          "maxLength": 32,
+          "type": "string"
+        },
+        "note": {
+          "maxLength": 500,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.entry.id === 'string'",
+        "output.ok === false || output.result.count >= 1",
+        "output.ok === true || typeof output.error === 'string'"
       ],
       "macro_id": "crisis.log_event",
       "name": "log_event"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
       "inputs": {},
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.incidents)",
+        "output.ok === false || typeof output.result.count === 'number'",
+        "output.ok === false || typeof output.result.sources === 'object'"
       ],
       "macro_id": "crisis.map",
       "name": "map"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "missing_crisis_type",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "crisisType": "wildfire"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "crisisType": "alien_invasion"
+          }
+        }
+      ],
+      "inputs": {
+        "crisisId": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "crisisType": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.steps)",
+        "output.ok === false || output.result.steps.length > 0",
+        "output.ok === false || (output.result.completed <= output.result.total)",
+        "output.ok === true || typeof output.error === 'string'"
       ],
       "macro_id": "crisis.playbook",
       "name": "playbook"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "missing_crisis_or_step",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "crisisId": "cr_x",
+            "stepId": "step_0"
+          }
+        }
+      ],
+      "inputs": {
+        "crisisId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        },
+        "done": {
+          "type": "boolean"
+        },
+        "stepId": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.done === 'boolean'",
+        "output.ok === false || typeof output.result.completed === 'number'",
+        "output.ok === true || typeof output.error === 'string'"
       ],
       "macro_id": "crisis.playbook_step",
       "name": "playbook_step"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_crisis_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found_or_already_resolved"
+          },
+          "input": {
+            "crisisId": "__no_such_crisis__"
+          }
+        }
+      ],
+      "inputs": {
+        "crisisId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || output.crisisId === input.crisisId",
+        "output.reason !== 'no_db'"
       ],
       "macro_id": "crisis.resolve",
       "name": "resolve"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "missing_resource_id",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "resource_not_found",
+            "ok": false
+          },
+          "input": {
+            "resourceId": "__nope__"
+          }
+        },
+        {
+          "expect": {
+            "error": "bad_numeric_field",
+            "ok": false
+          },
+          "input": {
+            "amount": "Infinity",
+            "resourceId": "__nope__"
+          }
+        }
+      ],
+      "inputs": {
+        "amount": {
+          "type": "number"
+        },
+        "crisisId": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "resourceId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.resource.deployed === 'number'",
+        "output.ok === false || output.result.resource.deployed <= output.result.resource.quantity",
+        "output.ok === true || typeof output.error === 'string'"
       ],
       "macro_id": "crisis.resource_deploy",
       "name": "resource_deploy"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "missing_name",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "bad_numeric_field",
+            "ok": false
+          },
+          "input": {
+            "name": "Rescue boat",
+            "quantity": "1e999"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "category": "vehicles",
+            "name": "Rescue boat",
+            "quantity": 4,
+            "unit": "boats"
+          }
+        }
+      ],
+      "inputs": {
+        "category": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "quantity": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "resourceId": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "unit": {
+          "maxLength": 20,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.resource.id === 'string'",
+        "output.ok === false || output.result.resource.quantity >= 0",
+        "output.ok === false || output.result.resource.deployed <= output.result.resource.quantity",
+        "output.ok === true || typeof output.error === 'string'"
       ],
       "macro_id": "crisis.resource_upsert",
       "name": "resource_upsert"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
       "inputs": {},
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.resources)",
+        "output.ok === false || typeof output.result.totals.total === 'number'",
+        "output.ok === false || typeof output.result.totals.available === 'number'",
+        "output.error !== 'no_db'"
       ],
       "macro_id": "crisis.resources",
       "name": "resources"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "missing_crisis_id",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "crisisId": "cr_empty"
+          }
+        }
+      ],
+      "inputs": {
+        "crisisId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.team)",
+        "output.ok === false || Array.isArray(output.result.roles)",
+        "output.ok === false || typeof output.result.count === 'number'",
+        "output.ok === true || typeof output.error === 'string'"
       ],
       "macro_id": "crisis.team",
       "name": "team"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "missing_crisis_id",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "crisisId": "cr_unknown"
+          }
+        }
+      ],
+      "inputs": {
+        "crisisId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.events)",
+        "output.ok === false || typeof output.result.count === 'number'",
+        "output.ok === true || typeof output.error === 'string'"
       ],
       "macro_id": "crisis.timeline",
       "name": "timeline"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "crisis",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "missing_world_id",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "worldId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.ranked)",
+        "output.ok === false || typeof output.result.total === 'number'",
+        "output.ok === true || typeof output.error === 'string'",
+        "output.error !== 'no_db'"
       ],
       "macro_id": "crisis.triage",
       "name": "triage"
@@ -211,5 +752,5 @@
   ],
   "domain": "crisis",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 16
+  "macroCount": 17
 }

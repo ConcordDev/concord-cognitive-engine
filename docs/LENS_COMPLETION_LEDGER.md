@@ -59,9 +59,9 @@ score bits justified-absent)
 | translation | 4/7→5/7 | **done** | batch8 | SAVED-CLASS: legacy registerLensAction + NEVER imported → fully dead (unknown_macro). Rewrote to canonical register + wired in server.js; added a real deterministic offline language detector (translate/batch keep honest {ok:false} offline); 27 server + 5 UX-state tests |
 | repair-telemetry | 4/7 | pending | | dashboard — likely by-design |
 | code-quality | 4/7 | pending | | dashboard |
-| cognition | 4/7 | pending | | |
-| crisis-ops | 4/7 | pending | | |
-| death-insurance | 4/7 | pending | | insurance backend |
+| cognition | 4/7→5/7 | **done** | batch9 | SAVED-CLASS: `domains/cognition.js` used legacy `registerLensAction` (3-arg) AND was NEVER imported → every cognition.{compareModes,recommendMode,exportTrace,listExports,getExport,deleteExport,driftAlerts} hit `unknown_macro`, leaving the ModeRecommender/ModeComparison/TraceExports + drift timeline dead-wired. Rewrote 7 macros to canonical `register` 2-arg (no duplicated logic; same compute) + fail-CLOSED `badNumericField` on depth/limit; fixed phantom `lens.cognition.*` manifest macro refs → real `cognition.*` ids; four-UX-state contract on TraceExports (loading role=status / error role=alert+Retry / empty / populated). 19 server + 4 UX-state tests; assassin clean (0 violations, 9 macros). Per-user in-memory ledger — no publicReadDomains entry (auth-gated lens). REQUIRES server.js register line (reported, not committed). |
+| crisis-ops | 4/7→6/7 | **done** | batch9 | reader/ops over the real `crisis` domain (lens-id≠domain); fixed phantom `lens.crisis-ops.*` → real crisis.{active_for_player,timeline,declare,resolve,map}; added real `crisis.declare` + IncidentReportPanel (artifact CRUD persistence); FIXED a unit bug (world-crisis.js writes started_at in MS but read macros assume seconds → ~1000× off age/urgency); 12 server + 6 UX-state tests; assassin clean (17 macros) |
+| death-insurance | 4/7→5/7 | **done** | batch9 | SAVED-CLASS (BIG): `domains/insurance.js` (1777 LOC, 65 macros) was legacy registerLensAction + NEVER imported → dead-wired BOTH /lenses/death-insurance AND /lenses/insurance. Rewrote to canonical register via a shim + wired in server.js (no collision with inline write_contract/revoke/list_for_user); claim-on-death splits the real sparks pool exactly; 67 server + 5 UX-state tests; scoped assassin 0 violations across 76 macros |
 | dx-platform | 4/7 | pending | | |
 | expedition-journal | 4/7 | pending | | |
 | ghost-tracker | 4/7 | pending | | |
@@ -70,7 +70,7 @@ score bits justified-absent)
 | ops | 4/7 | pending | | ops dashboard |
 | sandbox | 4/7 | pending | | |
 | sentinel | 4/7 | pending | | sentinel dashboard |
-| sessions | 4/7 | pending | | |
+| sessions | 4/7→5/7 | **done** | batch9 | removed a DUPLICATE manifest entry + repointed phantom `lens.sessions.*` → real sessions.{list_mine,get,start,advance,search}; page was already wired (intel stale); added fail-closed numeric guards; 12 (32 w/ parity) server + 6 UX-state tests; assassin clean (13 macros). (vitest.config.ts include glob extended to app/** for the co-located page test — 1 file, harmless) |
 | society | 4/7 | pending | | |
 | system | 4/7 | pending | | system dashboard |
 | tools | 4/7 | pending | | |
@@ -125,3 +125,8 @@ enumerated here until reached.
   sere-frontend.test.ts (brittle anomalies regex broke on batch-7's typed lensRun<Anomalies>). Lesson:
   run the full frontend suite per batch, not just per-lens vitests. verify-lens-backends 258 WIRED / 0
   broken, macroDomains 528. 19 left. 22 bugs total.
+- 2026-06-27: batch 9 DONE (cognition, crisis-ops, death-insurance, sessions) — 110 server + 21 UX-state
+  tests; +3 real bugs (cognition + insurance BOTH saved-class fully-dead [insurance dead-wired TWO lenses
+  + its 65-macro 1777-LOC domain], crisis-ops MS-vs-seconds unit bug). Wired cognition + insurance in
+  server.js (insurance's 65 macros activated — scoped assassin 0 violations across 76). crisis-ops hit
+  6/7. verify-lens-backends 258 WIRED / 0 broken, macroDomains 528. 15 left. 25 bugs total.

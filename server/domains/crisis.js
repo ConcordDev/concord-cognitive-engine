@@ -23,6 +23,20 @@
 
 import crypto from "node:crypto";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { triggerCrisis, CRISIS_TYPES } from "../lib/world-crisis.js";
+
+// Fail-CLOSED numeric guard (parity with server/domains/literary.js):
+// returns the first poisoned key (NaN/Infinity/1e308/negative/over-cap) or
+// null. Callers reject with { ok:false, reason:"bad_numeric_field" } so the
+// macro-assassin's V2 fuzz vector can never push a poisoned number through.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
 
 const USGS_QUAKES =
   "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson";
@@ -225,6 +239,53 @@ export default function registerCrisisMacros(register) {
       return { ok: false, reason: "update_failed", err: String(err?.message || err) };
     }
   }, { note: "Mark a crisis resolved by the calling player." });
+
+  // ---- declare a civilization-level crisis --------------------------
+  // The crisis-ops "create" verb. Delegates to the real world-crisis lib
+  // (triggerCrisis → INSERT INTO world_crises + emit world:crisis). No
+  // duplicated INSERT logic here — the lib owns the row shape, the 72h TTL,
+  // and the realtime emit. type must be one of CRISIS_TYPES.
+  register("crisis", "declare", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_actor" };
+    const { type, worldId } = input || {};
+    if (!type) return { ok: false, reason: "missing_type" };
+    if (!CRISIS_TYPES[type]) {
+      return { ok: false, reason: "unknown_crisis_type", types: Object.keys(CRISIS_TYPES) };
+    }
+    const wid = String(worldId || "concordia-hub").slice(0, 80);
+    try {
+      const emit = (name, payload) => {
+        try { globalThis?.__CONCORD_REALTIME__?.io?.emit?.(name, payload); } catch { /* sockets optional */ }
+      };
+      const res = triggerCrisis(db, type, wid, emit);
+      if (!res?.ok) return { ok: false, reason: res?.error || "declare_failed", id: res?.id };
+      // UNIT NORMALIZATION (real-bug fix): the world-crisis lib writes
+      // started_at in MILLISECONDS (Date.now()), but every crisis-ops read
+      // macro (active_for_player/triage/alerts/timeline) treats started_at as
+      // SECONDS (the canonical convention — see tests/depth/crisis-behavior).
+      // Left as-is, a declared crisis' age math + timeline head land ~1000×
+      // off. Re-stamp started_at to seconds (ends_at stays ms — the lib's own
+      // expiry sweep reads it). Best-effort.
+      try {
+        db.prepare(`UPDATE world_crises SET started_at = ? WHERE id = ?`)
+          .run(Math.floor(Date.now() / 1000), res.id);
+      } catch { /* best effort */ }
+      // seed the timeline head so the command deck has an opening entry
+      try {
+        const S = stores();
+        const tl = S.crisisTimelines.get(res.id) || [];
+        tl.push({ id: crypto.randomUUID(), kind: "started", note: `Crisis declared (${type})`, by: userId, at: Date.now() });
+        S.crisisTimelines.set(res.id, tl);
+        persist();
+      } catch { /* best effort */ }
+      return { ok: true, result: { crisisId: res.id, type, worldId: wid, description: CRISIS_TYPES[type] } };
+    } catch (err) {
+      return { ok: false, reason: "declare_failed", err: String(err?.message || err) };
+    }
+  }, { note: "Declare a civilization-level crisis (delegates to world-crisis lib)." });
 
   // ---- crisis map: geospatial plot of active incidents --------------
   // Pulls live USGS earthquakes + NWS active alerts (free, no-key APIs)
@@ -509,6 +570,8 @@ export default function registerCrisisMacros(register) {
     if (!db) return { ok: false, error: "no_db" };
     try {
       const userId = ctx?.actor?.userId;
+      const badNum = badNumericField(input, ["sinceMs"]);
+      if (badNum) return { ok: false, reason: "bad_numeric_field", field: badNum };
       const { worldId, sinceMs } = input || {};
       const since = Number(sinceMs) || 0;
       const sinceSec = Math.floor(since / 1000);
@@ -598,6 +661,8 @@ export default function registerCrisisMacros(register) {
     try {
       const userId = ctx?.actor?.userId;
       if (!userId) return { ok: false, error: "no_actor" };
+      const badNum = badNumericField(input, ["quantity"]);
+      if (badNum) return { ok: false, error: "bad_numeric_field", field: badNum };
       const { resourceId, name, category, quantity, unit } = input || {};
       if (!name) return { ok: false, error: "missing_name" };
       const S = stores();
@@ -629,6 +694,13 @@ export default function registerCrisisMacros(register) {
       if (!userId) return { ok: false, error: "no_actor" };
       const { resourceId, crisisId, amount } = input || {};
       if (!resourceId) return { ok: false, error: "missing_resource_id" };
+      // amount may be negative (recall) — guard magnitude/finiteness only.
+      if (amount !== undefined && amount !== null) {
+        const a = Number(amount);
+        if (!Number.isFinite(a) || Math.abs(a) > 1e6) {
+          return { ok: false, error: "bad_numeric_field", field: "amount" };
+        }
+      }
       const S = stores();
       const map = S.crisisResources.get(userId);
       const resource = map?.get(resourceId);
