@@ -1,0 +1,170 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "mail",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "not_found",
+            "ok": false
+          },
+          "input": {
+            "id": "mail_does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 128,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.claimed === true",
+        "output.ok === false || (typeof output.payout === 'object' && output.payout !== null)",
+        "output.ok === false || output.payout.attachmentCc >= 0",
+        "output.ok === false || output.payout.codCcPaid >= 0",
+        "output.ok === false || Array.isArray(output.attachments.dtuIds)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "mail.claim",
+      "name": "claim"
+    },
+    {
+      "_derived": true,
+      "domain": "mail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mail.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "mail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mail.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "mail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mail.read",
+      "name": "read"
+    },
+    {
+      "_derived": false,
+      "domain": "mail",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "subject": "Hi",
+            "toUserId": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "subject": "",
+            "toUserId": "u2"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "subject": "self",
+            "toUserId": "u1"
+          }
+        }
+      ],
+      "inputs": {
+        "attachmentCc": {
+          "min": 0,
+          "type": "number"
+        },
+        "body": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "codCc": {
+          "min": 0,
+          "type": "number"
+        },
+        "subject": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        },
+        "toUserId": {
+          "maxLength": 128,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.id === 'string' && output.id.indexOf('mail_') === 0)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "mail.send",
+      "name": "send"
+    },
+    {
+      "_derived": true,
+      "domain": "mail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mail.sent",
+      "name": "sent"
+    }
+  ],
+  "domain": "mail",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 6
+}

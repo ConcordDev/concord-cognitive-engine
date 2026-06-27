@@ -1,0 +1,27 @@
+{
+  "macro_id": "training-room.frame_data",
+  "domain": "training-room",
+  "name": "frame_data",
+  "inputs": {
+    "skillId": { "type": "string", "required": true, "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || (output.frameData && typeof output.frameData === 'object')",
+    "output.ok === false || output.frameData.startup_ms > 0",
+    "output.ok === false || output.frameData.active_ms > 0",
+    "output.ok === false || output.frameData.recovery_ms > 0",
+    "output.ok === false || output.frameData.dodge_window_ms > 0",
+    "output.ok === false || output.frameData.parry_window_ms >= 0",
+    "output.ok === false || ((output.frameData.kind === 'bow' || output.frameData.kind === 'staff') ? output.frameData.parry_window_ms === 0 : output.frameData.parry_window_ms > 0)"
+  ],
+  "fuzz_cases": [
+    { "input": { "skillId": "sword" }, "expect": { "ok": true } },
+    { "input": { "skillId": "fist" }, "expect": { "ok": true } },
+    { "input": { "skillId": "bow" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "skillId": "__no_such_skill__" }, "expect": { "ok": false } }
+  ]
+}

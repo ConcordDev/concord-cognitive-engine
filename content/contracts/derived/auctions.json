@@ -1,0 +1,353 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "auctions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 10
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 200,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.auctions)",
+        "output.ok === false || output.auctions.every(a => typeof a.id === 'string')",
+        "output.ok === false || output.auctions.every(a => typeof a.currentBidCc === 'number' && a.currentBidCc >= 0)",
+        "output.ok === false || output.auctions.every(a => typeof a.startCc === 'number' && a.startCc >= 0)"
+      ],
+      "macro_id": "auctions.active",
+      "name": "active"
+    },
+    {
+      "_derived": false,
+      "domain": "auctions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "amountCc": 10,
+            "auctionId": "does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "amountCc": {
+          "max": 1000000,
+          "min": 1,
+          "type": "number"
+        },
+        "auctionId": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.bid === 'number'",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "auctions.bid",
+      "name": "bid"
+    },
+    {
+      "_derived": false,
+      "domain": "auctions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 20
+          }
+        }
+      ],
+      "inputs": {
+        "itemDescriptor": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "limit": {
+          "max": 500,
+          "min": 1,
+          "type": "number"
+        },
+        "worldId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.buyOrders)",
+        "output.ok === false || output.buyOrders.every(o => typeof o.unit_price_cc === 'number' && o.unit_price_cc > 0)",
+        "output.ok === false || output.buyOrders.every(o => o.quantity_filled <= o.quantity_wanted)"
+      ],
+      "macro_id": "auctions.buy_orders",
+      "name": "buy_orders"
+    },
+    {
+      "_derived": true,
+      "domain": "auctions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "auctions.cancel",
+      "name": "cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "auctions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "auctions.cancel_buy_order",
+      "name": "cancel_buy_order"
+    },
+    {
+      "_derived": false,
+      "domain": "auctions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "buyoutCc": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "durationS": {
+          "max": 86400,
+          "min": 60,
+          "type": "number"
+        },
+        "itemId": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        },
+        "itemKind": {
+          "enum": [
+            "dtu",
+            "inventory"
+          ],
+          "type": "string"
+        },
+        "startCc": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "title": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.auctionId === 'string' && output.auctionId.length > 0)",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "auctions.create",
+      "name": "create"
+    },
+    {
+      "_derived": true,
+      "domain": "auctions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "auctions.fill_buy_order",
+      "name": "fill_buy_order"
+    },
+    {
+      "_derived": true,
+      "domain": "auctions",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "auctions.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "auctions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "itemId": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Array.isArray(output.asks) && Array.isArray(output.bids))",
+        "output.ok === false || output.spread === null || typeof output.spread === 'number'",
+        "output.ok === false || output.asks.every(a => typeof a.price === 'number' && a.qty >= 1)"
+      ],
+      "macro_id": "auctions.market_depth",
+      "name": "market_depth"
+    },
+    {
+      "_derived": false,
+      "domain": "auctions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "itemDescriptor": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        },
+        "itemKind": {
+          "enum": [
+            "dtu",
+            "inventory"
+          ],
+          "type": "string"
+        },
+        "quantity": {
+          "max": 100000,
+          "min": 1,
+          "type": "number"
+        },
+        "unitPriceCc": {
+          "max": 1000000,
+          "min": 1,
+          "type": "number"
+        },
+        "worldId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.escrowCc === 'number' && output.escrowCc > 0)",
+        "output.ok === false || (typeof output.buyOrderId === 'string' && output.buyOrderId.length > 0)",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "auctions.place_buy_order",
+      "name": "place_buy_order"
+    },
+    {
+      "_derived": false,
+      "domain": "auctions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "itemId": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        },
+        "limit": {
+          "max": 500,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.points)",
+        "output.ok === false || output.stats === null || (output.stats.min <= output.stats.avg && output.stats.avg <= output.stats.max)",
+        "output.ok === false || output.stats === null || output.stats.count === output.points.length"
+      ],
+      "macro_id": "auctions.price_history",
+      "name": "price_history"
+    }
+  ],
+  "domain": "auctions",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 11
+}

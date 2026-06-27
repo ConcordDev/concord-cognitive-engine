@@ -1,0 +1,20 @@
+{
+  "macro_id": "quests.mine",
+  "domain": "quests",
+  "name": "mine",
+  "inputs": {
+    "userId": { "type": "string", "maxLength": 80 },
+    "worldId": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.quests)",
+    "output.ok === false || output.quests.every(q => typeof q.id === 'string')",
+    "output.ok === false || output.quests.every(q => Array.isArray(q.objectives))",
+    "output.ok === false || output.quests.every(q => q.objectives.every(o => typeof o.progress === 'number' && o.progress >= 0))",
+    "output.ok === false || output.quests.every(q => q.objectives.every(o => typeof o.target === 'number' && o.progress <= o.target))",
+    "output.ok === false || output.quests.every(q => q.objectives.every(o => typeof o.complete === 'boolean'))"
+  ],
+  "fuzz_cases": []
+}

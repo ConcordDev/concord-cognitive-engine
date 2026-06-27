@@ -25223,6 +25223,15 @@ registerMailMacros(register);
 import registerAchievementMacros from "./domains/achievements.js";
 registerAchievementMacros(register);
 
+// Per-lens flawless loop (batch 2) — quests / lfg / training-room macro surfaces,
+// each delegating to the real lib (quest-engine.js / lfg.js / combat-frame-data.js).
+import registerQuestsMacros from "./domains/quests.js";
+registerQuestsMacros(register);
+import registerLfgMacros from "./domains/lfg.js";
+registerLfgMacros(register);
+import registerTrainingRoomMacros from "./domains/training-room.js";
+registerTrainingRoomMacros(register);
+
 // Maintenance — the operator surface for the autonomic nervous system. Reads the
 // Homeostasis ledger + escalation inbox + Repair Memory stats. Operator-scoped.
 import registerRepairMacros from "./domains/repair.js";

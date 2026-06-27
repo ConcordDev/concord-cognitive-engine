@@ -1,0 +1,22 @@
+{
+  "macro_id": "lfg.post",
+  "domain": "lfg",
+  "name": "post",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 120 },
+    "role": { "type": "string", "enum": ["tank", "healer", "dps", "support", "any"] },
+    "partyType": { "type": "string", "enum": ["normal", "raid"] },
+    "partyMaxSize": { "type": "number", "min": 2, "max": 40 },
+    "note": { "type": "string", "maxLength": 240 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.id === 'string' && output.id.length > 0)",
+    "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "post REQUIRES an authenticated actor (ctx.actor.userId); with no actor it returns ok:false reason:no_user. At most one OPEN lfg_request per (user, world) — a second post in the same world auto-cancels the first (pinned in lfg-domain-macros.test.js)."
+}

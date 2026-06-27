@@ -1,0 +1,18 @@
+{
+  "macro_id": "training-room.list_skills",
+  "domain": "training-room",
+  "name": "list_skills",
+  "inputs": {
+    "userId": { "type": "string", "maxLength": 120 },
+    "limit": { "type": "number", "min": 1, "max": 100 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.skills)",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } }
+  ]
+}
