@@ -1,0 +1,18 @@
+{
+  "macro_id": "auctions.market_depth",
+  "domain": "auctions",
+  "name": "market_depth",
+  "inputs": {
+    "itemId": { "type": "string", "required": true, "maxLength": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (Array.isArray(output.asks) && Array.isArray(output.bids))",
+    "output.ok === false || output.spread === null || typeof output.spread === 'number'",
+    "output.ok === false || output.asks.every(a => typeof a.price === 'number' && a.qty >= 1)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } }
+  ]
+}

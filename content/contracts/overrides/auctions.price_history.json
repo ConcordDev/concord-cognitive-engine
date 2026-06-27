@@ -1,0 +1,19 @@
+{
+  "macro_id": "auctions.price_history",
+  "domain": "auctions",
+  "name": "price_history",
+  "inputs": {
+    "itemId": { "type": "string", "required": true, "maxLength": 200 },
+    "limit": { "type": "number", "min": 1, "max": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.points)",
+    "output.ok === false || output.stats === null || (output.stats.min <= output.stats.avg && output.stats.avg <= output.stats.max)",
+    "output.ok === false || output.stats === null || output.stats.count === output.points.length"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } }
+  ]
+}

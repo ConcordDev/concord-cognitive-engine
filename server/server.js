@@ -25211,6 +25211,18 @@ registerLoreMacros(register);
 import registerCreatureMacros from "./domains/creatures.js";
 registerCreatureMacros(register);
 
+// Per-lens flawless loop (batch 1) — dedicated macro surfaces for the auction,
+// mail, and achievements lenses. Each delegates to the real lib (auctions.js /
+// player-mail.js / achievement-engine.js); no logic is duplicated. Exposes them
+// on POST /api/lens/run so the generic lens shell / ⌘K / invariant engine reach
+// them through the uniform macro path.
+import registerAuctionMacros from "./domains/auctions.js";
+registerAuctionMacros(register);
+import registerMailMacros from "./domains/mail.js";
+registerMailMacros(register);
+import registerAchievementMacros from "./domains/achievements.js";
+registerAchievementMacros(register);
+
 // Maintenance — the operator surface for the autonomic nervous system. Reads the
 // Homeostasis ledger + escalation inbox + Repair Memory stats. Operator-scoped.
 import registerRepairMacros from "./domains/repair.js";

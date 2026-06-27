@@ -1,0 +1,16 @@
+{
+  "macro_id": "achievements.mine",
+  "domain": "achievements",
+  "name": "mine",
+  "inputs": {
+    "userId": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.earned)",
+    "output.ok === false || output.earned.every(e => typeof e.achievement_id === 'string')",
+    "output.ok === false || output.earned.every(e => typeof e.earned_at === 'number' && e.earned_at >= 0)"
+  ],
+  "fuzz_cases": []
+}

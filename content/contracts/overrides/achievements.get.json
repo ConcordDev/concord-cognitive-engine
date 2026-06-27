@@ -1,0 +1,19 @@
+{
+  "macro_id": "achievements.get",
+  "domain": "achievements",
+  "name": "get",
+  "inputs": {
+    "id": { "type": "string", "required": true, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.achievement && typeof output.achievement.id === 'string')",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "id": "first_blood" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "id": "__no_such_achievement__" }, "expect": { "ok": false } }
+  ]
+}

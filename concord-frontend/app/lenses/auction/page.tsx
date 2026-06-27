@@ -61,16 +61,27 @@ export default function AuctionLensPage() {
   const [buyForm, setBuyForm] = useState({
     itemDescriptor: '', unitPriceCc: 1, quantity: 1,
   });
+  // Honest error state: a failed fetch (network/5xx) surfaces a real banner
+  // with a retry, rather than silently showing a stale-or-empty board.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    let failed = false;
     try {
-      const r = await fetch('/api/auctions/active').then((x) => x.json());
+      const res = await fetch('/api/auctions/active');
+      if (!res.ok) throw new Error(`auctions ${res.status}`);
+      const r = await res.json();
       if (r?.ok) setAuctions(r.auctions || []);
-    } catch { /* network blip */ }
+      else throw new Error(r?.error || 'auctions load failed');
+    } catch { failed = true; }
     try {
-      const r = await fetch('/api/auctions/buy-orders?limit=20').then((x) => x.json());
+      const res = await fetch('/api/auctions/buy-orders?limit=20');
+      if (!res.ok) throw new Error(`buy-orders ${res.status}`);
+      const r = await res.json();
       if (r?.ok) setBuyOrders(r.buyOrders || []);
-    } catch { /* network blip */ }
+      else throw new Error(r?.error || 'buy-orders load failed');
+    } catch { failed = true; }
+    setLoadError(failed ? 'Could not reach the auction house. Check your connection and retry.' : null);
     setLoading(false);
   }, []);
 
@@ -228,11 +239,28 @@ export default function AuctionLensPage() {
         </header>
 
         <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {!loading && loadError && (
+            <div
+              role="alert"
+              className="mb-3 flex flex-col items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-6 text-center text-[12px] text-rose-200"
+            >
+              <AlertCircle className="h-5 w-5" aria-hidden="true" />
+              <span>{loadError}</span>
+              <button
+                onClick={refresh}
+                aria-label="Retry loading auctions"
+                className="mt-1 flex items-center gap-1 rounded-md border border-rose-400/40 bg-rose-500/20 px-3 py-1 text-[11px] text-rose-100 hover:bg-rose-500/30 focus:outline-none focus:ring-2 focus:ring-rose-400"
+              >
+                <RefreshCcw className="h-3 w-3" aria-hidden="true" />
+                Retry
+              </button>
+            </div>
+          )}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy={loading}>
             {loading && Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-28 animate-pulse rounded-xl border border-white/5 bg-white/5" />
+              <div key={i} className="h-28 animate-pulse rounded-xl border border-white/5 bg-white/5" aria-hidden="true" />
             ))}
-            {!loading && auctions.length === 0 && (
+            {!loading && !loadError && auctions.length === 0 && (
               <p className="col-span-full px-4 py-8 text-center text-[12px] text-slate-500">No active auctions. Post one yourself.</p>
             )}
             {auctions.map((a) => {
@@ -251,11 +279,18 @@ export default function AuctionLensPage() {
                     <Clock className="h-3 w-3" /> {timeLeft} left
                   </div>
                   <div className="mt-3 flex gap-1">
-                    <button onClick={() => { setBidTarget(a); setBidAmount(String(nextBid)); }} className="flex-1 rounded-md bg-amber-500/30 px-3 py-1 text-[11px] text-amber-100 hover:bg-amber-500/40">
+                    <button
+                      onClick={() => { setBidTarget(a); setBidAmount(String(nextBid)); }}
+                      aria-label={`Bid on ${a.title || a.itemId}, minimum ${nextBid} CC`}
+                      className="flex-1 rounded-md bg-amber-500/30 px-3 py-1 text-[11px] text-amber-100 hover:bg-amber-500/40 focus:outline-none focus:ring-2 focus:ring-amber-400">
                       Bid {nextBid}+
                     </button>
                     {a.buyoutCc && (
-                      <button onClick={() => handleBid(a.id, a.buyoutCc!)} disabled={busy === `bid-${a.id}`} className="rounded-md bg-emerald-500/30 px-3 py-1 text-[11px] text-emerald-100 hover:bg-emerald-500/40 disabled:opacity-40">
+                      <button
+                        onClick={() => handleBid(a.id, a.buyoutCc!)}
+                        disabled={busy === `bid-${a.id}`}
+                        aria-label={`Buy out ${a.title || a.itemId} for ${a.buyoutCc} CC`}
+                        className="rounded-md bg-emerald-500/30 px-3 py-1 text-[11px] text-emerald-100 hover:bg-emerald-500/40 focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-40">
                         Buy {a.buyoutCc}
                       </button>
                     )}

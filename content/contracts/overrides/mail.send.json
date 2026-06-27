@@ -1,0 +1,23 @@
+{
+  "macro_id": "mail.send",
+  "domain": "mail",
+  "name": "send",
+  "inputs": {
+    "toUserId": { "type": "string", "required": true, "maxLength": 128 },
+    "subject": { "type": "string", "required": true, "maxLength": 120 },
+    "body": { "type": "string", "maxLength": 4000 },
+    "attachmentCc": { "type": "number", "min": 0 },
+    "codCc": { "type": "number", "min": 0 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.id === 'string' && output.id.indexOf('mail_') === 0)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "toUserId": "", "subject": "Hi" }, "expect": { "ok": false } },
+    { "input": { "toUserId": "u2", "subject": "" }, "expect": { "ok": false } },
+    { "input": { "toUserId": "u1", "subject": "self" }, "expect": { "ok": false } }
+  ]
+}

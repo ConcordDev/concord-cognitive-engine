@@ -63,8 +63,13 @@ function memDb() {
       return { changes: 1 };
     }
     if (n.startsWith("INSERT INTO player_titles")) {
-      // The SQL has 3 ? bound params (id, user_id, title) — world_id is NULL inline.
-      t.titles.push({ id: args[0], userId: args[1], title: args[2] });
+      // SQL binds 4 params: (id, user_id, world_id, title). world_id is the
+      // account-wide sentinel; ON CONFLICT (user_id, world_id, title) is a no-op
+      // on re-grant.
+      const [id, userId, worldId, title] = args;
+      const dup = t.titles.some(x => x.userId === userId && x.worldId === worldId && x.title === title);
+      if (dup) return { changes: 0 };
+      t.titles.push({ id, userId, worldId, title });
       return { changes: 1 };
     }
     return { changes: 0 };
