@@ -1,0 +1,21 @@
+{
+  "macro_id": "bounties.leaderboard",
+  "domain": "bounties",
+  "name": "leaderboard",
+  "inputs": {
+    "limit": { "type": "number", "min": 1, "max": 50 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.topEarners))",
+    "output.ok === false || Array.isArray(output.result.topResolvers)",
+    "output.ok === false || output.result.topEarners.every(r => typeof r.earnedCc === 'number' && r.earnedCc > 0)",
+    "output.ok === false || output.result.topEarners.length <= 50"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 5 }, "expect": { "ok": true } }
+  ],
+  "_note": "bounties.leaderboard ranks top earners + top resolvers from the in-memory earnings/resolved counters. Runs ok:true with empty arrays on a fresh store (never no_db). limit is clamped 1..50. Every listed earner has earnedCc > 0; the page never exceeds the clamped limit. earnedCc is the leaderboard counter, not a real wallet balance."
+}

@@ -1,0 +1,17 @@
+{
+  "macro_id": "root.tutorial",
+  "domain": "root",
+  "name": "tutorial",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.lessons)",
+    "output.ok === false || (typeof output.result.lessonCount === 'number' && output.result.lessonCount >= 5)",
+    "output.ok === false || output.result.lessons.every(l => typeof l.id === 'string' && Array.isArray(l.examples))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "root.tutorial returns a deterministic, code-derived set of >=5 worked-example lessons (six glyphs / conversion / fractional radix / operations / refusal-absorbs). Every example's numbers are computed live from the real conversion + operation primitives so the lesson can never drift. Takes no input, no DB/actor dependency — always ok:true."
+}

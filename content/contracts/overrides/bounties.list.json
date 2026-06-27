@@ -1,0 +1,30 @@
+{
+  "macro_id": "bounties.list",
+  "domain": "bounties",
+  "name": "list",
+  "inputs": {
+    "query": { "type": "string", "maxLength": 80 },
+    "category": { "type": "string", "enum": ["security", "feature", "bug", "design", "docs", "research", "infra", "other"] },
+    "difficulty": { "type": "string", "enum": ["beginner", "intermediate", "advanced", "expert"] },
+    "status": { "type": "string", "maxLength": 24 },
+    "tag": { "type": "string", "maxLength": 30 },
+    "sortBy": { "type": "string", "enum": ["recent", "reward", "submissions"] },
+    "limit": { "type": "number", "min": 1, "max": 100 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.bounties))",
+    "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 0)",
+    "output.ok === false || output.result.bounties.length <= output.result.total",
+    "output.ok === false || output.result.bounties.length <= 100",
+    "output.ok === false || Array.isArray(output.result.categories)",
+    "output.ok === false || Array.isArray(output.result.difficulties)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "sortBy": "reward", "limit": 10 }, "expect": { "ok": true } },
+    { "input": { "category": "security", "difficulty": "expert", "tag": "crypto", "query": "auth" }, "expect": { "ok": true } }
+  ],
+  "_note": "bounties.list browses the cross-user open board from globalThis._concordSTATE.bountiesLens. Runs ok:true with an empty board when no bounties exist (the assassin's internal actor; never no_db). total is the post-filter row count; the returned page is sliced to limit (clamped 1..100) so length never exceeds total. category/difficulty/sortBy are enum-validated and silently ignored if off-enum. Returns the canonical categories + difficulties catalogs for the filter UI."
+}

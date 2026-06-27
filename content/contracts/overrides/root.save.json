@@ -1,0 +1,29 @@
+{
+  "macro_id": "root.save",
+  "domain": "root",
+  "name": "save",
+  "inputs": {
+    "kind": { "type": "string", "enum": ["operation", "expression", "bitwise"] },
+    "a": { "type": "string", "maxLength": 60 },
+    "b": { "type": "string", "maxLength": 60 },
+    "op": { "type": "string", "maxLength": 8 },
+    "expression": { "type": "string", "maxLength": 500 },
+    "label": { "type": "string", "maxLength": 120 },
+    "resultGlyph": { "type": "string", "maxLength": 120 },
+    "resultDecimal": { "type": "number", "min": -1000000000, "max": 1000000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.computation && typeof output.result.computation.id === 'string')",
+    "output.ok === false || typeof output.result.total === 'number'",
+    "output.ok === false || ['operation','expression','bitwise'].includes(output.result.computation.kind)"
+  ],
+  "fuzz_cases": [
+    { "input": { "kind": "operation", "a": 4, "b": 7, "op": "+" }, "expect": { "ok": true } },
+    { "input": { "kind": "expression", "expression": "2 + 2" }, "expect": { "ok": true } },
+    { "input": { "kind": "operation", "a": 1, "b": 2, "op": "nope" }, "expect": { "ok": false } },
+    { "input": { "kind": "expression", "expression": "" }, "expect": { "ok": false } }
+  ],
+  "_note": "root.save persists a computation (operation/expression/bitwise) into the caller's per-user notebook in globalThis._concordSTATE.rootLens.computations (keyed by actor userId). The assassin runs with an internal owner actor + live STATE, so a valid save returns ok:true with the new computation + total (never STATE unavailable / no_db). An invalid op for the kind, or an empty expression, fails-CLOSED with ok:false. The notebook is per-user and capped at 200."
+}

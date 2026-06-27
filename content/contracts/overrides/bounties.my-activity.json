@@ -1,0 +1,18 @@
+{
+  "macro_id": "bounties.my-activity",
+  "domain": "bounties",
+  "name": "my-activity",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.posted))",
+    "output.ok === false || Array.isArray(output.result.submitted)",
+    "output.ok === false || (typeof output.result.earnedCc === 'number' && output.result.earnedCc >= 0)",
+    "output.ok === false || (typeof output.result.resolvedCount === 'number' && output.result.resolvedCount >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "bounties.my-activity is the per-user dashboard: the caller's posted bounties + the submissions they filed + their earnedCc + resolvedCount. Scoped to the assassin's internal owner actor, so {} returns ok:true with empty arrays + 0 counters on a fresh store (never no_user/no_db). earnedCc is the in-memory leaderboard counter, never a wallet read."
+}

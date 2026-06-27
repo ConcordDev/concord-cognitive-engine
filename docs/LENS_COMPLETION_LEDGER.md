@@ -203,3 +203,25 @@ is clearly worthwhile:
   runMacro/assassin saw 0 macros (fixed via a dual-bus mirror through globalThis._concordMACROS) +
   fail-open numerics + phantom manifest. 14 server + 7 vitest; assassin 0/15.
 No server.js edits. ~19 Phase-2 lenses left in the recorded backlog.
+
+### Phase-2 batch 2 DONE (2026-06-27): black-market, bounties, personas, root
+92 server + UX-state tests. TWO real money/robustness bugs + an integration-trap correction:
+- **bounties**: 🔴 real money bug — `bounties.create` was fail-OPEN on reward (`num()` clamps
+  NaN/Infinity but a finite-absurd `1e308` slipped through → poolCc=1e308 credited fabricated CC on
+  accept). Fixed with a fail-closed `badNumericField` guard (reward + milestone rewards). 18 server +
+  6 vitest; assassin 0.
+- **black-market**: money-conservation audited (sparks are a pure SINK — no credit/mint path,
+  fail-closed pricing → NO money bug); added a conservation test pinning it. Fixed a swallowed-load-error
+  UX defect (dead market looked like an empty one). 7 server + 8 vitest.
+- **personas + root**: the agents diagnosed both as SAVED-CLASS "never imported, fully dead" — that was
+  the CODE-QUALITY TRAP (a FALSE POSITIVE): both are already wired via `server/domains/index.js`
+  (personas line 453, rootLens 469 → `server.js:41401 domainModules.forEach(mod => mod(registerLensAction))`).
+  Grepping `domains/personas`/`domains/root` in server.js misses the index→forEach path. Caught at
+  integration: added NO server.js registration (would have double-registered), and REVERTED root.js's
+  canonical-register shim (it would have double-wrapped params + broken root when loaded via index.js's
+  3-arg registerLensAction call) — keeping the agent's real wins: the fail-closed numeric guard, the
+  honest UX error states, and the behavioral tests (harnesses fixed to mirror the real 3-arg LENS_ACTIONS
+  dispatch). personas 20 server + 5 vitest; root 47 server + 4 vitest.
+LESSON RE-CONFIRMED: before "wiring a dead domain," verify it isn't already loaded via domains/index.js's
+domainModules.forEach (the 3rd registration path beyond direct server.js import + inline register).
+~13 Phase-2 lenses left in the backlog.

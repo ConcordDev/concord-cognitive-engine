@@ -1,0 +1,29 @@
+{
+  "macro_id": "root.share",
+  "domain": "root",
+  "name": "share",
+  "inputs": {
+    "kind": { "type": "string", "enum": ["operation", "expression", "bitwise"] },
+    "a": { "type": "string", "maxLength": 60 },
+    "b": { "type": "string", "maxLength": 60 },
+    "op": { "type": "string", "maxLength": 8 },
+    "expression": { "type": "string", "maxLength": 500 },
+    "label": { "type": "string", "maxLength": 120 },
+    "resultGlyph": { "type": "string", "maxLength": 120 },
+    "resultDecimal": { "type": "number", "min": -1000000000, "max": 1000000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.shareId === 'string')",
+    "output.ok === false || /^\\/lenses\\/root\\?share=/.test(output.result.link)",
+    "output.ok === false || (output.result.snapshot && typeof output.result.snapshot.sharedBy === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": { "kind": "operation", "a": 5, "b": 6, "op": "×", "resultDecimal": 30 }, "expect": { "ok": true } },
+    { "input": { "kind": "expression", "expression": "2 + 2" }, "expect": { "ok": true } },
+    { "input": { "kind": "operation", "op": "+" }, "expect": { "ok": false, "error": "operand a is required" } },
+    { "input": { "kind": "expression", "expression": "" }, "expect": { "ok": false } }
+  ],
+  "_note": "root.share publishes a computation to a public, read-only share registry in globalThis._concordSTATE.rootLens.shares and returns a stable shareId + relative /lenses/root?share= link + immutable snapshot stamped with the live actor (sharedBy). With a live owner actor + STATE a valid share returns ok:true (never no_db). A missing operand (operation) or empty expression fails-CLOSED with ok:false."
+}

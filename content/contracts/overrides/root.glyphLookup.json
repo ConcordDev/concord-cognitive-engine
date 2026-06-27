@@ -1,0 +1,22 @@
+{
+  "macro_id": "root.glyphLookup",
+  "domain": "root",
+  "name": "glyphLookup",
+  "inputs": {
+    "terms": { "type": "string", "maxLength": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.tokens)",
+    "output.ok === false || typeof output.result.glyphString === 'string'",
+    "output.ok === false || Array.isArray(output.result.names)"
+  ],
+  "fuzz_cases": [
+    { "input": { "terms": "Pivot Refusal" }, "expect": { "ok": true } },
+    { "input": { "terms": "1, 0" }, "expect": { "ok": true } },
+    { "input": { "terms": "Banana" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "root.glyphLookup translates space/comma-separated semantic names (Refusal/Pivot/Bridge/…) or base-6 digit numbers into a glyph string + decimal. Pure compute, no DB/actor dependency. An unknown term or empty input fails-CLOSED with ok:false, never a throw. names is the always-present full glyph catalogue."
+}

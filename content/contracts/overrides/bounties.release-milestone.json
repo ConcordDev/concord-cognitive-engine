@@ -1,0 +1,22 @@
+{
+  "macro_id": "bounties.release-milestone",
+  "domain": "bounties",
+  "name": "release-milestone",
+  "inputs": {
+    "bountyId": { "type": "string", "required": true, "maxLength": 64 },
+    "milestoneId": { "type": "string", "required": true, "maxLength": 64 },
+    "claimantId": { "type": "string", "required": true, "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.milestone && output.result.milestone.status === 'paid')",
+    "output.ok === false || (typeof output.result.paidCc === 'number' && output.result.paidCc >= 0 && output.result.paidCc <= 1000000)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "bounty not found" } },
+    { "input": { "bountyId": "__nope__", "milestoneId": "m", "claimantId": "c" }, "expect": { "ok": false, "error": "bounty not found" } }
+  ],
+  "_note": "bounties.release-milestone is the owner-only partial payout. Unknown bounty → 'bounty not found'. Only the owner may release. An already-paid milestone rejects ('milestone already paid') — idempotent, no double credit. paidCc equals the milestone's configured reward (bounded <=1e6 by create's fail-CLOSED guard). When the last milestone clears, the bounty flips to 'paid'."
+}

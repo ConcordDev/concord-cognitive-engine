@@ -1,0 +1,18 @@
+{
+  "macro_id": "root.getShare",
+  "domain": "root",
+  "name": "getShare",
+  "inputs": {
+    "shareId": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.snapshot && typeof output.result.snapshot.shareId === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": { "shareId": "share_does_not_exist" }, "expect": { "ok": false, "error": "share not found" } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "root.getShare resolves a shareId to its immutable snapshot (public-read — any actor can resolve any share). With a live STATE, an unknown shareId (the realistic isolated-call reality — the assassin drives each macro independently with no prior share) fails-CLOSED with ok:false 'share not found', never a throw or no_db. A matching id returns the immutable snapshot."
+}

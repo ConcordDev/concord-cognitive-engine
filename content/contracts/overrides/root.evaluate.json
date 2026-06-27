@@ -1,0 +1,23 @@
+{
+  "macro_id": "root.evaluate",
+  "domain": "root",
+  "name": "evaluate",
+  "inputs": {
+    "expression": { "type": "string", "maxLength": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.glyph === 'string')",
+    "output.ok === false || Array.isArray(output.result.steps)",
+    "output.ok === false || typeof output.result.tokenCount === 'number'",
+    "output.ok === false || output.result.decimal === null || typeof output.result.decimal === 'number'"
+  ],
+  "fuzz_cases": [
+    { "input": { "expression": "2 + 3 * 4" }, "expect": { "ok": true } },
+    { "input": { "expression": "(2 + 3) * 4" }, "expect": { "ok": true } },
+    { "input": { "expression": "" }, "expect": { "ok": false } },
+    { "input": { "expression": "(2 + 3" }, "expect": { "ok": false } }
+  ],
+  "_note": "root.evaluate tokenises a multi-term base-6/decimal expression (operators + - * / % and parentheses, decimal numerals AND glyph runs), runs shunting-yard → RPN, and reports the decimal + glyph + per-step semantic readings. Pure compute, no DB/actor dependency — the assassin's internal actor returns ok:true on any valid expression and a clean ok:false (never a throw or no_db) on empty/malformed input. result.decimal is null for a non-finite result (e.g. divide by Refusal)."
+}

@@ -40,27 +40,67 @@
       "name": "delete"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "personas",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "id": "__no_such_persona__"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.persona && typeof output.persona === 'object')",
+        "output.ok === true || typeof output.error === 'string'"
       ],
       "macro_id": "personas.get",
       "name": "get"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "personas",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "roadmap"
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "personaId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
       ],
       "macro_id": "personas.install",
       "name": "install"
@@ -92,14 +132,33 @@
       "name": "list_mine"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "personas",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "roadmap"
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "personaId": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "published": {
+          "type": "boolean"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
       ],
       "macro_id": "personas.publish",
       "name": "publish"
@@ -131,14 +190,38 @@
       "name": "speak"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "personas",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "id": "__no_such_persona__"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.stats && typeof output.stats === 'object')",
+        "output.ok === true || typeof output.error === 'string'"
       ],
       "macro_id": "personas.stats",
       "name": "stats"
@@ -157,14 +240,29 @@
       "name": "update"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "personas",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "personaId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.versions)"
       ],
       "macro_id": "personas.versions",
       "name": "versions"

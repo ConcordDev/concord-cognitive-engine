@@ -45,6 +45,7 @@ export default function PersonasPage() {
   const [tab, setTab] = useState<Tab>('mine');
   const [mine, setMine] = useState<PersonaDetail[]>([]);
   const [loadingMine, setLoadingMine] = useState(true);
+  const [errMine, setErrMine] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<PersonaDetail | null>(null);
   const [creating, setCreating] = useState(false);
@@ -56,9 +57,23 @@ export default function PersonasPage() {
   const [status, setStatus] = useState<string | null>(null);
 
   const refreshMine = useCallback(async () => {
-    const r = await lensRun('personas', 'mine', {});
-    if (r.data?.ok) setMine(((r.data.result as any)?.personas || []) as PersonaDetail[]);
-    setLoadingMine(false);
+    setLoadingMine(true);
+    setErrMine(null);
+    try {
+      const r = await lensRun('personas', 'mine', {});
+      if (r.data?.ok) {
+        setMine(((r.data.result as any)?.personas || []) as PersonaDetail[]);
+      } else {
+        // Fail closed: surface the backend error instead of masking it as an
+        // empty library (a phantom/unregistered macro must be visible, not
+        // silently rendered as "no personas yet").
+        setErrMine(r.data?.error || 'Could not load your personas.');
+      }
+    } catch (e) {
+      setErrMine(e instanceof Error ? e.message : 'Could not load your personas.');
+    } finally {
+      setLoadingMine(false);
+    }
   }, []);
 
   const refreshPackages = useCallback(async () => {
@@ -178,7 +193,21 @@ export default function PersonasPage() {
             {tab === 'mine' && (
               <section>
                 {loadingMine ? (
-                  <div className="text-zinc-400 py-6 text-center">Loading…</div>
+                  <div role="status" aria-live="polite" className="text-zinc-400 py-6 text-center">
+                    Loading your personas…
+                  </div>
+                ) : errMine ? (
+                  <div
+                    role="alert"
+                    className="text-center py-8 border border-red-800/50 bg-red-950/30 rounded-xl"
+                  >
+                    <p className="text-sm text-red-300">{errMine}</p>
+                    <button
+                      type="button"
+                      onClick={() => { void refreshMine(); }}
+                      className="mt-3 text-xs text-red-200 underline hover:text-red-100 focus:outline-none focus:ring-2 focus:ring-amber-500 rounded"
+                    >Retry</button>
+                  </div>
                 ) : mine.length === 0 ? (
                   <div className="text-center text-zinc-400 italic py-8 border border-zinc-800 rounded-xl">
                     No personas yet. Use the <strong>Create</strong> tab to author your first.

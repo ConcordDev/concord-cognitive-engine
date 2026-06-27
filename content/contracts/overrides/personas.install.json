@@ -1,0 +1,17 @@
+{
+  "macro_id": "personas.install",
+  "domain": "personas",
+  "name": "install",
+  "inputs": {
+    "personaId": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "roadmap" } }
+  ],
+  "_note": "Live boot reality: the reachable personas.install is the Z4 roadmap stub — HONESTLY returns { ok:false, reason:'roadmap' } (not a fake success). The real install (increments installCount on a published persona, drives the royalty cascade) lives in the currently-unwired server/domains/personas.js. DO NOT assert ok:true until the wiring fix lands."
+}
