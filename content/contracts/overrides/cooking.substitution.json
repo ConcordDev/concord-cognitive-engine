@@ -1,0 +1,23 @@
+{
+  "macro_id": "cooking.substitution",
+  "domain": "cooking",
+  "name": "substitution",
+  "inputs": {
+    "ingredient": { "type": "string", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.found === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.substitutions)",
+    "output.ok === false || output.result.substitutions.length >= 1",
+    "output.ok === false || output.result.substitutions.every(s => typeof s.sub === 'string' && typeof s.ratio === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "ingredient": "butter" }, "expect": { "ok": true } },
+    { "input": { "ingredient": "unobtanium" }, "expect": { "ok": true } },
+    { "input": { "ingredient": 12345 }, "expect": { "ok": true } }
+  ],
+  "_note": "cooking.substitution looks up known cooking substitutions (butter/egg/milk/flour/sugar/cream) by substring match and returns found:true with the sub table, or found:false with a single 'No common substitutions found' placeholder (so substitutions.length is always >= 1). Path-3 LENS_ACTIONS macro; tolerates the double-wrapped { artifact: { data: { ingredient } } } client body. No DB/network, never throws. Pinned by server/tests/cooking-lens-macros.test.js."
+}

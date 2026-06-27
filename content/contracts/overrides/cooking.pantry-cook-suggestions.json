@@ -1,0 +1,18 @@
+{
+  "macro_id": "cooking.pantry-cook-suggestions",
+  "domain": "cooking",
+  "name": "pantry-cook-suggestions",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.suggestions)",
+    "output.ok === false || output.result.suggestions.every(s => typeof s.haveCount === 'number' && typeof s.totalCount === 'number')",
+    "output.ok === false || output.result.suggestions.every(s => s.haveCount >= 0 && s.haveCount <= s.totalCount)",
+    "output.ok === false || output.result.suggestions.every(s => s.coveragePct >= 0 && s.coveragePct <= 100)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "cooking.pantry-cook-suggestions ranks the caller's recipes by what fraction of each recipe's ingredients the pantry covers (haveCount/totalCount → coveragePct, descending). An empty pantry returns ok:true with an empty suggestions array + a CTA message (never an error). Only recipes with haveCount>0 are returned. State-backed, per-user. Path-3 LENS_ACTIONS macro; the coverage-ranking math (2 of 3 → 67%) is pinned in server/tests/cooking-lens-macros.test.js."
+}

@@ -1,0 +1,19 @@
+{
+  "macro_id": "cooking.shopping-list-by-store",
+  "domain": "cooking",
+  "name": "shopping-list-by-store",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.stores)",
+    "output.ok === false || (typeof output.result.storeCount === 'number' && output.result.storeCount === output.result.stores.length)",
+    "output.ok === false || (typeof output.result.totalItems === 'number' && output.result.totalItems >= 0)",
+    "output.ok === false || output.result.totalItems <= output.result.consolidatedFrom",
+    "output.ok === false || output.result.stores.every(s => Array.isArray(s.aisles))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "cooking.shopping-list-by-store normalizes each shopping-list item's quantity to a canonical unit (mass→g, volume→ml, else count), consolidates duplicate (name, unit) rows by summing, and groups by store/aisle. totalItems (distinct after consolidation) is always <= consolidatedFrom (raw row count). With an empty list it returns ok:true with zero stores (degrade-graceful). State-backed, per-user; wrapped in try/catch (handler_error on any failure, never throws). Path-3 LENS_ACTIONS macro — the real unit-conversion + consolidation math (1lb+200g flour → 653.6g) is pinned in server/tests/cooking-lens-macros.test.js."
+}

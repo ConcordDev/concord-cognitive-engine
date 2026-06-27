@@ -307,7 +307,11 @@ export default function CookingLensPage() {
     setShowCreate(false);
   }, [newRecipe, create]);
 
-  if (isError) return <div className="flex items-center justify-center h-full p-8"><ErrorState error={error?.message} onRetry={refetch} /></div>;
+  if (isError) return (
+    <div role="alert" className="flex items-center justify-center h-full p-8">
+      <ErrorState error={error?.message} onRetry={() => refetch()} />
+    </div>
+  );
 
   return (
     <LensShell lensId="cooking" asMain={false}>
@@ -584,9 +588,16 @@ export default function CookingLensPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading ? (
-          <div className="col-span-full panel p-6 text-center text-gray-400">Loading recipes...</div>
+          <div role="status" aria-busy="true" aria-live="polite" className="col-span-full panel p-6 text-center text-gray-400">
+            <Loader2 className="w-4 h-4 mr-2 inline animate-spin" />Loading recipes...
+          </div>
         ) : recipes.length === 0 ? (
-          <div className="col-span-full panel p-6 text-center text-gray-400">No recipes yet. Create your first one.</div>
+          <div className="col-span-full panel p-6 text-center text-gray-400 flex flex-col items-center gap-3">
+            <span>No recipes yet. Create your first one.</span>
+            <button onClick={() => setShowCreate(true)} className="btn-neon">
+              <Plus className="w-4 h-4 mr-2 inline" />Create your first recipe
+            </button>
+          </div>
         ) : recipes.map(r => {
           const mult = servingMultipliers[r.id] ?? 1;
           const badge = r.difficulty ? DIFFICULTY_BADGE[r.difficulty] : null;
