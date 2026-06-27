@@ -1,0 +1,18 @@
+{
+  "macro_id": "society.wb-choropleth",
+  "domain": "society",
+  "name": "wb-choropleth",
+  "inputs": {
+    "indicator": { "type": "string", "maxLength": 80 },
+    "countries": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "indicator required" } },
+    { "input": { "indicator": "<script>alert(1)</script>" }, "expect": { "ok": false, "error": "indicator must be a World Bank code or alias" } }
+  ],
+  "_note": "Latest indicator value for all countries with lat/lon + normalised intensity, driving the world choropleth. Fuzz_cases land on PRE-NETWORK validation: missing indicator, then the format guard blocking an XSS indicator before the WB URL is built. NEVER no_db (no DB)."
+}

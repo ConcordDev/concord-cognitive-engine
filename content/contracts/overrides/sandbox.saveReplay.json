@@ -1,0 +1,22 @@
+{
+  "macro_id": "sandbox.saveReplay",
+  "domain": "sandbox",
+  "name": "saveReplay",
+  "inputs": {
+    "name": { "type": "string", "maxLength": 60 },
+    "frames": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.replay && typeof output.result.replay.id === 'string')",
+    "output.ok === false || (typeof output.result.frameCount === 'number' && output.result.frameCount >= 1)",
+    "output.ok === false || output.result.replay.frames === undefined"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "replay_has_no_frames" } },
+    { "input": { "frames": [] }, "expect": { "ok": false, "error": "replay_has_no_frames" } },
+    { "input": { "frames": [{ "t": 0, "kind": "hit", "damage": 10 }] }, "expect": { "ok": true } }
+  ],
+  "_note": "Persists a recorded combat-event sequence into per-user STATE keyed by ctx.actor.userId; derives durationMs (max t), totalDamage and hitCount from the normalised frames and returns a frames-omitted summary. An empty/absent frames array fails-closed with 'replay_has_no_frames' (NEVER no_db). The assassin's internal owner actor writes a fresh row."
+}

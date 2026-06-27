@@ -1,0 +1,21 @@
+{
+  "macro_id": "society.wb-compare",
+  "domain": "society",
+  "name": "wb-compare",
+  "inputs": {
+    "countries": { "type": "array" },
+    "indicator": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "countries must be array of 2-10 ISO-3 codes" } },
+    { "input": { "countries": ["USA"] }, "expect": { "ok": false, "error": "countries must be array of 2-10 ISO-3 codes" } },
+    { "input": { "countries": ["USA", "us"] }, "expect": { "ok": false, "error": "all countries must be 3-letter ISO codes" } },
+    { "input": { "countries": ["USA", "GBR"] }, "expect": { "ok": false, "error": "indicator required" } },
+    { "input": { "countries": ["USA", "GBR"], "indicator": "<script>alert(1)</script>" }, "expect": { "ok": false, "error": "indicator must be a World Bank code or alias" } }
+  ],
+  "_note": "Compares one indicator across 2-10 countries via the World Bank. Every fuzz_case lands on a PRE-NETWORK validation branch (count range, ISO-3 shape, missing indicator, non-code indicator), so NO outbound call is made. NEVER no_db (no DB)."
+}

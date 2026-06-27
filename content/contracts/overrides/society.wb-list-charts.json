@@ -1,0 +1,16 @@
+{
+  "macro_id": "society.wb-list-charts",
+  "domain": "society",
+  "name": "wb-list-charts",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.charts))",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Lists the calling user's saved charts from the per-user in-memory permalink store. STATE-backed via the internal owner actor; {} returns ok:true with an empty charts array for a user with none saved. NEVER no_db."
+}

@@ -1,0 +1,20 @@
+{
+  "macro_id": "ghost-hunt.detail",
+  "domain": "ghost-hunt",
+  "name": "detail",
+  "inputs": {
+    "residueId": { "type": "string", "maxLength": 96 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || (output.residue && typeof output.residue.id === 'string')",
+    "output.ok === false || Array.isArray(output.hints)",
+    "output.ok === false || Array.isArray(output.stages)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_residue_id" } },
+    { "input": { "residueId": "nonexistent_residue" }, "expect": { "ok": false, "reason": "residue_not_found" } }
+  ]
+}

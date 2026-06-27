@@ -1,4 +1,5 @@
 // server/domains/sandbox.js
+//
 // Domain actions for the Combat Sandbox lens — the persistence layer behind
 // a combat/ability feel-tuning test scene. Live combat itself still resolves
 // through the production /api/worlds/:worldId/combat/attack socket pipeline
@@ -6,10 +7,57 @@
 // pipeline does NOT: saved weapon/skill loadouts, dummy behavior presets,
 // recorded combat replays, and frame-time / hitstop telemetry samples.
 //
+// REGISTRATION (saved-class fix): this file used to register through the
+// legacy `registerLensAction(domain, action, (ctx, artifact, params))`
+// convention AND was NEVER imported by server.js — so every `sandbox.*` macro
+// was invisible to runMacro and to POST /api/lens/run → every call hit
+// `unknown_macro`, leaving the lens components (LoadoutPicker, DummyPresetPanel,
+// TelemetryOverlay, ReplayPanel) dead-wired. It is now wired through the
+// canonical `register` (MACROS) registry — `registerSandboxMacros(register)`
+// in server.js — so the macros are reachable BOTH via POST /api/lens/run AND
+// via runMacro (which the contract engine + macro-assassin + behavior-smoke
+// harness drive).
+//
+// To keep the file's verified handler bodies byte-for-byte identical we adapt
+// the canonical 2-arg `(ctx, input)` signature back to the legacy
+// `(ctx, artifact, params)` shape via the `registerLensAction` shim below —
+// `params` (and `artifact.data`) are the input, identical to what
+// `/api/lens/run` would have built. Handlers return a `{ ok, result }`
+// envelope (the dispatcher's `_unwrapLensEnvelope` strips the `result` layer so
+// the frontend reads `r.data.result.<field>`).
+//
 // All persistence is per-user in globalThis._concordSTATE.sandboxLens. No
 // fake/seed data — every value is real user input or a real combat sample.
+//
+// Fail-CLOSED numeric guard: every macro that WRITES from a numeric input
+// (damage / hp / count / frame samples) calls `badNumericField` BEFORE the
+// write, rejecting NaN/Infinity/1e308/negative instead of silently clamping
+// them to an accepted row (the macro-assassin's V2 vector probes exactly this).
 
-export default function registerSandboxActions(registerLensAction) {
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) BEFORE writing.
+// An absent/null field is fine (the macro uses its default). Returns null when
+// clean, else the offending key. Copied from server/domains/literary.js.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input == null || input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e9) return k;
+  }
+  return null;
+}
+
+export default function registerSandboxMacros(register) {
+  // Legacy-convention shim: adapt canonical register(ctx, input) → the
+  // verified (ctx, artifact, params) handler bodies below, unchanged.
+  const registerLensAction = (domain, action, handler) =>
+    register(domain, action, (ctx, input = {}) => {
+      const inp = input && typeof input === "object" ? input : {};
+      const artifact = inp.artifact && typeof inp.artifact === "object"
+        ? inp.artifact
+        : { id: null, domain, type: "domain_action", data: inp, meta: {} };
+      return handler(ctx, artifact, inp);
+    });
+
   // ─── shared STATE helpers ───────────────────────────────────────────
   function getState() {
     const STATE = globalThis._concordSTATE;
@@ -76,11 +124,13 @@ export default function registerSandboxActions(registerLensAction) {
   // not require URL editing.  [S] Weapon/skill loadout picker UI
   // ─────────────────────────────────────────────────────────────────────
   registerLensAction("sandbox", "saveLoadout", (ctx, _a, params = {}) => {
-    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const s = getState(); if (!s) return { ok: false, error: "state_unavailable" };
+    const bad = badNumericField(params, ["lightDamage", "heavyDamage"]);
+    if (bad) return { ok: false, error: `invalid_${bad}` };
     const weapon = WEAPONS.find((w) => w.id === String(params.weaponId));
-    if (!weapon) return { ok: false, error: "unknown weaponId" };
+    if (!weapon) return { ok: false, error: "unknown_weaponId" };
     const skill = SKILLS.find((k) => k.id === String(params.skillId || "none"));
-    if (!skill) return { ok: false, error: "unknown skillId" };
+    if (!skill) return { ok: false, error: "unknown_skillId" };
     const name = String(params.name || "").trim().slice(0, 60) || `${weapon.label} loadout`;
     const list = ulist(s.loadouts, actor(ctx));
     const entry = {
@@ -98,16 +148,16 @@ export default function registerSandboxActions(registerLensAction) {
   });
 
   registerLensAction("sandbox", "listLoadouts", (ctx, _a, _params = {}) => {
-    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const s = getState(); if (!s) return { ok: false, error: "state_unavailable" };
     const list = [...ulist(s.loadouts, actor(ctx))].reverse();
     return { ok: true, result: { loadouts: list, count: list.length } };
   });
 
   registerLensAction("sandbox", "deleteLoadout", (ctx, _a, params = {}) => {
-    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const s = getState(); if (!s) return { ok: false, error: "state_unavailable" };
     const list = ulist(s.loadouts, actor(ctx));
     const idx = list.findIndex((x) => x.id === params.loadoutId);
-    if (idx < 0) return { ok: false, error: "loadout not found" };
+    if (idx < 0) return { ok: false, error: "loadout_not_found" };
     list.splice(idx, 1);
     save();
     return { ok: true, result: { deleted: params.loadoutId, count: list.length } };
@@ -119,9 +169,11 @@ export default function registerSandboxActions(registerLensAction) {
   // [S] Dummy behavior presets — aggressive/defensive/idle dummies
   // ─────────────────────────────────────────────────────────────────────
   registerLensAction("sandbox", "saveDummyConfig", (ctx, _a, params = {}) => {
-    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const s = getState(); if (!s) return { ok: false, error: "state_unavailable" };
+    const bad = badNumericField(params, ["hp", "count"]);
+    if (bad) return { ok: false, error: `invalid_${bad}` };
     const behavior = BEHAVIORS.find((b) => b.id === String(params.behaviorId));
-    if (!behavior) return { ok: false, error: "unknown behaviorId" };
+    if (!behavior) return { ok: false, error: "unknown_behaviorId" };
     const list = ulist(s.dummyConfigs, actor(ctx));
     const entry = {
       id: sid("dc"),
@@ -137,16 +189,16 @@ export default function registerSandboxActions(registerLensAction) {
   });
 
   registerLensAction("sandbox", "listDummyConfigs", (ctx, _a, _params = {}) => {
-    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const s = getState(); if (!s) return { ok: false, error: "state_unavailable" };
     const list = [...ulist(s.dummyConfigs, actor(ctx))].reverse();
     return { ok: true, result: { dummyConfigs: list, count: list.length } };
   });
 
   registerLensAction("sandbox", "deleteDummyConfig", (ctx, _a, params = {}) => {
-    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const s = getState(); if (!s) return { ok: false, error: "state_unavailable" };
     const list = ulist(s.dummyConfigs, actor(ctx));
     const idx = list.findIndex((x) => x.id === params.configId);
-    if (idx < 0) return { ok: false, error: "dummy config not found" };
+    if (idx < 0) return { ok: false, error: "dummy_config_not_found" };
     list.splice(idx, 1);
     save();
     return { ok: true, result: { deleted: params.configId, count: list.length } };
@@ -160,9 +212,9 @@ export default function registerSandboxActions(registerLensAction) {
   // ─────────────────────────────────────────────────────────────────────
   registerLensAction("sandbox", "saveReplay", (ctx, _a, params = {}) => {
   try {
-    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const s = getState(); if (!s) return { ok: false, error: "state_unavailable" };
     const frames = Array.isArray(params.frames) ? params.frames : [];
-    if (frames.length === 0) return { ok: false, error: "replay has no frames" };
+    if (frames.length === 0) return { ok: false, error: "replay_has_no_frames" };
     // Normalise frames: each is a real combat event the client captured.
     const norm = frames.slice(0, 2000).map((f, i) => ({
       seq: i,
@@ -195,7 +247,7 @@ export default function registerSandboxActions(registerLensAction) {
 });
 
   registerLensAction("sandbox", "listReplays", (ctx, _a, _params = {}) => {
-    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const s = getState(); if (!s) return { ok: false, error: "state_unavailable" };
     // Summaries only — frames are fetched on demand via getReplay.
     const list = [...ulist(s.replays, actor(ctx))].reverse().map((r) => ({
       id: r.id, name: r.name, frameCount: r.frameCount, durationMs: r.durationMs,
@@ -205,17 +257,17 @@ export default function registerSandboxActions(registerLensAction) {
   });
 
   registerLensAction("sandbox", "getReplay", (ctx, _a, params = {}) => {
-    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const s = getState(); if (!s) return { ok: false, error: "state_unavailable" };
     const r = ulist(s.replays, actor(ctx)).find((x) => x.id === params.replayId);
-    if (!r) return { ok: false, error: "replay not found" };
+    if (!r) return { ok: false, error: "replay_not_found" };
     return { ok: true, result: { replay: r } };
   });
 
   registerLensAction("sandbox", "deleteReplay", (ctx, _a, params = {}) => {
-    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const s = getState(); if (!s) return { ok: false, error: "state_unavailable" };
     const list = ulist(s.replays, actor(ctx));
     const idx = list.findIndex((x) => x.id === params.replayId);
-    if (idx < 0) return { ok: false, error: "replay not found" };
+    if (idx < 0) return { ok: false, error: "replay_not_found" };
     list.splice(idx, 1);
     save();
     return { ok: true, result: { deleted: params.replayId, count: list.length } };
@@ -230,11 +282,11 @@ export default function registerSandboxActions(registerLensAction) {
   // ─────────────────────────────────────────────────────────────────────
   registerLensAction("sandbox", "recordTelemetry", (ctx, _a, params = {}) => {
   try {
-    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const s = getState(); if (!s) return { ok: false, error: "state_unavailable" };
     const frameTimes = Array.isArray(params.frameTimes)
       ? params.frameTimes.map(Number).filter((n) => Number.isFinite(n) && n > 0).slice(0, 5000)
       : [];
-    if (frameTimes.length === 0) return { ok: false, error: "no frame samples" };
+    if (frameTimes.length === 0) return { ok: false, error: "no_frame_samples" };
     const hitstops = Array.isArray(params.hitstops)
       ? params.hitstops.map(Number).filter((n) => Number.isFinite(n) && n >= 0).slice(0, 1000)
       : [];
@@ -266,7 +318,7 @@ export default function registerSandboxActions(registerLensAction) {
 });
 
   registerLensAction("sandbox", "telemetryStats", (ctx, _a, _params = {}) => {
-    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const s = getState(); if (!s) return { ok: false, error: "state_unavailable" };
     const list = ulist(s.telemetry, actor(ctx));
     if (list.length === 0) {
       return { ok: true, result: { samples: [], count: 0, overall: null } };
@@ -284,10 +336,10 @@ export default function registerSandboxActions(registerLensAction) {
   });
 
   registerLensAction("sandbox", "deleteTelemetry", (ctx, _a, params = {}) => {
-    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const s = getState(); if (!s) return { ok: false, error: "state_unavailable" };
     const list = ulist(s.telemetry, actor(ctx));
     const idx = list.findIndex((x) => x.id === params.sampleId);
-    if (idx < 0) return { ok: false, error: "telemetry sample not found" };
+    if (idx < 0) return { ok: false, error: "telemetry_sample_not_found" };
     list.splice(idx, 1);
     save();
     return { ok: true, result: { deleted: params.sampleId, count: list.length } };

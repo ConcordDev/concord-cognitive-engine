@@ -1,0 +1,16 @@
+{
+  "macro_id": "sandbox.getReplay",
+  "domain": "sandbox",
+  "name": "getReplay",
+  "inputs": { "replayId": { "type": "string", "maxLength": 80 } },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.replay && Array.isArray(output.result.replay.frames))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "replay_not_found" } },
+    { "input": { "replayId": "nope" }, "expect": { "ok": false, "error": "replay_not_found" } }
+  ],
+  "_note": "Fetches one of the caller's saved replays by id, with full frames, from per-user STATE. A missing/unknown id fails-closed with 'replay_not_found' (NEVER no_db). The assassin's internal owner actor has none → replay_not_found."
+}

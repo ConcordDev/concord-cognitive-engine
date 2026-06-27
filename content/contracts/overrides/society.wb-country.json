@@ -1,0 +1,17 @@
+{
+  "macro_id": "society.wb-country",
+  "domain": "society",
+  "name": "wb-country",
+  "inputs": {
+    "country": { "type": "string", "maxLength": 3 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "country must be 3-letter ISO code" } },
+    { "input": { "country": "us" }, "expect": { "ok": false, "error": "country must be 3-letter ISO code" } }
+  ],
+  "_note": "Fetches a country profile (region/income/capital/lat-lon) from the World Bank. Fuzz_cases land on the PRE-NETWORK ISO-3 validation branch (absent + malformed), so NO outbound call is made and the result is deterministic. The V2 XSS probe on 'country' also fails the ISO-3 regex pre-network. NEVER no_db (no DB)."
+}

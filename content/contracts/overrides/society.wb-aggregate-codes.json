@@ -1,0 +1,16 @@
+{
+  "macro_id": "society.wb-aggregate-codes",
+  "domain": "society",
+  "name": "wb-aggregate-codes",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.aggregates === 'object')",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Pure-compute reference table: the World Bank region + income-group aggregate code table (WLD=World, SSF=Sub-Saharan Africa, ...). No network/DB/actor — {} always returns ok:true. NEVER no_db."
+}

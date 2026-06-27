@@ -1,0 +1,25 @@
+{
+  "macro_id": "society.wb-transform-series",
+  "domain": "society",
+  "name": "wb-transform-series",
+  "inputs": {
+    "series": { "type": "array" },
+    "population": { "type": "array" },
+    "perCapita": { "type": "boolean" },
+    "inflationAdjust": { "type": "boolean" },
+    "baseYear": { "type": "number", "min": 1900, "max": 2100 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.series))",
+    "output.ok === false || Array.isArray(output.result.transforms)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "series array required" } },
+    { "input": { "series": [{ "year": 2020, "value": 1 }] }, "expect": { "ok": false, "error": "specify perCapita and/or inflationAdjust" } },
+    { "input": { "series": [{ "year": 2020, "value": 1 }], "perCapita": true }, "expect": { "ok": false, "error": "perCapita requires a population series" } },
+    { "input": { "series": [{ "year": 2020, "value": 100 }], "inflationAdjust": true, "baseYear": -1 }, "expect": { "ok": false, "error": "invalid baseYear" } }
+  ],
+  "_note": "Pure-compute per-capita / inflation-adjustment transform of a caller-supplied series. No network/DB. Empty series fails-closed; no-transform-requested fails-closed; perCapita without a population series fails-closed; 'baseYear' is a fail-CLOSED numeric guard (poisoned NaN/Infinity/1e308/-1 -> ok:false invalid baseYear, never a clamped ok:true). NEVER no_db."
+}

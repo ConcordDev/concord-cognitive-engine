@@ -4743,24 +4743,36 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
   },
   {
+    // Real macro ids \u2014 registered canonically via registerSandboxMacros(register)
+    // in server.js (server/domains/sandbox.js). The prior `lens.sandbox.*`
+    // refs here were PHANTOM (no such macro existed); the lens persists
+    // loadouts / dummy presets / replays / frame-time telemetry per user.
     domain: 'sandbox',
     label: 'Combat Sandbox',
-    artifacts: ['arena', 'training_dummy', 'combat_run'],
-    macros: { list: 'lens.sandbox.list', get: 'lens.sandbox.get', run: 'lens.sandbox.run', export: 'lens.sandbox.export' },
+    artifacts: ['loadout', 'dummy_config', 'replay', 'telemetry_sample'],
+    macros: {
+      list: 'sandbox.listLoadouts',
+      get: 'sandbox.getReplay',
+      create: 'sandbox.saveLoadout',
+      delete: 'sandbox.deleteLoadout',
+      run: 'sandbox.catalog',
+      export: 'sandbox.telemetryStats',
+    },
     exports: ['json'],
-    actions: ['spawn_dummies', 'reset_arena', 'record_run', 'replay_run'],
+    actions: ['saveLoadout', 'saveDummyConfig', 'saveReplay', 'recordTelemetry'],
     category: 'creative',
     dataTier: 'SIM_GRADE_A',
     emptyState: {
       headline: "Combat sandbox.",
-      caption: "Arenas, training dummies, combat runs \u2014 replay anything.",
-      firstActionLabel: "Spawn dummies",
+      caption: "Tune combat feel \u2014 save weapon loadouts, dummy presets, frame telemetry, and replays.",
+      firstActionLabel: "Save a loadout",
+      firstActionMacro: { name: 'catalog' },
     },
     firstRunGuide: {
       steps: [
-        { caption: "spawn_dummies fills the arena with archetypes you can fight." },
-        { caption: "reset_arena clears state without losing the recording." },
-        { caption: "replay_run scrubs through any past fight." },
+        { caption: "Pick a weapon + skill, then save the loadout so feel iteration skips URL editing.", macro: 'sandbox.saveLoadout' },
+        { caption: "Save a dummy preset (static / idle / defensive / aggressive) with HP + count.", macro: 'sandbox.saveDummyConfig' },
+        { caption: "Record a fight, then scrub the replay frame-by-frame; the telemetry overlay reads frame-time + hitstop numerically.", macro: 'sandbox.recordTelemetry' },
       ],
     },
   },
@@ -4833,22 +4845,28 @@ export const LENS_MANIFESTS: LensManifest[] = [
   {
     domain: 'society',
     label: 'Society',
-    artifacts: ['culture_signal', 'entity_economy_row', 'autonomy_event', 'conflict', 'teaching_session', 'persona'],
-    macros: { list: 'lens.society.list', get: 'lens.society.get', run: 'lens.society.run', export: 'lens.society.export' },
-    exports: ['json'],
-    actions: ['culture_metrics', 'entity_economy_status', 'autonomy_recent', 'conflict_status', 'teaching_status', 'list_personas'],
+    artifacts: ['indicator_series', 'country_profile', 'comparison', 'choropleth', 'ranking', 'saved_chart'],
+    // Real society.* macros (the World Bank Open Data explorer registered via
+    // registerSocietyActions(register) in server.js): `list` maps to the saved-
+    // chart permalink ledger, `get` resolves one saved chart, `run` plots a
+    // chart series, `export` serialises a series to CSV. The phantom
+    // `lens.society.*` ids that used to sit here never existed — every call hit
+    // `unknown_macro` (society.js was a legacy 3-arg module, never imported).
+    macros: { list: 'society.wb-list-charts', get: 'society.wb-load-chart', create: 'society.wb-save-chart', run: 'society.wb-chart-series', export: 'society.wb-export-csv' },
+    exports: ['csv', 'json'],
+    actions: ['wb-indicator', 'wb-country', 'wb-compare', 'wb-chart-series', 'wb-choropleth', 'wb-region-rankings', 'wb-country-dashboard', 'wb-common-indicators'],
     category: 'social',
     dataTier: 'REAL_LIVE',
     emptyState: {
-      headline: "Society substrate.",
-      caption: "Culture signals, entity economy, autonomy, conflicts, teaching sessions, personas.",
-      firstActionLabel: "View culture metrics",
+      headline: "World Bank data explorer.",
+      caption: "1,400 indicators across every country — line/bubble charts, choropleth maps, region rankings, CSV export, and shareable permalinks.",
+      firstActionLabel: "Plot an indicator",
     },
     firstRunGuide: {
       steps: [
-        { caption: "culture_metrics surfaces drift across the active population." },
-        { caption: "autonomy_recent shows agents acting on their own initiative." },
-        { caption: "list_personas surfaces every shaped identity in the system." },
+        { caption: "Pick a country + indicator and plot a real World Bank series." },
+        { caption: "Toggle per-capita / inflation-adjusted to re-frame the data." },
+        { caption: "Save a chart for a shareable permalink, or export it to CSV." },
       ],
     },
   },
@@ -4878,7 +4896,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     domain: 'tools',
     label: 'Tools',
     artifacts: ['research_run', 'build_artifact', 'signature_request'],
-    macros: { list: 'lens.tools.list', get: 'lens.tools.get', run: 'lens.tools.run', export: 'lens.tools.export' },
+    macros: { list: 'tools.esign-list', get: 'tools.esign-detail', create: 'tools.esign-create', run: 'tools.research' },
     exports: ['json', 'pdf'],
     actions: ['web_research', 'compile_build', 'request_signature'],
     category: 'productivity',
@@ -5072,7 +5090,14 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // which the lens persists through the real `crisis.*` DB tables via lensRun.
   { domain: 'crisis-ops', label: 'Crisis Ops', artifacts: ['world_crisis', 'skill_recommendation'], macros: { list: 'crisis.active_for_player', get: 'crisis.timeline', create: 'crisis.declare', run: 'crisis.resolve', export: 'crisis.map' }, exports: ['json'], actions: ['active_for_player', 'resolve', 'declare', 'map', 'triage', 'playbook', 'playbook_step', 'assign', 'team', 'unassign', 'log_event', 'timeline', 'alerts', 'acknowledge_alert', 'resources', 'resource_upsert', 'resource_deploy'], category: 'social' },
   { domain: 'expedition-journal', label: 'Expedition Journal', artifacts: ['expedition_stage'], macros: { list: 'lens.expedition-journal.list', get: 'lens.expedition-journal.get', run: 'lens.expedition-journal.run' }, exports: ['json'], actions: ['advance_stage', 'mark_visited'], category: 'knowledge' },
-  { domain: 'ghost-tracker', label: 'Ghost Tracker', artifacts: ['drift_alert', 'ghost_residue'], macros: { list: 'lens.ghost-tracker.list', get: 'lens.ghost-tracker.get', run: 'lens.ghost-tracker.run' }, exports: ['json'], actions: ['residues', 'confront'], category: 'knowledge' },
+  // The Ghost Tracker lens (lensId 'ghost-tracker') is a READER/HUNTER over the
+  // real `ghost-hunt` domain (server/domains/ghost-hunt.js — register("ghost-hunt",
+  // "residues"|"detail"|"progress"|"advance"|"confront"|"history"|"leaderboard"|
+  // "create")). There is NO `lens.ghost-tracker.*` macro — the page + components
+  // call lensRun('ghost-hunt', …) directly. The macro keys below point at the REAL
+  // ghost-hunt verbs; `create` mints the Spectral Dossier DTU (the lens's
+  // persistent artifact + dtu-exhaust path).
+  { domain: 'ghost-tracker', label: 'Ghost Tracker', artifacts: ['drift_alert', 'ghost_residue'], macros: { list: 'ghost-hunt.residues', get: 'ghost-hunt.detail', create: 'ghost-hunt.create', run: 'ghost-hunt.confront', export: 'ghost-hunt.history' }, exports: ['json'], actions: ['residues', 'detail', 'progress', 'advance', 'confront', 'history', 'leaderboard', 'create'], category: 'knowledge' },
   // Phase 5 — cross-lens multi-step workflow session index.
   // Real sessions.* macros (registerSessionsMacros, canonical register convention
   // → reachable via /api/lens/run AND runMacro). The prior `lens.sessions.*` macro

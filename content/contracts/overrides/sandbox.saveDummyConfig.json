@@ -1,0 +1,26 @@
+{
+  "macro_id": "sandbox.saveDummyConfig",
+  "domain": "sandbox",
+  "name": "saveDummyConfig",
+  "inputs": {
+    "behaviorId": { "type": "string", "maxLength": 40 },
+    "name": { "type": "string", "maxLength": 60 },
+    "hp": { "type": "number", "min": 1, "max": 100000 },
+    "count": { "type": "number", "min": 1, "max": 10 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.dummyConfig && typeof output.result.dummyConfig.id === 'string')",
+    "output.ok === false || (output.result.dummyConfig.count >= 1 && output.result.dummyConfig.count <= 10)",
+    "output.ok === false || (output.result.dummyConfig.hp >= 1)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "unknown_behaviorId" } },
+    { "input": { "behaviorId": "nope" }, "expect": { "ok": false, "error": "unknown_behaviorId" } },
+    { "input": { "behaviorId": "static", "hp": -1 }, "expect": { "ok": false, "error": "invalid_hp" } },
+    { "input": { "behaviorId": "static", "count": 1e308 }, "expect": { "ok": false, "error": "invalid_count" } },
+    { "input": { "behaviorId": "aggressive" }, "expect": { "ok": true } }
+  ],
+  "_note": "Persists a per-user dummy behavior preset (behavior + hp + count) into per-user STATE keyed by ctx.actor.userId. Unknown behavior fails-closed; hp/count are fail-CLOSED numeric guards (poisoned → invalid_<field>, never clamped). Absent hp/count default to 100/3. The assassin's internal owner actor writes a fresh row (NEVER no_db)."
+}

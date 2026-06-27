@@ -64,16 +64,16 @@ score bits justified-absent)
 | death-insurance | 4/7→5/7 | **done** | batch9 | SAVED-CLASS (BIG): `domains/insurance.js` (1777 LOC, 65 macros) was legacy registerLensAction + NEVER imported → dead-wired BOTH /lenses/death-insurance AND /lenses/insurance. Rewrote to canonical register via a shim + wired in server.js (no collision with inline write_contract/revoke/list_for_user); claim-on-death splits the real sparks pool exactly; 67 server + 5 UX-state tests; scoped assassin 0 violations across 76 macros |
 | dx-platform | 4/7 | pending | | |
 | expedition-journal | 4/7 | pending | | |
-| ghost-tracker | 4/7 | pending | | |
+| ghost-tracker | 4/7→6/7 | **done** | batch10 | maps to the real already-registered `ghost-hunt` domain (spectral-residue hunt over drift_alerts); fixed phantom `lens.ghost-tracker.*` → real ghost-hunt.*; added real ghost-hunt.create (mints a kind:ghost_residue Spectral Dossier DTU) + Saved Dossiers rail; 22 server + 9 UX-state tests; assassin 0/8 |
 | lattice | 4/7 | pending | | lattice dashboard |
 | mesh | 4/7 | pending | | mesh dashboard |
 | ops | 4/7 | pending | | ops dashboard |
-| sandbox | 4/7 | pending | | |
+| sandbox | 4/7→5/7 | **done** | batch10 | SAVED-CLASS (14 combat-feel macros, legacy + never imported). Rewrote to canonical register via shim + wired in server.js (names distinct from inline B2B sandbox.provision/kill/list — no collision); real telemetry/replay round-trips; 14 server + 5 UX-state tests; assassin 0/19 |
 | sentinel | 4/7 | pending | | sentinel dashboard |
 | sessions | 4/7→5/7 | **done** | batch9 | removed a DUPLICATE manifest entry + repointed phantom `lens.sessions.*` → real sessions.{list_mine,get,start,advance,search}; page was already wired (intel stale); added fail-closed numeric guards; 12 (32 w/ parity) server + 6 UX-state tests; assassin clean (13 macros). (vitest.config.ts include glob extended to app/** for the co-located page test — 1 file, harmless) |
-| society | 4/7 | pending | | |
+| society | 4/7→5/7 | **done** | batch10 | SAVED-CLASS (16 World Bank wb-* macros, legacy + never imported). Rewrote to canonical register + wired in server.js + publicReadDomains (anon-safe WB data reads); FIXED a 2nd bug (DataExplorer macro() read `ok` off the wrong envelope wrapper → rendered nothing); URL-path-injection guard on indicator codes; 20 server + 5 UX-state tests; assassin 0/16 |
 | system | 4/7 | pending | | system dashboard |
-| tools | 4/7 | pending | | |
+| tools | 4/7→5/7 | **done** | batch10 | SAVED-CLASS (legacy registerLensAction + never imported → unknown_macro); rewrote 12 macros to canonical register via shim + wired in server.js; real e-sign create→sign→complete→verify round-trip + HMAC tamper-detection; 13 server + 10 UX-state tests; assassin 0/15 |
 | wellness | 4/7→5/7 | **done** | batch8 | SAVED-CLASS: legacy registerLensAction + NEVER imported → fully dead. Rewrote 35 macros to canonical register + wired in server.js; real computed metrics (sleepScore/strainLog/recoveryReport/hrvTrend) + range-aware guards; 37 server + 5 UX-state tests |
 
 ## Passing lenses (score ≥ 5/7) — 217
@@ -130,3 +130,9 @@ enumerated here until reached.
   + its 65-macro 1777-LOC domain], crisis-ops MS-vs-seconds unit bug). Wired cognition + insurance in
   server.js (insurance's 65 macros activated — scoped assassin 0 violations across 76). crisis-ops hit
   6/7. verify-lens-backends 258 WIRED / 0 broken, macroDomains 528. 15 left. 25 bugs total.
+- 2026-06-27: batch 10 DONE (tools, sandbox, society, ghost-tracker) — 69 server + 29 UX-state tests;
+  +4 real bugs (tools/sandbox/society ALL saved-class fully-dead legacy-never-imported; society 2nd bug
+  = DataExplorer envelope-unwrap rendered nothing). Wired tools+sandbox+society in server.js + society
+  WB-data publicReadDomains. ghost-tracker → real ghost-hunt domain, 6/7. verify-lens-backends 258 WIRED
+  / 0 broken, macroDomains 528. 11 left. 29 bugs total. NOTE: the saved-class cluster (legacy
+  registerLensAction + never-imported domain → silently dead) is the loop's single most common defect.

@@ -1,0 +1,15 @@
+{
+  "macro_id": "tools.research-clear",
+  "domain": "tools",
+  "name": "research-clear",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.cleared === true)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true, "result": { "cleared": true } } }
+  ],
+  "_note": "tools.research-clear empties the caller's web-research search history in globalThis._concordSTATE.toolsLens.searchHistory (per-user via ctx.actor.userId). STATE-backed with an internal owner actor, no network — {} returns ok:true cleared:true (NEVER no_db)."
+}

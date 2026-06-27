@@ -1,0 +1,20 @@
+{
+  "macro_id": "society.wb-indicator",
+  "domain": "society",
+  "name": "wb-indicator",
+  "inputs": {
+    "country": { "type": "string", "maxLength": 3 },
+    "indicator": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "country must be 3-letter ISO code (e.g. 'USA', 'GBR', 'JPN')" } },
+    { "input": { "country": "us" }, "expect": { "ok": false, "error": "country must be 3-letter ISO code (e.g. 'USA', 'GBR', 'JPN')" } },
+    { "input": { "country": "USA" }, "expect": { "ok": false, "error": "indicator required (WB code like 'SP.POP.TOTL' or alias like 'population')" } },
+    { "input": { "country": "USA", "indicator": "<script>alert(1)</script>" }, "expect": { "ok": false, "error": "indicator must be a World Bank code or alias (alphanumeric, dot/dash/underscore)" } }
+  ],
+  "_note": "Fetches one World Bank indicator series for a country from data.worldbank.org. Every fuzz_case lands on a PRE-NETWORK validation branch so NO outbound call is made (deterministic, never hammers the upstream): a malformed/absent ISO-3 country fails-closed, then a missing indicator, then a non-code indicator (the XSS probe is blocked by the format guard BEFORE the value is interpolated into the WB URL path — genuine URL-injection hardening). A real {country:'USA', indicator:'SP.POP.TOTL'} would proceed to fetch (not exercised here). NEVER no_db (no DB involved)."
+}

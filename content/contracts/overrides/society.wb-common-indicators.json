@@ -1,0 +1,16 @@
+{
+  "macro_id": "society.wb-common-indicators",
+  "domain": "society",
+  "name": "wb-common-indicators",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.indicators === 'object')",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Pure-compute reference table: returns the human-readable alias to World Bank indicator-code map (population, gdpPerCapita, ...). No network, no DB, no actor — {} always returns ok:true with the full map. NEVER no_db."
+}

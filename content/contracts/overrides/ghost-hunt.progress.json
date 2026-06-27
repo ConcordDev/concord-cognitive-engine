@@ -1,0 +1,18 @@
+{
+  "macro_id": "ghost-hunt.progress",
+  "domain": "ghost-hunt",
+  "name": "progress",
+  "inputs": {
+    "residueId": { "type": "string", "maxLength": 96 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || Array.isArray(output.stages)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "residueId": "res_unknown" }, "expect": { "ok": true } }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "macro_id": "sandbox.telemetryStats",
+  "domain": "sandbox",
+  "name": "telemetryStats",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.samples))",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.samples.length)",
+    "output.ok === false || (output.result.count === 0 ? output.result.overall === null : output.result.overall !== null)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true, "result": { "samples": [], "count": 0, "overall": null } } }
+  ],
+  "_note": "Aggregates the caller's telemetry samples (avgFps/worstP95/totalJankFrames/avgHitstop) from per-user STATE. With no samples it returns ok:true with an empty samples array, count 0 and overall:null (NEVER no_db). The assassin's internal owner actor has none → the empty shape."
+}

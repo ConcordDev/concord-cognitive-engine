@@ -1,0 +1,16 @@
+{
+  "macro_id": "sandbox.deleteLoadout",
+  "domain": "sandbox",
+  "name": "deleteLoadout",
+  "inputs": { "loadoutId": { "type": "string", "maxLength": 80 } },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.count === 'number' && output.result.count >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "loadout_not_found" } },
+    { "input": { "loadoutId": "does_not_exist" }, "expect": { "ok": false, "error": "loadout_not_found" } }
+  ],
+  "_note": "Removes one of the caller's saved loadouts by id from per-user STATE. A missing/unknown id fails-closed with 'loadout_not_found' (a real validation reason, NEVER no_db). The assassin's internal owner actor has no loadouts → loadout_not_found."
+}

@@ -1,6 +1,221 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "sandbox",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.weapons) && output.result.weapons.length >= 5)",
+        "output.ok === false || (Array.isArray(output.result.skills) && output.result.skills.length >= 5)",
+        "output.ok === false || (Array.isArray(output.result.behaviors) && output.result.behaviors.length === 4)"
+      ],
+      "macro_id": "sandbox.catalog",
+      "name": "catalog"
+    },
+    {
+      "_derived": false,
+      "domain": "sandbox",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "dummy_config_not_found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "dummy_config_not_found",
+            "ok": false
+          },
+          "input": {
+            "configId": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "configId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.count === 'number' && output.result.count >= 0)"
+      ],
+      "macro_id": "sandbox.deleteDummyConfig",
+      "name": "deleteDummyConfig"
+    },
+    {
+      "_derived": false,
+      "domain": "sandbox",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "loadout_not_found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "loadout_not_found",
+            "ok": false
+          },
+          "input": {
+            "loadoutId": "does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "loadoutId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.count === 'number' && output.result.count >= 0)"
+      ],
+      "macro_id": "sandbox.deleteLoadout",
+      "name": "deleteLoadout"
+    },
+    {
+      "_derived": false,
+      "domain": "sandbox",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "replay_not_found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "replay_not_found",
+            "ok": false
+          },
+          "input": {
+            "replayId": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "replayId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.count === 'number' && output.result.count >= 0)"
+      ],
+      "macro_id": "sandbox.deleteReplay",
+      "name": "deleteReplay"
+    },
+    {
+      "_derived": false,
+      "domain": "sandbox",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "telemetry_sample_not_found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "telemetry_sample_not_found",
+            "ok": false
+          },
+          "input": {
+            "sampleId": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "sampleId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.count === 'number' && output.result.count >= 0)"
+      ],
+      "macro_id": "sandbox.deleteTelemetry",
+      "name": "deleteTelemetry"
+    },
+    {
+      "_derived": false,
+      "domain": "sandbox",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "replay_not_found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "replay_not_found",
+            "ok": false
+          },
+          "input": {
+            "replayId": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "replayId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.replay && Array.isArray(output.result.replay.frames))"
+      ],
+      "macro_id": "sandbox.getReplay",
+      "name": "getReplay"
+    },
+    {
       "_derived": true,
       "domain": "sandbox",
       "fuzz_cases": [],
@@ -40,6 +255,78 @@
       "name": "list_mine"
     },
     {
+      "_derived": false,
+      "domain": "sandbox",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.dummyConfigs))",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.dummyConfigs.length)"
+      ],
+      "macro_id": "sandbox.listDummyConfigs",
+      "name": "listDummyConfigs"
+    },
+    {
+      "_derived": false,
+      "domain": "sandbox",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.loadouts))",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.loadouts.length)"
+      ],
+      "macro_id": "sandbox.listLoadouts",
+      "name": "listLoadouts"
+    },
+    {
+      "_derived": false,
+      "domain": "sandbox",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.replays))",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.replays.length)"
+      ],
+      "macro_id": "sandbox.listReplays",
+      "name": "listReplays"
+    },
+    {
       "_derived": true,
       "domain": "sandbox",
       "fuzz_cases": [],
@@ -64,9 +351,322 @@
       ],
       "macro_id": "sandbox.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "sandbox",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "no_frame_samples",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "no_frame_samples",
+            "ok": false
+          },
+          "input": {
+            "frameTimes": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "frameTimes": [
+              16.6,
+              16.7,
+              40
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "frameTimes": {
+          "type": "array"
+        },
+        "hitstops": {
+          "type": "array"
+        },
+        "name": {
+          "maxLength": 60,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.sample && typeof output.result.sample.id === 'string')",
+        "output.ok === false || (typeof output.result.sample.avgFps === 'number' && output.result.sample.avgFps > 0)",
+        "output.ok === false || (output.result.sample.jankFrames >= 0)"
+      ],
+      "macro_id": "sandbox.recordTelemetry",
+      "name": "recordTelemetry"
+    },
+    {
+      "_derived": false,
+      "domain": "sandbox",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "unknown_behaviorId",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "unknown_behaviorId",
+            "ok": false
+          },
+          "input": {
+            "behaviorId": "nope"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_hp",
+            "ok": false
+          },
+          "input": {
+            "behaviorId": "static",
+            "hp": -1
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_count",
+            "ok": false
+          },
+          "input": {
+            "behaviorId": "static",
+            "count": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "behaviorId": "aggressive"
+          }
+        }
+      ],
+      "inputs": {
+        "behaviorId": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "count": {
+          "max": 10,
+          "min": 1,
+          "type": "number"
+        },
+        "hp": {
+          "max": 100000,
+          "min": 1,
+          "type": "number"
+        },
+        "name": {
+          "maxLength": 60,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.dummyConfig && typeof output.result.dummyConfig.id === 'string')",
+        "output.ok === false || (output.result.dummyConfig.count >= 1 && output.result.dummyConfig.count <= 10)",
+        "output.ok === false || (output.result.dummyConfig.hp >= 1)"
+      ],
+      "macro_id": "sandbox.saveDummyConfig",
+      "name": "saveDummyConfig"
+    },
+    {
+      "_derived": false,
+      "domain": "sandbox",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "unknown_weaponId",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "unknown_weaponId",
+            "ok": false
+          },
+          "input": {
+            "weaponId": "nope"
+          }
+        },
+        {
+          "expect": {
+            "error": "unknown_skillId",
+            "ok": false
+          },
+          "input": {
+            "skillId": "nope",
+            "weaponId": "fist"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_lightDamage",
+            "ok": false
+          },
+          "input": {
+            "lightDamage": -1,
+            "weaponId": "fist"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "weaponId": "fist"
+          }
+        }
+      ],
+      "inputs": {
+        "heavyDamage": {
+          "max": 500,
+          "min": 1,
+          "type": "number"
+        },
+        "lightDamage": {
+          "max": 500,
+          "min": 1,
+          "type": "number"
+        },
+        "name": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "skillId": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "weaponId": {
+          "maxLength": 40,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.loadout && typeof output.result.loadout.id === 'string')",
+        "output.ok === false || (output.result.loadout.lightDamage >= 1 && output.result.loadout.lightDamage <= 500)",
+        "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 1)"
+      ],
+      "macro_id": "sandbox.saveLoadout",
+      "name": "saveLoadout"
+    },
+    {
+      "_derived": false,
+      "domain": "sandbox",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "replay_has_no_frames",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "replay_has_no_frames",
+            "ok": false
+          },
+          "input": {
+            "frames": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "frames": [
+              {
+                "damage": 10,
+                "kind": "hit",
+                "t": 0
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "frames": {
+          "type": "array"
+        },
+        "name": {
+          "maxLength": 60,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.replay && typeof output.result.replay.id === 'string')",
+        "output.ok === false || (typeof output.result.frameCount === 'number' && output.result.frameCount >= 1)",
+        "output.ok === false || output.result.replay.frames === undefined"
+      ],
+      "macro_id": "sandbox.saveReplay",
+      "name": "saveReplay"
+    },
+    {
+      "_derived": false,
+      "domain": "sandbox",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true,
+            "result": {
+              "count": 0,
+              "overall": null,
+              "samples": []
+            }
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.samples))",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.samples.length)",
+        "output.ok === false || (output.result.count === 0 ? output.result.overall === null : output.result.overall !== null)"
+      ],
+      "macro_id": "sandbox.telemetryStats",
+      "name": "telemetryStats"
     }
   ],
   "domain": "sandbox",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 5
+  "macroCount": 19
 }

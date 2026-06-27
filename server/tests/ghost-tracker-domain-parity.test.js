@@ -33,6 +33,17 @@ function seed() {
       context_json TEXT,
       detected_at INTEGER
     );
+    CREATE TABLE dtus (
+      id TEXT PRIMARY KEY,
+      owner_user_id TEXT,
+      title TEXT NOT NULL DEFAULT 'Untitled',
+      body_json TEXT NOT NULL DEFAULT '{}',
+      tags_json TEXT NOT NULL DEFAULT '[]',
+      visibility TEXT NOT NULL DEFAULT 'private',
+      tier TEXT NOT NULL DEFAULT 'regular',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
   const now = Math.floor(Date.now() / 1000);
   const rows = [
@@ -62,6 +73,35 @@ beforeEach(() => {
 });
 
 const ctx = () => ({ db, actor: { userId: "user_hunter" } });
+
+describe("ghost-hunt — registration", () => {
+  it("registers every macro the lens calls", () => {
+    for (const m of [
+      "residues", "detail", "progress", "advance",
+      "confront", "history", "leaderboard", "create",
+    ]) {
+      assert.equal(typeof ACTIONS.get(`ghost-hunt.${m}`), "function", `missing ghost-hunt.${m}`);
+    }
+  });
+});
+
+describe("ghost-hunt — fail-closed numeric guard", () => {
+  it("rejects NaN / Infinity / negative / huge limit on residues + history + leaderboard", async () => {
+    for (const macro of ["residues", "history", "leaderboard"]) {
+      for (const bad of [NaN, Infinity, -1, 1e9, "abc"]) {
+        const r = await call(macro, ctx(), { limit: bad });
+        assert.equal(r.ok, false, `${macro} should reject limit=${bad}`);
+        assert.equal(r.reason, "invalid_numeric_field");
+        assert.equal(r.field, "limit");
+      }
+    }
+  });
+
+  it("accepts a valid limit", async () => {
+    const r = await call("residues", ctx(), { limit: 5 });
+    assert.equal(r.ok, true);
+  });
+});
 
 describe("ghost-hunt.residues", () => {
   it("lists residues with hunt-stage overlay + map coords", async () => {
@@ -218,5 +258,65 @@ describe("ghost-hunt.leaderboard", () => {
     const r = await call("leaderboard", ctx(), {});
     assert.equal(r.ok, true);
     assert.equal(r.count, 0);
+  });
+});
+
+describe("ghost-hunt.create", () => {
+  it("mints a real Spectral Dossier DTU from a confronted residue", async () => {
+    const c = ctx();
+    await call("confront", c, { residueId: "res_4", worldId: "concordia-hub" });
+    const r = await call("create", c, {
+      residueId: "res_4",
+      title: "Case file: the delta drift",
+      notes: "Confronted at dusk.",
+    });
+    assert.equal(r.ok, true);
+    assert.equal(typeof r.dtuId, "string");
+    assert.equal(r.title, "Case file: the delta drift");
+    assert.equal(r.visibility, "private");
+    assert.equal(r.dossier.drift_type, "memetic_drift");
+    assert.equal(r.dossier.severity, "medium");
+
+    // The DTU row is actually persisted with the canonical kind + tags.
+    const row = db.prepare("SELECT * FROM dtus WHERE id = ?").get(r.dtuId);
+    assert.ok(row, "dtu row persisted");
+    assert.equal(row.owner_user_id, "user_hunter");
+    assert.equal(row.title, "Case file: the delta drift");
+    const body = JSON.parse(row.body_json);
+    assert.equal(body.kind, "ghost_residue");
+    assert.equal(body.residueId, "res_4");
+    assert.equal(body.notes, "Confronted at dusk.");
+    const tags = JSON.parse(row.tags_json);
+    assert.ok(tags.includes("ghost-tracker"));
+    assert.ok(tags.includes("memetic_drift"));
+  });
+
+  it("defaults the title and persists an empty-notes dossier", async () => {
+    const r = await call("create", ctx(), { residueId: "res_1" });
+    assert.equal(r.ok, true);
+    assert.ok(/^Spectral Dossier — spectral \(low\)$/.test(r.title));
+    assert.equal(r.dossier.notes, "");
+  });
+
+  it("rejects a missing/unknown residue, bad visibility, and bad notes", async () => {
+    assert.equal((await call("create", ctx(), {})).reason, "missing_residue_id");
+
+    const miss = await call("create", ctx(), { residueId: "nope" });
+    assert.equal(miss.ok, false);
+    assert.equal(miss.reason, "residue_not_found");
+
+    const badVis = await call("create", ctx(), { residueId: "res_1", visibility: "haunted" });
+    assert.equal(badVis.ok, false);
+    assert.equal(badVis.reason, "invalid_visibility");
+
+    const badNotes = await call("create", ctx(), { residueId: "res_1", notes: 42 });
+    assert.equal(badNotes.ok, false);
+    assert.equal(badNotes.reason, "invalid_notes");
+  });
+
+  it("requires a db + actor", async () => {
+    const noActor = await call("create", { db }, { residueId: "res_1" });
+    assert.equal(noActor.ok, false);
+    assert.equal(noActor.reason, "no_db_or_actor");
   });
 });

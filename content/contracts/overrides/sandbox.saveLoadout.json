@@ -1,0 +1,27 @@
+{
+  "macro_id": "sandbox.saveLoadout",
+  "domain": "sandbox",
+  "name": "saveLoadout",
+  "inputs": {
+    "weaponId": { "type": "string", "maxLength": 40 },
+    "skillId": { "type": "string", "maxLength": 40 },
+    "name": { "type": "string", "maxLength": 60 },
+    "lightDamage": { "type": "number", "min": 1, "max": 500 },
+    "heavyDamage": { "type": "number", "min": 1, "max": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.loadout && typeof output.result.loadout.id === 'string')",
+    "output.ok === false || (output.result.loadout.lightDamage >= 1 && output.result.loadout.lightDamage <= 500)",
+    "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 1)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "unknown_weaponId" } },
+    { "input": { "weaponId": "nope" }, "expect": { "ok": false, "error": "unknown_weaponId" } },
+    { "input": { "weaponId": "fist", "skillId": "nope" }, "expect": { "ok": false, "error": "unknown_skillId" } },
+    { "input": { "weaponId": "fist", "lightDamage": -1 }, "expect": { "ok": false, "error": "invalid_lightDamage" } },
+    { "input": { "weaponId": "fist" }, "expect": { "ok": true } }
+  ],
+  "_note": "Persists a per-user weapon/skill loadout into globalThis._concordSTATE.sandboxLens.loadouts keyed by ctx.actor.userId. STATE-backed, the assassin's internal owner actor writes a fresh row (NEVER no_db). Unknown weapon/skill fail-closed; lightDamage/heavyDamage are fail-CLOSED numeric guards (poisoned NaN/Infinity/-1/1e308 → invalid_<field>, never a clamped ok:true). Absent damage defaults to the weapon catalog values."
+}

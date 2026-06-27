@@ -1,0 +1,20 @@
+{
+  "macro_id": "ghost-hunt.history",
+  "domain": "ghost-hunt",
+  "name": "history",
+  "inputs": {
+    "limit": { "type": "number", "min": 0, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || Array.isArray(output.history)",
+    "output.ok === false || (output.summary && typeof output.summary.winRate === 'number')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 50 }, "expect": { "ok": true } },
+    { "input": { "limit": "1e308" }, "expect": { "ok": false, "reason": "invalid_numeric_field" } }
+  ]
+}

@@ -11086,6 +11086,15 @@ async function runMacro(domain, name, input, ctx) {
     // Photos — only the public world gallery feed is world-visible; mine/get/share
     // are per-user / owner-gated and intentionally NOT listed.
     photos: new Set(["world"]),
+    // Society — World Bank open-data reads (anonymous-safe; the handlers require
+    // no auth). The per-user saved-chart macros (wb-save-chart/wb-list-charts/
+    // wb-load-chart) are intentionally NOT listed — they self-scope by actor.
+    society: new Set([
+      "wb-indicator", "wb-country", "wb-compare", "wb-common-indicators",
+      "wb-chart-series", "wb-bubble-frames", "wb-choropleth", "wb-indicator-search",
+      "wb-country-dashboard", "wb-region-rankings", "wb-aggregate-codes",
+      "wb-export-csv", "wb-transform-series",
+    ]),
     // WS-CHEMISTRY — the reaction matrix is a read-only reference (apply/ignite/
     // douse mutate and require an actor, so they're NOT here).
     elements: new Set(["matrix"]),
@@ -25732,6 +25741,21 @@ import registerCognitionMacros from "./domains/cognition.js";
 registerCognitionMacros(register);
 import registerInsuranceActions from "./domains/insurance.js";
 registerInsuranceActions(register);
+
+// Per-lens flawless loop batch 10 — tools + sandbox + society, all SAVED-CLASS
+// (legacy registerLensAction convention AND never imported → fully dead,
+// unknown_macro on every call). Each rewritten to canonical register via an
+// internal shim (names distinct from any inline same-domain macros: sandbox's
+// catalog/saveLoadout/… don't collide with the inline B2B sandbox.provision/
+// kill/list). ghost-tracker needed no line (maps to the already-registered
+// ghost-hunt domain). tools = esign/research/compile; sandbox = combat-feel
+// loadouts/replays/telemetry; society = World Bank wb-* data explorer.
+import registerToolsActions from "./domains/tools.js";
+registerToolsActions(register);
+import registerSandboxMacros from "./domains/sandbox.js";
+registerSandboxMacros(register);
+import registerSocietyActions from "./domains/society.js";
+registerSocietyActions(register);
 
 // Cognitive Fingerprint (#5) — thinking-style profile from real activity.
 import registerMetacogMacros from "./domains/metacog.js";

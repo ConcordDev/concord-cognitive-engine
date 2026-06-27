@@ -1,92 +1,418 @@
 {
   "contracts": [
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "ghost-hunt",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_residue_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "residue_not_found"
+          },
+          "input": {
+            "residueId": "nonexistent_residue"
+          }
+        }
+      ],
+      "inputs": {
+        "residueId": {
+          "maxLength": 96,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || Array.isArray(output.stages)"
       ],
       "macro_id": "ghost-hunt.advance",
       "name": "advance"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "ghost-hunt",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_residue_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "residue_not_found"
+          },
+          "input": {
+            "residueId": "nonexistent_residue"
+          }
+        }
+      ],
+      "inputs": {
+        "residueId": {
+          "maxLength": 96,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (output.result === 'win' || output.result === 'loss')",
+        "output.ok === false || (typeof output.winChance === 'number' && output.winChance >= 0 && output.winChance <= 1)"
       ],
       "macro_id": "ghost-hunt.confront",
       "name": "confront"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "ghost-hunt",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_residue_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "residue_not_found"
+          },
+          "input": {
+            "residueId": "nonexistent_residue"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_visibility"
+          },
+          "input": {
+            "residueId": "x",
+            "visibility": "haunted"
+          }
+        }
+      ],
+      "inputs": {
+        "notes": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "residueId": {
+          "maxLength": 96,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "visibility": {
+          "enum": [
+            "private",
+            "internal",
+            "public",
+            "marketplace"
+          ],
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (typeof output.dtuId === 'string' && output.dtuId.length > 0)",
+        "output.ok === false || (output.dossier && output.dossier.kind === 'ghost_residue')"
+      ],
+      "macro_id": "ghost-hunt.create",
+      "name": "create"
+    },
+    {
+      "_derived": false,
+      "domain": "ghost-hunt",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_residue_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "residue_not_found"
+          },
+          "input": {
+            "residueId": "nonexistent_residue"
+          }
+        }
+      ],
+      "inputs": {
+        "residueId": {
+          "maxLength": 96,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (output.residue && typeof output.residue.id === 'string')",
+        "output.ok === false || Array.isArray(output.hints)",
+        "output.ok === false || Array.isArray(output.stages)"
       ],
       "macro_id": "ghost-hunt.detail",
       "name": "detail"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "ghost-hunt",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 50
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_numeric_field"
+          },
+          "input": {
+            "limit": "1e308"
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || Array.isArray(output.history)",
+        "output.ok === false || (output.summary && typeof output.summary.winRate === 'number')"
       ],
       "macro_id": "ghost-hunt.history",
       "name": "history"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "ghost-hunt",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 25
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_numeric_field"
+          },
+          "input": {
+            "limit": -5
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || Array.isArray(output.leaderboard)",
+        "output.ok === false || typeof output.totalHunters === 'number'",
+        "output.ok === false || output.leaderboard.every(e => typeof e.rank === 'number' && e.rank >= 1)"
       ],
       "macro_id": "ghost-hunt.leaderboard",
       "name": "leaderboard"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "ghost-hunt",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "residueId": "res_unknown"
+          }
+        }
+      ],
+      "inputs": {
+        "residueId": {
+          "maxLength": 96,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || Array.isArray(output.stages)"
       ],
       "macro_id": "ghost-hunt.progress",
       "name": "progress"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "ghost-hunt",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 30,
+            "sort": "severity",
+            "worldId": "concordia-hub"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_numeric_field"
+          },
+          "input": {
+            "limit": "1e308"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_numeric_field"
+          },
+          "input": {
+            "limit": -1
+          }
+        }
+      ],
+      "inputs": {
+        "driftType": {
+          "enum": [
+            "spectral",
+            "echo_chamber",
+            "self_reference",
+            "memetic_drift"
+          ],
+          "type": "string"
+        },
+        "limit": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "type": "string"
+        },
+        "sort": {
+          "enum": [
+            "recent",
+            "severity",
+            "type"
+          ],
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.residues)",
+        "output.ok === false || typeof output.count === 'number'",
+        "output.ok === false || (Array.isArray(output.driftTypes) && output.driftTypes.length === 4)",
+        "output.ok === false || (Array.isArray(output.severities) && output.severities.length === 4)",
+        "output.ok === false || output.residues.every(r => typeof r.id === 'string' && r.coords && typeof r.coords.x === 'number' && typeof r.coords.z === 'number')",
+        "output.ok === true || typeof output.reason === 'string'"
       ],
       "macro_id": "ghost-hunt.residues",
       "name": "residues"
@@ -94,5 +420,5 @@
   ],
   "domain": "ghost-hunt",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 7
+  "macroCount": 8
 }

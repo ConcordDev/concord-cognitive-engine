@@ -1,0 +1,780 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.aggregates === 'object')",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count >= 0)"
+      ],
+      "macro_id": "society.wb-aggregate-codes",
+      "name": "wb-aggregate-codes"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "countries must be array of 2-30 ISO-3 codes",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "countries must be array of 2-30 ISO-3 codes",
+            "ok": false
+          },
+          "input": {
+            "countries": [
+              "USA"
+            ]
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid startYear",
+            "ok": false
+          },
+          "input": {
+            "countries": [
+              "USA",
+              "GBR"
+            ],
+            "startYear": -1
+          }
+        },
+        {
+          "expect": {
+            "error": "xIndicator must be a World Bank code or alias",
+            "ok": false
+          },
+          "input": {
+            "countries": [
+              "USA",
+              "GBR"
+            ],
+            "xIndicator": "<script>alert(1)</script>"
+          }
+        }
+      ],
+      "inputs": {
+        "countries": {
+          "type": "array"
+        },
+        "endYear": {
+          "max": 2100,
+          "min": 1960,
+          "type": "number"
+        },
+        "sizeIndicator": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "startYear": {
+          "max": 2100,
+          "min": 1960,
+          "type": "number"
+        },
+        "xIndicator": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "yIndicator": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'"
+      ],
+      "macro_id": "society.wb-bubble-frames",
+      "name": "wb-bubble-frames"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "country must be 3-letter ISO code",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "indicator required",
+            "ok": false
+          },
+          "input": {
+            "country": "USA"
+          }
+        },
+        {
+          "expect": {
+            "error": "indicator must be a World Bank code or alias",
+            "ok": false
+          },
+          "input": {
+            "country": "USA",
+            "indicator": "<script>alert(1)</script>"
+          }
+        }
+      ],
+      "inputs": {
+        "country": {
+          "maxLength": 3,
+          "type": "string"
+        },
+        "indicator": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "inflationAdjust": {
+          "type": "boolean"
+        },
+        "perCapita": {
+          "type": "boolean"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'"
+      ],
+      "macro_id": "society.wb-chart-series",
+      "name": "wb-chart-series"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "indicator required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "indicator must be a World Bank code or alias",
+            "ok": false
+          },
+          "input": {
+            "indicator": "<script>alert(1)</script>"
+          }
+        }
+      ],
+      "inputs": {
+        "countries": {
+          "type": "array"
+        },
+        "indicator": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'"
+      ],
+      "macro_id": "society.wb-choropleth",
+      "name": "wb-choropleth"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.indicators === 'object')",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count >= 0)"
+      ],
+      "macro_id": "society.wb-common-indicators",
+      "name": "wb-common-indicators"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "countries must be array of 2-10 ISO-3 codes",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "countries must be array of 2-10 ISO-3 codes",
+            "ok": false
+          },
+          "input": {
+            "countries": [
+              "USA"
+            ]
+          }
+        },
+        {
+          "expect": {
+            "error": "all countries must be 3-letter ISO codes",
+            "ok": false
+          },
+          "input": {
+            "countries": [
+              "USA",
+              "us"
+            ]
+          }
+        },
+        {
+          "expect": {
+            "error": "indicator required",
+            "ok": false
+          },
+          "input": {
+            "countries": [
+              "USA",
+              "GBR"
+            ]
+          }
+        },
+        {
+          "expect": {
+            "error": "indicator must be a World Bank code or alias",
+            "ok": false
+          },
+          "input": {
+            "countries": [
+              "USA",
+              "GBR"
+            ],
+            "indicator": "<script>alert(1)</script>"
+          }
+        }
+      ],
+      "inputs": {
+        "countries": {
+          "type": "array"
+        },
+        "indicator": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'"
+      ],
+      "macro_id": "society.wb-compare",
+      "name": "wb-compare"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "country must be 3-letter ISO code",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "country must be 3-letter ISO code",
+            "ok": false
+          },
+          "input": {
+            "country": "us"
+          }
+        }
+      ],
+      "inputs": {
+        "country": {
+          "maxLength": 3,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'"
+      ],
+      "macro_id": "society.wb-country",
+      "name": "wb-country"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "country must be 3-letter ISO code",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "country must be 3-letter ISO code",
+            "ok": false
+          },
+          "input": {
+            "country": "us"
+          }
+        }
+      ],
+      "inputs": {
+        "country": {
+          "maxLength": 3,
+          "type": "string"
+        },
+        "indicators": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'"
+      ],
+      "macro_id": "society.wb-country-dashboard",
+      "name": "wb-country-dashboard"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "rows array required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "rows array required",
+            "ok": false
+          },
+          "input": {
+            "rows": []
+          }
+        }
+      ],
+      "inputs": {
+        "columns": {
+          "type": "array"
+        },
+        "filename": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "rows": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.csv === 'string')",
+        "output.ok === false || (typeof output.result.rowCount === 'number' && output.result.rowCount >= 0)"
+      ],
+      "macro_id": "society.wb-export-csv",
+      "name": "wb-export-csv"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "country must be 3-letter ISO code (e.g. 'USA', 'GBR', 'JPN')",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "country must be 3-letter ISO code (e.g. 'USA', 'GBR', 'JPN')",
+            "ok": false
+          },
+          "input": {
+            "country": "us"
+          }
+        },
+        {
+          "expect": {
+            "error": "indicator required (WB code like 'SP.POP.TOTL' or alias like 'population')",
+            "ok": false
+          },
+          "input": {
+            "country": "USA"
+          }
+        },
+        {
+          "expect": {
+            "error": "indicator must be a World Bank code or alias (alphanumeric, dot/dash/underscore)",
+            "ok": false
+          },
+          "input": {
+            "country": "USA",
+            "indicator": "<script>alert(1)</script>"
+          }
+        }
+      ],
+      "inputs": {
+        "country": {
+          "maxLength": 3,
+          "type": "string"
+        },
+        "indicator": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'"
+      ],
+      "macro_id": "society.wb-indicator",
+      "name": "wb-indicator"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "query must be at least 2 characters",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "query must be at least 2 characters",
+            "ok": false
+          },
+          "input": {
+            "query": "x"
+          }
+        },
+        {
+          "expect": {
+            "error": "query contains unsupported characters",
+            "ok": false
+          },
+          "input": {
+            "query": "<script>alert(1)</script>"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid limit",
+            "ok": false
+          },
+          "input": {
+            "limit": -1,
+            "query": "gdp"
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 200,
+          "min": 1,
+          "type": "number"
+        },
+        "query": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'"
+      ],
+      "macro_id": "society.wb-indicator-search",
+      "name": "wb-indicator-search"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.charts))",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count >= 0)"
+      ],
+      "macro_id": "society.wb-list-charts",
+      "name": "wb-list-charts"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "id required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "chart not found",
+            "ok": false
+          },
+          "input": {
+            "id": "soc_does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.id === 'string')"
+      ],
+      "macro_id": "society.wb-load-chart",
+      "name": "wb-load-chart"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "indicator required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "indicator must be a World Bank code or alias",
+            "ok": false
+          },
+          "input": {
+            "indicator": "<script>alert(1)</script>"
+          }
+        }
+      ],
+      "inputs": {
+        "indicator": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'"
+      ],
+      "macro_id": "society.wb-region-rankings",
+      "name": "wb-region-rankings"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "spec object required",
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "spec": {
+          "type": "object"
+        },
+        "title": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.id === 'string')",
+        "output.ok === false || (typeof output.result.permalink === 'string')"
+      ],
+      "macro_id": "society.wb-save-chart",
+      "name": "wb-save-chart"
+    },
+    {
+      "_derived": false,
+      "domain": "society",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "series array required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "specify perCapita and/or inflationAdjust",
+            "ok": false
+          },
+          "input": {
+            "series": [
+              {
+                "value": 1,
+                "year": 2020
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "error": "perCapita requires a population series",
+            "ok": false
+          },
+          "input": {
+            "perCapita": true,
+            "series": [
+              {
+                "value": 1,
+                "year": 2020
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid baseYear",
+            "ok": false
+          },
+          "input": {
+            "baseYear": -1,
+            "inflationAdjust": true,
+            "series": [
+              {
+                "value": 100,
+                "year": 2020
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "baseYear": {
+          "max": 2100,
+          "min": 1900,
+          "type": "number"
+        },
+        "inflationAdjust": {
+          "type": "boolean"
+        },
+        "perCapita": {
+          "type": "boolean"
+        },
+        "population": {
+          "type": "array"
+        },
+        "series": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.series))",
+        "output.ok === false || Array.isArray(output.result.transforms)"
+      ],
+      "macro_id": "society.wb-transform-series",
+      "name": "wb-transform-series"
+    }
+  ],
+  "domain": "society",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 16
+}

@@ -36,6 +36,19 @@ function actorId(ctx) {
   return ctx?.actor?.userId || ctx?.userId || null;
 }
 
+// Fail-CLOSED numeric guard (mirrors server/domains/literary.js). Returns the
+// first offending key, or null when every supplied numeric field is a finite
+// non-negative number within range. The macro-assassin's V2 vector probes
+// NaN / Infinity / huge values here, so reject rather than coerce.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 function state() {
   const g = globalThis;
   if (!g._concordSTATE) g._concordSTATE = {};
@@ -135,6 +148,8 @@ export default function registerGhostHuntMacros(register) {
       driftType = null,         // one of RESIDUE_DRIFT_TYPES
       sort = "recent",          // 'recent' | 'severity' | 'type'
     } = input || {};
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: "invalid_numeric_field", field: badNum };
     try {
       const rows = db.prepare(`
         SELECT id, drift_type, severity, signature, context_json, detected_at
@@ -392,6 +407,8 @@ export default function registerGhostHuntMacros(register) {
     const userId = actorId(ctx);
     if (!userId) return { ok: false, reason: "no_actor" };
     const { limit = 50 } = input || {};
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: "invalid_numeric_field", field: badNum };
     try {
       const hist = userHistory(userId).slice(0, Math.min(200, Math.max(1, Number(limit) || 50)));
       const rank = userRank(userId);
@@ -419,6 +436,8 @@ export default function registerGhostHuntMacros(register) {
   register("ghost-hunt", "leaderboard", async (ctx, input = {}) => {
     const userId = actorId(ctx);
     const { limit = 20 } = input || {};
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: "invalid_numeric_field", field: badNum };
     try {
       const S = state();
       const entries = [...S.ghostRank.entries()].map(([uid, r]) => {
@@ -449,4 +468,69 @@ export default function registerGhostHuntMacros(register) {
       return { ok: false, reason: "leaderboard_failed", err: String(err?.message || err) };
     }
   }, { note: "Hunter leaderboard — ranks by confront XP across all players." });
+
+  // ── create — mint a Spectral Dossier DTU from a confronted residue ──
+  // The lens's persistent artifact: a player-authored case file recording a
+  // hunt outcome. Writes a real `dtus` row (kind 'ghost_residue') so the
+  // dossier is citable + exportable like any other DTU. This is the dtu-exhaust
+  // path for the ghost-tracker lens.
+  register("ghost-hunt", "create", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = actorId(ctx);
+    if (!db || !userId) return { ok: false, reason: "no_db_or_actor" };
+    const { residueId, title, notes, visibility = "private" } = input || {};
+    if (!residueId) return { ok: false, reason: "missing_residue_id" };
+    if (notes !== undefined && notes !== null && typeof notes !== "string") {
+      return { ok: false, reason: "invalid_notes" };
+    }
+    const VIS = new Set(["private", "internal", "public", "marketplace"]);
+    if (!VIS.has(visibility)) return { ok: false, reason: "invalid_visibility" };
+    try {
+      const row = loadResidueRow(db, residueId);
+      if (!row) return { ok: false, reason: "residue_not_found" };
+
+      const hunt = userHunts(userId).get(residueId) || null;
+      const context = parseContext(row);
+      const coords = residueCoords(row.signature);
+      const reward = REWARD_TABLE[row.drift_type] || REWARD_TABLE.memetic_drift;
+      const lastOutcome = (userHistory(userId).find((h) => h.residueId === residueId)) || null;
+
+      const dtuId = `dtu_gho_${crypto.randomUUID()}`;
+      const dossierTitle =
+        (typeof title === "string" && title.trim().slice(0, 200)) ||
+        `Spectral Dossier — ${row.drift_type} (${row.severity})`;
+
+      const body = {
+        kind: "ghost_residue",
+        residueId,
+        drift_type: row.drift_type,
+        severity: row.severity,
+        signature: row.signature,
+        worldId: context.worldId || null,
+        coords,
+        stage: hunt?.stage || "track",
+        outcome: lastOutcome ? lastOutcome.result : null,
+        reward: lastOutcome?.reward || reward,
+        notes: typeof notes === "string" ? notes.slice(0, 4000) : "",
+        authoredAt: Date.now(),
+      };
+      const tags = ["ghost-tracker", "ghost_residue", row.drift_type, row.severity];
+
+      db.prepare(`
+        INSERT INTO dtus (id, owner_user_id, title, body_json, tags_json, visibility, tier)
+        VALUES (?, ?, ?, ?, ?, ?, 'regular')
+      `).run(dtuId, userId, dossierTitle, JSON.stringify(body), JSON.stringify(tags), visibility);
+
+      return {
+        ok: true,
+        dtuId,
+        title: dossierTitle,
+        visibility,
+        residueId,
+        dossier: body,
+      };
+    } catch (err) {
+      return { ok: false, reason: "create_failed", err: String(err?.message || err) };
+    }
+  }, { note: "Mint a Spectral Dossier DTU from a confronted residue — the lens's persistent artifact." });
 }

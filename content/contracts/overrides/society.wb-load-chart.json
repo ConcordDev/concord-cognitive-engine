@@ -1,0 +1,18 @@
+{
+  "macro_id": "society.wb-load-chart",
+  "domain": "society",
+  "name": "wb-load-chart",
+  "inputs": {
+    "id": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.id === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "id required" } },
+    { "input": { "id": "soc_does_not_exist" }, "expect": { "ok": false, "error": "chart not found" } }
+  ],
+  "_note": "Resolves a saved chart spec by share id from the per-user in-memory store. A missing id fails-closed with 'id required'; an unknown id with 'chart not found' (a real validation reason, never no_db). The assassin's internal owner actor has no charts saved → chart not found."
+}

@@ -1,0 +1,20 @@
+{
+  "macro_id": "tools.research-history",
+  "domain": "tools",
+  "name": "research-history",
+  "inputs": {
+    "limit": { "type": "number", "min": 1, "max": 1000000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.history))",
+    "output.ok === false || typeof output.result.total === 'number'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 10 }, "expect": { "ok": true } },
+    { "input": { "limit": 1e308 }, "expect": { "ok": false, "error": "invalid_limit" } }
+  ],
+  "_note": "tools.research-history reads the caller's web-research search history from globalThis._concordSTATE.toolsLens.searchHistory, keyed by ctx.actor.userId. STATE-backed, per-user, no network — {} returns ok:true with an empty history (NEVER no_db). Fail-CLOSED: a poisoned numeric limit (NaN/Infinity/1e308/negative) returns ok:false invalid_limit BEFORE clamping."
+}
