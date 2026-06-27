@@ -1,0 +1,19 @@
+{
+  "macro_id": "gallery.cma-artwork",
+  "domain": "gallery",
+  "name": "cma-artwork",
+  "inputs": {
+    "id": { "type": "number", "min": 1 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "id": 0 }, "expect": { "ok": false } },
+    { "input": { "id": -5 }, "expect": { "ok": false } }
+  ],
+  "_note": "gallery.cma-artwork resolves one Cleveland Museum artwork by numeric id. A missing/non-positive/non-finite id rejects 'id required (CMA artwork id)' BEFORE any fetch, so these fuzz cases are network-free. The success path hits the live CMA API and is not fuzzed."
+}

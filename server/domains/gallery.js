@@ -891,7 +891,7 @@ export default function registerGalleryActions(registerLensAction) {
     if (!room) return { ok: false, error: "room not found" };
     const title = glClean(params.title, 300);
     if (!title) return { ok: false, error: "artwork title required" };
-    const x = Math.min(1, Math.max(0, Number(params.x)));
+    const x = Number.isFinite(Number(params.x)) ? Math.min(1, Math.max(0, Number(params.x))) : 0.5;
     const y = Number.isFinite(Number(params.y)) ? Math.min(1, Math.max(0, Number(params.y))) : 0.42;
     const widthM = Math.min(room.wallWidthM, Math.max(0.2, Number(params.widthM) || 0.8));
     const placement = {

@@ -1,0 +1,17 @@
+{
+  "macro_id": "gallery.cma-departments",
+  "domain": "gallery",
+  "name": "cma-departments",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.departments)",
+    "output.ok === false || output.result.departments.length > 0",
+    "output.ok === false || output.result.departments.every(d => typeof d === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "gallery.cma-departments returns the static Cleveland Museum of Art department list used to filter cma-search. Pure constant, no network, no DB — always ok with a non-empty string array."
+}

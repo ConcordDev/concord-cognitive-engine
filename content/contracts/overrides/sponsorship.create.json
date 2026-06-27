@@ -1,0 +1,26 @@
+{
+  "macro_id": "sponsorship.create",
+  "domain": "sponsorship",
+  "name": "create",
+  "inputs": {
+    "npcId": { "type": "string", "required": true, "maxLength": 80 },
+    "monthlyCc": { "type": "number", "required": false },
+    "dispatchFreqHours": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.currency === 'CC'",
+    "output.ok === false || (output.sponsorshipId !== undefined && output.sponsorshipId !== null)",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "npcId": "npc_arden", "monthlyCc": 5, "dispatchFreqHours": 168 }, "expect": { "ok": true } },
+    { "input": { "monthlyCc": 5 }, "expect": { "ok": false, "reason": "missing_inputs" } },
+    { "input": { "npcId": "npc_arden", "monthlyCc": 0 }, "expect": { "ok": false, "reason": "missing_inputs" } },
+    { "input": { "npcId": "npc_arden", "monthlyCc": -3 }, "expect": { "ok": false, "reason": "missing_inputs" } },
+    { "input": { "npcId": "npc_arden", "monthlyCc": 1e308 }, "expect": { "ok": false } },
+    { "input": { "npcId": "npc_arden", "dispatchFreqHours": 1e308 }, "expect": { "ok": false } }
+  ],
+  "_note": "sponsorship.create (server.js:76526, MACROS/runMacro path) INSERTs a CC sponsorship obligation into npc_sponsorships against a real migrated DB — the assassin runs with an internal owner actor so a valid call returns ok:true (no no_db / no_actor). A real npcId is required; monthlyCc must be > 0 (0/negative reject as missing_inputs). currency is always 'CC'. MONEY-PATH GUARD (landed 2026-06-27): monthlyCc/dispatchFreqHours now fail CLOSED before the INSERT — a finite-but-absurd value (1e308) or non-finite (Infinity/NaN) or > 1e6 or negative rejects as `invalid_numeric:<field>`, so no poisoned CC obligation can be persisted and Math.floor(Infinity)→NULL is unreachable. The /lenses/sponsorship lens never calls this DB-backed macro — it drives the LENS_ACTIONS domain (server/domains/sponsorship.js, in-memory, no user-supplied amount), which is fail-CLOSED by construction (all CC comes from the seeded tier ladder)."
+}

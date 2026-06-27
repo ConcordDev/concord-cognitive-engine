@@ -225,3 +225,27 @@ No server.js edits. ~19 Phase-2 lenses left in the recorded backlog.
 LESSON RE-CONFIRMED: before "wiring a dead domain," verify it isn't already loaded via domains/index.js's
 domainModules.forEach (the 3rd registration path beyond direct server.js import + inline register).
 ~13 Phase-2 lenses left in the backlog.
+
+### Phase-2 batch 3 DONE (2026-06-27): meditation, gallery, federation, sponsorship
+107 server + 23 UX-state tests. All four wired via PATH 3 (`server/domains/index.js`
+domainModules.forEach) — NO server.js registration / canonical-register shim added (trap avoided).
+One real CC money-path bug + two robustness defects fixed:
+- **sponsorship**: 🔴 real CC money-path fail-OPEN — `sponsorship.create` (server.js:76526, the
+  DB-backed MACROS/runMacro path) guarded only `monthlyCc <= 0`, so a finite-absurd `1e308` persisted
+  `monthly_cc=1e308` (a poisoned CC obligation) and `Infinity` coerced to NULL in the INTEGER NOT NULL
+  column. Latent (no wallet charge reads it today) but on a stated CC path. Fixed in server.js with a
+  fail-closed finite/range guard (`invalid_numeric:<field>`) before the INSERT; updated the contract
+  override to declare the fields + poisoned-numeric fuzz cases (1e308 → ok:false). The lens's own
+  in-memory LENS_ACTIONS path takes no user amount (tier-ladder priced) — already fail-closed. 24
+  server + 7 vitest.
+- **gallery**: fail-open NaN `x` in `gallery.virtual-room-place` (sibling `y` was guarded, `x` wasn't →
+  `x:NaN` serialized to null, broke wall layout) → fail-closed `Number.isFinite ? clamp : 0.5`; plus a
+  manifest mismatch (entry described "shared photos"/Camera; the lens is a multi-museum art gallery) →
+  real keywords + Landmark icon. 14 server + 6 vitest + 8 overrides.
+- **federation**: page swallowed all fetch failures (`.catch(()=>null)`) → silently-empty page on an
+  unreachable node; added real loading/error/Retry top-level states. Backend already fail-closed. 20
+  server (39 with the existing parity test) + 5 vitest + 5 overrides.
+- **meditation**: no defect — numeric inputs already clamp into bounded ranges; added the missing
+  behavioral test (30) + 4-UX-state surface (5 vitest) + 12 overrides. Committed @ 379975a.
+Assassin ratchet GREEN (no new violations vs baseline); 258 WIRED; tsc 0; full frontend manifest+sere
+green. ~9 Phase-2 lenses left in the backlog.

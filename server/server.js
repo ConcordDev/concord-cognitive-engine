@@ -76529,6 +76529,15 @@ register("sponsorship", "create", (ctx, input = {}) => {
   if (!userId) return { ok: false, reason: "no_actor" };
   const { npcId, monthlyCc = 5, dispatchFreqHours = 168 } = input || {};
   if (!npcId || monthlyCc <= 0) return { ok: false, reason: "missing_inputs" };
+  // Fail CLOSED on poisoned numerics BEFORE the INSERT — a finite-but-absurd
+  // monthly_cc (e.g. 1e308) persists as a poisoned CC obligation, and Infinity
+  // coerces to NULL in the INTEGER NOT NULL column. Reject before either.
+  const badNumField = ["monthlyCc", "dispatchFreqHours"].find((k) => {
+    if (input[k] === undefined) return false;
+    const n = Number(input[k]);
+    return !Number.isFinite(n) || n < 0 || n > 1e6;
+  });
+  if (badNumField) return { ok: false, reason: `invalid_numeric:${badNumField}` };
   try {
     const r = db.prepare(`
       INSERT INTO npc_sponsorships (npc_id, sponsor_user_id, monthly_cc, dispatch_freq_hours)

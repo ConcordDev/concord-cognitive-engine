@@ -1,0 +1,22 @@
+{
+  "macro_id": "gallery.exhibit-create",
+  "domain": "gallery",
+  "name": "exhibit-create",
+  "inputs": {
+    "title": { "type": "string", "required": true, "maxLength": 160 },
+    "theme": { "type": "string", "maxLength": 200 },
+    "intro": { "type": "string", "maxLength": 2000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.exhibit && typeof output.result.exhibit.id === 'string')",
+    "output.ok === false || output.result.exhibit.published === false",
+    "output.ok === false || Array.isArray(output.result.exhibit.panels)"
+  ],
+  "fuzz_cases": [
+    { "input": { "title": "Light & Shadow", "theme": "chiaroscuro" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "gallery.exhibit-create starts a curated, narrated exhibit (ordered artwork panels) in live STATE. A blank title rejects 'exhibit title required'. New exhibits start unpublished with zero panels; exhibit-publish refuses an empty exhibit."
+}

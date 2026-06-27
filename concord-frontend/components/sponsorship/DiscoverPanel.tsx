@@ -30,15 +30,22 @@ export function DiscoverPanel({ onSubscribed }: { onSubscribed: () => void }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
+    setLoading(true);
+    setError(null);
     const r = await lensRun('sponsorship', 'discover', {
       query: query || undefined,
       world: world || undefined,
     });
+    setLoading(false);
     if (r.data?.ok && r.data.result) {
       setCreators(r.data.result.creators || []);
       if ((r.data.result.worlds || []).length) setWorlds(r.data.result.worlds);
+    } else {
+      setError(r.data?.error || 'Could not load creators.');
     }
   };
 
@@ -90,7 +97,20 @@ export function DiscoverPanel({ onSubscribed }: { onSubscribed: () => void }) {
         <div className="bg-emerald-950/50 border border-emerald-700/50 text-emerald-200 px-3 py-2 rounded-lg text-sm">{msg}</div>
       )}
 
-      {creators.length === 0 ? (
+      {loading ? (
+        <div role="status" aria-live="polite" className="text-center text-zinc-400 italic py-6 border border-zinc-800 rounded-xl">
+          Loading creators…
+        </div>
+      ) : error ? (
+        <div role="alert" className="text-center py-6 border border-rose-800/60 bg-rose-950/30 rounded-xl">
+          <p className="text-rose-300 text-sm">{error}</p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="mt-2 bg-rose-800 hover:bg-rose-700 text-white text-xs px-4 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >Retry</button>
+        </div>
+      ) : creators.length === 0 ? (
         <div className="text-center text-zinc-400 italic py-6 border border-zinc-800 rounded-xl">
           No creators match your search.
         </div>

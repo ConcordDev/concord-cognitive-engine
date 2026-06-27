@@ -1,0 +1,24 @@
+{
+  "macro_id": "federation.metricsDashboard",
+  "domain": "federation",
+  "name": "metricsDashboard",
+  "inputs": {
+    "sinceMs": { "type": "number", "min": 0, "max": 1000000000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.series))",
+    "output.ok === false || (typeof output.result.totalInbound === 'number' && output.result.totalInbound >= 0)",
+    "output.ok === false || (typeof output.result.totalOutbound === 'number' && output.result.totalOutbound >= 0)",
+    "output.ok === false || (output.result.ratio === null || typeof output.result.ratio === 'number')",
+    "output.ok === false || (output.result.peerCounts && typeof output.result.peerCounts.allow === 'number')",
+    "output.ok === false || (typeof output.result.openModeration === 'number' && output.result.openModeration >= 0)",
+    "output.ok === false || (typeof output.result.relayCount === 'number' && output.result.relayCount >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "sinceMs": 3600000 }, "expect": { "ok": true } }
+  ],
+  "_note": "federation.metricsDashboard (LENS_ACTIONS, not MACROS) aggregates the caller's recorded in/out metric samples (windowed by the optional sinceMs) plus live per-user peer-policy / open-moderation / relay counts. ratio is inbound/outbound (null when no outbound) so it is never Infinity/NaN. Returns ok:true with zeros for a fresh actor — pure in-memory, never no_db."
+}
