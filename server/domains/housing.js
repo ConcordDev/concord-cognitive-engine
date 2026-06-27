@@ -37,6 +37,19 @@ import { requestVisit } from "../lib/house-visit.js";
 
 const VISIBILITIES = new Set(["private", "friends", "public"]);
 
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before reading —
+// a fail-OPEN that clamps a poisoned `limit` through to ok:true is the defect.
+// An absent field is fine (the macro uses its default). Returns null when clean,
+// or the offending key.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 export default function registerHousingMacros(register) {
   /**
    * housing.mine — list the actor's houses.
@@ -70,6 +83,8 @@ export default function registerHousingMacros(register) {
   register("housing", "public", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     if (!input.worldId) return { ok: false, reason: "missing_world_id" };
     const limit = Math.min(Math.max(Number(input.limit) || 100, 1), 100);
     try {

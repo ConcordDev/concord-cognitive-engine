@@ -22,6 +22,18 @@ import {
   VALID_KINDS,
 } from "../lib/announcements.js";
 
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
+// silently clamp through Math.min/max. An absent field is fine (uses default).
+// Returns null when clean, else the offending key. Fail-CLOSED.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 export default function registerAnnouncementMacros(register) {
   /**
    * announcements.list — recent, non-expired operator announcements.
@@ -31,6 +43,8 @@ export default function registerAnnouncementMacros(register) {
   register("announcements", "list", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     const kind = input.kind && VALID_KINDS.has(input.kind) ? input.kind : undefined;
     const limit = Math.min(Math.max(Number(input.limit) || 50, 1), 200);
     return { ok: true, announcements: listRecentAnnouncements(db, { kind, limit }) };

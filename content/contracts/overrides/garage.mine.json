@@ -13,6 +13,7 @@
     "output.ok === false || output.vehicles.every(v => v.owner_kind === 'player')"
   ],
   "fuzz_cases": [
-    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": false, "reason": "no_user" } }
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": true } }
   ]
 }

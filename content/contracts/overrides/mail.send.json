@@ -18,6 +18,7 @@
   "fuzz_cases": [
     { "input": { "toUserId": "", "subject": "Hi" }, "expect": { "ok": false } },
     { "input": { "toUserId": "u2", "subject": "" }, "expect": { "ok": false } },
-    { "input": { "toUserId": "u1", "subject": "self" }, "expect": { "ok": false } }
-  ]
+    { "input": { "toUserId": "assassin:mail.send", "subject": "self" }, "expect": { "ok": false, "error": "cannot_mail_self" } }
+  ],
+  "_note": "send runs under the assassin's live DB + internal actor (fromUserId = 'assassin:mail.send'). Case 1 → missing_users (empty toUserId); case 2 → subject_required (empty subject); case 3 → cannot_mail_self (toUserId equals the actor id). A non-self toUserId with a valid subject would SUCCEED (ok:true) — only the self-send is a guaranteed rejection without seeding recipient rows."
 }

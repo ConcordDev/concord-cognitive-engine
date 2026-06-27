@@ -159,7 +159,7 @@
       "fuzz_cases": [
         {
           "expect": {
-            "ok": false
+            "ok": true
           },
           "input": {}
         }

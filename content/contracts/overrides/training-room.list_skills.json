@@ -13,6 +13,6 @@
     "output.ok === true || typeof output.reason === 'string'"
   ],
   "fuzz_cases": [
-    { "input": {}, "expect": { "ok": false } }
+    { "input": {}, "expect": { "ok": true } }
   ]
 }

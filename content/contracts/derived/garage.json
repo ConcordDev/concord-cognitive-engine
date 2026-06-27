@@ -103,8 +103,13 @@
       "fuzz_cases": [
         {
           "expect": {
-            "ok": false,
-            "reason": "no_user"
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
           },
           "input": {
             "worldId": "concordia-hub"

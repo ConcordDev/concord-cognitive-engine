@@ -20,6 +20,18 @@ import {
   BUILTIN_SKILL_KINDS,
 } from "../lib/combat-frame-data.js";
 
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
+// silently clamp through the Math.min/max bounds. An absent field is fine (the
+// macro uses its default). Returns null when clean, or the offending key.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 export default function registerTrainingRoomMacros(register) {
   /**
    * training-room.frame_data — derive frame data for one skill.
@@ -76,6 +88,8 @@ export default function registerTrainingRoomMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const userId = input.userId || ctx?.actor?.userId;
     if (!userId) return { ok: false, reason: "no_user" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     const limit = Math.min(Math.max(Number(input.limit) || 20, 1), 100);
     try {
       const rows = db.prepare(`

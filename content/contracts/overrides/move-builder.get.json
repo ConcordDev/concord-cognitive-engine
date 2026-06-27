@@ -13,6 +13,6 @@
     "output.ok === false || (output.move && typeof output.move.name === 'string')"
   ],
   "fuzz_cases": [
-    { "input": {}, "expect": { "ok": false, "reason": "no_db" } }
+    { "input": {}, "expect": { "ok": false, "reason": "missing_moveId" } }
   ]
 }

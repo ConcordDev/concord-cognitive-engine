@@ -35,6 +35,20 @@ function actorId(ctx) {
   return ctx?.actor?.userId || ctx?.user?.id || ctx?.user?.userId || null;
 }
 
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
+// silently clamp through Math.min/max or get swallowed by the lib. A caller that
+// PASSES a numeric field must pass a finite, non-negative one in range; an absent
+// field is fine (the macro uses its default). Returns null when clean, else the
+// offending key. Fail-CLOSED, not fail-open.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 export default function registerAuctionMacros(register) {
   // ── reads (headless-safe) ──────────────────────────────────────────────
 
@@ -42,6 +56,8 @@ export default function registerAuctionMacros(register) {
   register("auctions", "active", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     const limit = Math.min(Math.max(Number(input.limit) || 50, 1), 200);
     return { ok: true, auctions: listActiveAuctions(db, { limit }) };
   }, { note: "list active auctions (ends-soonest first)" });
@@ -60,6 +76,8 @@ export default function registerAuctionMacros(register) {
   register("auctions", "buy_orders", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     const limit = Math.min(Math.max(Number(input.limit) || 50, 1), 500);
     return {
       ok: true,
@@ -76,6 +94,8 @@ export default function registerAuctionMacros(register) {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     if (!input.itemId) return { ok: false, reason: "no_item_id" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     const limit = Math.min(Math.max(Number(input.limit) || 100, 1), 500);
     return { ok: true, ...getPriceHistory(db, String(input.itemId), { limit }) };
   }, { note: "per-item sale price-history + stats" });
@@ -96,6 +116,9 @@ export default function registerAuctionMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const userId = actorId(ctx);
     if (!userId) return { ok: false, reason: "no_user" };
+    // Fail-closed on poisoned price/duration BEFORE any DB write.
+    const badNum = badNumericField(input, ["startCc", "buyoutCc", "durationS"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     const r = createAuction(db, userId, input);
     return r.ok ? r : { ok: false, reason: r.error || "create_failed" };
   }, { note: "create an auction listing" });

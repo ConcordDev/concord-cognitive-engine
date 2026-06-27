@@ -106,11 +106,12 @@
         },
         {
           "expect": {
+            "error": "cannot_mail_self",
             "ok": false
           },
           "input": {
             "subject": "self",
-            "toUserId": "u1"
+            "toUserId": "assassin:mail.send"
           }
         }
       ],

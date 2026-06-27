@@ -87,6 +87,15 @@
             "ok": false
           },
           "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "partnerId": "npc1",
+            "sentiment": 1e+308
+          }
         }
       ],
       "inputs": {

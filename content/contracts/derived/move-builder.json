@@ -104,7 +104,7 @@
         {
           "expect": {
             "ok": false,
-            "reason": "no_db"
+            "reason": "missing_moveId"
           },
           "input": {}
         }
@@ -135,10 +135,17 @@
       "fuzz_cases": [
         {
           "expect": {
-            "ok": false,
-            "reason": "no_db"
+            "ok": true
           },
           "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 10
+          }
         }
       ],
       "inputs": {
@@ -168,7 +175,7 @@
         {
           "expect": {
             "ok": false,
-            "reason": "no_db"
+            "reason": "missing_name"
           },
           "input": {}
         }

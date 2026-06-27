@@ -3,9 +3,19 @@
   "domain": "auctions",
   "name": "buy_orders",
   "inputs": {
-    "worldId": { "type": "string", "maxLength": 64 },
-    "itemDescriptor": { "type": "string", "maxLength": 200 },
-    "limit": { "type": "number", "min": 1, "max": 500 }
+    "worldId": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "itemDescriptor": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "limit": {
+      "type": "number",
+      "min": 1,
+      "max": 500
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -15,6 +25,21 @@
     "output.ok === false || output.buyOrders.every(o => o.quantity_filled <= o.quantity_wanted)"
   ],
   "fuzz_cases": [
-    { "input": { "limit": 20 }, "expect": { "ok": true } }
+    {
+      "input": {
+        "limit": 20
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "limit": -1
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ]
 }

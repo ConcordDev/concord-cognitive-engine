@@ -1,135 +1,30 @@
 {
-  "generatedAt": "2026-06-27T04:25:16.963Z",
-  "durationMs": 155666,
+  "generatedAt": "2026-06-27T04:46:11.705Z",
+  "durationMs": 157351,
   "totals": {
     "macrosEnumerated": 2698,
     "headlessSafeDriven": 2672,
     "headlessUnsafeSkipped": 26,
-    "violations": 37,
+    "violations": 10,
     "hardCrashes": 0
   },
   "byVector": {
-    "V1": 9,
-    "V2": 23,
+    "V1": 0,
+    "V2": 5,
     "V3": 5,
     "META": 0,
     "HARD": 0
   },
   "byReason": {
-    "ok_true_on_poisoned_number": 18,
     "fuzz_timeout": 5,
-    "invariant_input_timeout": 5,
-    "seed_expect_mismatch": 9
+    "invariant_input_timeout": 5
   },
   "byDomain": {
-    "announcements": 1,
-    "auctions": 4,
-    "courtship": 1,
-    "creatures": 1,
-    "detective": 1,
     "detectors": 8,
-    "emergent": 2,
-    "garage": 2,
-    "housing": 1,
-    "lfg": 3,
-    "mail": 2,
-    "move-builder": 7,
-    "quests": 1,
-    "reasoning": 1,
-    "training-room": 2
+    "emergent": 2
   },
   "violations": [
     {
-      "macro_id": "announcements.list",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "limit"
-        ],
-        "out": "{\"ok\":true,\"announcements\":[]}"
-      }
-    },
-    {
-      "macro_id": "auctions.active",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "limit"
-        ],
-        "out": "{\"ok\":true,\"auctions\":[{\"id\":\"auc_05e3592037d5\",\"sellerUserId\":\"assassin:auctions.create\",\"worldId\":null,\"itemKind\":\"dtu\",\"itemId\":\"<script>alert(1)</script>\",\"title\":\"<script>alert(1)</script>\",\"startCc\":0,\"currentBidCc\":0,\"buyoutCc\":null,…"
-      }
-    },
-    {
-      "macro_id": "auctions.buy_orders",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "limit"
-        ],
-        "out": "{\"ok\":true,\"buyOrders\":[]}"
-      }
-    },
-    {
-      "macro_id": "auctions.create",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "buyoutCc",
-          "durationS",
-          "startCc"
-        ],
-        "out": "{\"ok\":true,\"auctionId\":\"auc_d9720c6ea9b3\"}"
-      }
-    },
-    {
-      "macro_id": "auctions.price_history",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "limit"
-        ],
-        "out": "{\"ok\":true,\"points\":[],\"stats\":null}"
-      }
-    },
-    {
-      "macro_id": "courtship.interact",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "sentiment"
-        ],
-        "out": "{\"ok\":true,\"affinity\":0.15000000000000002,\"status\":\"acquainted\",\"new\":false,\"delta\":0.05,\"heartEvent\":null}"
-      }
-    },
-    {
-      "macro_id": "creatures.roster",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "limit"
-        ],
-        "out": "{\"ok\":true,\"populations\":[],\"count\":0}"
-      }
-    },
-    {
-      "macro_id": "detective.list",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "limit"
-        ],
-        "out": "{\"ok\":true,\"crimes\":[]}"
-      }
-    },
-    {
       "macro_id": "detectors.diff",
       "vector": "V2",
       "reason": "fuzz_timeout",
@@ -198,216 +93,6 @@
       "vector": "V3",
       "reason": "invariant_input_timeout",
       "detail": null
-    },
-    {
-      "macro_id": "garage.mine",
-      "vector": "V1",
-      "reason": "seed_expect_mismatch",
-      "detail": {
-        "caseIndex": 0,
-        "key": "ok",
-        "want": false,
-        "got": "true"
-      }
-    },
-    {
-      "macro_id": "garage.mine",
-      "vector": "V1",
-      "reason": "seed_expect_mismatch",
-      "detail": {
-        "caseIndex": 0,
-        "key": "reason",
-        "want": "no_user",
-        "got": "undefined"
-      }
-    },
-    {
-      "macro_id": "housing.public",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "limit"
-        ],
-        "out": "{\"ok\":true,\"houses\":[]}"
-      }
-    },
-    {
-      "macro_id": "lfg.list",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "limit"
-        ],
-        "out": "{\"ok\":true,\"requests\":[]}"
-      }
-    },
-    {
-      "macro_id": "lfg.post",
-      "vector": "V1",
-      "reason": "seed_expect_mismatch",
-      "detail": {
-        "caseIndex": 0,
-        "key": "ok",
-        "want": false,
-        "got": "true"
-      }
-    },
-    {
-      "macro_id": "lfg.post",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "partyMaxSize"
-        ],
-        "out": "{\"ok\":true,\"id\":\"lfg_7b9bb5ca3ce0\"}"
-      }
-    },
-    {
-      "macro_id": "mail.send",
-      "vector": "V1",
-      "reason": "seed_expect_mismatch",
-      "detail": {
-        "caseIndex": 2,
-        "key": "ok",
-        "want": false,
-        "got": "true"
-      }
-    },
-    {
-      "macro_id": "mail.send",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "attachmentCc",
-          "codCc"
-        ],
-        "out": "{\"ok\":true,\"id\":\"mail_3748cf069a1572da\"}"
-      }
-    },
-    {
-      "macro_id": "move-builder.compose",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "skillLevel"
-        ],
-        "out": "{\"ok\":true,\"skillKind\":\"spell\",\"element\":\"<script>alert(1)</script>\",\"tier\":1,\"motion\":{\"motionFamily\":\"magic\",\"motionArchetype\":\"cast_channel\",\"effectArchetype\":\"projectile\",\"element\":\"<script>alert(1)</script>\",\"resourceGauge\":\"mana\",\"lea…"
-      }
-    },
-    {
-      "macro_id": "move-builder.get",
-      "vector": "V1",
-      "reason": "seed_expect_mismatch",
-      "detail": {
-        "caseIndex": 0,
-        "key": "reason",
-        "want": "no_db",
-        "got": "\"missing_moveId\""
-      }
-    },
-    {
-      "macro_id": "move-builder.list",
-      "vector": "V1",
-      "reason": "seed_expect_mismatch",
-      "detail": {
-        "caseIndex": 0,
-        "key": "ok",
-        "want": false,
-        "got": "true"
-      }
-    },
-    {
-      "macro_id": "move-builder.list",
-      "vector": "V1",
-      "reason": "seed_expect_mismatch",
-      "detail": {
-        "caseIndex": 0,
-        "key": "reason",
-        "want": "no_db",
-        "got": "undefined"
-      }
-    },
-    {
-      "macro_id": "move-builder.list",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "limit"
-        ],
-        "out": "{\"ok\":true,\"moves\":[]}"
-      }
-    },
-    {
-      "macro_id": "move-builder.mint",
-      "vector": "V1",
-      "reason": "seed_expect_mismatch",
-      "detail": {
-        "caseIndex": 0,
-        "key": "reason",
-        "want": "no_db",
-        "got": "\"missing_name\""
-      }
-    },
-    {
-      "macro_id": "move-builder.mint",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "skillLevel"
-        ],
-        "out": "{\"ok\":true,\"moveId\":\"move:assassin:move-builder.mint:4fa3228a\",\"name\":\"<script>alert(1)</script>\",\"motion\":{\"motionFamily\":\"magic\",\"motionArchetype\":\"cast_channel\",\"effectArchetype\":\"projectile\",\"element\":\"<script>alert(1)</script>\",\"resour…"
-      }
-    },
-    {
-      "macro_id": "quests.recordProgress",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "count"
-        ],
-        "out": "{\"ok\":true}"
-      }
-    },
-    {
-      "macro_id": "reasoning.traces",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "limit"
-        ],
-        "out": "{\"ok\":true,\"traces\":[{\"traceId\":\"hlr_trace_247193eba78b7727df90\",\"topic\":\"Does X imply Y?\",\"question\":null,\"mode\":\"deductive\",\"primaryDomain\":\"general\",\"chainCount\":3,\"convergence\":0.079,\"confidence\":0.369,\"novelty\":1,\"synthesizedConclusion…"
-      }
-    },
-    {
-      "macro_id": "training-room.list_skills",
-      "vector": "V1",
-      "reason": "seed_expect_mismatch",
-      "detail": {
-        "caseIndex": 0,
-        "key": "ok",
-        "want": false,
-        "got": "true"
-      }
-    },
-    {
-      "macro_id": "training-room.list_skills",
-      "vector": "V2",
-      "reason": "ok_true_on_poisoned_number",
-      "detail": {
-        "poisonedNumericFields": [
-          "limit"
-        ],
-        "out": "{\"ok\":true,\"skills\":[]}"
-      }
     }
   ],
   "hardCrashes": []

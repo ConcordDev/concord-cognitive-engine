@@ -55,6 +55,14 @@
           "input": {
             "kind": "roadmap"
           }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "limit": 1e+308
+          }
         }
       ],
       "inputs": {

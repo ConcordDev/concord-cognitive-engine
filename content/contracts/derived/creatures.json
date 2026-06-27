@@ -93,6 +93,15 @@
             "ok": false
           },
           "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "limit": 1e+308,
+            "worldId": "concordia-hub"
+          }
         }
       ],
       "inputs": {

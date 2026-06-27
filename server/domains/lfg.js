@@ -19,6 +19,19 @@ import {
   inviteFromLfg,
 } from "../lib/lfg.js";
 
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
+// silently clamp through the lib's Math.min/max bounds and still return ok:true.
+// An absent field is fine (the macro/lib uses its default). Returns null when
+// clean, or the offending key.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 export default function registerLfgMacros(register) {
   /**
    * lfg.post — post a Looking-For-Group request. Auto-cancels any prior
@@ -31,6 +44,8 @@ export default function registerLfgMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const userId = input.userId || ctx?.actor?.userId;
     if (!userId) return { ok: false, reason: "no_user" };
+    const badNum = badNumericField(input, ["partyMaxSize"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     return postLfg(db, userId, input);
   }, { note: "post an LFG request (auto-cancels prior open in same world)" });
 
@@ -41,6 +56,8 @@ export default function registerLfgMacros(register) {
   register("lfg", "list", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     return {
       ok: true,
       requests: listOpenLfg(db, {

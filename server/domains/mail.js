@@ -26,6 +26,19 @@ function actorId(ctx, input) {
   return input?.userId || ctx?.actor?.userId || ctx?.actor?.id || null;
 }
 
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before any
+// wallet escrow / DB write — a fail-OPEN here would mint or strand CC.
+// An absent field is fine (the lib uses its default). Returns null when clean,
+// or the offending key.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 export default function registerMailMacros(register) {
   /**
    * mail.list — the caller's inbox (newest first).
@@ -79,6 +92,8 @@ export default function registerMailMacros(register) {
     if (!db) return { ok: false, error: "no_db" };
     const fromUserId = actorId(ctx, input);
     if (!fromUserId) return { ok: false, error: "no_user" };
+    const badNum = badNumericField(input, ["attachmentCc", "codCc"]);
+    if (badNum) return { ok: false, error: `invalid_${badNum}` };
     return sendMail(db, { ...input, fromUserId });
   }, { note: "send async mail (escrows attachment CC)" });
 

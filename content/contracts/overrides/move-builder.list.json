@@ -13,6 +13,7 @@
     "output.ok === false || output.moves.every(m => typeof m.id === 'string' && typeof m.name === 'string')"
   ],
   "fuzz_cases": [
-    { "input": {}, "expect": { "ok": false, "reason": "no_db" } }
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 10 }, "expect": { "ok": true } }
   ]
 }

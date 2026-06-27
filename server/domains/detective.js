@@ -31,6 +31,18 @@ function clampLimit(n, def = 50) {
   return Math.max(1, Math.min(200, Math.floor(v)));
 }
 
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before reading —
+// a fail-OPEN that clamps a poisoned `limit` through to ok:true is the defect.
+// An absent field is fine. Returns null when clean, or the offending key.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 export default function registerDetectiveMacros(register) {
   /**
    * detective.list — open cases for a world (read).
@@ -39,6 +51,8 @@ export default function registerDetectiveMacros(register) {
   register("detective", "list", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     const worldId = input?.worldId ? String(input.worldId) : null;
     if (!worldId) return { ok: false, reason: "missing_world" };
     return { ok: true, crimes: listOpenCrimes(db, worldId, clampLimit(input.limit)) };

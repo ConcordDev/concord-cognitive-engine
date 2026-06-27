@@ -17,6 +17,6 @@
     "output.reason !== 'budget_overspent' || (typeof output.spent === 'number' && output.spent > output.budget)"
   ],
   "fuzz_cases": [
-    { "input": {}, "expect": { "ok": false, "reason": "no_db" } }
+    { "input": {}, "expect": { "ok": false, "reason": "missing_name" } }
   ]
 }

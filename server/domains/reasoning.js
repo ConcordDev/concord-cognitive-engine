@@ -739,6 +739,19 @@ export default function registerReasoningActions(registerLensAction) {
 // or hand-curate, so those bits are honestly absent rather than faked.
 //
 // `register` is the runMacro registrar: register(domain, name, async (ctx, input) => {...}, opts).
+
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
+// silently clamp through Math.min/max bounds. An absent field is fine (default
+// is used). Returns null when clean, or the offending key.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 export function registerReasoningTraceMacros(register) {
   /**
    * reasoning.traces — list recent HLR reasoning traces (summaries).
@@ -746,6 +759,8 @@ export function registerReasoningTraceMacros(register) {
    * Read-only; safe for publicReadDomains.
    */
   register("reasoning", "traces", async (_ctx, input = {}) => {
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     const { listTraces, REASONING_MODES } = await import("../emergent/hlr-engine.js");
     const limit = Math.min(Math.max(Number(input.limit) || 50, 1), 100);
     return { ok: true, traces: listTraces(limit), modes: Object.values(REASONING_MODES) };

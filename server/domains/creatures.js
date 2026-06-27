@@ -36,6 +36,18 @@ function coatFor(speciesId, dominant) {
   return hues[h % hues.length];
 }
 
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
+// silently clamp through Math.min/max. An absent field is fine (uses default).
+// Returns null when clean, else the offending key. Fail-CLOSED.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 function speciesOf(row) {
   if (row.species_id) return String(row.species_id);
   const a = String(row.archetype || "");
@@ -124,6 +136,8 @@ export default function registerCreatureMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const worldId = input.worldId || input.world_id;
     if (!worldId) return { ok: false, reason: "missing_world_id" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     const limit = Math.min(Math.max(Number(input.limit) || 100, 1), 500);
     let rows = [];
     try {

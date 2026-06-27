@@ -29,6 +29,19 @@ function ctxWorld(ctx, input) {
   return input.worldId || ctx?.worldId || ctx?.actor?.worldId || DEFAULT_WORLD;
 }
 
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before any DB
+// write — a fail-OPEN that lets a poisoned `count` clamp through to ok:true is
+// the defect. An absent field is fine (defaults to 1). Returns null when clean,
+// or the offending key.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 export default function registerQuestsMacros(register) {
   /**
    * quests.active — list a player's active quests (objectives + rewards merged).
@@ -124,6 +137,8 @@ export default function registerQuestsMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctxUser(ctx, input);
     if (!userId) return { ok: false, reason: "no_user" };
+    const badNum = badNumericField(input, ["count"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     if (!input.type || !input.target) return { ok: false, reason: "missing_objective_key" };
     const worldId = ctxWorld(ctx, input);
     const count = Math.max(1, Math.floor(Number(input.count) || 1));

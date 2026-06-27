@@ -11,6 +11,14 @@
           "input": {
             "limit": 10
           }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "limit": 1e+308
+          }
         }
       ],
       "inputs": {
@@ -89,6 +97,14 @@
           "input": {
             "limit": 20
           }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "limit": -1
+          }
         }
       ],
       "inputs": {
@@ -154,6 +170,15 @@
             "ok": false
           },
           "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "itemId": "x",
+            "startCc": -1
+          }
         }
       ],
       "inputs": {
@@ -319,6 +344,15 @@
             "ok": false
           },
           "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "itemId": "x",
+            "limit": 1e+308
+          }
         }
       ],
       "inputs": {

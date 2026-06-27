@@ -3,7 +3,11 @@
   "domain": "auctions",
   "name": "active",
   "inputs": {
-    "limit": { "type": "number", "min": 1, "max": 200 }
+    "limit": {
+      "type": "number",
+      "min": 1,
+      "max": 200
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -14,6 +18,21 @@
     "output.ok === false || output.auctions.every(a => typeof a.startCc === 'number' && a.startCc >= 0)"
   ],
   "fuzz_cases": [
-    { "input": { "limit": 10 }, "expect": { "ok": true } }
+    {
+      "input": {
+        "limit": 10
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "limit": 1e+308
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ]
 }

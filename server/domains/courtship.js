@@ -33,6 +33,17 @@ function partnerKindOf(input) {
   return PARTNER_KINDS.has(k) ? k : "npc";
 }
 
+// `sentiment` is a bounded affinity nudge in [-1, 1] — negatives are VALID
+// (a cold/hostile interaction), so the generic "reject negative" guard does
+// NOT apply. Reject only a poisoned value (NaN/±Infinity/1e308) or one outside
+// the declared range. Absent is fine (the lib applies a neutral default).
+// Returns true when the passed sentiment is unusable. Fail-CLOSED.
+function badSentiment(input) {
+  if (input?.sentiment === undefined || input?.sentiment === null) return false;
+  const n = Number(input.sentiment);
+  return !Number.isFinite(n) || n < -1 || n > 1;
+}
+
 export default function registerCourtshipMacros(register) {
   /**
    * courtship.list — the player's active courtships (read).
@@ -73,6 +84,7 @@ export default function registerCourtshipMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     if (!userId) return { ok: false, reason: "no_user" };
     if (!input?.partnerId) return { ok: false, reason: "missing_inputs" };
+    if (badSentiment(input)) return { ok: false, reason: "invalid_sentiment" };
     return courtInteraction(db, userId, partnerKindOf(input), String(input.partnerId), input?.sentiment);
   }, { note: "courting interaction — shifts affinity" });
 

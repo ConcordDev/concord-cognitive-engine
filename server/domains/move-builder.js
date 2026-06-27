@@ -27,6 +27,25 @@ import {
 } from "../lib/move-descriptor.js";
 import crypto from "node:crypto";
 
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
+// silently clamp through the Math.min/max bounds or be persisted. A caller that
+// PASSES a numeric field at all must pass a finite, non-negative one — an absent
+// field is fine (the macro uses its default). Returns null when clean, else key.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
+// Reject a poisoned numeric inside an allocation map (the per-aspect points).
+function badAllocation(allocation) {
+  if (!allocation || typeof allocation !== "object") return null;
+  return badNumericField(allocation, MOVE_ASPECTS);
+}
+
 // ── Modifier budget (mirrors concord-frontend/lib/concordia/move-budget.ts) ──
 // Stacking the SAME aspect gives full value for the first few points then a
 // sharp cliff (ED "Schedule A"), so the optimal build SPREADS — this is what
@@ -121,6 +140,10 @@ export default function registerMoveBuilderMacros(register) {
    * input: { skillKind, element, allocation?, skillLevel? }
    */
   register("move-builder", "compose", async (_ctx, input = {}) => {
+    const badNum = badNumericField(input, ["skillLevel"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
+    const badAlloc = badAllocation(input.allocation);
+    if (badAlloc) return { ok: false, reason: `invalid_allocation_${badAlloc}` };
     const composed = composeMove({
       skillKind: input.skillKind,
       element: input.element,
@@ -143,6 +166,11 @@ export default function registerMoveBuilderMacros(register) {
     if (!userId) return { ok: false, reason: "no_user" };
     const name = String(input.name || "").trim();
     if (!name) return { ok: false, reason: "missing_name" };
+    // Fail-closed on poisoned numerics BEFORE any DB write.
+    const badNum = badNumericField(input, ["skillLevel"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
+    const badAlloc = badAllocation(input.allocation);
+    if (badAlloc) return { ok: false, reason: `invalid_allocation_${badAlloc}` };
 
     const composed = composeMove({
       skillKind: input.skillKind,
@@ -206,6 +234,8 @@ export default function registerMoveBuilderMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctx?.actor?.userId;
     if (!userId) return { ok: false, reason: "no_user" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     const limit = Math.min(Math.max(Number(input.limit) || 50, 1), 200);
     const cols = dtuColumns(db);
     let rows = [];

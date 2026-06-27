@@ -3,8 +3,16 @@
   "domain": "auctions",
   "name": "price_history",
   "inputs": {
-    "itemId": { "type": "string", "required": true, "maxLength": 200 },
-    "limit": { "type": "number", "min": 1, "max": 500 }
+    "itemId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "limit": {
+      "type": "number",
+      "min": 1,
+      "max": 500
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -14,6 +22,20 @@
     "output.ok === false || output.stats === null || output.stats.count === output.points.length"
   ],
   "fuzz_cases": [
-    { "input": {}, "expect": { "ok": false } }
+    {
+      "input": {},
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "itemId": "x",
+        "limit": 1e+308
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ]
 }

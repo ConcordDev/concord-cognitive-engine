@@ -16,7 +16,7 @@
     "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
   ],
   "fuzz_cases": [
-    { "input": {}, "expect": { "ok": false } }
+    { "input": {}, "expect": { "ok": true } }
   ],
-  "_note": "post REQUIRES an authenticated actor (ctx.actor.userId); with no actor it returns ok:false reason:no_user. At most one OPEN lfg_request per (user, world) — a second post in the same world auto-cancels the first (pinned in lfg-domain-macros.test.js)."
+  "_note": "post REQUIRES an authenticated actor (ctx.actor.userId); with no actor it returns ok:false reason:no_user. Under the assassin's live DB + internal actor, `{}` is a VALID post — worldId defaults to 'concordia-hub', role to 'any' — so it returns ok:true with a fresh request id. At most one OPEN lfg_request per (user, world) — a second post in the same world auto-cancels the first (pinned in lfg-domain-macros.test.js)."
 }

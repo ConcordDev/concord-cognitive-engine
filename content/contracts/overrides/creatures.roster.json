@@ -3,8 +3,16 @@
   "domain": "creatures",
   "name": "roster",
   "inputs": {
-    "worldId": { "type": "string", "required": true, "maxLength": 80 },
-    "limit": { "type": "number", "min": 1, "max": 500 }
+    "worldId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 80
+    },
+    "limit": {
+      "type": "number",
+      "min": 1,
+      "max": 500
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -16,7 +24,28 @@
     "output.ok === true || typeof output.reason === 'string'"
   ],
   "fuzz_cases": [
-    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": true } },
-    { "input": {}, "expect": { "ok": false } }
+    {
+      "input": {
+        "worldId": "concordia-hub"
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {},
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "worldId": "concordia-hub",
+        "limit": 1e+308
+      },
+      "expect": {
+        "ok": false
+      }
+    }
   ]
 }
