@@ -41,15 +41,21 @@ export default function AnomaliesPage() {
   const [worldId, setWorldId] = useState('');
   const [worldAnomalies, setWorldAnomalies] = useState<Anomaly[]>([]);
   const [publicStats, setPublicStats] = useState<PublicStats | null>(null);
+  const [publicError, setPublicError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const fetchPublic = useCallback(async () => {
+    setPublicError(null);
     try {
       const res = await fetch('/api/anomalies/public');
       const json = await res.json();
       if (json?.ok) setPublicStats({ byKind: json.byKind, recent7d: json.recent7d });
-    } catch { /* network error silent */ }
+      else setPublicError(json?.error || `HTTP ${res.status}`);
+    } catch (e) {
+      // Do NOT swallow into a perpetual "Loading…" — surface it with a Retry.
+      setPublicError(e instanceof Error ? e.message : String(e));
+    }
   }, []);
 
   useEffect(() => { fetchPublic(); }, [fetchPublic]);
@@ -97,7 +103,18 @@ export default function AnomaliesPage() {
 
       <section className="mb-8">
         <h2 className="text-lg font-semibold text-cyan-300 mb-3">Public transparency log</h2>
-        {!publicStats && <div className="text-xs text-gray-400">Loading…</div>}
+        {!publicStats && !publicError && (
+          <div role="status" aria-live="polite" className="text-xs text-gray-400">Loading…</div>
+        )}
+        {!publicStats && publicError && (
+          <div role="alert" className="flex flex-wrap items-center gap-3 rounded border border-red-700 bg-red-950/40 px-3 py-2 text-xs text-red-300">
+            <span>Could not load the transparency log: {publicError}</span>
+            <button onClick={() => fetchPublic()}
+              className="rounded border border-red-600 bg-red-900/40 px-2 py-1 text-[11px] text-red-100 hover:bg-red-900/70">
+              Try again
+            </button>
+          </div>
+        )}
         {publicStats && (
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-900/60 border border-gray-700 rounded p-3">

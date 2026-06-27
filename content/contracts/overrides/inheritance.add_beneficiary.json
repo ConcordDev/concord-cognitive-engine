@@ -1,0 +1,25 @@
+{
+  "macro_id": "inheritance.add_beneficiary",
+  "domain": "inheritance",
+  "name": "add_beneficiary",
+  "inputs": {
+    "name": { "type": "string", "required": true, "maxLength": 200 },
+    "relationship": { "type": "string", "maxLength": 100 },
+    "sharePct": { "type": "number", "min": 0, "max": 100 },
+    "contingent": { "type": "boolean" },
+    "contingentOn": { "type": "string", "maxLength": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.beneficiary && typeof output.result.beneficiary.id === 'string')",
+    "output.ok === false || (typeof output.result.beneficiary.sharePct === 'number' && Number.isFinite(output.result.beneficiary.sharePct) && output.result.beneficiary.sharePct >= 0 && output.result.beneficiary.sharePct <= 100)",
+    "output.ok === false || Array.isArray(output.result.beneficiaries)"
+  ],
+  "fuzz_cases": [
+    { "input": { "name": "Asbir", "relationship": "child", "sharePct": 40 }, "expect": { "ok": true } },
+    { "input": { "relationship": "child", "sharePct": 40 }, "expect": { "ok": false, "error": "missing_name" } },
+    { "input": { "name": "Greedy heir", "sharePct": 9999 }, "expect": { "ok": true } }
+  ],
+  "_note": "add_beneficiary designates an heir on the caller's in-memory estate. name is required (missing_name). sharePct is structurally clamped to [0,100] via Math.max(0, Math.min(100, Number(...)||0)) — a poisoned/absurd value (9999, Infinity, NaN) can NEVER store a raw out-of-range share; it pins to 100 (or 0 for NaN), so list_beneficiaries.totalSharePct can never exceed the number-of-heirs * 100 and remainderPct stays in [0,100]. This is the wealth-split path; the clamp is the fail-CLOSED guarantee that no single heir can claim more than the whole estate."
+}

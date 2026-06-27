@@ -1,0 +1,24 @@
+{
+  "macro_id": "inheritance.track_lock",
+  "domain": "inheritance",
+  "name": "track_lock",
+  "inputs": {
+    "listingId": { "type": "number" },
+    "npcName": { "type": "string", "maxLength": 200 },
+    "priceCc": { "type": "number", "min": 0, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.lock && typeof output.result.lock.id === 'string')",
+    "output.ok === false || output.result.lock.status === 'locked'",
+    "output.ok === false || (typeof output.result.lock.priceCc === 'number' && Number.isFinite(output.result.lock.priceCc) && output.result.lock.priceCc >= 0 && output.result.lock.priceCc <= 1000000)",
+    "output.ok === false || Array.isArray(output.result.locks)"
+  ],
+  "fuzz_cases": [
+    { "input": { "npcName": "Old Seam", "priceCc": 120 }, "expect": { "ok": true } },
+    { "input": { "npcName": "Free slot", "priceCc": 0 }, "expect": { "ok": true } },
+    { "input": { "npcName": "Poisoned escrow", "priceCc": 1e308 }, "expect": { "ok": false, "error": "invalid numeric field: priceCc" } }
+  ],
+  "_note": "track_lock mirrors a claimed heir-slot into the caller's in-memory estate bookkeeping (globalThis._concordSTATE.inheritanceEstates). priceCc is the escrow amount and is fail-CLOSED via badCc() BEFORE the lock is created — a poisoned value (NaN/Infinity/-1/1e308/>1e6) returns ok:false 'invalid numeric field: priceCc', so it can never inflate escrowedCc (the sum over live locked/amended locks) or refundedCc on revoke. status starts 'locked'. No real wallet CC moves here — this is estate-side bookkeeping; the actual escrow lives in the server.js inline inheritance.claim_slot DB path."
+}

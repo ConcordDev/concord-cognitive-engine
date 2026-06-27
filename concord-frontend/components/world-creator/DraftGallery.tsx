@@ -40,15 +40,28 @@ export function DraftGallery({ onOpen }: { onOpen: (draftId: string) => void }) 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [showDiscover, setShowDiscover] = useState(false);
+  // Genuine load-state machine for the drafts surface so a backend failure is
+  // surfaced (role=alert + Retry) rather than swallowed into a silent empty page.
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [loadErr, setLoadErr] = useState<string | null>(null);
 
   const loadDrafts = useCallback(async () => {
+    setLoadState('loading');
+    setLoadErr(null);
     const r = await lensRun<{ drafts: DraftSummary[] }>('world-creator', 'draft-list', {});
-    if (r.data?.ok && r.data.result?.drafts) setDrafts(r.data.result.drafts);
+    if (r.data?.ok && r.data.result?.drafts) {
+      setDrafts(r.data.result.drafts);
+      setLoadState('ready');
+    } else {
+      setLoadErr(r.data?.error || 'Could not load your draft worlds.');
+      setLoadState('error');
+    }
   }, []);
 
   const loadDiscover = useCallback(async (q: string) => {
     const r = await lensRun<{ worlds: DiscoverWorld[] }>('world-creator', 'discover', { query: q });
     if (r.data?.ok && r.data.result?.worlds) setDiscover(r.data.result.worlds);
+    else setDiscover([]);
   }, []);
 
   useEffect(() => { loadDrafts(); }, [loadDrafts]);
@@ -113,7 +126,22 @@ export function DraftGallery({ onOpen }: { onOpen: (draftId: string) => void }) 
       {/* drafts */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-stone-100">Your draft worlds</h2>
-        {drafts.length === 0 ? (
+        {loadState === 'loading' ? (
+          <div role="status" aria-live="polite"
+            className="rounded border border-dashed border-stone-800 p-6 text-center text-sm text-stone-500">
+            <span className="inline-block h-3 w-3 animate-pulse rounded-full bg-amber-500/70 align-middle" aria-hidden="true" />
+            <span className="ml-2 align-middle">Loading your draft worlds…</span>
+          </div>
+        ) : loadState === 'error' ? (
+          <div role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 rounded border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+            <span>{loadErr || 'Could not load your draft worlds.'}</span>
+            <button onClick={() => loadDrafts()}
+              className="rounded border border-red-700 bg-red-900/40 px-3 py-1 text-xs font-medium text-red-100 hover:bg-red-900/70">
+              Try again
+            </button>
+          </div>
+        ) : drafts.length === 0 ? (
           <p className="rounded border border-dashed border-stone-800 p-6 text-center text-sm text-stone-500">
             No drafts yet. Start a blank draft or pick a template above.
           </p>

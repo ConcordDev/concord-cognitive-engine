@@ -1,0 +1,23 @@
+{
+  "macro_id": "inheritance.open_listing",
+  "domain": "inheritance",
+  "name": "open_listing",
+  "inputs": {
+    "dyingNpcId": { "type": "string", "required": true, "maxLength": 120 },
+    "heirSlotPriceCc": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.currency === 'CC'",
+    "output.ok === false || (output.listingId !== undefined && output.listingId !== null)",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "dyingNpcId": "npc_arden", "heirSlotPriceCc": 10 }, "expect": { "ok": true } },
+    { "input": { "heirSlotPriceCc": 10 }, "expect": { "ok": false, "reason": "missing_npc" } },
+    { "input": { "dyingNpcId": "npc_arden", "heirSlotPriceCc": 1e308 }, "expect": { "ok": false } },
+    { "input": { "dyingNpcId": "npc_arden", "heirSlotPriceCc": -5 }, "expect": { "ok": false } }
+  ],
+  "_note": "inheritance.open_listing (server.js MACROS path) INSERTs a heir-slot market listing with a CC price into inheritance_market_listings. MONEY-PATH GUARD (landed 2026-06-27): heirSlotPriceCc now fails CLOSED before the INSERT (a finite-absurd 1e308 / non-finite Infinity|NaN / negative / >1e6 rejects as invalid_numeric:heirSlotPriceCc) so no poisoned CC obligation can be persisted. currency is always 'CC'. The sibling claim_slot macro takes only a listingId and moves no CC at claim time (resolves on NPC death), so it needs no numeric guard."
+}

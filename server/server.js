@@ -76004,12 +76004,19 @@ register("inheritance", "open_listing", (ctx, input = {}) => {
   if (!userId) return { ok: false, reason: "no_actor" };
   const { dyingNpcId, heirSlotPriceCc = 10 } = input || {};
   if (!dyingNpcId) return { ok: false, reason: "missing_npc" };
+  // Fail CLOSED on a poisoned heir-slot price BEFORE the INSERT — a
+  // finite-but-absurd 1e308 (or Infinity/NaN) would persist into the CC
+  // value column of inheritance_market_listings as a poisoned obligation.
+  const _hp = Number(heirSlotPriceCc);
+  if (!Number.isFinite(_hp) || _hp < 0 || _hp > 1e6) {
+    return { ok: false, reason: "invalid_numeric:heirSlotPriceCc" };
+  }
   try {
     const r = db.prepare(`
       INSERT INTO inheritance_market_listings
         (dying_npc_id, mentor_user_id, heir_slot_price_cc, status)
       VALUES (?, ?, ?, 'open')
-    `).run(dyingNpcId, userId, Number(heirSlotPriceCc));
+    `).run(dyingNpcId, userId, _hp);
     return { ok: true, listingId: r.lastInsertRowid, currency: "CC" };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Mentor opens an heir-slot listing for a dying NPC. Currency: CC." });
