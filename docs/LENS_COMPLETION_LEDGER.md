@@ -98,3 +98,10 @@ enumerated here until reached.
   into server.js + publicReadDomains. Honesty note: a suspected reasoning `create_chain` phantom was a
   FALSE ALARM — it's registered inline at server.js:13501 (my grep was too narrow); verified before
   touching. verify-lens-backends 258 WIRED / 0 broken, macroDomains 526. 30 left. 12 bugs total.
+- 2026-06-27: INVARIANT HARDENING @ 0fb0429 — the first full `macro-assassin --ratchet` run this session
+  surfaced 27 NEW violations across the loop's batch-1..5 domains; fixed ALL 27 for real (no baselining):
+  18 V2 `ok_true_on_poisoned_number` fail-opens → fail-closed `badNumericField` guards (range-aware
+  `badSentiment` for courtship), 9 V1 `seed_expect_mismatch` → corrected contract fuzz_case expects to
+  the live-DB+actor reality. Ratchet now GREEN (0 new vs the 11-known baseline; 10 residual are the
+  pre-existing detectors/emergent TIMEOUT baseline). 129/129 domain tests green. LESSON: each batch's
+  agents now self-run the assassin against their own domain before reporting (literary did → was clean).
