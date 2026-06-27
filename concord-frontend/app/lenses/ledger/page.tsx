@@ -97,13 +97,25 @@ export default function LedgerLensPage() {
     try {
       const r = await lensRun<Anomalies>('ledger', 'anomalies', { worldId });
       // The macro output lives at result (server wraps as { ok, result, error }).
-      const out = (r?.data?.result ?? null) as Anomalies | null;
-      if (out && out.ok === false) {
+      // A backend failure surfaces at the ENVELOPE level (r.data.ok === false,
+      // result === null) — e.g. a no_db / handler throw. If we only read
+      // r.data.result we silently fall through to the empty "record looks clean"
+      // state and lie to the auditor. Inspect the envelope first so a closed
+      // ledger reads as an ERROR (with Retry), never as a clean record.
+      if (r?.data?.ok === false || r?.data?.result == null) {
+        setError(r?.data?.error || 'unavailable');
+        setData(null);
+        return;
+      }
+      const out = r.data.result as Anomalies;
+      // Defence-in-depth: the unwrapped payload can itself carry ok:false
+      // (a macro that returns { ok:false, reason } without throwing).
+      if (out.ok === false) {
         setError(out.reason || 'unavailable');
         setData(null);
-      } else {
-        setData(out);
+        return;
       }
+      setData(out);
     } catch {
       setError('request_failed');
       setData(null);
