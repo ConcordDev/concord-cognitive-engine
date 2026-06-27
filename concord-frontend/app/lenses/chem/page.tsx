@@ -108,7 +108,7 @@ export default function ChemLensPage() {
 
   if (isLoading) {
     return (
-      <div data-lens-theme="chem" className="flex items-center justify-center h-full p-8">
+      <div data-lens-theme="chem" className="flex items-center justify-center h-full p-8" role="status" aria-live="polite" aria-busy="true">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-teal-400 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm text-gray-400">Loading lab results...</p>
@@ -119,7 +119,7 @@ export default function ChemLensPage() {
 
   if (isError || isError2) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8" role="alert">
         <ErrorState error={error?.message || error2?.message} onRetry={() => { refetch(); refetch2(); }} />
       </div>
     );
@@ -421,7 +421,16 @@ export default function ChemLensPage() {
             </h3>
             <div className="space-y-2 max-h-[500px] overflow-auto">
               {compounds?.length === 0 ? (
-                <p className="text-gray-400 text-center py-8">No compounds in library. Add via reactions or import.</p>
+                <div className="text-center py-8 space-y-3" data-testid="chem-compounds-empty">
+                  <p className="text-gray-400">No compounds in library yet. Run a reaction to mint your first compound.</p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('reactions')}
+                    className="px-4 py-2 rounded bg-teal-500/20 text-teal-300 hover:bg-teal-500/30 text-sm font-medium"
+                  >
+                    Run a reaction
+                  </button>
+                </div>
               ) : compounds?.map((compound: Compound, i: number) => (
                 <motion.button
                   key={compound.id}

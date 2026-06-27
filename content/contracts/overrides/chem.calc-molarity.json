@@ -1,0 +1,29 @@
+{
+  "macro_id": "chem.calc-molarity",
+  "domain": "chem",
+  "name": "calc-molarity",
+  "inputs": {
+    "moles": { "type": "number", "required": false },
+    "liters": { "type": "number", "required": false },
+    "molarity": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.moles)",
+    "output.ok === false || Number.isFinite(output.result.liters)",
+    "output.ok === false || Number.isFinite(output.result.molarity)",
+    "output.ok === false || output.result.formula === 'M = mol / L'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "moles": 0.5, "liters": 1 }, "expect": { "ok": true } },
+    { "input": { "moles": 2, "molarity": 0.5 }, "expect": { "ok": true } },
+    { "input": { "liters": 2, "molarity": 0.25 }, "expect": { "ok": true } },
+    { "input": { "moles": 1 }, "expect": { "ok": false } },
+    { "input": { "moles": 1, "liters": 1, "molarity": 1 }, "expect": { "ok": false } },
+    { "input": { "moles": 5, "liters": 0 }, "expect": { "ok": false } },
+    { "input": { "moles": "1e999", "liters": 2 }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler. Requires EXACTLY two of {moles, liters, molarity} (Number.isFinite gate, so Infinity/NaN/poisoned '1e999' collapse to not-provided → rejected). Zero divisor (liters===0 / molarity===0) rejected before any division so no Infinity escapes. Solved result is always finite. NOT assassin-driven (LENS_ACTIONS); pinned by server/tests/chem-lens-macros.test.js."
+}

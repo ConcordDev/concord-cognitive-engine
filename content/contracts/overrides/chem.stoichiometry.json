@@ -1,0 +1,29 @@
+{
+  "macro_id": "chem.stoichiometry",
+  "domain": "chem",
+  "name": "stoichiometry",
+  "inputs": {
+    "equation": { "type": "string", "required": true, "maxLength": 256 },
+    "amounts": { "type": "object", "required": false },
+    "actualYield": { "type": "object", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.limitingReagent === 'string'",
+    "output.ok === false || Number.isFinite(output.result.reactionExtent)",
+    "output.ok === false || Array.isArray(output.result.products)",
+    "output.ok === false || output.result.products.every(function(p){ return p.gramsProduced == null || Number.isFinite(p.gramsProduced); })",
+    "output.ok === false || output.result.products.every(function(p){ return p.molesProduced == null || Number.isFinite(p.molesProduced); })",
+    "output.ok === false || output.result.percentYield == null || Number.isFinite(output.result.percentYield.percent)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "equation": "2H2 + O2 -> 2H2O", "amounts": { "H2": { "grams": 4 }, "O2": { "grams": 40 } } }, "expect": { "ok": true } },
+    { "input": { "equation": "2H2 + O2 -> 2H2O", "amounts": { "H2": { "moles": 2 }, "O2": { "moles": 2 } }, "actualYield": { "compound": "H2O", "moles": 1.5 } }, "expect": { "ok": true } },
+    { "input": { "equation": "2H2 + O2 2H2O", "amounts": { "H2": { "grams": 4 } } }, "expect": { "ok": false } },
+    { "input": { "equation": "2H2 + O2 -> 2H2O" }, "expect": { "ok": false } },
+    { "input": { "equation": "" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler. Requires one arrow (-> / → / =) and at least one supplied reactant amount. Limiting reagent = min(moles/coeff); product masses/moles always finite. Missing-arrow / missing-amount / unknown-element fail-CLOSED with a string error. NOT assassin-driven (LENS_ACTIONS); pinned by server/tests/chem-lens-macros.test.js."
+}

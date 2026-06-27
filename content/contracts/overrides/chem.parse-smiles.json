@@ -1,0 +1,28 @@
+{
+  "macro_id": "chem.parse-smiles",
+  "domain": "chem",
+  "name": "parse-smiles",
+  "inputs": {
+    "smiles": { "type": "string", "required": true, "maxLength": 400 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.formula === 'string'",
+    "output.ok === false || Number.isInteger(output.result.heavyAtomCount)",
+    "output.ok === false || Number.isInteger(output.result.ringCount)",
+    "output.ok === false || output.result.molecularWeight === null || Number.isFinite(output.result.molecularWeight)",
+    "output.ok === false || Array.isArray(output.result.atoms)",
+    "output.ok === false || Array.isArray(output.result.bonds)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "smiles": "CCO" }, "expect": { "ok": true } },
+    { "input": { "smiles": "c1ccccc1" }, "expect": { "ok": true } },
+    { "input": { "smiles": "CC(=O)O" }, "expect": { "ok": true } },
+    { "input": { "smiles": "" }, "expect": { "ok": false } },
+    { "input": { "smiles": "C[NaCl" }, "expect": { "ok": false } },
+    { "input": { "smiles": "C1CCCCC" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler. Parses an organic-subset SMILES into an atom/bond graph and derives the Hill-notation formula + implicit-H molecular weight (finite, or null if an element is outside the static table). Empty SMILES, unbalanced bracket atoms, and unclosed ring bonds fail-CLOSED with a string error (the parser throw is caught). NOT assassin-driven (LENS_ACTIONS); pinned by server/tests/chem-lens-macros.test.js."
+}

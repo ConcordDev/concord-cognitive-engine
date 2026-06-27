@@ -1,0 +1,28 @@
+{
+  "macro_id": "chem.calc-ph",
+  "domain": "chem",
+  "name": "calc-ph",
+  "inputs": {
+    "concentration": { "type": "number", "required": true },
+    "kind": { "type": "string", "required": false, "maxLength": 16 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.pH)",
+    "output.ok === false || Number.isFinite(output.result.pOH)",
+    "output.ok === false || Math.abs((output.result.pH + output.result.pOH) - 14) < 0.01",
+    "output.ok === false || ['acidic','basic','neutral'].indexOf(output.result.classification) !== -1",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "concentration": 0.001, "kind": "acid" }, "expect": { "ok": true } },
+    { "input": { "concentration": 0.01, "kind": "base" }, "expect": { "ok": true } },
+    { "input": { "concentration": 0.0000001, "kind": "h_plus" }, "expect": { "ok": true } },
+    { "input": { "concentration": 0 }, "expect": { "ok": false } },
+    { "input": { "concentration": -1 }, "expect": { "ok": false } },
+    { "input": { "concentration": "1e999" }, "expect": { "ok": false } },
+    { "input": { "concentration": 0.1, "kind": "bogus" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler. concentration must be finite AND > 0 (so 0/-1/NaN/Infinity '1e999' fail-CLOSED). pH = -log10([H+]); pH+pOH === 14 by construction (Kw = 1e-14). Unknown kind rejected with a string error. NOT assassin-driven (LENS_ACTIONS); pinned by server/tests/chem-lens-macros.test.js."
+}
