@@ -29,17 +29,17 @@ score bits justified-absent)
 
 | Lens | score | status | commit | notes |
 |---|---:|---|---|---|
-| reasoning-traces | 0/7 | pending | | likely reader/dashboard — assess by-design vs real gap |
-| literary | 1/7 | pending | | |
+| reasoning-traces | 0/7 | in-progress | | batch5 agent running; likely reader/dashboard — assess by-design vs real gap |
+| literary | 1/7 | in-progress | | batch5 agent running; |
 | foundry | 3/7 | pending | | world-builder substrate (mig 191-192) |
 | saved | 3/7 | pending | | saved/collections reader |
-| move-builder | 3/7 | pending | | |
-| garage | 3/7 | pending | | |
+| move-builder | 3/7 | in-progress | | batch5 agent running (dead-wire: page made 0 backend calls; real domain is `movement`); |
+| garage | 3/7 | in-progress | | batch5 agent running (phantom manifest over real /api/garage/spawn); |
 | courtship | 3/7→4/7 | **done** | def0ff4 | dedicated `courtship` domain; fixed propose-threshold 0.60 vs server 0.70 mismatch + Child-column bug; 4 UX states |
 | spectate | 3/7 | pending | | spectator dashboard |
 | mail | 3/7 | **done** | 75031b3 | dedicated `mail` domain; send→inbox→claim single-tx behavioral tests; 4 UX states; wired |
 | narrative-walk | 3/7 | pending | | by-design reader (NO-BACKEND-CALL) — verify |
-| announcements | 3/7→5/7 | **done** | batch4 | dedicated `announcements` domain (list/get public, post admin-gated); fixed dangling `lens.announcements.*` manifest refs + error-swallow UX defect (now honest error+retry vs empty); 16 server + 4 UX-state tests |
+| announcements | 3/7→5/7 | **done** | a62bae5 | dedicated `announcements` domain (list/get public, post admin-gated); fixed dangling `lens.announcements.*` manifest refs + error-swallow UX defect (now honest error+retry vs empty); 16 server + 4 UX-state tests |
 | housing | 3/7→5/7 | **done** | def0ff4 | dedicated `housing` domain; fixed dangling lens.housing.* manifest refs; furniture place/persist tests; 4 UX states |
 | training-room | 3/7→4/7 | **done** | 55df001 | fixed frame-data wrong-column/no_skill defect (#21); real frame tests; 4 UX states |
 | achievements | 3/7 | **done** | 75031b3 | dedicated `achievements` domain; unlock-idempotency + reward-once behavioral tests; 4 UX states; wired |
@@ -52,10 +52,10 @@ score bits justified-absent)
 | ledger | 4/7 | pending | | economy ledger reader |
 | forecast | 4/7 | pending | | forecast backend |
 | civic-bonds | 4/7 | pending | | civic-bonds backend |
-| detective | 4/7→5/7 | **done** | batch4 | dedicated `detective` domain delegating to lib (Obra-Dinn 2-of-3 + suspect_match lock-in); fixed dangling `lens.detective.*` manifest refs; added non-culprit-leaking `getCrimeWithEvidence`; 10 server + 5 UX-state tests |
+| detective | 4/7→5/7 | **done** | a62bae5 | dedicated `detective` domain delegating to lib (Obra-Dinn 2-of-3 + suspect_match lock-in); fixed dangling `lens.detective.*` manifest refs; added non-culprit-leaking `getCrimeWithEvidence`; 10 server + 5 UX-state tests |
 | photos | 4/7 | pending | | photo gallery backend |
 | fishing | 4/7→5/7 | **done** | def0ff4 | dedicated `fishing` domain; fixed buffOnCook [object Object] render; cast→reel→catch tests; 4 UX states |
-| creatures | 4/7→5/7 | **done** | batch4 | extended `creatures` domain (+species/roster/lineage/breed) delegating to creature-crossbreeding + species-taxonomy; fixed dangling `lens.creatures.*` refs + the breed `bond_too_low` bug (thin parents lacked physics blueprints → no hybrid ever produced); 8 server + 4 UX-state tests |
+| creatures | 4/7→5/7 | **done** | a62bae5 | extended `creatures` domain (+species/roster/lineage/breed) delegating to creature-crossbreeding + species-taxonomy; fixed dangling `lens.creatures.*` refs + the breed `bond_too_low` bug (thin parents lacked physics blueprints → no hybrid ever produced); 8 server + 4 UX-state tests |
 | translation | 4/7 | pending | | |
 | repair-telemetry | 4/7 | pending | | dashboard — likely by-design |
 | code-quality | 4/7 | pending | | dashboard |
