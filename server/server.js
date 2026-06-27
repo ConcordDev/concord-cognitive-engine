@@ -24675,7 +24675,7 @@ register("ask", "answer", async (ctx, input) => {
   const all = dtusArray();
   const qTok = simpleTokens(query);
   const scored = all.map(d => {
-    const dTok = simpleTokens(d.title + " " + (d.tags||[]).join(" ") + " " + ((d.cretiHuman || d.creti || d.human?.summary || "")).slice(0, 400));
+    const dTok = simpleTokens(String(d.title || "") + " " + (Array.isArray(d.tags) ? d.tags : []).join(" ") + " " + String(d.cretiHuman || d.creti || d.human?.summary || "").slice(0, 400));
     const score = jaccard(qTok, dTok);
     return { d, score };
   }).sort((a,b)=>b.score-a.score);
@@ -28773,7 +28773,7 @@ register("verify","feasibility", async (ctx, input) => {
   const all = dtusArray();
   const qTok = simpleTokens(query);
   const scored = all.map(d => {
-    const dTok = simpleTokens(d.title + " " + (d.tags||[]).join(" ") + " " + ((d.cretiHuman || d.creti || d.human?.summary || "")).slice(0, 400));
+    const dTok = simpleTokens(String(d.title || "") + " " + (Array.isArray(d.tags) ? d.tags : []).join(" ") + " " + String(d.cretiHuman || d.creti || d.human?.summary || "").slice(0, 400));
     const score = jaccard(qTok, dTok);
     return { d, score };
   }).sort((a,b)=>b.score-a.score);
@@ -28832,7 +28832,7 @@ register("verify","designScore", async (ctx, input) => {
   const all = dtusArray();
   const qTok = simpleTokens(spec);
   const scored = all.map(d => {
-    const dTok = simpleTokens(d.title + " " + (d.tags||[]).join(" ") + " " + ((d.cretiHuman || d.creti || d.human?.summary || "")).slice(0, 400));
+    const dTok = simpleTokens(String(d.title || "") + " " + (Array.isArray(d.tags) ? d.tags : []).join(" ") + " " + String(d.cretiHuman || d.creti || d.human?.summary || "").slice(0, 400));
     const score = jaccard(qTok, dTok);
     return { d, score };
   }).sort((a,b)=>b.score-a.score);

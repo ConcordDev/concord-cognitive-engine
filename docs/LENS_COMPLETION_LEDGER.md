@@ -157,3 +157,17 @@ enumerated here until reached.
   SAVED-CLASS bug (legacy registerLensAction domain never imported → silently dead). Next: Phase 2 — the
   ~217 already-passing (≥5/7) lenses get the non-score gate audit (behavioral tests + contract overrides
   + 4-UX-state vitests) — the honest long tail.
+
+## Latent-bug cleanup (2026-06-27, post-failing-queue)
+The loop surfaced 3 "caller with a broken receiver" / robustness defects outside the lens lane; fixed:
+- **lattice-orchestrator drift→HLR resolution was a DEAD CALLER** (TRIPLE bug): `runHLR` got an `input`
+  field (it reads `topic`/`question` → failed `topic_or_question_required`), mode `constraint_check`
+  (not a valid REASONING_MODES value → `invalid_mode`), and read `r.output.synthesizedConclusion`
+  (it's TOP-LEVEL). So drift alerts NEVER produced reasoning conclusions for months. Fixed to
+  `{question, mode:'deductive'}` + `r.synthesizedConclusion`; pinned by 2 regression tests in
+  `server/tests/lattice-orchestrator.test.js` (10/10, incl. proof-the-old-shapes-fail).
+- **verify.designScore threw on poisoned input** — `.slice`/`.join` on non-string title/tags/creti.
+  Hardened to `String(...)`/`Array.isArray` coercion (3 identical sites in server.js).
+- **emergent autogen-pipeline threw on non-string claims** — 4 `.toLowerCase()` on array elements that
+  assumed strings; coerced to `String(c ?? "")`. Both throws were caught by the assassin dispatcher
+  (HARD=0) but are real robustness gaps. 107/107 related tests green.
