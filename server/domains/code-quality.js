@@ -74,6 +74,24 @@ function rid(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// Fail-CLOSED numeric guard (copied from server/domains/literary.js). Any
+// listed field that is *present* must be a finite, non-negative number within
+// a sane bound — an absent field is fine (the macro uses its default). Returns
+// null when clean, or the offending key. Used so a poisoned NaN/Infinity/-1/
+// 1e308/"abc" fails with invalid_<field> instead of silently clamping to a
+// success (the macro-assassin V2 vector). Pass a custom { min } per field when
+// a non-negative floor doesn't apply.
+function badNumericField(input, keys, opts = {}) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    const min = opts.min != null ? opts.min : 0;
+    const max = opts.max != null ? opts.max : 1e6;
+    if (!Number.isFinite(n) || n < min || n > max) return k;
+  }
+  return null;
+}
+
 const LANG_BY_EXT = {
   js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
   ts: "typescript", tsx: "typescript",
@@ -554,6 +572,14 @@ function evaluateGate(gate, { totals, metrics, newCriticalCount }) {
 // ---------------------------------------------------------------------------
 
 export default function registerCodeQualityActions(registerLensAction) {
+  // NOTE: code-quality.* is registered into the canonical MACROS registry by
+  // server/domains/detectors.js (the `codeQualityAdapter` there bridges the
+  // legacy 3-arg (ctx, artifact, params) handlers onto register(ctx, input)).
+  // So this module is NOT imported directly in server.js and keeps the legacy
+  // registrar signature detectors.js passes — do NOT add an internal shim here
+  // or the handler params get double-wrapped. The flawless-loop pass added the
+  // fail-closed numeric guards + manifest/UX fixes; the wiring was already real.
+
   // -- analyze: run the analyzer over one or more submitted files ----------
   // params: { files: [{ path, content, language? }] }  OR  { source, file?, language? }
   registerLensAction("code-quality", "analyze", (ctx, artifact, params) => {
@@ -673,6 +699,8 @@ export default function registerCodeQualityActions(registerLensAction) {
   registerLensAction("code-quality", "trend", (ctx, artifact, params) => {
     try {
       const p = { ...(artifact?.data || {}), ...(params || {}) };
+      const badNum = badNumericField(p, ["limit"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const limit = Math.min(Math.max(Number(p.limit) || 30, 1), 100);
       const scans = userScans(ctx);
       const recent = scans.slice(-limit);
@@ -853,11 +881,17 @@ export default function registerCodeQualityActions(registerLensAction) {
   registerLensAction("code-quality", "setGate", (ctx, artifact, params) => {
     try {
       const p = { ...(artifact?.data || {}), ...(params || {}) };
-      const gate = userGate(ctx);
       const numKeys = ["maxCritical", "maxHigh", "maxBlockerDebtHours",
         "minMaintainability", "maxDuplicationPct"];
+      // Fail-CLOSED: a present numeric threshold must be a finite, non-negative
+      // value — reject a poisoned NaN/Infinity/-1/1e308 instead of silently
+      // skipping it (the prior `Number.isFinite` guard quietly ignored a bad
+      // value, leaving the gate at its old setting and reporting ok:true).
+      const badNum = badNumericField(p, numKeys);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
+      const gate = userGate(ctx);
       for (const k of numKeys) {
-        if (p[k] != null && Number.isFinite(Number(p[k]))) {
+        if (p[k] != null) {
           gate[k] = Math.max(0, Number(p[k]));
         }
       }
@@ -1005,6 +1039,8 @@ export default function registerCodeQualityActions(registerLensAction) {
     try {
       const p = { ...(artifact?.data || {}), ...(params || {}) };
       if (!p.rule || !p.message) return { ok: false, error: "rule_and_message_required" };
+      const badNum = badNumericField(p, ["line"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const issues = userIssues(ctx);
       const id = rid("iss");
       const rec = {

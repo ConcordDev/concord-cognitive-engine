@@ -1,0 +1,20 @@
+{
+  "macro_id": "code-quality.decoratePR",
+  "domain": "code-quality",
+  "name": "decoratePR",
+  "inputs": {
+    "base": { "type": "array" },
+    "head": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.summary && typeof output.result.summary.newIssues === 'number')",
+    "output.ok === false || ['BLOCK','WARN','COMMENT','APPROVE'].includes(output.result.verdict)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "head_files_required" } },
+    { "input": { "head": [{ "path": "a.js", "content": "const a = 1;\n" }] }, "expect": { "ok": true } }
+  ],
+  "_note": "Diffs base vs head source (pure compute over the inputs) and reports new/fixed issues + a verdict. No head files → head_files_required (real validation, NEVER no_db). A head with no base treats every finding as new; an unchanged diff → APPROVE."
+}

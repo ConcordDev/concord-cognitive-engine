@@ -1,0 +1,21 @@
+{
+  "macro_id": "code-quality.updateIssue",
+  "domain": "code-quality",
+  "name": "updateIssue",
+  "inputs": {
+    "id": { "type": "string", "maxLength": 60 },
+    "status": { "type": "string", "enum": ["open","in-progress","resolved","wont-fix","false-positive"] },
+    "assignee": { "type": "string", "maxLength": 80 },
+    "note": { "type": "string", "maxLength": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.issue && typeof output.result.issue.id === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "id_required" } },
+    { "input": { "id": "nope", "status": "resolved" }, "expect": { "ok": false, "error": "issue_not_found" } }
+  ],
+  "_note": "Updates a tracked issue's status/assignee in per-user STATE. id is required → {} rejects id_required; an unknown id → issue_not_found (real validation, NEVER no_db). An out-of-enum status fails closed as invalid_status."
+}

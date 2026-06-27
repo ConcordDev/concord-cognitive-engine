@@ -1,0 +1,19 @@
+{
+  "macro_id": "code-quality.trend",
+  "domain": "code-quality",
+  "name": "trend",
+  "inputs": {
+    "limit": { "type": "number", "min": 1, "max": 100 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.points))",
+    "output.ok === false || typeof output.result.scanCount === 'number'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": -1 }, "expect": { "ok": false, "error": "invalid_limit" } }
+  ],
+  "_note": "Returns the caller's scan-history trend from per-user STATE. With no scans the points array is empty and scanCount 0 → ok:true (a pure read, NEVER no_db). limit is a fail-CLOSED numeric guard: a poisoned NaN/Infinity/-1/1e308 → invalid_limit, never a clamped ok:true."
+}

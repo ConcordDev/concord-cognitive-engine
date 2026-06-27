@@ -1,0 +1,17 @@
+{
+  "macro_id": "mesh.signalMetrics",
+  "domain": "mesh",
+  "name": "signalMetrics",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.metrics) && output.result.metrics.length >= 1)",
+    "output.ok === false || (typeof output.result.metrics[0].transport === 'string')",
+    "output.ok === false || (typeof output.result.sampledNodes === 'number' && output.result.sampledNodes >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Derives per-transport signal quality (RSSI/hop/latency) from the REAL TRANSPORT_SPECS plus the caller's observed node quality. A pure read of in-module specs + per-user STATE keyed by ctx.actor.userId — the assassin's owner actor has no nodes, so quality/rssi are null but the metrics row per transport is always present (NEVER no_db)."
+}

@@ -1,0 +1,21 @@
+{
+  "macro_id": "mesh.coverage",
+  "domain": "mesh",
+  "name": "coverage",
+  "inputs": {
+    "hops": { "type": "number", "min": 1, "max": 16 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.estimates) && output.result.estimates.length >= 1)",
+    "output.ok === false || (output.result.hops >= 1 && output.result.hops <= 16)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "hops": -1 }, "expect": { "ok": false, "error": "invalid_hops" } },
+    { "input": { "hops": 1e308 }, "expect": { "ok": false, "error": "invalid_hops" } },
+    { "input": { "hops": 4 }, "expect": { "ok": true } }
+  ],
+  "_note": "Range/coverage estimate per transport, derived from the REAL TRANSPORT_SPECS range strings + per-hop metres scaled by hop count. Pure compute over in-module constants — no STATE, no DB (NEVER no_db). hops is a fail-CLOSED numeric guard (poisoned NaN/Infinity/-1/1e308 → invalid_hops, never a clamped ok:true); absent hops defaults to 3."
+}

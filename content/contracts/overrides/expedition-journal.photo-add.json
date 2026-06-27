@@ -1,0 +1,25 @@
+{
+  "macro_id": "expedition-journal.photo-add",
+  "domain": "expedition-journal",
+  "name": "photo-add",
+  "inputs": {
+    "worldId": { "type": "string", "enum": ["concordia-hub", "concord-link-frontier", "cyber", "fantasy", "lattice-crucible", "sovereign-ruins"] },
+    "stageId": { "type": "string", "maxLength": 64 },
+    "dataUrl": { "type": "string", "maxLength": 2000000 },
+    "url": { "type": "string", "maxLength": 2000 },
+    "caption": { "type": "string", "maxLength": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.photo && typeof output.result.photo.id === 'string')",
+    "output.ok === false || output.result.photo.dataUrl === undefined"
+  ],
+  "fuzz_cases": [
+    { "input": { "worldId": "cyber", "dataUrl": "data:image/png;base64,iVBORw0KGgo=" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "worldId": "cyber", "dataUrl": "javascript:alert(1)" }, "expect": { "ok": false } },
+    { "input": { "worldId": "atlantis", "dataUrl": "data:image/png;base64,AA==" }, "expect": { "ok": false } }
+  ],
+  "_note": "Captures a per-user screenshot for an expedition stage. Requires a known world + a data:image/ or http(s) URL; anything else (empty, javascript: probe, unknown world) fails CLOSED (NEVER no_db). The returned photo is META-ONLY — the (large) dataUrl is intentionally NOT echoed back."
+}

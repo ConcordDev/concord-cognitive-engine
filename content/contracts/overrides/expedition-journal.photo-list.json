@@ -1,0 +1,20 @@
+{
+  "macro_id": "expedition-journal.photo-list",
+  "domain": "expedition-journal",
+  "name": "photo-list",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 64 },
+    "stageId": { "type": "string", "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.photos))",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.photos.length)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "worldId": "cyber" }, "expect": { "ok": true } }
+  ],
+  "_note": "Lists the caller's photos (optionally filtered by world/stage), newest first. The assassin's internal owner actor returns ok:true with an empty list (NEVER no_db). count always equals photos.length."
+}

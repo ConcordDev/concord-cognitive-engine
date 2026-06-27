@@ -1,0 +1,18 @@
+{
+  "macro_id": "code-quality.debt",
+  "domain": "code-quality",
+  "name": "debt",
+  "inputs": {
+    "scanId": { "type": "string", "maxLength": 60 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.totalMinutes === 'number')",
+    "output.ok === false || ['A','B','C','D','E'].includes(output.result.rating)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "no_scans_yet" } }
+  ],
+  "_note": "Computes the SQALE-style technical-debt breakdown off a prior scan in per-user STATE. No scans yet → no_scans_yet (real read-state reason, NEVER no_db). After an analyze it returns the debt minutes/hours/ratio + rating."
+}

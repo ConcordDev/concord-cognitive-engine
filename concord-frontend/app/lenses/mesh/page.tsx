@@ -74,10 +74,19 @@ export default function MeshLensPage() {
     queryKey: ['mesh-overview'],
     queryFn: async () => {
       const r = await apiHelpers.lens.runDomain('mesh', 'overview', {});
+      if (r.data && r.data.ok === false) {
+        throw new Error(r.data.error || 'Failed to load the mesh roll-up.');
+      }
       return (r.data?.result ?? r.data) as MeshOverview;
     },
     refetchInterval: 30_000,
+    retry: false,
   });
+
+  const ov = overview.data;
+  const overviewEmpty =
+    !!ov && (ov.nodes ?? 0) === 0 && (ov.messages ?? 0) === 0 &&
+    (ov.channels ?? 0) === 0 && (ov.queueDepth ?? 0) === 0;
 
   const tabs: { key: TabKey; label: string; icon: LucideIcon; count?: number }[] = [
     { key: 'overview',  label: 'Overview',  icon: Network },
@@ -128,14 +137,49 @@ export default function MeshLensPage() {
               <motion.section key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                 <h2 className="mb-4 text-base font-semibold text-teal-200">Mesh roll-up</h2>
                 {overview.isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-teal-500" />
+                  <div
+                    data-testid="mesh-overview-loading"
+                    role="status"
+                    aria-busy="true"
+                    aria-live="polite"
+                    className="flex items-center gap-2 text-sm text-teal-500"
+                  >
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading the mesh roll-up…
+                  </div>
+                ) : overview.isError ? (
+                  <div
+                    data-testid="mesh-overview-error"
+                    role="alert"
+                    className="rounded-lg border border-red-900/50 bg-red-950/20 p-4 text-sm text-red-300"
+                  >
+                    <p className="mb-2 font-medium">Couldn&apos;t load the mesh roll-up.</p>
+                    <p className="mb-3 text-xs text-red-400/80">{(overview.error as Error)?.message}</p>
+                    <button
+                      type="button"
+                      onClick={() => overview.refetch()}
+                      className="rounded border border-red-800 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-400"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : overviewEmpty ? (
+                  <div
+                    data-testid="mesh-overview-empty"
+                    className="rounded-lg border border-teal-900/40 bg-teal-950/10 p-6 text-center text-sm text-teal-500"
+                  >
+                    <Network className="mx-auto mb-2 h-6 w-6 text-teal-700" aria-hidden />
+                    <p className="font-medium text-teal-300">No mesh yet.</p>
+                    <p className="mt-1 text-xs text-teal-600">
+                      Add your first peer node in <span className="text-teal-400">Topology</span> to start building the mesh.
+                    </p>
+                  </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                    <Stat label="Nodes" value={overview.data?.nodes ?? 0} hint={`${overview.data?.onlineNodes ?? 0} online`} />
-                    <Stat label="Messages" value={overview.data?.messages ?? 0} hint={`${overview.data?.unread ?? 0} unread`} />
-                    <Stat label="Channels" value={overview.data?.channels ?? 0} hint={`${overview.data?.encryptedChannels ?? 0} encrypted`} />
-                    <Stat label="Queue depth" value={overview.data?.queueDepth ?? 0} hint="store-and-forward" />
-                    <Stat label="Transports" value={overview.data?.transports ?? 0} hint="routing layers" />
+                  <div data-testid="mesh-overview-grid" className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                    <Stat label="Nodes" value={ov?.nodes ?? 0} hint={`${ov?.onlineNodes ?? 0} online`} />
+                    <Stat label="Messages" value={ov?.messages ?? 0} hint={`${ov?.unread ?? 0} unread`} />
+                    <Stat label="Channels" value={ov?.channels ?? 0} hint={`${ov?.encryptedChannels ?? 0} encrypted`} />
+                    <Stat label="Queue depth" value={ov?.queueDepth ?? 0} hint="store-and-forward" />
+                    <Stat label="Transports" value={ov?.transports ?? 0} hint="routing layers" />
                   </div>
                 )}
                 <p className="mt-4 text-xs text-teal-700">

@@ -1,0 +1,20 @@
+{
+  "macro_id": "code-quality.listIssues",
+  "domain": "code-quality",
+  "name": "listIssues",
+  "inputs": {
+    "status": { "type": "string", "maxLength": 40 },
+    "assignee": { "type": "string", "maxLength": 80 },
+    "severity": { "type": "string", "maxLength": 20 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.issues))",
+    "output.ok === false || (typeof output.result.total === 'number' && output.result.shown === output.result.issues.length)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Lists the caller's tracked issues (newest/most-severe first) from per-user STATE with optional status/assignee/severity filters. The assassin owner has no issues yet → ok:true with an empty array and total 0 (a pure read, NEVER no_db)."
+}

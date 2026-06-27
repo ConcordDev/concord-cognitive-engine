@@ -1,0 +1,24 @@
+{
+  "macro_id": "expedition-journal.mark-stage",
+  "domain": "expedition-journal",
+  "name": "mark-stage",
+  "inputs": {
+    "worldId": { "type": "string", "enum": ["concordia-hub", "concord-link-frontier", "cyber", "fantasy", "lattice-crucible", "sovereign-ruins"] },
+    "stageId": { "type": "string", "maxLength": 64 },
+    "done": { "type": "boolean" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.world && Array.isArray(output.result.awarded))",
+    "output.ok === false || (typeof output.result.totalXp === 'number' && output.result.totalXp >= 0)",
+    "output.ok === false || Array.isArray(output.result.badges)"
+  ],
+  "fuzz_cases": [
+    { "input": { "worldId": "cyber", "stageId": "arrive", "done": true }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "worldId": "atlantis", "stageId": "arrive" }, "expect": { "ok": false } },
+    { "input": { "worldId": "cyber", "stageId": "nope" }, "expect": { "ok": false } }
+  ],
+  "_note": "Marks/unmarks a stage for the caller (internal owner actor under the assassin). Empty input fails CLOSED with 'unknown world' (NEVER ok:true over a missing world, NEVER no_db). Fresh completions award stage XP exactly once; full-world completion grants the world-complete badge, 3 worlds → pathfinder, all worlds → grand-explorer (each badge idempotent). totalXp is monotonic, never negative."
+}

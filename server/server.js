@@ -25757,6 +25757,21 @@ registerSandboxMacros(register);
 import registerSocietyActions from "./domains/society.js";
 registerSocietyActions(register);
 
+// Per-lens flawless loop batch 11 — dx-platform + expedition-journal + mesh, all
+// SAVED-CLASS (legacy registerLensAction convention AND never imported → fully
+// dead, unknown_macro on every call). Each rewritten to canonical register via an
+// internal shim. mesh's 19 domain macros (addNode/listNodes/sendMessage/…) are
+// disjoint from the inline mesh.{status,topology,channels,send,…} substrate reads
+// — no collision (assassin-verified). All per-user (no publicReadDomains entry).
+// (code-quality is intentionally NOT here — it's already wired into MACROS by
+// domains/detectors.js's codeQualityAdapter; a direct import would double-register.)
+import registerDxPlatformActions from "./domains/dx-platform.js";
+registerDxPlatformActions(register);
+import registerExpeditionJournalActions from "./domains/expedition-journal.js";
+registerExpeditionJournalActions(register);
+import registerMeshActions from "./domains/mesh.js";
+registerMeshActions(register);
+
 // Cognitive Fingerprint (#5) — thinking-style profile from real activity.
 import registerMetacogMacros from "./domains/metacog.js";
 registerMetacogMacros(register);

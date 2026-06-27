@@ -1,6 +1,160 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "expedition-journal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "stageId": "arrive",
+            "text": "Jacked in.",
+            "worldId": "cyber"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "text": "   ",
+            "worldId": "cyber"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "text": "x",
+            "worldId": "atlantis"
+          }
+        }
+      ],
+      "inputs": {
+        "mood": {
+          "maxLength": 32,
+          "type": "string"
+        },
+        "stageId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "worldId": {
+          "enum": [
+            "concordia-hub",
+            "concord-link-frontier",
+            "cyber",
+            "fantasy",
+            "lattice-crucible",
+            "sovereign-ruins"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.entry && typeof output.result.entry.id === 'string')",
+        "output.ok === false || typeof output.result.entry.text === 'string'"
+      ],
+      "macro_id": "expedition-journal.entry-add",
+      "name": "entry-add"
+    },
+    {
+      "_derived": false,
+      "domain": "expedition-journal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "id": "entry_nope"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.deleted === 'string'"
+      ],
+      "macro_id": "expedition-journal.entry-delete",
+      "name": "entry-delete"
+    },
+    {
+      "_derived": false,
+      "domain": "expedition-journal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "stageId": "arrive",
+            "worldId": "cyber"
+          }
+        }
+      ],
+      "inputs": {
+        "stageId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.entries))",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.entries.length)"
+      ],
+      "macro_id": "expedition-journal.entry-list",
+      "name": "entry-list"
+    },
+    {
       "_derived": true,
       "domain": "expedition-journal",
       "fuzz_cases": [],
@@ -14,6 +168,287 @@
       "name": "list_mine"
     },
     {
+      "_derived": false,
+      "domain": "expedition-journal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "done": true,
+            "stageId": "arrive",
+            "worldId": "cyber"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "stageId": "arrive",
+            "worldId": "atlantis"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "stageId": "nope",
+            "worldId": "cyber"
+          }
+        }
+      ],
+      "inputs": {
+        "done": {
+          "type": "boolean"
+        },
+        "stageId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "worldId": {
+          "enum": [
+            "concordia-hub",
+            "concord-link-frontier",
+            "cyber",
+            "fantasy",
+            "lattice-crucible",
+            "sovereign-ruins"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.world && Array.isArray(output.result.awarded))",
+        "output.ok === false || (typeof output.result.totalXp === 'number' && output.result.totalXp >= 0)",
+        "output.ok === false || Array.isArray(output.result.badges)"
+      ],
+      "macro_id": "expedition-journal.mark-stage",
+      "name": "mark-stage"
+    },
+    {
+      "_derived": false,
+      "domain": "expedition-journal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dataUrl": "data:image/png;base64,iVBORw0KGgo=",
+            "worldId": "cyber"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "dataUrl": "javascript:alert(1)",
+            "worldId": "cyber"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "dataUrl": "data:image/png;base64,AA==",
+            "worldId": "atlantis"
+          }
+        }
+      ],
+      "inputs": {
+        "caption": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "dataUrl": {
+          "maxLength": 2000000,
+          "type": "string"
+        },
+        "stageId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "url": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "worldId": {
+          "enum": [
+            "concordia-hub",
+            "concord-link-frontier",
+            "cyber",
+            "fantasy",
+            "lattice-crucible",
+            "sovereign-ruins"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.photo && typeof output.result.photo.id === 'string')",
+        "output.ok === false || output.result.photo.dataUrl === undefined"
+      ],
+      "macro_id": "expedition-journal.photo-add",
+      "name": "photo-add"
+    },
+    {
+      "_derived": false,
+      "domain": "expedition-journal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "id": "photo_nope"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.deleted === 'string'"
+      ],
+      "macro_id": "expedition-journal.photo-delete",
+      "name": "photo-delete"
+    },
+    {
+      "_derived": false,
+      "domain": "expedition-journal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "cyber"
+          }
+        }
+      ],
+      "inputs": {
+        "stageId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.photos))",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.photos.length)"
+      ],
+      "macro_id": "expedition-journal.photo-list",
+      "name": "photo-list"
+    },
+    {
+      "_derived": false,
+      "domain": "expedition-journal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "cyber"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "worldId": "atlantis"
+          }
+        }
+      ],
+      "inputs": {
+        "worldId": {
+          "enum": [
+            "concordia-hub",
+            "concord-link-frontier",
+            "cyber",
+            "fantasy",
+            "lattice-crucible",
+            "sovereign-ruins"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.stages))",
+        "output.ok === false || (typeof output.result.completed === 'number' && output.result.completed >= 0 && output.result.completed <= output.result.total)",
+        "output.ok === false || (output.result.percent >= 0 && output.result.percent <= 100)"
+      ],
+      "macro_id": "expedition-journal.progress",
+      "name": "progress"
+    },
+    {
       "_derived": true,
       "domain": "expedition-journal",
       "fuzz_cases": [],
@@ -25,9 +460,84 @@
       ],
       "macro_id": "expedition-journal.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "expedition-journal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.xp === 'number' && output.result.xp >= 0)",
+        "output.ok === false || (typeof output.result.level === 'number' && output.result.level >= 1)",
+        "output.ok === false || (Array.isArray(output.result.badges) && Array.isArray(output.result.log))"
+      ],
+      "macro_id": "expedition-journal.rewards",
+      "name": "rewards"
+    },
+    {
+      "_derived": false,
+      "domain": "expedition-journal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.worlds))",
+        "output.ok === false || (output.result.completedStages <= output.result.totalStages)",
+        "output.ok === false || (output.result.overallPercent >= 0 && output.result.overallPercent <= 100)",
+        "output.ok === false || (output.result.completedWorlds <= output.result.totalWorlds)"
+      ],
+      "macro_id": "expedition-journal.summary",
+      "name": "summary"
+    },
+    {
+      "_derived": false,
+      "domain": "expedition-journal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.worlds) && output.result.worlds.length >= 6)",
+        "output.ok === false || output.result.worlds.every(w => typeof w.worldId === 'string' && Array.isArray(w.stages) && w.stageCount === w.stages.length)"
+      ],
+      "macro_id": "expedition-journal.worlds",
+      "name": "worlds"
     }
   ],
   "domain": "expedition-journal",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 13
 }

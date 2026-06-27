@@ -1,0 +1,488 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "dx-platform",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "no_question",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "codebase_not_found",
+            "ok": false
+          },
+          "input": {
+            "question": "where is login"
+          }
+        },
+        {
+          "expect": {
+            "error": "codebase_not_found",
+            "ok": false
+          },
+          "input": {
+            "codebaseId": "ghost",
+            "question": "where is login"
+          }
+        }
+      ],
+      "inputs": {
+        "codebaseId": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "question": {
+          "maxLength": 2000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.answer === 'string')",
+        "output.ok === false || Array.isArray(output.result.citations)",
+        "output.ok === false || typeof output.result.grounded === 'boolean'"
+      ],
+      "macro_id": "dx-platform.chatWithCodebase",
+      "name": "chatWithCodebase"
+    },
+    {
+      "_derived": false,
+      "domain": "dx-platform",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "failOn": "error",
+            "findings": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "failOn": "error",
+            "findings": [
+              {
+                "severity": 5
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "failOn": "error",
+            "findings": [
+              {
+                "severity": 1
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "failOn": {
+          "maxLength": 10,
+          "type": "string"
+        },
+        "findings": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.passed === 'boolean'",
+        "output.ok === false || ['pass','fail'].includes(output.result.verdict)",
+        "output.ok === false || (output.result.blockingFindings >= 0 && output.result.blockingFindings <= output.result.totalFindings)"
+      ],
+      "macro_id": "dx-platform.ciGateCheck",
+      "name": "ciGateCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "dx-platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dx-platform.createTeam",
+      "name": "createTeam"
+    },
+    {
+      "_derived": true,
+      "domain": "dx-platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dx-platform.generateCiConfig",
+      "name": "generateCiConfig"
+    },
+    {
+      "_derived": false,
+      "domain": "dx-platform",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "codebase_not_found",
+            "ok": false
+          },
+          "input": {
+            "codebaseId": "ghost"
+          }
+        }
+      ],
+      "inputs": {
+        "codebaseId": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.detectors)",
+        "output.ok === false || (output.result.detectors.length === output.result.totalCount)",
+        "output.ok === false || (output.result.enabledCount >= 0 && output.result.enabledCount <= output.result.totalCount)"
+      ],
+      "macro_id": "dx-platform.getDetectorConfig",
+      "name": "getDetectorConfig"
+    },
+    {
+      "_derived": false,
+      "domain": "dx-platform",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "no_files",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "no_files",
+            "ok": false
+          },
+          "input": {
+            "files": []
+          }
+        },
+        {
+          "expect": {
+            "error": "no_valid_files",
+            "ok": false
+          },
+          "input": {
+            "files": [
+              {
+                "nope": 1
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "codebaseId": "cb_a",
+            "files": [
+              {
+                "content": "const x = 1;\nconst y = 2;",
+                "path": "a.js"
+              }
+            ],
+            "name": "Repo"
+          }
+        }
+      ],
+      "inputs": {
+        "codebaseId": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "files": {
+          "type": "array"
+        },
+        "name": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.codebaseId === 'string')",
+        "output.ok === false || (typeof output.result.fileCount === 'number' && output.result.fileCount >= 1)",
+        "output.ok === false || (output.result.totalLines >= 0 && output.result.totalBytes >= 0)"
+      ],
+      "macro_id": "dx-platform.indexCodebase",
+      "name": "indexCodebase"
+    },
+    {
+      "_derived": true,
+      "domain": "dx-platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dx-platform.joinTeam",
+      "name": "joinTeam"
+    },
+    {
+      "_derived": false,
+      "domain": "dx-platform",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.codebases))",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.codebases.length)"
+      ],
+      "macro_id": "dx-platform.listCodebases",
+      "name": "listCodebases"
+    },
+    {
+      "_derived": true,
+      "domain": "dx-platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dx-platform.recordDetectorFire",
+      "name": "recordDetectorFire"
+    },
+    {
+      "_derived": true,
+      "domain": "dx-platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dx-platform.recordFixOutcome",
+      "name": "recordFixOutcome"
+    },
+    {
+      "_derived": false,
+      "domain": "dx-platform",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "no_diff",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "no_diff",
+            "ok": false
+          },
+          "input": {
+            "diff": "   "
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "diff": "--- a/x\n+++ b/x\n@@ -1 +1,2 @@\n const a = 1;\n+const b = 2;"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "diff": "--- a/x\n+++ b/x\n@@ -1 +1,2 @@\n+const token = 'ghp_aaaaaaaaaaaaaaaa';"
+          }
+        }
+      ],
+      "inputs": {
+        "codebaseId": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "diff": {
+          "maxLength": 200000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.findings)",
+        "output.ok === false || (typeof output.result.findingCount === 'number' && output.result.findingCount === output.result.findings.length)",
+        "output.ok === false || ['clean','advisory','changes_requested'].includes(output.result.verdict)"
+      ],
+      "macro_id": "dx-platform.reviewDiff",
+      "name": "reviewDiff"
+    },
+    {
+      "_derived": true,
+      "domain": "dx-platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dx-platform.searchCodebase",
+      "name": "searchCodebase"
+    },
+    {
+      "_derived": true,
+      "domain": "dx-platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dx-platform.setDetectorConfig",
+      "name": "setDetectorConfig"
+    },
+    {
+      "_derived": true,
+      "domain": "dx-platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dx-platform.teamDashboard",
+      "name": "teamDashboard"
+    },
+    {
+      "_derived": false,
+      "domain": "dx-platform",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "windowDays": 7
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_windowDays",
+            "ok": false
+          },
+          "input": {
+            "windowDays": -1
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_windowDays",
+            "ok": false
+          },
+          "input": {
+            "windowDays": 1e+308
+          }
+        }
+      ],
+      "inputs": {
+        "windowDays": {
+          "max": 365,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.totalFires === 'number' && output.result.totalFires >= 0)",
+        "output.ok === false || (typeof output.result.acceptanceRate === 'number' && output.result.acceptanceRate >= 0 && output.result.acceptanceRate <= 1)",
+        "output.ok === false || Array.isArray(output.result.topFiring)"
+      ],
+      "macro_id": "dx-platform.usageAnalytics",
+      "name": "usageAnalytics"
+    }
+  ],
+  "domain": "dx-platform",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 15
+}

@@ -89,11 +89,36 @@ export function AnalyzePanel({
         <button
           onClick={analyze}
           disabled={busy}
-          className="px-4 py-1.5 rounded bg-neon-blue/20 border border-neon-blue/40 text-neon-blue hover:bg-neon-blue/30 transition disabled:opacity-50 text-sm"
+          className="px-4 py-1.5 rounded bg-neon-blue/20 border border-neon-blue/40 text-neon-blue hover:bg-neon-blue/30 transition disabled:opacity-50 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
         >
           {busy ? 'Analyzing…' : 'Analyze source'}
         </button>
-        {error && <span className="text-sm text-red-400">{error}</span>}
+        {busy && (
+          <span
+            role="status"
+            aria-busy="true"
+            aria-live="polite"
+            data-testid="cq-analyze-loading"
+            className="text-sm text-gray-400"
+          >
+            Analyzing source…
+          </span>
+        )}
+        {error && (
+          <span
+            role="alert"
+            data-testid="cq-analyze-error"
+            className="text-sm text-red-400 flex items-center gap-2"
+          >
+            {error}
+            <button
+              onClick={analyze}
+              className="px-2 py-0.5 rounded border border-red-500/40 text-red-300 hover:bg-red-500/10 text-xs"
+            >
+              Retry
+            </button>
+          </span>
+        )}
       </div>
 
       <textarea
@@ -104,8 +129,16 @@ export function AnalyzePanel({
         className="w-full h-56 bg-black/50 border border-gray-700 rounded px-3 py-2 text-xs font-mono text-gray-200 resize-y"
       />
 
+      {!scan && !busy && (
+        <p className="text-sm text-gray-400" data-testid="cq-analyze-empty">
+          No scan yet — paste source code above (or Load example) and Analyze to
+          see a maintainability grade, per-line findings, complexity and
+          duplication metrics.
+        </p>
+      )}
+
       {scan && m && (
-        <div className="space-y-3">
+        <div className="space-y-3" data-testid="cq-analyze-result">
           <div className="flex flex-wrap items-center gap-3">
             <div className={`rounded-lg border px-4 py-2 ${gradeColor(scan.grade)}`}>
               <span className="text-xs uppercase tracking-wider block">grade</span>

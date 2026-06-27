@@ -1,0 +1,22 @@
+{
+  "macro_id": "mesh.createChannel",
+  "domain": "mesh",
+  "name": "createChannel",
+  "inputs": {
+    "name": { "type": "string", "maxLength": 60 },
+    "psk": { "type": "string", "maxLength": 128 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.channel && typeof output.result.channel.id === 'string')",
+    "output.ok === false || (typeof output.result.channel.encrypted === 'boolean')",
+    "output.ok === false || (output.result.channel.psk === null || output.result.channel.psk === '********')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "channel name required" } },
+    { "input": { "name": "Ops" }, "expect": { "ok": true } },
+    { "input": { "name": "Secure", "psk": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }, "expect": { "ok": true } }
+  ],
+  "_note": "Creates a per-user broadcast/group channel into STATE keyed by ctx.actor.userId. STATE-backed (NEVER no_db). Empty name fails-closed. A pre-shared key enables encryption; the PSK is NEVER returned in clear (masked '********' on the wire, null when none). keyStrength is graded aes-256 (>=32) / aes-128 (>=16) / weak from the real key length."
+}

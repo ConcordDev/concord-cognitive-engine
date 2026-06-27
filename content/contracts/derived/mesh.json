@@ -1,6 +1,90 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "mesh",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "node name required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "node name required",
+            "ok": false
+          },
+          "input": {
+            "hops": -1,
+            "name": ""
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_hops",
+            "ok": false
+          },
+          "input": {
+            "hops": -1,
+            "name": "Field radio"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_quality",
+            "ok": false
+          },
+          "input": {
+            "name": "Field radio",
+            "quality": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "hops": 3,
+            "name": "Field radio",
+            "quality": 0.7,
+            "transports": [
+              "lora"
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "hops": {
+          "max": 16,
+          "min": 1,
+          "type": "number"
+        },
+        "name": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "quality": {
+          "max": 1,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.node && typeof output.result.node.id === 'string')",
+        "output.ok === false || (output.result.node.hops >= 1 && output.result.node.hops <= 16)",
+        "output.ok === false || (output.result.node.quality >= 0 && output.result.node.quality <= 1)"
+      ],
+      "macro_id": "mesh.addNode",
+      "name": "addNode"
+    },
+    {
       "_derived": true,
       "domain": "mesh",
       "fuzz_cases": [],
@@ -12,6 +96,278 @@
       ],
       "macro_id": "mesh.channels",
       "name": "channels"
+    },
+    {
+      "_derived": false,
+      "domain": "mesh",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": -1
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 50,
+            "with": "node_x"
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 500,
+          "min": 1,
+          "type": "number"
+        },
+        "with": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.messages))",
+        "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 0)",
+        "output.ok === false || (typeof output.result.unread === 'number' && output.result.unread >= 0)"
+      ],
+      "macro_id": "mesh.conversation",
+      "name": "conversation"
+    },
+    {
+      "_derived": false,
+      "domain": "mesh",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "invalid_hops",
+            "ok": false
+          },
+          "input": {
+            "hops": -1
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_hops",
+            "ok": false
+          },
+          "input": {
+            "hops": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "hops": 4
+          }
+        }
+      ],
+      "inputs": {
+        "hops": {
+          "max": 16,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.estimates) && output.result.estimates.length >= 1)",
+        "output.ok === false || (output.result.hops >= 1 && output.result.hops <= 16)"
+      ],
+      "macro_id": "mesh.coverage",
+      "name": "coverage"
+    },
+    {
+      "_derived": false,
+      "domain": "mesh",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "channel name required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Ops"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Secure",
+            "psk": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      ],
+      "inputs": {
+        "name": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "psk": {
+          "maxLength": 128,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.channel && typeof output.result.channel.id === 'string')",
+        "output.ok === false || (typeof output.result.channel.encrypted === 'boolean')",
+        "output.ok === false || (output.result.channel.psk === null || output.result.channel.psk === '********')"
+      ],
+      "macro_id": "mesh.createChannel",
+      "name": "createChannel"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.deleteChannel",
+      "name": "deleteChannel"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.listChannels",
+      "name": "listChannels"
+    },
+    {
+      "_derived": false,
+      "domain": "mesh",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.nodes))",
+        "output.ok === false || (typeof output.result.total === 'number' && output.result.total === output.result.nodes.length)",
+        "output.ok === false || (typeof output.result.online === 'number' && output.result.online <= output.result.total)"
+      ],
+      "macro_id": "mesh.listNodes",
+      "name": "listNodes"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.markRead",
+      "name": "markRead"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.meshMap",
+      "name": "meshMap"
+    },
+    {
+      "_derived": false,
+      "domain": "mesh",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.nodes === 'number')",
+        "output.ok === false || (output.result.onlineNodes <= output.result.nodes)",
+        "output.ok === false || (typeof output.result.transports === 'number' && output.result.transports >= 1)"
+      ],
+      "macro_id": "mesh.overview",
+      "name": "overview"
     },
     {
       "_derived": true,
@@ -49,8 +405,140 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "mesh.pingNode",
+      "name": "pingNode"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.queueDrop",
+      "name": "queueDrop"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.queueList",
+      "name": "queueList"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.queuePrioritize",
+      "name": "queuePrioritize"
+    },
+    {
+      "_derived": false,
+      "domain": "mesh",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "frame not found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "frame not found",
+            "ok": false
+          },
+          "input": {
+            "frameId": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "frameId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.delivered === 'boolean')"
+      ],
+      "macro_id": "mesh.queueRetry",
+      "name": "queueRetry"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "mesh.relay",
       "name": "relay"
+    },
+    {
+      "_derived": false,
+      "domain": "mesh",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true,
+            "result": {
+              "removed": false
+            }
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true,
+            "result": {
+              "removed": false
+            }
+          },
+          "input": {
+            "nodeId": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "nodeId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.removed === 'boolean')"
+      ],
+      "macro_id": "mesh.removeNode",
+      "name": "removeNode"
     },
     {
       "_derived": true,
@@ -64,6 +552,96 @@
       ],
       "macro_id": "mesh.send",
       "name": "send"
+    },
+    {
+      "_derived": false,
+      "domain": "mesh",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "message body required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "message body required",
+            "ok": false
+          },
+          "input": {
+            "to": "x"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "body": "hello mesh"
+          }
+        }
+      ],
+      "inputs": {
+        "body": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "to": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.message && typeof output.result.message.id === 'string')",
+        "output.ok === false || (output.result.message.state === 'delivered' || output.result.message.state === 'queued')",
+        "output.ok === false || (typeof output.result.queued === 'boolean')"
+      ],
+      "macro_id": "mesh.sendMessage",
+      "name": "sendMessage"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.setChannelKey",
+      "name": "setChannelKey"
+    },
+    {
+      "_derived": false,
+      "domain": "mesh",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.metrics) && output.result.metrics.length >= 1)",
+        "output.ok === false || (typeof output.result.metrics[0].transport === 'string')",
+        "output.ok === false || (typeof output.result.sampledNodes === 'number' && output.result.sampledNodes >= 0)"
+      ],
+      "macro_id": "mesh.signalMetrics",
+      "name": "signalMetrics"
     },
     {
       "_derived": true,
@@ -133,5 +711,5 @@
   ],
   "domain": "mesh",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 10
+  "macroCount": 29
 }

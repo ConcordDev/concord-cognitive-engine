@@ -1,157 +1,533 @@
 {
   "contracts": [
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "code-quality",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "no_source_provided",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "all_files_empty",
+            "ok": false
+          },
+          "input": {
+            "source": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "file": "a.js",
+            "source": "const a = 1;\n"
+          }
+        }
+      ],
+      "inputs": {
+        "file": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "language": {
+          "maxLength": 20,
+          "type": "string"
+        },
+        "source": {
+          "maxLength": 200000,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.scanId === 'string')",
+        "output.ok === false || (output.result.metrics && typeof output.result.metrics.maintainability === 'number')",
+        "output.ok === false || ['A','B','C','D','F'].includes(output.result.grade)"
       ],
       "macro_id": "code-quality.analyze",
       "name": "analyze"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "code-quality",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "no_scans_yet",
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "file": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "scanId": {
+          "maxLength": 60,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.files))"
       ],
       "macro_id": "code-quality.annotate",
       "name": "annotate"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "code-quality",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "no_scans_yet",
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "scanId": {
+          "maxLength": 60,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.totalMinutes === 'number')",
+        "output.ok === false || ['A','B','C','D','E'].includes(output.result.rating)"
       ],
       "macro_id": "code-quality.debt",
       "name": "debt"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "code-quality",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "head_files_required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "head": [
+              {
+                "content": "const a = 1;\n",
+                "path": "a.js"
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "base": {
+          "type": "array"
+        },
+        "head": {
+          "type": "array"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.summary && typeof output.result.summary.newIssues === 'number')",
+        "output.ok === false || ['BLOCK','WARN','COMMENT','APPROVE'].includes(output.result.verdict)"
       ],
       "macro_id": "code-quality.decoratePR",
       "name": "decoratePR"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "code-quality",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "no_scans_yet",
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "scanId": {
+          "maxLength": 60,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || ['PASS','FAIL'].includes(output.result.status)",
+        "output.ok === false || (Array.isArray(output.result.checks) && typeof output.result.passed === 'boolean')"
       ],
       "macro_id": "code-quality.evaluateGate",
       "name": "evaluateGate"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "code-quality",
-      "fuzz_cases": [],
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
       "inputs": {},
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.gate && typeof output.result.gate.maxCritical === 'number')",
+        "output.ok === false || (output.result.defaults && typeof output.result.defaults.minMaintainability === 'number')"
       ],
       "macro_id": "code-quality.getGate",
       "name": "getGate"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "code-quality",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "no_scans_yet",
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "scanId": {
+          "maxLength": 60,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.functionHotspots))",
+        "output.ok === false || Array.isArray(output.result.fileHotspots)"
       ],
       "macro_id": "code-quality.hotspots",
       "name": "hotspots"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "code-quality",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "assignee": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "severity": {
+          "maxLength": 20,
+          "type": "string"
+        },
+        "status": {
+          "maxLength": 40,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.issues))",
+        "output.ok === false || (typeof output.result.total === 'number' && output.result.shown === output.result.issues.length)"
       ],
       "macro_id": "code-quality.listIssues",
       "name": "listIssues"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "code-quality",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "invalid_maxCritical",
+            "ok": false
+          },
+          "input": {
+            "maxCritical": -1
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "minMaintainability": 80
+          }
+        }
+      ],
+      "inputs": {
+        "blockOnNewCritical": {
+          "type": "boolean"
+        },
+        "maxBlockerDebtHours": {
+          "max": 100000,
+          "min": 0,
+          "type": "number"
+        },
+        "maxCritical": {
+          "max": 1000,
+          "min": 0,
+          "type": "number"
+        },
+        "maxDuplicationPct": {
+          "max": 100,
+          "min": 0,
+          "type": "number"
+        },
+        "maxHigh": {
+          "max": 1000,
+          "min": 0,
+          "type": "number"
+        },
+        "minMaintainability": {
+          "max": 100,
+          "min": 0,
+          "type": "number"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.gate && typeof output.result.gate.maxCritical === 'number')"
       ],
       "macro_id": "code-quality.setGate",
       "name": "setGate"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "code-quality",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "rule_and_message_required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "invalid_line",
+            "ok": false
+          },
+          "input": {
+            "line": -1,
+            "message": "swallows errors",
+            "rule": "empty-catch"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "message": "swallows errors",
+            "rule": "empty-catch"
+          }
+        }
+      ],
+      "inputs": {
+        "assignee": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "file": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "line": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "message": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "rule": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "scanId": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low",
+            "info"
+          ],
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.issue && typeof output.result.issue.id === 'string')",
+        "output.ok === false || output.result.issue.status === 'open'"
       ],
       "macro_id": "code-quality.trackIssue",
       "name": "trackIssue"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "code-quality",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": -1
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 100,
+          "min": 1,
+          "type": "number"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.points))",
+        "output.ok === false || typeof output.result.scanCount === 'number'"
       ],
       "macro_id": "code-quality.trend",
       "name": "trend"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "code-quality",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "id_required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "issue_not_found",
+            "ok": false
+          },
+          "input": {
+            "id": "nope",
+            "status": "resolved"
+          }
+        }
+      ],
+      "inputs": {
+        "assignee": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "note": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "in-progress",
+            "resolved",
+            "wont-fix",
+            "false-positive"
+          ],
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.issue && typeof output.result.issue.id === 'string')"
       ],
       "macro_id": "code-quality.updateIssue",
       "name": "updateIssue"

@@ -1,0 +1,16 @@
+{
+  "macro_id": "dx-platform.listCodebases",
+  "domain": "dx-platform",
+  "name": "listCodebases",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.codebases))",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.codebases.length)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Reads the caller's indexed codebases as summaries from per-user STATE keyed by ctx.actor.userId. The assassin's internal owner actor has indexed none → ok:true with an empty array and count 0 (NEVER no_db — this domain is STATE-backed, not DB-backed)."
+}

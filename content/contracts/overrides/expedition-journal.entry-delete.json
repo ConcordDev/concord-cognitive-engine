@@ -1,0 +1,18 @@
+{
+  "macro_id": "expedition-journal.entry-delete",
+  "domain": "expedition-journal",
+  "name": "entry-delete",
+  "inputs": {
+    "id": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.deleted === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "id": "entry_nope" }, "expect": { "ok": false } }
+  ],
+  "_note": "Deletes one of the caller's journal entries by id. A missing id fails CLOSED ('entry id required'); an id that does not belong to the caller returns ok:false 'entry not found' (NEVER no_db, NEVER a cross-user delete)."
+}

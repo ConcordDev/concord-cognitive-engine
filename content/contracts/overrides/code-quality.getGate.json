@@ -1,0 +1,16 @@
+{
+  "macro_id": "code-quality.getGate",
+  "domain": "code-quality",
+  "name": "getGate",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.gate && typeof output.result.gate.maxCritical === 'number')",
+    "output.ok === false || (output.result.defaults && typeof output.result.defaults.minMaintainability === 'number')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Reads the caller's quality-gate config (lazily seeded from DEFAULT_GATE on first read) from per-user STATE. Pure read → {} always returns ok:true with the gate + defaults (NEVER no_db)."
+}

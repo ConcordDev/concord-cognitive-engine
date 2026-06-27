@@ -1,0 +1,18 @@
+{
+  "macro_id": "mesh.removeNode",
+  "domain": "mesh",
+  "name": "removeNode",
+  "inputs": {
+    "nodeId": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.removed === 'boolean')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true, "result": { "removed": false } } },
+    { "input": { "nodeId": "nope" }, "expect": { "ok": true, "result": { "removed": false } } }
+  ],
+  "_note": "Forgets a per-user node from STATE keyed by ctx.actor.userId. Idempotent — a missing/unknown nodeId returns ok:true with removed:false (NEVER no_db). The assassin's owner actor has no nodes, so removed:false."
+}

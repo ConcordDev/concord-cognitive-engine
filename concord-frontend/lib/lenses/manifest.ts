@@ -4498,22 +4498,29 @@ export const LENS_MANIFESTS: LensManifest[] = [
   {
     domain: 'code-quality',
     label: 'Code Quality',
-    artifacts: ['detector', 'finding', 'baseline', 'budget', 'history'],
-    macros: { list: 'lens.code-quality.list', get: 'lens.code-quality.get', run: 'lens.code-quality.run', export: 'lens.code-quality.export' },
+    artifacts: ['scan', 'finding', 'tracked_issue', 'quality_gate', 'pr_decoration'],
+    // Real code-quality.* macros (registered via registerCodeQualityActions in
+    // server.js): `list` maps to the tracked-issue ledger, `get` reads the
+    // quality-gate config, `create` promotes a finding to a tracked issue,
+    // `run` runs the static analyzer over submitted source, `export` resolves
+    // the technical-debt breakdown. The phantom `lens.code-quality.*` ids that
+    // used to sit here never existed \u2014 every call hit `unknown_macro`
+    // (code-quality.js was a legacy 3-arg module, never imported).
+    macros: { list: 'code-quality.listIssues', get: 'code-quality.getGate', create: 'code-quality.trackIssue', run: 'code-quality.analyze', export: 'code-quality.debt' },
     exports: ['json', 'md'],
-    actions: ['list_detectors', 'run_detector', 'run_all', 'baseline_diff', 'load_budget', 'history'],
+    actions: ['analyze', 'annotate', 'trend', 'debt', 'hotspots', 'getGate', 'setGate', 'evaluateGate', 'decoratePR', 'trackIssue', 'updateIssue', 'listIssues'],
     category: 'system',
     dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Code quality.",
-      caption: "Detectors, findings, baselines, budgets, history \u2014 analyze, run, baseline-diff.",
-      firstActionLabel: "Run a detector",
+      caption: "Static-analysis surface for submitted source \u2014 per-line annotations, technical-debt estimation, duplication hotspots, configurable quality gates, an issue workflow, and PR diff decoration.",
+      firstActionLabel: "Analyze source",
     },
     firstRunGuide: {
       steps: [
-        { caption: "list_detectors shows the full detector suite." },
-        { caption: "baseline_diff surfaces regressions vs. the last clean run." },
-        { caption: "load_budget enforces budgets in CI." },
+        { caption: "Paste a source file and Analyze it for a maintainability grade + per-line findings." },
+        { caption: "Configure a quality gate and evaluate the scan against it." },
+        { caption: "Track findings as issues, or decorate a PR diff with new-issue deltas." },
       ],
     },
   },
@@ -4657,22 +4664,33 @@ export const LENS_MANIFESTS: LensManifest[] = [
   {
     domain: 'mesh',
     label: 'Mesh',
-    artifacts: ['transport', 'route', 'frame', 'peer'],
-    macros: { list: 'lens.mesh.list', get: 'lens.mesh.get', run: 'lens.mesh.run', export: 'lens.mesh.export' },
+    // Real artifacts the usability layer persists per-user (server/domains/mesh.js).
+    artifacts: ['node', 'message', 'channel', 'frame'],
+    // Phantom `lens.mesh.*` refs replaced with the REAL registered macros.
+    // create -> addNode (the first persisting write the topology UI makes).
+    macros: {
+      list: 'mesh.listNodes',
+      get: 'mesh.conversation',
+      create: 'mesh.addNode',
+      delete: 'mesh.removeNode',
+      run: 'mesh.overview',
+      export: 'mesh.signalMetrics',
+    },
     exports: ['json'],
-    actions: ['list_transports', 'route_status', 'send_frame', 'peer_discovery'],
+    actions: ['addNode', 'sendMessage', 'createChannel', 'queueRetry'],
     category: 'system',
     dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Seven-layer mesh.",
-      caption: "Transports, routes, frames, peers \u2014 the mesh networking substrate.",
-      firstActionLabel: "List transports",
+      caption: "Nodes, messages, channels, frames \u2014 off-grid comms over the 7-transport routing substrate.",
+      firstActionLabel: "Add a node",
+      firstActionMacro: { name: 'overview' },
     },
     firstRunGuide: {
       steps: [
-        { caption: "list_transports shows BLE / WiFi P2P / NFC / TCP active layers." },
-        { caption: "route_status surfaces live routing across peers." },
-        { caption: "peer_discovery shows everyone reachable on the mesh." },
+        { caption: "Add a peer node in Topology, then ping it to measure round-trip latency.", macro: 'mesh.addNode' },
+        { caption: "Send a direct / group / broadcast message; offline destinations queue for store-and-forward.", macro: 'mesh.sendMessage' },
+        { caption: "Create an encrypted group channel with a pre-shared key; inspect per-transport RSSI / hop / coverage in Signal.", macro: 'mesh.createChannel' },
       ],
     },
   },
@@ -5011,12 +5029,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
   },
   {
+    // lens-id === domain. The backend lives in server/domains/dx-platform.js,
+    // now wired through the canonical `register` registry (saved-class fix), so
+    // every macro below resolves to a real handler. The prior
+    // `lens.dx-platform.*` macro ids were phantoms \u2014 no such macros are
+    // registered anywhere; they're replaced with the real `dx-platform.*` ops
+    // the DxWorkbench drives (index/list/chat/review/search/team/CI).
     domain: 'dx-platform',
     label: 'DX Platform',
     artifacts: ['codebase', 'finding', 'repair_proposal', 'usage_row', 'quota'],
-    macros: { list: 'lens.dx-platform.list', get: 'lens.dx-platform.get', run: 'lens.dx-platform.run', export: 'lens.dx-platform.export' },
+    macros: { list: 'dx-platform.listCodebases', get: 'dx-platform.getDetectorConfig', create: 'dx-platform.indexCodebase', run: 'dx-platform.reviewDiff', export: 'dx-platform.generateCiConfig' },
     exports: ['json', 'csv'],
-    actions: ['register_codebase', 'run_detectors', 'view_billing', 'top_up_wallet', 'web_editor_demo', 'record_fix_decision'],
+    actions: ['indexCodebase', 'chatWithCodebase', 'reviewDiff', 'searchCodebase', 'teamDashboard', 'getDetectorConfig', 'usageAnalytics', 'generateCiConfig'],
     category: 'system',
     dataTier: 'REAL_LIVE',
     emptyState: {
@@ -5089,7 +5113,13 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // INSERTs a world_crises row via the world-crisis lib + emits world:crisis),
   // which the lens persists through the real `crisis.*` DB tables via lensRun.
   { domain: 'crisis-ops', label: 'Crisis Ops', artifacts: ['world_crisis', 'skill_recommendation'], macros: { list: 'crisis.active_for_player', get: 'crisis.timeline', create: 'crisis.declare', run: 'crisis.resolve', export: 'crisis.map' }, exports: ['json'], actions: ['active_for_player', 'resolve', 'declare', 'map', 'triage', 'playbook', 'playbook_step', 'assign', 'team', 'unassign', 'log_event', 'timeline', 'alerts', 'acknowledge_alert', 'resources', 'resource_upsert', 'resource_deploy'], category: 'social' },
-  { domain: 'expedition-journal', label: 'Expedition Journal', artifacts: ['expedition_stage'], macros: { list: 'lens.expedition-journal.list', get: 'lens.expedition-journal.get', run: 'lens.expedition-journal.run' }, exports: ['json'], actions: ['advance_stage', 'mark_visited'], category: 'knowledge' },
+  // The prior `lens.expedition-journal.*` macro ids + `advance_stage`/`mark_visited`
+  // actions were PHANTOM (never registered). The domain is now wired through the
+  // canonical `register` registry (server/domains/expedition-journal.js →
+  // registerExpeditionJournalActions), so the generic CRUD verbs map onto REAL
+  // macros: list → entry-list, get → progress, create → entry-add, run → mark-stage,
+  // export → summary. `actions` enumerates the full real macro surface.
+  { domain: 'expedition-journal', label: 'Expedition Journal', artifacts: ['expedition_stage', 'journal_entry', 'expedition_photo', 'badge'], macros: { list: 'expedition-journal.entry-list', get: 'expedition-journal.progress', create: 'expedition-journal.entry-add', run: 'expedition-journal.mark-stage', export: 'expedition-journal.summary' }, exports: ['json'], actions: ['worlds', 'progress', 'mark-stage', 'entry-add', 'entry-list', 'entry-delete', 'photo-add', 'photo-list', 'photo-delete', 'rewards', 'summary'], category: 'knowledge' },
   // The Ghost Tracker lens (lensId 'ghost-tracker') is a READER/HUNTER over the
   // real `ghost-hunt` domain (server/domains/ghost-hunt.js — register("ghost-hunt",
   // "residues"|"detail"|"progress"|"advance"|"confront"|"history"|"leaderboard"|
