@@ -334,6 +334,27 @@ Assassin ratchet GREEN (no new violations vs baseline); 258 WIRED; tsc 0; manife
 27 lenses now through the non-score gate (batches 1–7); the loop continues into the remaining
 untested long tail.
 
+### Phase-2 batch 8 DONE (2026-06-27): death-insurance, codex, ledger, mental-health
+86 server + 24 UX-state tests. Four lenses, three with lens-id≠domain or non-path-3 registration
+(correctly re-diagnosed at the code, not the prompt). Two real caller↔receiver/silent-empty fixes:
+- **death-insurance** (lens-id≠domain → 'insurance', dual-registration; money): NO defect — backend
+  already fail-closed (badNumericField + verified payout conservation). Additive 11 server (3-way
+  conservation 33/33/34=1000) + 6 vitest + 3 overrides.
+- **codex** (lens-id≠domain → 'lore', canonical MACROS-registered, 2-arg, assassin-enumerated): NO
+  defect (lensRun never throws → error path already correct). Additive 17 server + 7 vitest + 2
+  overrides strengthened.
+- **ledger** (MACROS-registered, 2-arg; read-only finance): fixed a real silent-empty defect — load()
+  ignored the envelope ok/error, so a CLOSED ledger rendered as "record looks clean," lying to the
+  auditor; now error+Retry. 14 server + 6 vitest. sere-frontend stays green.
+- **mental-health** (path-3, 49 LENS_ACTIONS macros; fully-untested before this pass): fixed a real
+  caller↔receiver payload-shape bug — MentalHealthActionPanel wrapped payloads as
+  {artifact:{data:{entries}}} so the dispatch's virtualArtifact.data=input double-nested them →
+  Mood/Journal buttons silently returned empty fallbacks in PRODUCTION; flattened to {entries}.
+  Plus swallowed-fetch fix. 44 server + 5 vitest + 6 overrides (crisis-hotline data is real 988/CBT
+  reference, not fabricated).
+Assassin ratchet GREEN (no new violations vs baseline); 258 WIRED; tsc 0.
+31 lenses now through the non-score gate (batches 1–8). The loop continues.
+
 **NAMED PHASE-2 BACKLOG CLOSED (2026-06-27):** all 6 batches done (24 lenses through the non-score
 gate across batches 1–6). Real defects fixed across the run: 2 CC money bugs (sponsorship.create,
 inheritance value/open_listing) + 1 in-game-currency treasury fail-open (kingdoms) + ~6 numeric

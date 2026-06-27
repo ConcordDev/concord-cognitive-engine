@@ -1,0 +1,23 @@
+{
+  "macro_id": "mental-health.companion-chat",
+  "domain": "mental-health",
+  "name": "companion-chat",
+  "inputs": {
+    "message": { "type": "string", "required": true, "maxLength": 1200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.reply === 'string' && output.result.reply.length > 0)",
+    "output.ok === false || typeof output.result.riskFlag === 'boolean'",
+    "output.ok === false || typeof output.result.disclaimer === 'string'",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "message": "I had a rough day" }, "expect": { "ok": true } },
+    { "input": { "message": "   " }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "message": "I want to die" }, "expect": { "ok": true } }
+  ],
+  "_note": "mental-health.companion-chat is a Wysa-style supportive (NON-CLINICAL, never-diagnosing) reflection companion. When ctx.llm is present it routes through the conscious brain with a constrained support system-prompt; with NO llm it falls back to a DETERMINISTIC reply (verified in tests with no network/LLM). A lightweight risk scan sets riskFlag and surfaces a real 988 redirect on self-harm language REGARDLESS of LLM availability — the safety path is never LLM-gated. Always carries the 'not medical advice' disclaimer. Empty message rejects. Lens-action domain — not assassin-enumerable via runMacro."
+}
