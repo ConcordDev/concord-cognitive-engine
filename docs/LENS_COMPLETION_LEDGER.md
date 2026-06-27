@@ -272,3 +272,25 @@ dual-registration wiring defect fixed at integration:
 Assassin ratchet GREEN (no new violations vs baseline, incl. the new engine_list); 258 WIRED; tsc 0;
 manifest+sere green. ~5 Phase-2 lenses left (genesis, inheritance, kingdoms, self, world-creator,
 app-maker, cognitive-replay — child/REST-driven, need discovery).
+
+### Phase-2 batch 5 DONE (2026-06-27): kingdoms, genesis, cognitive-replay, self
+82 server + 30 UX-state tests. Four REST/path-3/mixed lenses. Two real fail-open backend fixes,
+the swallowed-fetch UX defect fixed in all four, AND a real dead-caller (phantom-macro) cleanup:
+- **kingdoms** (REST + macros): real fail-open treasury write — `adjustTreasury` (lib/kingdoms.js)
+  did `UPDATE realms SET treasury=MAX(0,treasury+?)` with no finiteness check; poisoned
+  Infinity/NaN/1e308 deltas (callers feed env/derived values via civic-bonds) would corrupt the
+  realm treasury → fail-closed guard. In-game currency, not real CC. 14 server + 6 vitest.
+- **genesis** (REST): real fail-open DoS — feed/graph/identity compute fns used
+  `Math.min(parseInt(limit)||def, cap)`; a negative limit falls through to SQLite LIMIT (unbounded)
+  → full-table return. Shared `clampLimit` floors at 1. 23 server + 6 vitest.
+- **cognitive-replay** (path-3): swallowed chat.timeline fetch (offline read as "no activity"); real
+  error/Retry across page + 7 children. 28 server + 8 vitest + 4 overrides.
+- **self** (mixed): swallowed-fetch + empty-detection fixes (17 server + 6 vitest), THEN a real
+  DEAD-CALLER cleanup at integration — the cross-substrate tabs called NON-EXISTENT macros
+  (`fitness.status/metrics`, `sleep.*`, `mental_health.*`, `affect.status`, `journal.recent`,
+  `atlas.recent_entries` — verified absent), swallowed into "empty" states (aspirational wiring the
+  mandate forbids). Fixed: fitness→`fitness.activity-summary` + mood→`affect.trends` (both real,
+  render real fields); sleep/journal → honest no-backend cross-lens CTA cards (dead queries removed).
+  Grep-proof: zero phantom-macro calls remain. 17 server + 10 vitest.
+Assassin ratchet GREEN (no new violations vs baseline); 258 WIRED; tsc 0; manifest+sere green.
+~3 Phase-2 lenses left (inheritance, world-creator, app-maker — child-component-driven, need discovery).

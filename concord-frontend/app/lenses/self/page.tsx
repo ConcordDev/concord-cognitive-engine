@@ -40,6 +40,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 
 // Absorbed UX components — mounted as legacy cross-substrate tabs.
 const DailyRituals = dynamic(() => import('@/components/world-lens/DailyRituals'), { ssr: false });
@@ -79,35 +80,27 @@ export default function UnifiedSelfLensPage() {
     } catch { return null; }
   };
 
+  // Cross-substrate pulls — these call REAL, registered macros only.
+  // fitness → fitness.activity-summary (real in-STATE wearable/activity ledger).
   const fitness = useQuery({
     queryKey: ['self-fitness'],
     queryFn: async () => {
-      const r = await safeRunDomain('fitness', 'status') ?? await safeRunDomain('fitness', 'metrics');
-      return r as { workouts?: number; weeklyMinutes?: number; recentSessions?: unknown[] } | null;
+      const r = await safeRunDomain('fitness', 'activity-summary', { days: 7 });
+      return r as { days?: Array<{ date?: string; steps?: number; activeMinutes?: number; distanceKm?: number }>; source?: string; notes?: string } | null;
     },
   });
 
-  const sleep = useQuery({
-    queryKey: ['self-sleep'],
-    queryFn: async () => {
-      const r = await safeRunDomain('sleep', 'status') ?? await safeRunDomain('sleep', 'metrics');
-      return r as { avgHours?: number; lastNight?: number; quality?: number } | null;
-    },
-  });
-
+  // mood → affect.trends (real in-STATE mood check-in trends).
   const mood = useQuery({
     queryKey: ['self-mood'],
     queryFn: async () => {
-      const r = await safeRunDomain('affect', 'status') ?? await safeRunDomain('mental_health', 'status');
-      return r as { current?: string; weeklyAvg?: number; trend?: string } | null;
-    },
-  });
-
-  const journal = useQuery({
-    queryKey: ['self-journal'],
-    queryFn: async () => {
-      const r = await safeRunDomain('journal', 'recent', { limit: 10 }) ?? await safeRunDomain('atlas', 'recent_entries', { limit: 10 });
-      return r as { entries?: Array<{ id: string; date?: string; preview?: string }> } | null;
+      const r = await safeRunDomain('affect', 'trends', { sinceDays: 30 });
+      return r as {
+        hasData?: boolean;
+        overallAvg?: number;
+        entryCount?: number;
+        dayOfWeek?: Array<{ label: string; avgMood: number | null; count: number }>;
+      } | null;
     },
   });
 
@@ -292,58 +285,93 @@ export default function UnifiedSelfLensPage() {
           {activeTab === 'fitness' && (
             <Section k="fitness">
               <h2 className="mb-3 text-base font-semibold text-rose-200">Fitness</h2>
-              {fitness.isLoading ? <Loader2 className="h-4 w-4 animate-spin text-rose-500" /> : fitness.data ? (
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                  <Stat label="Workouts" value={fitness.data.workouts ?? '—'} icon={Activity} />
-                  <Stat label="Weekly min" value={fitness.data.weeklyMinutes ?? '—'} icon={Activity} />
-                  <Stat label="Recent" value={fitness.data.recentSessions?.length ?? 0} icon={Activity} />
+              {fitness.isLoading ? (
+                <div role="status" className="flex items-center gap-2 text-xs text-rose-500">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden /><span>Loading activity…</span>
                 </div>
-              ) : <Empty>No fitness data — visit the Fitness lens to log a session.</Empty>}
+              ) : (fitness.data?.days ?? []).length > 0 ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                    <Stat label="Days logged" value={(fitness.data?.days ?? []).length} icon={Activity} />
+                    <Stat label="Total steps" value={(fitness.data?.days ?? []).reduce((a, d) => a + (d.steps ?? 0), 0) || '—'} icon={Activity} />
+                    <Stat label="Active min" value={(fitness.data?.days ?? []).reduce((a, d) => a + (d.activeMinutes ?? 0), 0) || '—'} icon={Activity} />
+                  </div>
+                  <p className="text-[11px] text-rose-800">Last 7 days · sourced from {fitness.data?.source ?? 'your activity ledger'}.</p>
+                </div>
+              ) : (
+                <CrossLensCTA
+                  icon={Activity}
+                  body={fitness.data?.notes ?? 'No activity logged in the last 7 days.'}
+                  href="/lenses/fitness"
+                  cta="Open the Fitness lens"
+                />
+              )}
             </Section>
           )}
 
           {activeTab === 'sleep' && (
             <Section k="sleep">
               <h2 className="mb-3 text-base font-semibold text-rose-200">Sleep</h2>
-              {sleep.isLoading ? <Loader2 className="h-4 w-4 animate-spin text-rose-500" /> : sleep.data ? (
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                  <Stat label="Avg hours" value={sleep.data.avgHours != null ? sleep.data.avgHours.toFixed(1) : '—'} icon={Moon} />
-                  <Stat label="Last night" value={sleep.data.lastNight != null ? `${sleep.data.lastNight}h` : '—'} icon={Moon} />
-                  <Stat label="Quality" value={sleep.data.quality != null ? `${(sleep.data.quality * 100).toFixed(0)}%` : '—'} icon={Moon} />
-                </div>
-              ) : <Empty>No sleep data — log a night via the Sleep substrate.</Empty>}
+              {/* No dedicated sleep substrate exists. Sleep lives in your self
+                  ledger as the `sleep_hours` metric (log it on the Overview
+                  tab) — this card makes NO backend call. */}
+              <CrossLensCTA
+                icon={Moon}
+                body="Sleep is tracked as the “sleep_hours” metric in your own ledger. Log a night on the Overview tab and it flows into your trends, goals, and streaks. For guided rest, the Wellness lens has soundscapes and routines."
+                onClick={() => setActiveTab('overview')}
+                cta="Log sleep on Overview"
+                secondaryHref="/lenses/wellness"
+                secondaryCta="Wellness lens"
+              />
             </Section>
           )}
 
           {activeTab === 'mood' && (
             <Section k="mood">
               <h2 className="mb-3 text-base font-semibold text-rose-200">Mood</h2>
-              {mood.isLoading ? <Loader2 className="h-4 w-4 animate-spin text-rose-500" /> : mood.data ? (
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                  <Stat label="Current" value={mood.data.current ?? '—'} icon={Smile} />
-                  <Stat label="Weekly avg" value={mood.data.weeklyAvg != null ? mood.data.weeklyAvg.toFixed(1) : '—'} icon={Smile} />
-                  <Stat label="Trend" value={mood.data.trend ?? '—'} icon={TrendingUp} />
+              {mood.isLoading ? (
+                <div role="status" className="flex items-center gap-2 text-xs text-rose-500">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden /><span>Loading mood trends…</span>
                 </div>
-              ) : <Empty>No mood data — affect engine surfaces this once you log.</Empty>}
+              ) : mood.data?.hasData ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                    <Stat label="Avg mood" value={mood.data.overallAvg != null ? mood.data.overallAvg.toFixed(1) : '—'} icon={Smile} />
+                    <Stat label="Check-ins" value={mood.data.entryCount ?? 0} icon={Smile} />
+                    <Stat
+                      label="Best day"
+                      value={(() => {
+                        const dow = (mood.data?.dayOfWeek ?? []).filter((d) => d.avgMood != null);
+                        if (dow.length === 0) return '—';
+                        return dow.reduce((best, d) => (d.avgMood! > (best.avgMood ?? -Infinity) ? d : best)).label;
+                      })()}
+                      icon={TrendingUp}
+                    />
+                  </div>
+                  <p className="text-[11px] text-rose-800">Last 30 days · from your affect check-ins.</p>
+                </div>
+              ) : (
+                <CrossLensCTA
+                  icon={Smile}
+                  body="No mood check-ins in the last 30 days. Log how you feel in the Affect lens and your mood trend surfaces here."
+                  href="/lenses/affect"
+                  cta="Open the Affect lens"
+                />
+              )}
             </Section>
           )}
 
           {activeTab === 'journal' && (
             <Section k="journal">
-              <h2 className="mb-3 text-base font-semibold text-rose-200">Recent journal entries</h2>
-              {journal.isLoading ? <Loader2 className="h-4 w-4 animate-spin text-rose-500" /> : (journal.data?.entries ?? []).length > 0 ? (
-                <ul className="space-y-1">
-                  {(journal.data?.entries ?? []).map(e => (
-                    <li key={e.id} className="flex items-start gap-3 rounded border border-rose-900/30 bg-rose-950/10 px-3 py-2 text-xs">
-                      <BookOpen className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-rose-500" aria-hidden />
-                      <div>
-                        {e.date && <span className="block text-[10px] text-rose-700">{new Date(e.date).toLocaleDateString()}</span>}
-                        <span className="text-rose-100">{e.preview ?? e.id}</span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : <Empty>No journal entries — visit the Journal lens to write one.</Empty>}
+              <h2 className="mb-3 text-base font-semibold text-rose-200">Journal</h2>
+              {/* No `journal` macro domain exists. Reflective journaling lives
+                  in the Mental Health lens — this card makes NO backend call. */}
+              <CrossLensCTA
+                icon={BookOpen}
+                body="Reflective journaling lives in the Mental Health lens, where entries become private DTUs you can revisit. Your “journal_entries” count still flows into your self ledger as a metric."
+                href="/lenses/mental-health"
+                cta="Open the Mental Health lens"
+              />
             </Section>
           )}
           {activeTab === 'rituals' && (
@@ -410,6 +438,42 @@ function Stat({ label, value, icon: Icon }: { label: string; value: number | str
   );
 }
 
-function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="rounded border border-rose-900/30 bg-rose-950/10 px-4 py-6 text-center text-xs text-rose-600">{children}</p>;
+// Honest cross-lens CTA — for surfaces whose substrate lives in another lens.
+// Makes NO backend call: a plain Link (or in-page tab switch) to the real home
+// of that data. Used by the sleep + journal tabs (no self-side substrate) and
+// as the empty-state for the repointed fitness + mood tabs.
+function CrossLensCTA({
+  icon: Icon, body, href, cta, onClick, secondaryHref, secondaryCta,
+}: {
+  icon: LucideIcon;
+  body: string;
+  href?: string;
+  cta: string;
+  onClick?: () => void;
+  secondaryHref?: string;
+  secondaryCta?: string;
+}) {
+  const primaryClass =
+    'inline-flex items-center gap-1.5 rounded bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500';
+  return (
+    <div className="rounded-lg border border-rose-900/30 bg-rose-950/10 p-5 text-center">
+      <Icon className="mx-auto mb-2 h-6 w-6 text-rose-500" aria-hidden />
+      <p className="mx-auto mb-4 max-w-md text-xs leading-relaxed text-rose-400">{body}</p>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {onClick ? (
+          <button type="button" onClick={onClick} className={primaryClass}>{cta}</button>
+        ) : href ? (
+          <Link href={href} className={primaryClass}>{cta}</Link>
+        ) : null}
+        {secondaryHref && secondaryCta && (
+          <Link
+            href={secondaryHref}
+            className="inline-flex items-center gap-1.5 rounded border border-rose-900/40 px-3 py-1.5 text-xs text-rose-300 hover:text-rose-100"
+          >
+            {secondaryCta}
+          </Link>
+        )}
+      </div>
+    </div>
+  );
 }

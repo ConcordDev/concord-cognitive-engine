@@ -20,24 +20,32 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
   const [overview, setOverview] = useState<OverviewResult | null>(null);
   const [layout, setLayout] = useState<LayoutResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string[]>([]);
   const [saveErr, setSaveErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
+    setLoadErr(null);
     try {
       const [ov, ly] = await Promise.all([
         lensRun<OverviewResult>('self', 'overview', {}),
         lensRun<LayoutResult>('self', 'layout', {}),
       ]);
+      // A backend-reported failure (e.g. STATE unavailable) is a real error,
+      // not an empty ledger — never swallow it into a silent "No data yet".
+      if (ov.data && ov.data.ok === false) {
+        throw new Error(ov.data.error || 'Could not load your overview.');
+      }
       if (ov.data?.ok && ov.data.result) setOverview(ov.data.result);
       if (ly.data?.ok && ly.data.result) {
         setLayout(ly.data.result);
         setDraft(ly.data.result.tiles);
       }
-    } catch { /* surfaced by empty state */ }
-    finally { setBusy(false); }
+    } catch (e) {
+      setLoadErr(e instanceof Error && e.message ? e.message : 'Could not load your overview.');
+    } finally { setBusy(false); }
   }, []);
 
   useEffect(() => { void load(); }, [load, refreshKey]);
@@ -109,8 +117,21 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
       )}
 
       {busy ? (
-        <Loader2 className="h-4 w-4 animate-spin text-rose-500" />
-      ) : overview && overview.cards.length > 0 ? (
+        <div role="status" className="flex items-center gap-2 text-xs text-rose-500">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          <span>Loading your overview…</span>
+        </div>
+      ) : loadErr ? (
+        <div role="alert" className="rounded border border-red-900/40 bg-red-950/20 px-4 py-6 text-center text-xs text-red-300">
+          <p className="mb-3">{loadErr}</p>
+          <button
+            onClick={() => void load()}
+            className="rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500"
+          >
+            Retry
+          </button>
+        </div>
+      ) : overview && overview.hasData && overview.cards.length > 0 ? (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {overview.cards.map((c) => (
