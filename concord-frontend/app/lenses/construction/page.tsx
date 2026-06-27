@@ -604,8 +604,9 @@ export default function ConstructionLensPage() {
         </button>
       </div>
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
+        <div className="flex items-center justify-center py-12" role="status" aria-live="polite">
           <div className="w-6 h-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+          <span className="sr-only">Loading construction data…</span>
         </div>
       ) : filtered.length === 0 ? (
         <div className={cn(ds.panel, 'text-center py-12')}>
@@ -677,6 +678,29 @@ export default function ConstructionLensPage() {
     </div>
   );
 
+  // ── Four UX states: loading / error own page-level surfaces so they carry
+  // genuine a11y roles (role=status / role=alert) and a WORKING Retry that
+  // re-fetches the real /api/lens/construction feed. LensPageShell's shared
+  // Loading/ErrorState don't expose these roles, so we render error here and
+  // don't hand isLoading/isError to the shell — loading (role=status), empty
+  // (CTA) and populated render through renderLibrary below. This closes the
+  // swallowed-fetch → silent-empty defect: a failed feed shows role=alert +
+  // Retry, never a blank "No items yet" page.
+  if (isError) {
+    return (
+      <LensShell lensId="construction" asMain={false}>
+        <div role="alert" className={cn(ds.panel, 'mx-auto mt-12 max-w-md border-red-500/40 text-center')}>
+          <X className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <p className="text-red-300 font-medium">Couldn&apos;t load construction data</p>
+          {error?.message && <p className="mt-1 text-xs text-red-400/80">{error.message}</p>}
+          <button onClick={() => refetch()} className={cn(ds.btnPrimary, 'mt-4')}>
+            Retry
+          </button>
+        </div>
+      </LensShell>
+    );
+  }
+
   return (
     <LensShell lensId="construction" asMain={false}>
       <FirstRunTour lensId="construction" />
@@ -687,10 +711,6 @@ export default function ConstructionLensPage() {
       title="Construction"
       description="Jobs, estimates, materials, inspections, safety, and crew management"
       headerIcon={<HardHat className="w-6 h-6" />}
-      isLoading={isLoading}
-      isError={isError}
-      error={error}
-      onRetry={refetch}
       actions={
         <>
           {runAction.isPending && (
