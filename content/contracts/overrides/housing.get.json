@@ -1,0 +1,19 @@
+{
+  "macro_id": "housing.get",
+  "domain": "housing",
+  "name": "get",
+  "inputs": {
+    "houseId": { "type": "string", "required": true, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || (output.house !== null && typeof output.house === 'object')",
+    "output.ok === false || Array.isArray(output.house.rooms)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "houseId": "ph_does_not_exist" }, "expect": { "ok": false } }
+  ]
+}

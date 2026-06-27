@@ -25232,6 +25232,15 @@ registerLfgMacros(register);
 import registerTrainingRoomMacros from "./domains/training-room.js";
 registerTrainingRoomMacros(register);
 
+// Per-lens flawless loop (batch 3) — housing / courtship / fishing macro surfaces,
+// each delegating to the real lib (player-housing.js / romance-engine.js / fishing.js).
+import registerHousingMacros from "./domains/housing.js";
+registerHousingMacros(register);
+import registerCourtshipMacros from "./domains/courtship.js";
+registerCourtshipMacros(register);
+import registerFishingMacros from "./domains/fishing.js";
+registerFishingMacros(register);
+
 // Maintenance — the operator surface for the autonomic nervous system. Reads the
 // Homeostasis ledger + escalation inbox + Repair Memory stats. Operator-scoped.
 import registerRepairMacros from "./domains/repair.js";

@@ -1,0 +1,194 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "training-room",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "skillId": "sword"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "skillId": "fist"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "skillId": "bow"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "skillId": "__no_such_skill__"
+          }
+        }
+      ],
+      "inputs": {
+        "skillId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (output.frameData && typeof output.frameData === 'object')",
+        "output.ok === false || output.frameData.startup_ms > 0",
+        "output.ok === false || output.frameData.active_ms > 0",
+        "output.ok === false || output.frameData.recovery_ms > 0",
+        "output.ok === false || output.frameData.dodge_window_ms > 0",
+        "output.ok === false || output.frameData.parry_window_ms >= 0",
+        "output.ok === false || ((output.frameData.kind === 'bow' || output.frameData.kind === 'staff') ? output.frameData.parry_window_ms === 0 : output.frameData.parry_window_ms > 0)"
+      ],
+      "macro_id": "training-room.frame_data",
+      "name": "frame_data"
+    },
+    {
+      "_derived": false,
+      "domain": "training-room",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "kind": "sword"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "kind": "staff"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "kind": "default"
+          }
+        }
+      ],
+      "inputs": {
+        "kind": {
+          "maxLength": 40,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || output.reason === 'unknown_kind'",
+        "output.ok === false || (output.frameData && typeof output.frameData === 'object')",
+        "output.ok === false || output.frameData.startup_ms > 0",
+        "output.ok === false || output.frameData.active_ms > 0",
+        "output.ok === false || output.frameData.recovery_ms > 0",
+        "output.ok === false || output.frameData.dodge_window_ms > 0",
+        "output.ok === false || ((output.frameData.kind === 'bow' || output.frameData.kind === 'staff') ? output.frameData.parry_window_ms === 0 : output.frameData.parry_window_ms > 0)"
+      ],
+      "macro_id": "training-room.kind_frame_data",
+      "name": "kind_frame_data"
+    },
+    {
+      "_derived": false,
+      "domain": "training-room",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "Array.isArray(output.kinds)",
+        "output.kinds.length > 0",
+        "output.kinds.every(k => typeof k.kind === 'string' && k.startup_ms > 0 && k.active_ms > 0 && k.recovery_ms > 0)",
+        "output.kinds.every(k => (k.kind === 'bow' || k.kind === 'staff') ? k.parry_window_ms === 0 : k.parry_window_ms > 0)"
+      ],
+      "macro_id": "training-room.list_kinds",
+      "name": "list_kinds"
+    },
+    {
+      "_derived": false,
+      "domain": "training-room",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 100,
+          "min": 1,
+          "type": "number"
+        },
+        "userId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.skills)",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "training-room.list_skills",
+      "name": "list_skills"
+    }
+  ],
+  "domain": "training-room",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 4
+}

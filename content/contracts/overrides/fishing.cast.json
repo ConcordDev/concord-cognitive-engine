@@ -1,0 +1,19 @@
+{
+  "macro_id": "fishing.cast",
+  "domain": "fishing",
+  "name": "cast",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 64 },
+    "biome": { "type": "string", "maxLength": 32 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.sessionId === 'string'",
+    "output.ok === false || (typeof output.biteAtEpochMs === 'number' && output.biteAtEpochMs > 0)",
+    "output.ok === false || (typeof output.candidateCount === 'number' && output.candidateCount >= 1)"
+  ],
+  "fuzz_cases": [
+    { "input": { "worldId": "concordia-hub", "biome": "water" }, "expect": { "ok": true } }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "macro_id": "courtship.interact",
+  "domain": "courtship",
+  "name": "interact",
+  "inputs": {
+    "partnerKind": { "type": "string", "enum": ["player", "npc"] },
+    "partnerId": { "type": "string", "required": true, "maxLength": 80 },
+    "sentiment": { "type": "number", "min": -1, "max": 1 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.affinity === 'number' && output.affinity >= -1 && output.affinity <= 1)",
+    "output.ok === false || typeof output.status === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } }
+  ]
+}

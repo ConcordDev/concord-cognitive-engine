@@ -1,0 +1,21 @@
+{
+  "macro_id": "courtship.propose",
+  "domain": "courtship",
+  "name": "propose",
+  "inputs": {
+    "partnerKind": { "type": "string", "enum": ["player", "npc"] },
+    "partnerId": { "type": "string", "required": true, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.reason !== 'affinity_too_low' || (typeof output.required === 'number' && output.required > 0 && output.required <= 1)",
+    "output.reason !== 'affinity_too_low' || output.got < output.required",
+    "output.ok === false || output.status === 'engaged'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "partnerKind": "npc", "partnerId": "no_such_courtship" }, "expect": { "ok": false, "reason": "no_courtship" } }
+  ]
+}

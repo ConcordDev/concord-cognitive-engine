@@ -1,0 +1,15 @@
+{
+  "macro_id": "courtship.list",
+  "domain": "courtship",
+  "name": "list",
+  "inputs": {
+    "status": { "type": "string", "enum": ["acquainted", "courting", "engaged", "married", "widowed", "estranged"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.courtships)",
+    "output.ok === false || output.courtships.every(c => typeof c.affinity === 'number' && c.affinity >= -1 && c.affinity <= 1)"
+  ],
+  "fuzz_cases": []
+}

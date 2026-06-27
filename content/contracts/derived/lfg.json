@@ -1,0 +1,177 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "lfg",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "lfgId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+      ],
+      "macro_id": "lfg.cancel",
+      "name": "cancel"
+    },
+    {
+      "_derived": false,
+      "domain": "lfg",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "lfgId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.partyId === 'string' && output.partyId.length > 0)",
+        "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+      ],
+      "macro_id": "lfg.join",
+      "name": "join"
+    },
+    {
+      "_derived": false,
+      "domain": "lfg",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 10,
+            "worldId": "tunya"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 200,
+          "min": 1,
+          "type": "number"
+        },
+        "role": {
+          "enum": [
+            "tank",
+            "healer",
+            "dps",
+            "support",
+            "any"
+          ],
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.requests)",
+        "output.ok === false || output.requests.every(r => typeof r.id === 'string')",
+        "output.ok === false || output.requests.every(r => ['tank','healer','dps','support','any'].includes(r.role))",
+        "output.ok === false || output.requests.every(r => typeof r.currentSize === 'number' && r.currentSize >= 1)",
+        "output.ok === false || output.requests.every(r => typeof r.partyMaxSize === 'number' && r.partyMaxSize >= 2)"
+      ],
+      "macro_id": "lfg.list",
+      "name": "list"
+    },
+    {
+      "_derived": false,
+      "domain": "lfg",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "note": {
+          "maxLength": 240,
+          "type": "string"
+        },
+        "partyMaxSize": {
+          "max": 40,
+          "min": 2,
+          "type": "number"
+        },
+        "partyType": {
+          "enum": [
+            "normal",
+            "raid"
+          ],
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "tank",
+            "healer",
+            "dps",
+            "support",
+            "any"
+          ],
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.id === 'string' && output.id.length > 0)",
+        "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+      ],
+      "macro_id": "lfg.post",
+      "name": "post"
+    }
+  ],
+  "domain": "lfg",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 4
+}
