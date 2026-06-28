@@ -56,9 +56,14 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface FallacyResult { fallacies?: Array<{ name: string; explanation?: string }>; confidence?: number; clean?: boolean }
-interface SteelmanResult { side?: string; original?: string; strengthened?: string; reasoning?: string }
-interface ScoreResult { proScore?: number; conScore?: number; winner?: string; reasoning?: string; engagement?: number }
+// Field names align EXACTLY to the debate-domain handler return contracts
+// (server/domains/debate.js). fallacyCheck → {fallaciesDetected[],count,
+// logicalSoundness,textLength}; steelmanPosition → {steelmanSteps[],framework,
+// originalLength,side}; scoreDebate → {sides[],winner,margin,close}.
+interface FallacyResult { fallaciesDetected?: Array<{ fallacy: string; description?: string }>; count?: number; logicalSoundness?: string; textLength?: number; message?: string }
+interface SteelmanResult { side?: string; steelmanSteps?: string[]; originalLength?: number; framework?: Record<string, string>; note?: string; message?: string }
+interface ScoreSide { side: string; arguments: number; evidencePoints: number; rebuttals: number; score: number; votes?: number; highlights?: string[] }
+interface ScoreResult { sides?: ScoreSide[]; winner?: string; margin?: number; close?: boolean; message?: string }
 
 export function DebateActionPanel({ debate }: { debate: DebateLike }) {
   const d = debate.data;
@@ -111,7 +116,7 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
       });
       const result = (r?.result ?? {}) as FallacyResult;
       setFallacyResult(result);
-      const cnt = result.fallacies?.length ?? 0;
+      const cnt = result.count ?? result.fallaciesDetected?.length ?? 0;
       ok(cnt === 0 ? 'No fallacies flagged.' : `${cnt} fallac${cnt === 1 ? 'y' : 'ies'} flagged.`);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -331,20 +336,20 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
           <div className="text-[10px] uppercase tracking-wider text-red-300 font-semibold flex items-center gap-1.5">
             <AlertTriangle className="w-3 h-3" /> Fallacy check
           </div>
-          {fallacyResult.clean || (fallacyResult.fallacies?.length ?? 0) === 0 ? (
+          {(fallacyResult.count ?? fallacyResult.fallaciesDetected?.length ?? 0) === 0 ? (
             <p className="text-xs text-emerald-300 flex items-center gap-1.5"><Check className="w-3 h-3" /> No fallacies flagged.</p>
           ) : (
             <>
               <ul className="text-xs text-gray-200 space-y-1">
-                {fallacyResult.fallacies?.map((f, i) => (
+                {fallacyResult.fallaciesDetected?.map((f, i) => (
                   <li key={i}>
-                    <span className="font-semibold text-red-300">{f.name}</span>
-                    {f.explanation && <span className="text-gray-400"> — {f.explanation}</span>}
+                    <span className="font-semibold text-red-300">{f.fallacy}</span>
+                    {f.description && <span className="text-gray-400"> — {f.description}</span>}
                   </li>
                 ))}
               </ul>
-              {fallacyResult.confidence != null && (
-                <div className="text-[10px] text-gray-400">Confidence: {(fallacyResult.confidence * 100).toFixed(0)}%</div>
+              {fallacyResult.logicalSoundness && (
+                <div className="text-[10px] text-gray-400">Soundness: {fallacyResult.logicalSoundness.replace(/-/g, ' ')}</div>
               )}
             </>
           )}
@@ -355,12 +360,26 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
         <div className="rounded-lg border border-cyan-400/30 bg-cyan-400/5 p-3 space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold flex items-center gap-1.5">
             <Sparkles className="w-3 h-3" /> Steelman ({steelmanResult.side ?? steelmanSide})
+            {steelmanResult.originalLength != null && (
+              <span className="text-gray-500 normal-case font-normal">· {steelmanResult.originalLength} words</span>
+            )}
           </div>
-          {steelmanResult.strengthened && (
-            <p className="text-xs text-gray-200 leading-relaxed">{steelmanResult.strengthened}</p>
+          {Array.isArray(steelmanResult.steelmanSteps) && steelmanResult.steelmanSteps.length > 0 && (
+            <ul className="space-y-1">
+              {steelmanResult.steelmanSteps.map((step, i) => (
+                <li key={i} className="text-xs text-gray-200 flex items-start gap-1.5">
+                  <span className="text-cyan-300 shrink-0">{i + 1}.</span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ul>
           )}
-          {steelmanResult.reasoning && (
-            <div className="text-[10px] text-gray-400 italic">Reasoning: {steelmanResult.reasoning}</div>
+          {steelmanResult.framework && (
+            <div className="rounded border border-cyan-500/20 bg-cyan-500/5 p-2 space-y-0.5">
+              {Object.entries(steelmanResult.framework).map(([k, v]) => (
+                <p key={k} className="text-[10px] text-gray-300"><span className="text-cyan-300 capitalize">{k}: </span>{v}</p>
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -370,14 +389,31 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
           <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-semibold flex items-center gap-1.5">
             <Trophy className="w-3 h-3" /> Debate score
           </div>
-          <div className="flex items-center gap-3 text-xs">
-            <span className="text-neon-green">Pro: <strong>{scoreResult.proScore ?? '—'}</strong></span>
-            <span className="text-red-400">Con: <strong>{scoreResult.conScore ?? '—'}</strong></span>
-            {scoreResult.winner && <span className="ml-auto rounded bg-yellow-400/20 px-2 py-0.5 text-yellow-300 font-semibold">Winner: {scoreResult.winner}</span>}
+          <div className="flex items-center gap-3 text-xs flex-wrap">
+            {scoreResult.winner && <span className="rounded bg-yellow-400/20 px-2 py-0.5 text-yellow-300 font-semibold">Winner: {scoreResult.winner}</span>}
+            {scoreResult.margin != null && <span className="text-gray-400">Margin: <strong className="text-gray-200">{scoreResult.margin}</strong></span>}
+            {scoreResult.close != null && (
+              <span className={cn('rounded px-2 py-0.5', scoreResult.close ? 'bg-yellow-400/10 text-yellow-300' : 'bg-emerald-500/10 text-emerald-300')}>
+                {scoreResult.close ? 'Close' : 'Clear'}
+              </span>
+            )}
           </div>
-          {scoreResult.reasoning && <p className="text-xs text-gray-300 leading-relaxed">{scoreResult.reasoning}</p>}
-          {scoreResult.engagement != null && (
-            <div className="text-[10px] text-gray-400">Engagement: {scoreResult.engagement}</div>
+          {Array.isArray(scoreResult.sides) && scoreResult.sides.length > 0 && (
+            <div className="space-y-1.5">
+              {scoreResult.sides.map((s, i) => (
+                <div key={i} className={cn('rounded border p-2', i === 0 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/10 bg-white/[0.02]')}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-200">{s.side}</span>
+                    <span className={cn('text-xs font-bold', i === 0 ? 'text-emerald-300' : 'text-gray-400')}>{s.score} pts</span>
+                  </div>
+                  <div className="flex gap-3 text-[10px] text-gray-400 mt-0.5">
+                    <span>{s.arguments} args</span>
+                    <span>{s.evidencePoints} evidence</span>
+                    <span>{s.rebuttals} rebuttals</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

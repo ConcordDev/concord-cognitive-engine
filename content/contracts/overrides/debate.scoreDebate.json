@@ -1,0 +1,24 @@
+{
+  "macro_id": "debate.scoreDebate",
+  "domain": "debate",
+  "name": "scoreDebate",
+  "inputs": {
+    "sides": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (typeof output.result.message === 'string') || (Array.isArray(output.result.sides) && output.result.sides.length >= 2)",
+    "output.ok === false || (typeof output.result.message === 'string') || Number.isFinite(output.result.margin)",
+    "output.ok === false || (typeof output.result.message === 'string') || typeof output.result.close === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": { "sides": [ { "name": "Alpha", "arguments": [ { "claim": "x", "evidence": [1, 2], "rebuttal": true } ] }, { "name": "Beta", "arguments": [ { "claim": "y" } ] } ] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "sides": [] }, "expect": { "ok": true } },
+    { "input": { "sides": "notarray" }, "expect": { "ok": true } },
+    { "input": { "sides": [null, { "arguments": 5 }] }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler, dispatch key 'debate.scoreDebate'. DebateActionPanel + page.tsx 'Score Debate' pass NO sides param so the handler derives two sides (Pro/Con) from the live debate's proArguments/conArguments + proVotes/conVotes; an explicit {sides:[{name,arguments:[...]}]} overrides. Renders r.result.{sides[].{side,arguments,evidencePoints,rebuttals,score}, winner, margin, close}; no args → {ok:true,result.message}. Deterministic tally, no LLM. try/catch-guarded; poisoned proArguments/sides coerced via asArray. Pinned by server/tests/debate-lens-macros.test.js."
+}

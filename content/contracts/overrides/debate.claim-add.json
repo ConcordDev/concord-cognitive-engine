@@ -1,0 +1,27 @@
+{
+  "macro_id": "debate.claim-add",
+  "domain": "debate",
+  "name": "claim-add",
+  "inputs": {
+    "debateId": { "type": "string", "required": true },
+    "text": { "type": "string", "required": true, "minLength": 4, "maxLength": 600 },
+    "stance": { "type": "string", "required": false, "enum": ["pro", "con"] },
+    "parentId": { "type": "string", "required": false },
+    "positionId": { "type": "string", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.claim && typeof output.result.claim.id === 'string')",
+    "output.ok === false || ['pro','con'].includes(output.result.claim.stance)",
+    "output.ok === false || (output.result.score && Number.isFinite(output.result.score.supportPct))",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "debateId": "missing", "stance": "pro", "text": "It reduces commute emissions" }, "expect": { "ok": false } },
+    { "input": { "debateId": "missing", "text": "no" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "debateId": 9999, "text": "valid claim text here" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler, dispatch key 'debate.claim-add'. KialoArgumentMap addClaim() sends {debateId,parentId,stance,text,positionId}. Returns {claim{id,parentId,positionId,stance,text,votes,sources}, score}; the component re-fetches debate-detail after. Validates: debate-not-found / text<4 / unknown parentId / unknown positionId → {ok:false,error:string}. stance defaults pro. Per-user STATE-backed; standalone fuzz cases reference no real debate so they correctly return {ok:false}. No LLM. Pinned by server/tests/debate-lens-macros.test.js."
+}

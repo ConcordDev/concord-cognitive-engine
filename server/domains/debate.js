@@ -1,11 +1,44 @@
 // server/domains/debate.js
 export default function registerDebateActions(registerLensAction) {
-  registerLensAction("debate", "evaluateArgument", (ctx, artifact, _params) => {
-    const data = artifact.data || {};
-    const claim = data.claim || data.thesis || "";
-    const evidence = data.evidence || [];
-    const reasoning = data.reasoning || "";
-    if (!claim) return { ok: true, result: { message: "State a claim to evaluate the argument." } };
+  // ─── Shared helpers ─────────────────────────────────────────────────────
+  // The AI-analysis actions are reached from TWO surfaces:
+  //   1. page.tsx "AI Analysis Actions" → /api/lens/:domain/:id/run with
+  //      {action} and NO params → handler(ctx, artifact, {}). artifact.data is
+  //      the live debate created via useLensData (shape:
+  //      {topic, proArguments[], conArguments[], proVotes, conVotes, ...}).
+  //   2. DebateActionPanel → same route WITH {action, params} → the params land
+  //      as the 3rd arg. params carry {text} / {side,arguments} for the chosen
+  //      argument(s).
+  // Both surfaces must produce a live result, so every handler honors explicit
+  // params FIRST, then falls back to deriving its input from the real debate
+  // artifact shape. Nothing is fabricated — derivations only read fields the
+  // debate genuinely carries.
+  const asArray = (v) => (Array.isArray(v) ? v : []);
+  const argText = (a) => (a && typeof a === "object" ? String(a.text ?? a.claim ?? a.point ?? "") : typeof a === "string" ? a : "");
+  // Collapse a debate artifact's pro/con argument lists into a single text blob
+  // for fallacy/claim analysis, preferring an explicit side when given.
+  function debateText(data, params) {
+    if (params && typeof params.text === "string" && params.text.trim()) return params.text;
+    if (params && typeof params.argument === "string" && params.argument.trim()) return params.argument;
+    const d = data || {};
+    if (typeof d.text === "string" && d.text.trim()) return d.text;
+    if (typeof d.argument === "string" && d.argument.trim()) return d.argument;
+    const pro = asArray(d.proArguments).map(argText);
+    const con = asArray(d.conArguments).map(argText);
+    return [...pro, ...con].filter(Boolean).join(". ");
+  }
+
+  registerLensAction("debate", "evaluateArgument", (ctx, artifact, params = {}) => {
+   try {
+    const data = artifact?.data || {};
+    const p = params || {};
+    const claimRaw = p.claim ?? p.text ?? data.claim ?? data.thesis ?? data.topic
+      ?? argText(asArray(data.proArguments)[0]) ?? argText(asArray(data.conArguments)[0]) ?? "";
+    const claim = typeof claimRaw === "string" ? claimRaw : (claimRaw == null ? "" : String(claimRaw));
+    const evidence = asArray(p.evidence ?? data.evidence);
+    const reasoningRaw = p.reasoning ?? data.reasoning ?? debateText(data, p) ?? "";
+    const reasoning = typeof reasoningRaw === "string" ? reasoningRaw : String(reasoningRaw || "");
+    if (!claim.trim()) return { ok: true, result: { message: "State a claim to evaluate the argument." } };
     const evidenceScore = Math.min(100, evidence.length * 20);
     const reasoningScore = reasoning.length > 200 ? 80 : reasoning.length > 50 ? 50 : reasoning.length > 0 ? 25 : 0;
     const hasCounterpoint = !!(data.counterpoint || data.rebuttal);
@@ -16,11 +49,29 @@ export default function registerDebateActions(registerLensAction) {
     if (lowerClaim.includes("always") || lowerClaim.includes("never")) fallacies.push("Overgeneralization");
     if (lowerClaim.match(/if .* then .* therefore/)) fallacies.push("Possible slippery slope");
     return { ok: true, result: { claim: claim.slice(0, 200), evidenceCount: evidence.length, evidenceScore, reasoningScore, addressesCounterpoints: hasCounterpoint, overallScore, fallaciesDetected: fallacies, strength: overallScore >= 70 ? "strong" : overallScore >= 40 ? "moderate" : "weak" } };
+   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
-  registerLensAction("debate", "steelmanPosition", (ctx, artifact, _params) => {
-    const position = artifact.data?.position || artifact.data?.argument || "";
+  registerLensAction("debate", "steelmanPosition", (ctx, artifact, params = {}) => {
+   try {
+    const data = artifact?.data || {};
+    const p = params || {};
+    const side = p.side === "con" ? "con" : p.side === "pro" ? "pro" : null;
+    // Explicit position string > explicit arguments[] > the chosen-side args from
+    // the live debate > whichever side has arguments.
+    let position = "";
+    if (typeof p.position === "string" && p.position.trim()) position = p.position;
+    else if (typeof p.argument === "string" && p.argument.trim()) position = p.argument;
+    else if (Array.isArray(p.arguments) && p.arguments.length) position = p.arguments.map(argText).filter(Boolean).join(". ");
+    else if (typeof data.position === "string" && data.position.trim()) position = data.position;
+    else if (typeof data.argument === "string" && data.argument.trim()) position = data.argument;
+    else {
+      const proTxt = asArray(data.proArguments).map(argText).filter(Boolean);
+      const conTxt = asArray(data.conArguments).map(argText).filter(Boolean);
+      const chosen = side === "con" ? conTxt : side === "pro" ? proTxt : (proTxt.length ? proTxt : conTxt);
+      position = chosen.join(". ");
+    }
     if (!position) return { ok: true, result: { message: "State a position to steelman." } };
-    const words = position.split(/\s+/);
+    const words = position.split(/\s+/).filter(Boolean);
     const strengthened = {
       originalLength: words.length,
       improvements: [
@@ -32,22 +83,43 @@ export default function registerDebateActions(registerLensAction) {
       ],
       framework: { premise: "If we grant the strongest interpretation...", evidence: "The best evidence shows...", conclusion: "Therefore, the most defensible version is..." },
     };
-    return { ok: true, result: { originalPosition: position.slice(0, 300), steelmanSteps: strengthened.improvements, framework: strengthened.framework, note: "Steelmanning means presenting the strongest possible version of an opponent's argument" } };
+    return { ok: true, result: { side: side || undefined, originalPosition: position.slice(0, 300), originalLength: words.length, steelmanSteps: strengthened.improvements, framework: strengthened.framework, note: "Steelmanning means presenting the strongest possible version of an opponent's argument" } };
+   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
-  registerLensAction("debate", "scoreDebate", (ctx, artifact, _params) => {
-    const sides = artifact.data?.sides || [];
+  registerLensAction("debate", "scoreDebate", (ctx, artifact, params = {}) => {
+   try {
+    const data = artifact?.data || {};
+    const p = params || {};
+    // Explicit {sides:[{name,arguments:[...]}]} > derive two sides from the live
+    // debate's proArguments / conArguments + proVotes / conVotes.
+    let sides = Array.isArray(p.sides) ? p.sides : Array.isArray(data.sides) ? data.sides : null;
+    if (!sides) {
+      const pro = asArray(data.proArguments);
+      const con = asArray(data.conArguments);
+      if (pro.length || con.length) {
+        sides = [
+          { name: "Pro", arguments: pro, votes: Number(data.proVotes) || 0 },
+          { name: "Con", arguments: con, votes: Number(data.conVotes) || 0 },
+        ];
+      } else {
+        sides = [];
+      }
+    }
     if (sides.length < 2) return { ok: true, result: { message: "Add at least 2 debate sides with arguments." } };
     const scored = sides.map(s => {
-      const args = s.arguments || [];
-      const evidenceCount = args.reduce((sum, a) => sum + ((a.evidence || []).length), 0);
-      const rebuttals = args.filter(a => a.rebuttal || a.counters).length;
-      const score = Math.round(args.length * 15 + evidenceCount * 10 + rebuttals * 20);
-      return { side: s.name || s.position, arguments: args.length, evidencePoints: evidenceCount, rebuttals, score, highlights: args.slice(0, 2).map(a => a.claim || a.point || "").filter(Boolean) };
+      const args = asArray(s.arguments);
+      const evidenceCount = args.reduce((sum, a) => sum + asArray(a && a.evidence).length, 0);
+      const rebuttals = args.filter(a => a && (a.rebuttal || a.counters)).length;
+      const votes = Number(s.votes) || 0;
+      const score = Math.round(args.length * 15 + evidenceCount * 10 + rebuttals * 20 + votes * 2);
+      return { side: s.name || s.position || "—", arguments: args.length, evidencePoints: evidenceCount, rebuttals, score, votes, highlights: args.slice(0, 2).map(argText).filter(Boolean) };
     }).sort((a, b) => b.score - a.score);
     return { ok: true, result: { sides: scored, winner: scored[0]?.side, margin: scored.length >= 2 ? scored[0].score - scored[1].score : 0, close: scored.length >= 2 && Math.abs(scored[0].score - scored[1].score) < 20 } };
+   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
-  registerLensAction("debate", "fallacyCheck", (ctx, artifact, _params) => {
-    const text = artifact.data?.text || artifact.data?.argument || "";
+  registerLensAction("debate", "fallacyCheck", (ctx, artifact, params = {}) => {
+   try {
+    const text = debateText(artifact?.data || {}, params || {});
     if (!text) return { ok: true, result: { message: "Provide text to check for logical fallacies." } };
     const lower = text.toLowerCase();
     const checks = [
@@ -62,6 +134,7 @@ export default function registerDebateActions(registerLensAction) {
     ];
     const detected = checks.filter(c => c.pattern.test(text)).map(c => ({ fallacy: c.name, description: c.desc }));
     return { ok: true, result: { textLength: text.length, fallaciesDetected: detected, count: detected.length, logicalSoundness: detected.length === 0 ? "appears-sound" : detected.length <= 2 ? "minor-issues" : "significant-issues" } };
+   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
   // ─── Kialo-shape argument-tree substrate (per-user, STATE-backed) ────

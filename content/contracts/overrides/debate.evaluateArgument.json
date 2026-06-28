@@ -1,0 +1,27 @@
+{
+  "macro_id": "debate.evaluateArgument",
+  "domain": "debate",
+  "name": "evaluateArgument",
+  "inputs": {
+    "claim": { "type": "string", "required": false, "maxLength": 2000 },
+    "text": { "type": "string", "required": false, "maxLength": 2000 },
+    "reasoning": { "type": "string", "required": false, "maxLength": 4000 },
+    "evidence": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (typeof output.result.message === 'string') || (Number.isFinite(output.result.overallScore) && Number.isFinite(output.result.evidenceScore) && Number.isFinite(output.result.reasoningScore))",
+    "output.ok === false || (typeof output.result.message === 'string') || ['strong','moderate','weak'].includes(output.result.strength)",
+    "output.ok === false || (typeof output.result.message === 'string') || Array.isArray(output.result.fallaciesDetected)"
+  ],
+  "fuzz_cases": [
+    { "input": { "claim": "Renewables cut emissions because studies show a 40% drop", "reasoning": "Long-form reasoning that is well over fifty characters in length so the reasoning score lands in the mid band.", "evidence": [1, 2] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "claim": "Everyone knows this always works", "reasoning": "obviously true" }, "expect": { "ok": true } },
+    { "input": { "claim": 9999 }, "expect": { "ok": true } },
+    { "input": { "evidence": "notarray", "claim": "valid claim text" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler, dispatch key 'debate.evaluateArgument'. page.tsx 'Evaluate Argument' panel calls /api/lens/:domain/:id/run with NO params, so the handler derives claim/reasoning from the live debate artifact.data (topic + proArguments/conArguments text). DebateActionPanel may pass {claim,text,reasoning,evidence} params, honored first. Renders r.result.{overallScore,evidenceScore,reasoningScore,strength,fallaciesDetected[],addressesCounterpoints}; empty input → {ok:true,result.message}. Deterministic heuristic, no LLM. try/catch-guarded; non-string claim / non-array evidence coerced. Field alignment + validation pinned by server/tests/debate-lens-macros.test.js."
+}

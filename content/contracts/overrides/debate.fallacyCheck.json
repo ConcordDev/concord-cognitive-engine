@@ -1,0 +1,25 @@
+{
+  "macro_id": "debate.fallacyCheck",
+  "domain": "debate",
+  "name": "fallacyCheck",
+  "inputs": {
+    "text": { "type": "string", "required": false, "maxLength": 4000 },
+    "argument": { "type": "string", "required": false, "maxLength": 4000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (typeof output.result.message === 'string') || (Number.isFinite(output.result.count) && Number.isFinite(output.result.textLength))",
+    "output.ok === false || (typeof output.result.message === 'string') || ['appears-sound','minor-issues','significant-issues'].includes(output.result.logicalSoundness)",
+    "output.ok === false || (typeof output.result.message === 'string') || Array.isArray(output.result.fallaciesDetected)"
+  ],
+  "fuzz_cases": [
+    { "input": { "text": "A ban will inevitably lead to ruin, either we act or society collapses, and everyone agrees." }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "text": "This is a calm and reasonable statement with no flaws." }, "expect": { "ok": true } },
+    { "input": { "text": 9999 }, "expect": { "ok": true } },
+    { "input": { "argument": { "x": 1 } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler, dispatch key 'debate.fallacyCheck'. DebateActionPanel 'Fallacy check' passes {text} (a single selected argument); page.tsx passes NO params so the handler builds the text blob from the live debate's proArguments+conArguments text. Renders r.result.{fallaciesDetected[].{fallacy,description}, count, logicalSoundness, textLength}; empty → {ok:true,result.message}. Deterministic regex match over 8 fallacy patterns, no LLM. try/catch-guarded; non-string text coerced via debateText helper. Pinned by server/tests/debate-lens-macros.test.js."
+}
