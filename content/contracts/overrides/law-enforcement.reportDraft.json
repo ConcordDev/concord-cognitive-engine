@@ -1,0 +1,28 @@
+{
+  "macro_id": "law-enforcement.reportDraft",
+  "domain": "law-enforcement",
+  "name": "reportDraft",
+  "inputs": {
+    "offense": { "type": "string", "required": true, "maxLength": 200 },
+    "narrative": { "type": "string", "required": true, "maxLength": 20000 },
+    "location": { "type": "string", "maxLength": 200 },
+    "caseNumber": { "type": "string", "maxLength": 80 }
+  },
+  "reads_artifact_data": false,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string'",
+    "output.ok === false || (output.result.report && typeof output.result.report.reportNumber === 'string')",
+    "output.ok === false || output.result.report.status === 'draft'",
+    "output.ok === false || typeof output.result.statuteFound === 'boolean'",
+    "output.ok === false || output.result.report.statute === null || typeof output.result.report.statute.code === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "offense": "grand theft", "narrative": "Suspect took the vehicle." }, "expect": { "ok": true } },
+    { "input": { "offense": "loitering with no statute match", "narrative": "n" }, "expect": { "ok": true } },
+    { "input": { "offense": "x" }, "expect": { "ok": false } },
+    { "input": { "narrative": "y" }, "expect": { "ok": false } }
+  ],
+  "_note": "Flat params (RmsCadConsole ReportsTab.draft: lensRun('law-enforcement','reportDraft',{offense,narrative,location,caseNumber})). Rejects { ok:false } when offense OR narrative is blank. lookupStatute scans the offense then the narrative against STATUTE_TABLE longest-keyword-first ('grand theft' beats 'theft') → statute {code,title,class} or null; statuteFound mirrors !!statute. The ReportsTab banner reads result.statuteFound; the report row renders report.reportNumber/offense/status + the statute chip (code·title·class) EXACTLY. status starts at 'draft' and advances draft→submitted→approved|rejected via reportSubmit/reportApprove. No fake statute is ever fabricated for an unmatched offense (statute is honestly null)."
+}

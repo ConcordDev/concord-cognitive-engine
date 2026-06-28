@@ -484,6 +484,27 @@ welding + hvac entirely dead; manufacturing 2 + agriculture 3 + neuro 2 + masonr
 *ActionPanel/*Calc template propagated this widely — the component-exact-shape audit is mandatory.
 51 lenses now through the non-score gate (batches 1–12). The loop continues.
 
+### Phase-2 batch 13 DONE (2026-06-28): defense, security, ml, emergency-services, law-enforcement
+103 server + 25 UX-state tests — the professional/safety *ActionPanel family.
+- **security**: vulnerabilityScan bySeverity DEAD card + 3 page action buttons with NO renderer +
+  an INVERTED findings sort (sev||4 collapsed critical rank 0 → sorted criticals LAST) + secFin
+  poison guards + P1-P5 mapping. 22 server + 5 vitest + 5 overrides.
+- **defense**: usaspending contract rows DEAD (placeOfPerformance→placeOfPerformanceState,
+  totalResults→count) + finiteNum guards (readiness Infinity/÷0, threat/resourceAllocation). 22 server
+  + 5 vitest + 4 overrides.
+- **emergency-services** (domains/emergencyservices.js): fields aligned; 4 fail-opens incl. a
+  parseInt('1e999')→1 pulse-truncation that would wrongly ESCALATE triage. 16 server + 5 vitest + 4 ov.
+- **ml**: fields aligned; modelEvaluate 'MSE null' + featureImportance 'null%' bars fail-closed. 19
+  server + 5 vitest + 4 overrides.
+- **law-enforcement** (domains/lawenforcement.js): CLEAN BILL — already aligned both ways, no defect
+  (2nd fully-clean lens after plumbing). 24 server + 5 vitest + 5 overrides.
+Assassin ratchet GREEN (flaky system.history-snapshot timeout under load, clean on re-run); 258 WIRED;
+tsc 0. The calculator-family sweep (batches 9-13, 25 lenses) has been the highest-defect-density stretch
+of the whole loop: 2 entirely-dead surfaces, ~12 dead calculators/cards, 2 lying safety calculators,
+an inverted security sort, a renderer-corrupting geometry, 2 crashes, a triage-escalating int-truncation,
+and a long tail of Infinity/NaN fail-opens — every one in a lens that "looked wired." 2 lenses were clean.
+56 lenses now through the non-score gate (batches 1–13). The loop continues.
+
 **NAMED PHASE-2 BACKLOG CLOSED (2026-06-27):** all 6 batches done (24 lenses through the non-score
 gate across batches 1–6). Real defects fixed across the run: 2 CC money bugs (sponsorship.create,
 inheritance value/open_listing) + 1 in-game-currency treasury fail-open (kingdoms) + ~6 numeric

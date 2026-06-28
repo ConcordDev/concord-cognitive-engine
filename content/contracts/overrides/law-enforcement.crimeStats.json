@@ -1,0 +1,25 @@
+{
+  "macro_id": "law-enforcement.crimeStats",
+  "domain": "law-enforcement",
+  "name": "crimeStats",
+  "inputs": {
+    "incidents": { "type": "array", "maxLength": 100000 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.message === 'string' || Number.isInteger(output.result.totalIncidents)",
+    "output.ok === false || output.result.totalIncidents === undefined || output.result.totalIncidents >= 0",
+    "output.ok === false || output.result.clearanceRate === undefined || (Number.isFinite(output.result.clearanceRate) && output.result.clearanceRate >= 0 && output.result.clearanceRate <= 100)",
+    "output.ok === false || output.result.byType === undefined || Array.isArray(output.result.byType)",
+    "output.ok === false || output.result.mostCommon === undefined || typeof output.result.mostCommon === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "incidents": [{ "type": "theft", "resolved": true }, { "type": "theft" }, { "type": "dui", "status": "closed" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "incidents": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "incidents": "NaN" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data (LawEnforcementActionPanel.actStats: callMacro('crimeStats',{artifact:{data:parsed}}) → peel → artifact.data). clearanceRate = round(resolved/total*100) where resolved = i.resolved || i.status==='closed'; mostCommon = highest byType bucket; trend = total>100 ? 'high-volume' : 'normal'. EMPTY incidents returns the honest { message } prompt (NOT a fabricated 0% card) — the stats card only renders when totalIncidents is present, so clearanceRate is undefined on empty (honest). The CrimeStatsResult card renders trend/clearanceRate/totalIncidents/mostCommon/byType[{type,count}] EXACTLY. Non-array incidents → empty prompt, never NaN."
+}
