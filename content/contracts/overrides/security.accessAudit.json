@@ -1,0 +1,22 @@
+{
+  "macro_id": "security.accessAudit",
+  "domain": "security",
+  "name": "accessAudit",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.postureScore)",
+    "output.ok === false || (output.result.postureScore >= 0 && output.result.postureScore <= 100)",
+    "output.ok === false || typeof output.result.rating === 'string'",
+    "output.ok === false || Number.isFinite(output.result.assetCount)",
+    "output.ok === false || Number.isFinite(output.result.openCritical)",
+    "output.ok === false || Array.isArray(output.result.recommendations)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": {} },
+    { "input": { "artifact": { "data": {} } }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'security.accessAudit'. STATE-backed posture audit over the user's assets+vulns (like security-dashboard). Drives the page Access Audit result card (postureScore/rating/assetCount/openCritical/recommendations[]). postureScore = max(0, 100 - openCritical*20 - openHigh*8 - medium*2). Fail-soft {ok:false, error:'STATE unavailable'} with no STATE (assassin runs without a real STATE so 'ok' is not asserted). Pinned by server/tests/security-lens-macros.test.js."
+}

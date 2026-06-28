@@ -1,0 +1,25 @@
+{
+  "macro_id": "security.threatAssessment",
+  "domain": "security",
+  "name": "threatAssessment",
+  "inputs": {
+    "threats": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.assessments)",
+    "output.ok === false || Number.isFinite(output.result.overallRiskScore)",
+    "output.ok === false || Number.isFinite(output.result.threatsAssessed)",
+    "output.ok === false || output.result.assessments.every(function(a){ return Number.isFinite(a.probability) && Number.isFinite(a.impact) && Number.isFinite(a.riskScore) && Number.isFinite(a.residualRisk) && Number.isFinite(a.controlEffectiveness) && Array.isArray(a.mitigations); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "threats": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "threats": [{ "name": "Ransomware", "probability": 4, "impact": 5, "vulnerabilities": ["a", "b"], "controls": [{ "status": "active" }, { "status": "inactive" }] }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "threats": [{ "name": "poison", "probability": "Infinity", "impact": "1e999" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "threats": [{ "name": "nan", "probability": "abc", "impact": "NaN" }] } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'security.threatAssessment'. Drives ThreatVulnPanel.tsx threat-risk card (assessments[].{name,riskLevel,riskScore,residualRisk,controlEffectiveness,mitigations}). Component double-wraps as {artifact:{data:{threats}}} → dispatch peels → handler reads artifact.data.threats. POISON: probability/impact via secFin() clamp to the 1..5 rating band so 'Infinity'/'1e999'/NaN can't leak a non-finite riskScore. Pinned by server/tests/security-lens-macros.test.js."
+}
