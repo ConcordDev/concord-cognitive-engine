@@ -1399,14 +1399,14 @@ export default function CalendarLensPage() {
                       <div className="flex items-center gap-1.5 mb-2 text-yellow-400 font-semibold">
                         <AlertTriangle className="w-3.5 h-3.5" /> Conflict Report
                       </div>
-                      {(actionResult.conflicts as Array<{ event1: string; event2: string; overlap?: string }>).length === 0
+                      {(actionResult.conflicts as Array<{ event1: string; event2: string; overlapMinutes?: number }>).length === 0
                         ? <p className="text-gray-400">No scheduling conflicts found.</p>
-                        : (actionResult.conflicts as Array<{ event1: string; event2: string; overlap?: string }>).map((c, i) => (
+                        : (actionResult.conflicts as Array<{ event1: string; event2: string; overlapMinutes?: number }>).map((c, i) => (
                           <div key={i} className="mb-1 text-yellow-300">
                             <span className="font-medium">{c.event1}</span>
                             <span className="text-gray-400 mx-1">&#x2715;</span>
                             <span className="font-medium">{c.event2}</span>
-                            {c.overlap && <span className="text-gray-400 ml-1">({c.overlap})</span>}
+                            {c.overlapMinutes !== undefined && <span className="text-gray-400 ml-1">({c.overlapMinutes} min)</span>}
                           </div>
                         ))
                       }

@@ -427,6 +427,78 @@ describe("calendar — connector macros: network-free validation-rejection", () 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ical-parse — FIELD-NAME alignment with TimezoneTools.IcalImport: the parsed
+// event list MUST surface `summary` / `start` / `end` / `location` / `uid`
+// (the component renders ev.summary, ev.start, ev.end, ev.location, keyed by
+// ev.uid). Pre-fix the component read ev.dtstart/ev.dtend which the handler
+// never returns — it returns start/end. This pins the handler's real shape.
+describe("calendar.ical-parse — field names the IcalImport component renders", () => {
+  it("exposes summary/start/end/location/uid (NOT dtstart/dtend)", () => {
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "BEGIN:VEVENT",
+      "UID:evt-123@concord-os",
+      "SUMMARY:Quarterly review",
+      "DTSTART:20260601T150000Z",
+      "DTEND:20260601T160000Z",
+      "LOCATION:Room 4B",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    const r = call("ical-parse", ctxA, { ics });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.events.length, 1);
+    const ev = r.result.events[0];
+    // The exact keys TimezoneTools.IcalImport reads.
+    assert.equal(ev.uid, "evt-123@concord-os");
+    assert.equal(ev.summary, "Quarterly review");
+    assert.equal(ev.location, "Room 4B");
+    assert.ok(typeof ev.start === "string" && ev.start.length > 0, "start must be present");
+    assert.ok(typeof ev.end === "string" && ev.end.length > 0, "end must be present");
+    // The buggy field names must NOT exist on the parsed event.
+    assert.equal(ev.dtstart, undefined);
+    assert.equal(ev.dtend, undefined);
+  });
+
+  it("round-trips ical-export → ical-parse preserving summary/start/end", () => {
+    const exp = call("ical-export", ctxA, { calendarName: "RT", events: [
+      { summary: "Standup", start: "2026-06-01T09:00:00Z", end: "2026-06-01T09:30:00Z", location: "Hub" },
+    ] });
+    assert.equal(exp.ok, true);
+    const parsed = call("ical-parse", ctxA, { ics: exp.result.ics });
+    assert.equal(parsed.ok, true);
+    assert.equal(parsed.result.events.length, 1);
+    const ev = parsed.result.events[0];
+    assert.equal(ev.summary, "Standup");
+    assert.equal(ev.location, "Hub");
+    assert.ok(ev.start && ev.end, "start/end survive the round-trip");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// detectConflicts — the PAGE action panel renders conflicts[].overlapMinutes
+// (the "(N min)" badge). This pins that the field the page reads is the field
+// the handler returns (it is `overlapMinutes`, NOT `overlap`).
+describe("calendar.detectConflicts — page panel renders overlapMinutes", () => {
+  it("each conflict carries event1/event2/overlapMinutes (the rendered fields)", () => {
+    const events = [
+      { title: "Design", start: "2026-06-01T10:00:00Z", end: "2026-06-01T11:30:00Z" },
+      { title: "1:1", start: "2026-06-01T11:00:00Z", end: "2026-06-01T11:45:00Z" },
+    ];
+    const r = call("detectConflicts", ctxA, {}, { events });
+    assert.equal(r.ok, true);
+    const c = r.result.conflicts[0];
+    assert.equal(c.event1, "Design");
+    assert.equal(c.event2, "1:1");
+    // min(11:30, 11:45) − 11:00 = 30 minutes
+    assert.equal(c.overlapMinutes, 30);
+    // The page must NOT find an `overlap` field (the pre-fix bug).
+    assert.equal(c.overlap, undefined);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // conference-generate — deterministic, keyless room URL (no external API).
 describe("calendar.conference-generate — keyless room URL", () => {
   it("produces a joinable jitsi URL and can attach it to a real event", () => {

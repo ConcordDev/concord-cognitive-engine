@@ -311,6 +311,117 @@ describe("chem — fail-CLOSED on poisoned numerics (no non-finite result escape
   });
 });
 
+describe("chem — periodic-table field shape (PeriodicTable.tsx render contract)", () => {
+  // PeriodicTable.tsx does Object.values(result.elements) then reads, per cell:
+  //   e.symbol, e.atomicMass, e.group, e.period, e.category
+  // and colours by the UNDERSCORED category keys (alkali_metal, noble_gas, …).
+  // Before the fix the handler returned only { z, name, mass, category } keyed
+  // by symbol, so e.symbol / e.atomicMass were undefined and e.group/e.period
+  // were missing → gridPos() returned null for every element → empty grid.
+  it("each element carries symbol, atomicMass (== mass), group, period for the grid", () => {
+    const r = call("periodic-table", ctxA);
+    assert.equal(r.ok, true);
+    const els = r.result.elements;
+    // Back-compat: still keyed by symbol, still carries z/name/mass/category.
+    assert.equal(els.H.name, "Hydrogen");
+    assert.equal(els.H.z, 1);
+    assert.equal(els.H.mass, 1.008);
+    // New fields the component reads.
+    assert.equal(els.H.symbol, "H");
+    assert.equal(els.H.atomicMass, 1.008, "atomicMass mirrors mass");
+    assert.equal(els.H.group, 1);
+    assert.equal(els.H.period, 1);
+  });
+
+  it("group/period place the 18×7 main grid correctly (He=18/1, Na=1/3, Og=18/7)", () => {
+    const els = call("periodic-table", ctxA).result.elements;
+    assert.deepEqual({ g: els.He.group, p: els.He.period }, { g: 18, p: 1 });
+    assert.deepEqual({ g: els.Na.group, p: els.Na.period }, { g: 1, p: 3 });
+    assert.deepEqual({ g: els.Cl.group, p: els.Cl.period }, { g: 17, p: 3 });
+    assert.deepEqual({ g: els.Fe.group, p: els.Fe.period }, { g: 8, p: 4 });
+    assert.deepEqual({ g: els.Og.group, p: els.Og.period }, { g: 18, p: 7 });
+  });
+
+  it("f-block series (La/Ac) carry their period but null main-grid group", () => {
+    const els = call("periodic-table", ctxA).result.elements;
+    // gridPos() in the component special-cases 57–71 / 89–103 by z, so group
+    // is intentionally null for these (drawn in their own rows 8/9).
+    assert.equal(els.La.group, null);
+    assert.equal(els.La.period, 6);
+    assert.equal(els.U.group, null);
+    assert.equal(els.U.period, 7);
+  });
+
+  it("categories use the UNDERSCORED keys the component colour-maps against", () => {
+    const els = call("periodic-table", ctxA).result.elements;
+    // These are the exact keys in PeriodicTable.tsx CATEGORY_COLOR — a regression
+    // back to space-separated strings would paint the whole table 'unknown'.
+    assert.equal(els.Na.category, "alkali_metal");
+    assert.equal(els.He.category, "noble_gas");
+    assert.equal(els.Fe.category, "transition_metal");
+    assert.equal(els.La.category, "lanthanide");
+    assert.equal(els.U.category, "actinide");
+  });
+});
+
+describe("chem — page Computational Actions panel (chem.js molecularAnalysis/balanceReaction/solutionChemistry)", () => {
+  // app/lenses/chem/page.tsx renders these EXACT fields off res.result. NOTE:
+  // at runtime a server.js shadow (server.js:41532 → lib/compute/chemistry-
+  // compute.js) overrides these three keys with a DIFFERENT shape — that
+  // divergence is out of this file's edit scope. These tests pin the chem.js
+  // handlers the page is written against, so the chem-domain contract the UI
+  // reads is itself honest.
+  it("molecularAnalysis(C6H12O6) returns every field the page renders", () => {
+    const r = call("molecularAnalysis", ctxA, { formula: "C6H12O6" });
+    assert.equal(r.ok, true);
+    const x = r.result;
+    assert.equal(x.formula, "C6H12O6");
+    assert.ok(Number.isFinite(x.molecularWeight), "molecularWeight (guard) finite");
+    assert.equal(x.molarMass, `${x.molecularWeight} g/mol`, "molarMass is the MW string the page shows");
+    assert.equal(x.totalAtoms, 24);              // 6+12+6
+    assert.equal(x.empiricalFormula, "CH2O");
+    assert.equal(x.formulaToEmpiricalRatio, 6);
+    assert.ok(Number.isFinite(x.molesPerGram));
+    assert.equal(x.degreeOfUnsaturation, 1);     // (2*6+2-12)/2
+    // elements[].{element,count,massPercent} — the per-element bars the page draws.
+    assert.ok(Array.isArray(x.elements) && x.elements.length === 3);
+    for (const el of x.elements) {
+      assert.equal(typeof el.element, "string");
+      assert.ok(Number.isFinite(el.count));
+      assert.ok(Number.isFinite(el.massPercent));
+    }
+  });
+
+  it("balanceReaction returns equation/coefficients/balanced + reactants[]/products[] {formula,coefficient}", () => {
+    const r = call("balanceReaction", ctxA, { equation: "H2 + O2 -> H2O" });
+    assert.equal(r.ok, true);
+    const x = r.result;
+    assert.equal(typeof x.equation, "string");
+    assert.equal(x.balanced, true);
+    assert.ok(Array.isArray(x.coefficients));    // page guards on this
+    const h2 = x.reactants.find((t) => t.formula === "H2");
+    const water = x.products.find((t) => t.formula === "H2O");
+    assert.equal(h2.coefficient, 2);
+    assert.equal(x.reactants.find((t) => t.formula === "O2").coefficient, 1);
+    assert.equal(water.coefficient, 2);
+  });
+
+  it("solutionChemistry(pH) returns pH/nature/type/concentration/pOH/hydrogenIonConc the page reads", () => {
+    // The page passes the solution via artifact.data.solution; mirror that, plus
+    // operation:'pH' as params (data === input in the live dispatch).
+    const input = { solution: { type: "strong-acid", concentration: 0.01 }, operation: "pH" };
+    const r = call("solutionChemistry", ctxA, input);
+    assert.equal(r.ok, true);
+    const x = r.result;
+    assert.equal(x.pH, 2);                        // -log10(0.01)
+    assert.equal(x.nature, "acidic");             // page guards on nature
+    assert.equal(x.type, "strong-acid");
+    assert.equal(x.concentration, 0.01);
+    assert.equal(x.pOH, 12);
+    assert.ok(Number.isFinite(x.hydrogenIonConc));
+  });
+});
+
 describe("chem — degrade-graceful (network-backed macros without network)", () => {
   it("resolve-structure returns { ok:false, error } when the fetch fails (no throw)", async () => {
     const r = await call("resolve-structure", ctxA, { query: "aspirin" });

@@ -422,6 +422,122 @@ describe("billing.churnPrediction — bounded score + fail-CLOSED at-risk revenu
   });
 });
 
+// ── PAGE-PANEL FIELD-ALIGNMENT PINS ──────────────────────────────────────────
+// The /lenses/billing "Billing Intelligence Actions" panel
+// (concord-frontend/app/lenses/billing/page.tsx) renders a fixed set of result
+// fields from each analyzer. These tests pin that EVERY rendered field exists in
+// the handler's returned `result` with the EXACT name + nesting the JSX reads —
+// the bug class where the component renders `result.alt` but the handler returns
+// `result.altitude`. Both the leaf names AND the array-element shapes are asserted.
+
+describe("billing — page-panel rendered-field alignment (output direction)", () => {
+  it("invoiceCalculation: every page-rendered result field is present with exact nesting", () => {
+    // The page renders: currency, subtotal, discounts.totalDiscount, tax.ratePct,
+    // tax.taxAmount, total, lineItems[].{description,lineNumber,quantity,unitPrice,lineTotal}
+    const r = call("invoiceCalculation", ctxA, {
+      lineItems: [{ description: "Widget", quantity: 3, unitPrice: 10, taxable: true }],
+      discountRules: [{ type: "percentage", value: 0.1 }],
+      taxRate: 0.1,
+      currency: "EUR",
+    });
+    assert.equal(r.ok, true);
+    const res = r.result;
+    // top-level leaves the page reads
+    assert.equal(typeof res.currency, "string");
+    assert.equal(res.currency, "EUR");
+    assert.equal(typeof res.subtotal, "number");
+    assert.equal(res.subtotal, 30);
+    assert.equal(typeof res.total, "number");
+    // discounts.totalDiscount (nested) — page: result.discounts.totalDiscount
+    assert.ok(res.discounts && typeof res.discounts === "object");
+    assert.equal(typeof res.discounts.totalDiscount, "number");
+    assert.equal(res.discounts.totalDiscount, 3);   // 10% of 30
+    // tax.ratePct + tax.taxAmount (nested) — page: result.tax.ratePct / result.tax.taxAmount
+    assert.ok(res.tax && typeof res.tax === "object");
+    assert.equal(res.tax.ratePct, 10);
+    assert.equal(typeof res.tax.taxAmount, "number");
+    assert.equal(res.tax.taxAmount, 2.7);           // 10% of post-discount 27
+    assert.equal(res.total, 29.7);                  // 27 + 2.7
+    // lineItems[] element shape — page reads description / lineNumber / quantity / unitPrice / lineTotal
+    assert.ok(Array.isArray(res.lineItems) && res.lineItems.length === 1);
+    const li = res.lineItems[0];
+    assert.equal(li.description, "Widget");
+    assert.equal(li.lineNumber, 1);
+    assert.equal(li.quantity, 3);
+    assert.equal(li.unitPrice, 10);
+    assert.equal(li.lineTotal, 30);
+  });
+
+  it("revenueRecognition: every page-rendered result field is present with exact names", () => {
+    // The page renders: recognitionDate, contractCount, totalContractValue,
+    // totalRecognizedRevenue, totalDeferredRevenue, recognitionRate
+    const r = call("revenueRecognition", ctxA, {
+      contracts: [{
+        id: "c1", customer: "Acme", totalValue: 1000,
+        startDate: "2026-01-01", endDate: "2026-12-31",
+        deliverables: [
+          { name: "Setup", standalonePrice: 250, deliveredDate: "2026-01-02" },
+          { name: "Support", standalonePrice: 750 },
+        ],
+      }],
+      recognitionDate: "2026-06-01",
+    });
+    assert.equal(r.ok, true);
+    const res = r.result;
+    assert.equal(typeof res.recognitionDate, "string");
+    assert.equal(res.recognitionDate, "2026-06-01");
+    assert.equal(res.contractCount, 1);
+    assert.equal(res.totalContractValue, 1000);
+    assert.equal(res.totalRecognizedRevenue, 250);
+    assert.equal(res.totalDeferredRevenue, 750);
+    assert.equal(typeof res.recognitionRate, "number");
+    assert.equal(res.recognitionRate, 25);          // 250 / 1000 → 25%
+  });
+
+  it("churnPrediction: every page-rendered result field (incl. riskDistribution keys + prediction shape) is present", () => {
+    // The page renders: churnThreshold, totalCustomers, atRiskCount, atRiskPct,
+    // estimatedAtRiskAnnualRevenue, riskDistribution.{high,medium,low,veryLow},
+    // predictions[].{isAtRisk,churnProbability,churnRisk,customerName,customerId}
+    const r = call("churnPrediction", ctxA, {
+      churnThreshold: 0.4,
+      customers: [{
+        id: "c1", name: "Riskier", tenureMonths: 2,
+        monthlyPayments: [
+          { month: "2026-01", amount: 100, daysPastDue: 0 },
+          { month: "2026-02", amount: 100, daysPastDue: 10 },
+          { month: "2026-03", amount: 50, daysPastDue: 30 },
+        ],
+      }],
+    });
+    assert.equal(r.ok, true);
+    const res = r.result;
+    assert.equal(res.churnThreshold, 0.4);
+    assert.equal(res.totalCustomers, 1);
+    assert.equal(typeof res.atRiskCount, "number");
+    assert.equal(typeof res.atRiskPct, "number");
+    assert.ok(Number.isFinite(res.estimatedAtRiskAnnualRevenue));
+    // riskDistribution — page reads the EXACT keys high / medium / low / veryLow (camelCase)
+    assert.ok(res.riskDistribution && typeof res.riskDistribution === "object");
+    for (const k of ["high", "medium", "low", "veryLow"]) {
+      assert.equal(typeof res.riskDistribution[k], "number", `riskDistribution.${k} missing`);
+    }
+    // distribution buckets sum to the customer count (no customer lost to a key the page can't read)
+    const distSum = ["high", "medium", "low", "veryLow"]
+      .reduce((s, k) => s + res.riskDistribution[k], 0);
+    assert.equal(distSum, res.totalCustomers, "every classified customer lands in a page-readable bucket");
+    // predictions[] element shape the page renders
+    assert.ok(Array.isArray(res.predictions) && res.predictions.length === 1);
+    const p = res.predictions[0];
+    assert.equal(typeof p.isAtRisk, "boolean");
+    assert.ok(Number.isFinite(p.churnProbability));
+    assert.equal(typeof p.churnRisk, "string");
+    assert.equal(p.customerName, "Riskier");
+    assert.equal(p.customerId, "c1");
+    // churnRisk value-space must be one the page's color map handles (high → red, else amber)
+    assert.ok(["high", "medium", "low", "very-low"].includes(p.churnRisk));
+  });
+});
+
 // ── per-user isolation ────────────────────────────────────────────────────────
 
 describe("billing — per-user state isolation", () => {

@@ -746,9 +746,59 @@ export default function registerChemActions(registerLensAction) {
   };
 
   // ── Periodic table (return all elements) ──
+  //
+  // Derive (group, period) from atomic number so the frontend grid can place
+  // each cell. The PeriodicTable.tsx component reads `symbol`, `group` and
+  // `period` (for the 18×7 layout) plus `atomicMass` — none of which were in
+  // the bare PERIODIC_TABLE entries (they carry z/name/mass/category only).
+  // Without these the component's gridPos() returned null for every element
+  // and the whole table rendered empty. We compute them here for real so the
+  // grid is honest, and keep z/name/mass/category untouched for back-compat
+  // with molecular-weight / parse-smiles / conformer-3d / the parity census.
+  function groupPeriodForZ(z) {
+    // s/p block period boundaries by atomic number (last element of each period).
+    const PERIOD_END = [2, 10, 18, 36, 54, 86, 118];
+    let period = 1;
+    for (let p = 0; p < PERIOD_END.length; p++) {
+      if (z <= PERIOD_END[p]) { period = p + 1; break; }
+    }
+    // Lanthanides (57–71) and actinides (89–103) are the f-block series —
+    // conventionally drawn in their own rows with no main-grid group.
+    if ((z >= 57 && z <= 71) || (z >= 89 && z <= 103)) {
+      return { group: null, period };
+    }
+    // Main-grid group assignment.
+    let group = null;
+    if (z === 1) group = 1;                       // H
+    else if (z === 2) group = 18;                 // He
+    else if (z === 3 || z === 11) group = 1;      // Li, Na
+    else if (z === 4 || z === 12) group = 2;      // Be, Mg
+    else if (z >= 5 && z <= 10) group = 13 + (z - 5);   // B..Ne → 13..18
+    else if (z >= 13 && z <= 18) group = 13 + (z - 13); // Al..Ar → 13..18
+    else if (z >= 19 && z <= 36) group = 1 + (z - 19);  // K..Kr → 1..18
+    else if (z >= 37 && z <= 54) group = 1 + (z - 37);  // Rb..Xe → 1..18
+    else if (z === 55) group = 1;                 // Cs
+    else if (z === 56) group = 2;                 // Ba
+    else if (z >= 72 && z <= 86) group = 4 + (z - 72);  // Hf..Rn → 4..18
+    else if (z === 87) group = 1;                 // Fr
+    else if (z === 88) group = 2;                 // Ra
+    else if (z >= 104 && z <= 118) group = 4 + (z - 104); // Rf..Og → 4..18
+    return { group, period };
+  }
 
   registerLensAction("chem", "periodic-table", (_ctx, _artifact, _params = {}) => {
-    return { ok: true, result: { elements: PERIODIC_TABLE, count: Object.keys(PERIODIC_TABLE).length } };
+    const elements = {};
+    for (const [symbol, el] of Object.entries(PERIODIC_TABLE)) {
+      const { group, period } = groupPeriodForZ(el.z);
+      elements[symbol] = {
+        ...el,
+        symbol,
+        atomicMass: el.mass,
+        group,
+        period,
+      };
+    }
+    return { ok: true, result: { elements, count: Object.keys(elements).length } };
   });
 
   // ── Molecular weight calculator (parses simple formulas like H2O, NaCl, C6H12O6) ──

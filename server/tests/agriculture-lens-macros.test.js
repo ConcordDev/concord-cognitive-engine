@@ -670,6 +670,77 @@ describe("agriculture — analyze dispatcher", () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
+// AgricultureActionPanel field-name alignment — the "Farm operator bench" calls
+// rotationPlan / waterSchedule / predict-yield with the EXACT flat input the
+// component sends (post dispatch-layer artifact-wrapper peel: input == params ==
+// artifact.data), and renders the EXACT fields these tests assert exist.
+// ───────────────────────────────────────────────────────────────────────────
+describe("agriculture — AgricultureActionPanel calculator alignment", () => {
+  it("actRot → rotationPlan returns result.fields[].{lastCrop,suggestedNext,avoid,soilNote} (the rendered shape)", () => {
+    // Mirror AgricultureActionPanel.actRot: a single seeded field whose last
+    // crop is the entered previous crop + the component's rotationRules.
+    const year = new Date().getFullYear();
+    const input = {
+      fields: [{ fieldId: "op-field", name: "corn", acreage: 40, soilType: "loam", history: [{ year, season: "summer", crop: "corn" }] }],
+      rotationRules: [
+        { previousCrop: "corn", recommendedNext: ["soybeans", "wheat", "alfalfa"], avoid: ["corn"] },
+        { previousCrop: "soybeans", recommendedNext: ["corn", "wheat"], avoid: ["soybeans"] },
+        { previousCrop: "wheat", recommendedNext: ["soybeans", "alfalfa", "corn"], avoid: ["wheat"] },
+        { previousCrop: "alfalfa", recommendedNext: ["corn", "wheat"], avoid: ["soybeans"] },
+      ],
+    };
+    const r = call("rotationPlan", ctxA, input, input);
+    assert.equal(r.ok, true);
+    assert.ok(Array.isArray(r.result.fields), "result.fields is the rendered array");
+    const f = r.result.fields[0];
+    assert.equal(f.lastCrop, "corn", "lastCrop is the rendered 'after X' crop");
+    assert.ok(Array.isArray(f.suggestedNext), "suggestedNext is the rendered '→' list");
+    // after corn: soybeans/wheat/alfalfa recommended minus avoid(corn).
+    assert.ok(f.suggestedNext.includes("soybeans"));
+    assert.ok(!f.suggestedNext.includes("corn"), "corn is correctly avoided");
+    assert.ok(Array.isArray(f.avoid), "avoid is the rendered avoid list");
+    assert.equal(typeof f.soilNote, "string", "soilNote renders (corn heavy-feeder → fixer note)");
+  });
+
+  it("actWater → waterSchedule returns result.{fields[].{totalIrrigationInches,activeDays,skipDays},totalGallonsAllFields}", () => {
+    // Mirror AgricultureActionPanel.actWater: one seeded field + a 1-day forecast
+    // carrying today's precip (inches). 7-day horizon, loam, corn.
+    const today = new Date().toISOString().split("T")[0];
+    const input = {
+      daysAhead: 7,
+      fields: [{ fieldId: "op-field", name: "corn", acreage: 40, soilType: "loam", crop: "corn" }],
+      weatherForecast: [{ date: today, highTemp: 85, precipInches: 0 }],
+    };
+    const r = call("waterSchedule", ctxA, input, input);
+    assert.equal(r.ok, true);
+    assert.equal(typeof r.result.totalGallonsAllFields, "number", "rendered 2xl gallons figure");
+    assert.equal(r.result.daysAhead, 7, "rendered horizon label");
+    const wf = r.result.fields[0];
+    assert.equal(typeof wf.totalIrrigationInches, "number", 'rendered "X inch total irrigation"');
+    assert.equal(typeof wf.activeDays, "number", "rendered active days");
+    assert.equal(typeof wf.skipDays, "number", "rendered skip days");
+    // corn base 0.3in/day, loam retention 1.0 → 0.3in/day × ~7 active days on 40ac.
+    // gallons = inches × acreage × 27154 → non-zero positive total.
+    assert.ok(r.result.totalGallonsAllFields > 0, "real positive irrigation gallons");
+    assert.equal(wf.activeDays + wf.skipDays, 7, "active + skip = horizon");
+  });
+
+  it("actYield → predict-yield reads acreage (NOT acres) + returns estimatedYieldPerAcre/totalYield/unit/band", () => {
+    // Mirror AgricultureActionPanel.actYield: { crop, acreage, soilType } — the
+    // pre-fix component sent `acres` which the handler ignored (defaulted to 1).
+    const input = { crop: "corn", acreage: 40, soilType: "loam" };
+    const r = call("predict-yield", ctxA, input, input);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.acreage, 40, "acreage read from the field the component now sends");
+    assert.equal(r.result.estimatedYieldPerAcre, 185, "corn mid 185 × loam 1.0 (rendered 2xl figure)");
+    assert.equal(r.result.totalYield, 7400, "185 × 40 (rendered total)");
+    assert.equal(r.result.unit, "bu/ac", "rendered unit");
+    assert.ok(r.result.band && typeof r.result.band.low === "number" && typeof r.result.band.high === "number",
+      "band.low/high render the 'band L–H' line");
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
 // External-API macros — guarded when network is disabled (no throw escapes).
 // ───────────────────────────────────────────────────────────────────────────
 describe("agriculture — external-API macros fail safe offline", () => {

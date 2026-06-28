@@ -421,3 +421,313 @@ describe("accounting — POISONED NUMERICS (fail-closed finite guarantee)", () =
     assert.ok(Number.isFinite(pl.result.netIncome));
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// FRONTEND FIELD-NAME ALIGNMENT CONTRACTS (re-audit 2026-06-28)
+//
+// The blocks above pin the PURE-COMPUTE artifact macros (useRunArtifact). This
+// block pins the STATE-backed compute macros the concord-frontend/components/
+// accounting/* panels call via `lensRun({ domain, action, input })`. Each test
+// drives the EXACT `input` object a specific component sends and asserts the
+// handler returns the EXACT field names that component renders from
+// `r.data?.result` — both directions, so a renamed field on either side
+// (the bug class: component renders `r.alt` while handler returns `r.altitude`)
+// surfaces here as a failing assertion instead of a silently-blank UI panel.
+//
+// The component each contract mirrors is named in the describe title. The
+// re-audit found ZERO live mismatches — these tests lock that clean state in.
+// ───────────────────────────────────────────────────────────────────────────
+
+// Seed a realistic 2026 book: revenue, an expense, an open invoice (A/R),
+// an open bill (A/P). Cash account = acct_1000, A/R = acct_1100,
+// A/P = acct_2000, revenue = acct_4000, expense = acct_6000.
+function seedBook(ctx) {
+  call("coa-list", ctx); // seed default CoA
+  // Cash sale: Dr Cash 1000 / Cr Revenue 1000  (date in 2026 → YTD)
+  call("je-post", ctx, {
+    date: "2026-03-01",
+    memo: "cash sale",
+    lines: [
+      { accountId: "acct_1000", debit: 1000, credit: 0 },
+      { accountId: "acct_4000", debit: 0, credit: 1000 },
+    ],
+  });
+  // Rent paid: Dr Rent Expense 6100 / Cr Cash 1000
+  call("je-post", ctx, {
+    date: "2026-03-05",
+    memo: "rent",
+    lines: [
+      { accountId: "acct_6100", debit: 200, credit: 0 },
+      { accountId: "acct_1000", debit: 0, credit: 200 },
+    ],
+  });
+}
+
+describe("accounting — financial-ratios contract (AcRatiosPanel.tsx)", () => {
+  it("returns every field AcRatiosPanel renders, with real computed values", () => {
+    // Build a balance-sheet-bearing book: equity injection + AR + AP.
+    call("coa-list", ctxA);
+    // Owner funds cash: Dr Cash 1000 / Cr Owner's Equity 3000
+    call("je-post", ctxA, { date: "2026-01-02", memo: "seed equity", lines: [
+      { accountId: "acct_1000", debit: 2000, credit: 0 },
+      { accountId: "acct_3000", debit: 0, credit: 2000 },
+    ] });
+    // Credit sale: Dr A/R 1100 / Cr Revenue 4000
+    call("je-post", ctxA, { date: "2026-02-01", memo: "credit sale", lines: [
+      { accountId: "acct_1100", debit: 500, credit: 0 },
+      { accountId: "acct_4000", debit: 0, credit: 500 },
+    ] });
+    // Incur a payable: Dr Office Expense 6000 / Cr A/P 2000
+    call("je-post", ctxA, { date: "2026-02-10", memo: "supplies on account", lines: [
+      { accountId: "acct_6000", debit: 300, credit: 0 },
+      { accountId: "acct_2000", debit: 0, credit: 300 },
+    ] });
+
+    const r = call("financial-ratios", ctxA, {}); // component sends input: {}
+    assert.equal(r.ok, true);
+    const res = r.result;
+    // Exact fields the panel's <Card> + "Underlying totals" block read:
+    for (const k of ["currentRatio", "quickRatio", "debtToEquity", "grossMarginPct", "netMarginPct", "workingCapital", "totals", "note"]) {
+      assert.ok(k in res, `financial-ratios must return ${k}`);
+    }
+    for (const k of ["currentAssets", "totalAssets", "currentLiabilities", "totalLiabilities", "revenue", "netIncome"]) {
+      assert.ok(k in res.totals, `financial-ratios.totals must return ${k}`);
+    }
+    // currentAssets = cash 2000 + AR 500 = 2500 ; currentLiab = AP 300.
+    assert.equal(res.totals.currentAssets, 2500);
+    assert.equal(res.totals.currentLiabilities, 300);
+    assert.equal(res.totals.revenue, 500);
+    // currentRatio = 2500/300 = 8.33 ; workingCapital = 2500-300 = 2200.
+    assert.equal(res.currentRatio, Math.round((2500 / 300) * 100) / 100);
+    assert.equal(res.workingCapital, 2200);
+    // netIncome = revenue 500 − cogs 0 − expense 300 = 200.
+    assert.equal(res.totals.netIncome, 200);
+    assert.equal(typeof res.note, "string");
+  });
+});
+
+describe("accounting — cashflow-compute contract (CashFlowStatement.tsx)", () => {
+  it("returns period/series/totalIn/totalOut/netCashFlow with month/in/out/net rows", () => {
+    seedBook(ctxA);
+    // EXACT input the component sends: { start, end }
+    const r = call("cashflow-compute", ctxA, { start: "2026-01-01", end: "2026-12-31" });
+    assert.equal(r.ok, true);
+    const res = r.result;
+    assert.ok(res.period && "start" in res.period && "end" in res.period);
+    assert.ok(Array.isArray(res.series));
+    // Series rows expose exactly month/in/out/net (the BarChart dataKeys).
+    for (const row of res.series) {
+      for (const k of ["month", "in", "out", "net"]) assert.ok(k in row, `series row needs ${k}`);
+    }
+    // Cash in 1000 (the sale), cash out 200 (rent), net 800.
+    assert.equal(res.totalIn, 1000);
+    assert.equal(res.totalOut, 200);
+    assert.equal(res.netCashFlow, 800);
+  });
+});
+
+describe("accounting — runway-forecast contract (RunwayForecast.tsx)", () => {
+  it("returns cashOnHand/openInvTotal/openBillsTotal/liquidity/monthlyNet/monthlyBurn/runwayMonths/forecast", () => {
+    seedBook(ctxA);
+    // Open invoice (A/R) and open bill (A/P) feed liquidity.
+    call("invoice-create", ctxA, { customerName: "Acme", total: 400 });
+    call("vendors-create", ctxA, { name: "Supplier" });
+    const vlist = call("vendors-list", ctxA);
+    const vendorId = vlist.result.vendors[0].id;
+    call("bills-create", ctxA, { vendorId, total: 150, expenseAccountId: "acct_6000" });
+
+    // EXACT input the component sends: { months }
+    const r = call("runway-forecast", ctxA, { months: 12 });
+    assert.equal(r.ok, true);
+    const res = r.result;
+    for (const k of ["cashOnHand", "openInvTotal", "openBillsTotal", "liquidity", "monthlyNet", "monthlyBurn", "runwayMonths", "forecast"]) {
+      assert.ok(k in res, `runway-forecast must return ${k}`);
+    }
+    // cash = 1000 − 200 = 800 ; +AR 400 − AP 150 → liquidity 1050.
+    assert.equal(res.cashOnHand, 800);
+    assert.equal(res.openInvTotal, 400);
+    assert.equal(res.openBillsTotal, 150);
+    assert.equal(res.liquidity, 1050);
+    // forecast rows expose month/projected/in/out (the AreaChart dataKeys + Tiles).
+    assert.equal(res.forecast.length, 12);
+    for (const row of res.forecast) {
+      for (const k of ["month", "projected", "in", "out"]) assert.ok(k in row, `forecast row needs ${k}`);
+    }
+  });
+});
+
+describe("accounting — budget-vs-actual contract (AcBudgetsPanel.tsx)", () => {
+  it("returns budget/fiscalYear/rows/totalBudgeted/totalActual with row account/budgeted/actual/variance", () => {
+    seedBook(ctxA); // posts a 2026 expense against acct_6100 (Rent), actual = 200
+    const created = call("budget-create", ctxA, { name: "FY26", fiscalYear: 2026 });
+    const budgetId = created.result.budget.id;
+    // component sends { budgetId, accountId, annualAmount }
+    call("budget-set-line", ctxA, { budgetId, accountId: "acct_6100", annualAmount: 500 });
+
+    // EXACT input the component sends to load BvA: { budgetId }
+    const r = call("budget-vs-actual", ctxA, { budgetId });
+    assert.equal(r.ok, true);
+    const res = r.result;
+    for (const k of ["budget", "fiscalYear", "rows", "totalBudgeted", "totalActual"]) {
+      assert.ok(k in res, `budget-vs-actual must return ${k}`);
+    }
+    assert.equal(res.budget, "FY26");
+    assert.equal(res.fiscalYear, 2026);
+    const rent = res.rows.find((x) => x.accountId === "acct_6100");
+    // Row fields the panel renders: account/budgeted/actual/variance.
+    for (const k of ["accountId", "account", "budgeted", "actual", "variance"]) {
+      assert.ok(k in rent, `bva row needs ${k}`);
+    }
+    assert.equal(rent.account, "Rent Expense");
+    assert.equal(rent.budgeted, 500);
+    assert.equal(rent.actual, 200); // the 2026-03-05 rent JE
+    assert.equal(rent.variance, -300); // 200 − 500
+    assert.equal(res.totalBudgeted, 500);
+    assert.equal(res.totalActual, 200);
+  });
+});
+
+describe("accounting — tax-liability contract (AcSalesTaxPanel.tsx)", () => {
+  it("returns salesTaxPayable (the single field the panel renders)", () => {
+    call("coa-list", ctxA);
+    // Accrue sales tax: Dr Cash 1000 / Cr Sales Tax Payable 2100 (110).
+    call("je-post", ctxA, { date: "2026-04-01", memo: "collect tax", lines: [
+      { accountId: "acct_1000", debit: 110, credit: 0 },
+      { accountId: "acct_2100", debit: 0, credit: 110 },
+    ] });
+    const r = call("tax-liability", ctxA, {}); // component sends input: {}
+    assert.equal(r.ok, true);
+    assert.ok("salesTaxPayable" in r.result);
+    assert.equal(r.result.salesTaxPayable, 110);
+  });
+});
+
+describe("accounting — aging-ap contract (APAgingPanel.tsx + BillsPanel.tsx)", () => {
+  it("returns asOf/buckets/totalOpen with key/label/total/bills[] and bill number/vendorName/total/dueAt/daysPastDue", () => {
+    call("coa-list", ctxA);
+    call("vendors-create", ctxA, { name: "OverdueCo" });
+    const vendorId = call("vendors-list", ctxA).result.vendors[0].id;
+    // A bill due long ago → lands in d90plus when asOf is well past due.
+    call("bills-create", ctxA, { vendorId, total: 250, expenseAccountId: "acct_6000", issuedAt: "2026-01-01", dueAt: "2026-01-10" });
+
+    const r = call("aging-ap", ctxA, { asOf: "2026-06-01" });
+    assert.equal(r.ok, true);
+    const res = r.result;
+    assert.ok("asOf" in res && "totalOpen" in res && Array.isArray(res.buckets));
+    for (const b of res.buckets) {
+      for (const k of ["key", "label", "total", "bills"]) assert.ok(k in b, `bucket needs ${k}`);
+    }
+    assert.equal(res.totalOpen, 250);
+    const allBills = res.buckets.flatMap((b) => b.bills);
+    assert.equal(allBills.length, 1);
+    const bill = allBills[0];
+    // Fields the APAgingPanel <li> renders: number/vendorName/total/dueAt/daysPastDue.
+    for (const k of ["number", "vendorName", "total", "dueAt", "daysPastDue"]) {
+      assert.ok(k in bill, `aged bill needs ${k}`);
+    }
+    assert.equal(bill.vendorName, "OverdueCo");
+    assert.equal(bill.total, 250);
+    assert.ok(bill.daysPastDue > 90); // due 2026-01-10, asOf 2026-06-01
+  });
+});
+
+describe("accounting — dashboard-summary contract (AccountingDashboard.tsx + BooksSection.tsx)", () => {
+  it("returns all 11 KPI fields the dashboard tiles + badges render", () => {
+    seedBook(ctxA);
+    call("invoice-create", ctxA, { customerName: "Acme", total: 400 });
+    call("vendors-create", ctxA, { name: "Supplier" });
+    const vendorId = call("vendors-list", ctxA).result.vendors[0].id;
+    call("bills-create", ctxA, { vendorId, total: 150, expenseAccountId: "acct_6000" });
+
+    const r = call("dashboard-summary", ctxA, {}); // component sends input: {}
+    assert.equal(r.ok, true);
+    const res = r.result;
+    for (const k of [
+      "cashOnHand", "openInvTotal", "openInvCount", "openBillsTotal", "openBillsCount",
+      "ytdRevenue", "ytdExpense", "ytdNetIncome", "uncategorizedTxns", "customerCount", "vendorCount",
+    ]) {
+      assert.ok(k in res, `dashboard-summary must return ${k}`);
+      assert.ok(Number.isFinite(res[k]), `${k} must be finite`);
+    }
+    // cash = 1000 − 200 = 800 ; one open invoice 400 ; one open bill 150.
+    assert.equal(res.cashOnHand, 800);
+    assert.equal(res.openInvTotal, 400);
+    assert.equal(res.openInvCount, 1);
+    assert.equal(res.openBillsTotal, 150);
+    assert.equal(res.openBillsCount, 1);
+    assert.equal(res.ytdRevenue, 1000);
+    assert.equal(res.vendorCount, 1);
+  });
+});
+
+describe("accounting — po-list contract (AcPurchaseOrdersPanel.tsx)", () => {
+  it("po-create input shape round-trips to po-list with number/vendorName/lines/total/status", () => {
+    call("coa-list", ctxA);
+    call("vendors-create", ctxA, { name: "PartsCo" });
+    const vendorId = call("vendors-list", ctxA).result.vendors[0].id;
+    // EXACT input the component sends: { vendorId, lines:[{description,qty,unitCost}] }
+    const created = call("po-create", ctxA, {
+      vendorId,
+      lines: [
+        { description: "Bolt", qty: 10, unitCost: 2 },
+        { description: "Nut", qty: 5, unitCost: 1 },
+      ],
+    });
+    assert.equal(created.ok, true);
+
+    const r = call("po-list", ctxA, {}); // component sends input: {}
+    assert.equal(r.ok, true);
+    assert.ok(Array.isArray(r.result.purchaseOrders));
+    const po = r.result.purchaseOrders[0];
+    for (const k of ["id", "number", "vendorName", "lines", "total", "status"]) {
+      assert.ok(k in po, `purchase order needs ${k}`);
+    }
+    assert.equal(po.vendorName, "PartsCo");
+    assert.equal(po.total, 25); // 10*2 + 5*1
+    assert.equal(po.status, "open");
+    // Each line exposes qty/description (rendered as `${qty}× ${description}`).
+    for (const line of po.lines) {
+      assert.ok("qty" in line && "description" in line && "unitCost" in line);
+    }
+  });
+});
+
+describe("accounting — estimates round-trip contract (EstimatesPanel.tsx)", () => {
+  it("estimates-create input round-trips to estimates-list with the rendered fields", () => {
+    call("coa-list", ctxA);
+    // EXACT input the component sends (draft spread + numeric total):
+    call("estimates-create", ctxA, { customerName: "Beta LLC", total: 1200, memo: "Q3 scope", expiresAt: "2026-09-30" });
+    const r = call("estimates-list", ctxA, {});
+    assert.equal(r.ok, true);
+    const est = r.result.estimates[0];
+    for (const k of ["id", "number", "customerName", "customerId", "total", "status", "issuedAt", "expiresAt", "memo", "convertedInvoiceId"]) {
+      assert.ok(k in est, `estimate needs ${k}`);
+    }
+    assert.equal(est.customerName, "Beta LLC");
+    assert.equal(est.total, 1200);
+    assert.equal(est.status, "pending");
+    assert.equal(est.convertedInvoiceId, null);
+  });
+});
+
+describe("accounting — invoice-create-payment-link result-shape contract (StripeInvoicePanel/AccountingWorkbench)", () => {
+  it("missing-Stripe path returns ok:false (no hostedUrl/pdfUrl fabricated)", async () => {
+    // The panels read result.hostedUrl + result.pdfUrl on success, OR
+    // result.invoice.stripeHostedInvoiceUrl. Without STRIPE_SECRET_KEY the
+    // handler must fail-closed — never invent a link. This pins that the
+    // success-shape fields are gated behind a real Stripe call.
+    // (invoice-create-payment-link is an async handler — await it.)
+    const prior = process.env.STRIPE_SECRET_KEY;
+    delete process.env.STRIPE_SECRET_KEY;
+    try {
+      call("coa-list", ctxA);
+      const inv = call("invoice-create", ctxA, { customerName: "Acme", total: 500 });
+      const id = inv.result.invoice.id;
+      const r = await call("invoice-create-payment-link", ctxA, { id, customerEmail: "a@b.com" });
+      assert.equal(r.ok, false);
+      assert.match(r.error, /Stripe/);
+    } finally {
+      if (prior !== undefined) process.env.STRIPE_SECRET_KEY = prior;
+    }
+  });
+});

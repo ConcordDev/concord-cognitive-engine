@@ -29,10 +29,15 @@ function pickMessage(e: unknown): string { const ax = e as { response?: { data?:
 interface WxToday { tempMax?: number; tempMin?: number; precipSum?: number; et0?: number }
 interface WxDay { date: string; tempMax?: number; tempMin?: number; precip?: number; et0?: number }
 interface WxResult { lat: number; lng: number; today: WxToday; forecast7: WxDay[]; currentSoilMoisture?: number; currentSoilTemp?: number; source?: string }
-interface RotPlan { season: string; crop?: string; rotationFamily?: string; notes?: string }
-interface RotResult { plan?: RotPlan[]; familySpread?: string[]; warnings?: string[]; coverCrops?: string[] }
-interface WaterResult { totalGallons?: number; perPlantLiters?: number; frequency?: string; nextWatering?: string; warning?: string }
-interface YieldResult { predictedYield?: number; unit?: string; confidence?: string; assumedConditions?: Record<string, string | number>; risks?: string[] }
+// rotationPlan returns { fields: [{ fieldName, lastCrop, suggestedNext, avoid, soilNote, ... }] }
+interface RotField { fieldId?: string; fieldName?: string; acreage?: number; soilType?: string; lastCrop?: string; last3Crops?: string[]; suggestedNext?: string[]; avoid?: string[]; soilNote?: string }
+interface RotResult { fields?: RotField[] }
+// waterSchedule returns { daysAhead, fields: [{ fieldName, totalGallons, totalIrrigationInches, activeDays, skipDays, ... }], totalGallonsAllFields }
+interface WaterField { fieldId?: string; fieldName?: string; crop?: string; acreage?: number; totalGallons?: number; totalIrrigationInches?: number; activeDays?: number; skipDays?: number }
+interface WaterResult { daysAhead?: number; fields?: WaterField[]; totalGallonsAllFields?: number }
+// predict-yield returns { crop, estimatedYieldPerAcre, totalYield, unit, band, soilMultiplier, historyAvg, summary }
+interface YieldBand { low: number; mid?: number; high: number; unit: string }
+interface YieldResult { crop?: string; acreage?: number; soilType?: string; estimatedYieldPerAcre?: number; totalYield?: number; unit?: string; band?: YieldBand; soilMultiplier?: number; historyAvg?: number | null; summary?: string }
 
 export function AgricultureActionPanel() {
   const [lat, setLat] = useState('');
@@ -73,17 +78,42 @@ export function AgricultureActionPanel() {
     if (!crop.trim() || !prevCrop.trim()) { err('Current + previous crop required.'); return; }
     setBusy('rot'); setFeedback(null);
     try {
-      const r = await callMacro<RotResult>('rotationPlan', { artifact: { data: { currentCrop: crop, previousCrops: [prevCrop], seasons: 4, soilType: 'loam' } } });
-      if (r.ok && r.result) { setRotResult(r.result); pipe.publish('ag.rot', r.result, { label: `Rotation: ${r.result.plan?.length ?? 0} seasons` }); ok(`${r.result.plan?.length ?? 0} seasons planned.`); } else err(r.error ?? 'rotation failed');
+      // rotationPlan reads artifact.data.fields[] (each with rotation history) +
+      // artifact.data.rotationRules, and returns { fields: [{ fieldName,
+      // lastCrop, suggestedNext, avoid, soilNote }] }. Seed a single field whose
+      // last crop is the entered previous crop so the handler recommends a next.
+      const year = new Date().getFullYear();
+      const r = await callMacro<RotResult>('rotationPlan', {
+        fields: [{ fieldId: 'op-field', name: crop.trim() || 'My field', acreage: parseFloat(acres) || 0, soilType: 'loam', history: [{ year, season: 'summer', crop: prevCrop.trim() }] }],
+        rotationRules: [
+          { previousCrop: 'corn', recommendedNext: ['soybeans', 'wheat', 'alfalfa'], avoid: ['corn'] },
+          { previousCrop: 'soybeans', recommendedNext: ['corn', 'wheat'], avoid: ['soybeans'] },
+          { previousCrop: 'wheat', recommendedNext: ['soybeans', 'alfalfa', 'corn'], avoid: ['wheat'] },
+          { previousCrop: 'alfalfa', recommendedNext: ['corn', 'wheat'], avoid: ['soybeans'] },
+        ],
+      });
+      if (r.ok && r.result) { setRotResult(r.result); pipe.publish('ag.rot', r.result, { label: `Rotation: ${r.result.fields?.length ?? 0} field(s)` }); ok(`${r.result.fields?.[0]?.suggestedNext?.length ?? 0} crop option(s) after ${prevCrop.trim()}.`); } else err(r.error ?? 'rotation failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actWater() {
-    const pc = parseInt(plantCount, 10);
-    if (!crop.trim() || !Number.isFinite(pc)) { err('Crop + plant count required.'); return; }
+    const ac = parseFloat(acres);
+    if (!crop.trim() || !Number.isFinite(ac)) { err('Crop + acres required.'); return; }
     setBusy('water'); setFeedback(null);
     try {
-      const r = await callMacro<WaterResult>('waterSchedule', { artifact: { data: { crop, plantCount: pc, waterPerPlantLiters: 2.5, recentRainfallMm: wxResult?.today?.precipSum ?? 0, evapotranspirationMmDay: wxResult?.today?.et0 ?? 4, soilMoisturePercent: wxResult?.currentSoilMoisture ? Math.round(wxResult.currentSoilMoisture * 100) : 50 } } });
-      if (r.ok && r.result) { setWaterResult(r.result); pipe.publish('ag.water', r.result, { label: `Water ${r.result.totalGallons}gal` }); ok(`${r.result.frequency} · ${r.result.totalGallons} gal.`); } else err(r.error ?? 'water failed');
+      // waterSchedule reads artifact.data.fields[] + optional weatherForecast and
+      // returns { fields: [{ totalGallons, totalIrrigationInches, activeDays,
+      // skipDays }], totalGallonsAllFields }. Seed one field; thread today's
+      // precip into a 1-day forecast so the run reflects real weather when present.
+      const today = new Date().toISOString().split('T')[0];
+      const weatherForecast = wxResult
+        ? [{ date: today, highTemp: wxResult.today?.tempMax ?? 80, precipInches: (wxResult.today?.precipSum ?? 0) / 25.4 }]
+        : [];
+      const r = await callMacro<WaterResult>('waterSchedule', {
+        daysAhead: 7,
+        fields: [{ fieldId: 'op-field', name: crop.trim() || 'My field', acreage: ac, soilType: 'loam', crop: crop.trim() }],
+        weatherForecast,
+      });
+      if (r.ok && r.result) { setWaterResult(r.result); const total = r.result.totalGallonsAllFields ?? 0; pipe.publish('ag.water', r.result, { label: `Water ${total.toLocaleString()}gal` }); ok(`${r.result.fields?.[0]?.activeDays ?? 0} active day(s) · ${total.toLocaleString()} gal.`); } else err(r.error ?? 'water failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actYield() {
@@ -91,8 +121,10 @@ export function AgricultureActionPanel() {
     if (!crop.trim() || !Number.isFinite(ac)) { err('Crop + acres required.'); return; }
     setBusy('yield'); setFeedback(null);
     try {
-      const r = await callMacro<YieldResult>('predict-yield', { artifact: { data: { crop, acres: ac, soilQuality: 75, plannedIrrigationMm: 250, plantingDate: new Date().toISOString().split('T')[0] } } });
-      if (r.ok && r.result) { setYieldResult(r.result); pipe.publish('ag.yield', r.result, { label: `Yield ${r.result.predictedYield} ${r.result.unit}` }); ok(`${r.result.predictedYield} ${r.result.unit} (${r.result.confidence}).`); } else err(r.error ?? 'yield failed');
+      // predict-yield reads crop / acreage / soilType (NOT "acres") and returns
+      // estimatedYieldPerAcre / totalYield / unit / band / summary.
+      const r = await callMacro<YieldResult>('predict-yield', { crop: crop.trim(), acreage: ac, soilType: 'loam' });
+      if (r.ok && r.result) { setYieldResult(r.result); pipe.publish('ag.yield', r.result, { label: `Yield ${r.result.totalYield} ${r.result.unit}` }); ok(`${r.result.estimatedYieldPerAcre} ${r.result.unit}/ac · ${r.result.totalYield} total.`); } else err(r.error ?? 'yield failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -108,9 +140,9 @@ export function AgricultureActionPanel() {
     setBusy('dm'); setFeedback(null);
     const body = [`🌾 Field brief`, '',
       wxResult ? `Wx: ${wxResult.today.tempMin}-${wxResult.today.tempMax}°C · ${wxResult.today.precipSum}mm · ET₀ ${wxResult.today.et0}mm · soil moist ${wxResult.currentSoilMoisture}` : '',
-      rotResult ? `Rotation: ${rotResult.plan?.map(p => `${p.season}=${p.crop}`).join(', ')}` : '',
-      waterResult ? `Water: ${waterResult.frequency} · ${waterResult.totalGallons} gal · next ${waterResult.nextWatering}` : '',
-      yieldResult ? `Yield: ${yieldResult.predictedYield} ${yieldResult.unit} (${yieldResult.confidence})` : '',
+      rotResult ? `Rotation: after ${rotResult.fields?.[0]?.lastCrop ?? '?'} → ${(rotResult.fields?.[0]?.suggestedNext ?? []).join(', ') || 'no recommendation'}` : '',
+      waterResult ? `Water: ${(waterResult.totalGallonsAllFields ?? 0).toLocaleString()} gal over ${waterResult.daysAhead ?? 7}d · ${waterResult.fields?.[0]?.activeDays ?? 0} active days` : '',
+      yieldResult ? `Yield: ${yieldResult.estimatedYieldPerAcre} ${yieldResult.unit}/ac · ${yieldResult.totalYield} total` : '',
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
@@ -140,7 +172,7 @@ export function AgricultureActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Farm operator brief for ${crop} on ${acres} acres. ${wxResult ? `7-day forecast: ${wxResult.forecast7.slice(0, 3).map(d => `${d.date} ${d.tempMin}-${d.tempMax}°C ${d.precip}mm`).join('; ')}.` : ''} ${waterResult ? `Water need: ${waterResult.totalGallons} gal/cycle.` : ''} ${yieldResult ? `Predicted yield: ${yieldResult.predictedYield} ${yieldResult.unit}.` : ''} Identify the single most urgent operational action for the next 7 days + one risk. Plain text, 3 sentences max.`;
+      const task = `Farm operator brief for ${crop} on ${acres} acres. ${wxResult ? `7-day forecast: ${wxResult.forecast7.slice(0, 3).map(d => `${d.date} ${d.tempMin}-${d.tempMax}°C ${d.precip}mm`).join('; ')}.` : ''} ${waterResult ? `Water need: ${(waterResult.totalGallonsAllFields ?? 0).toLocaleString()} gal/${waterResult.daysAhead ?? 7}d.` : ''} ${yieldResult ? `Predicted yield: ${yieldResult.estimatedYieldPerAcre} ${yieldResult.unit}/ac.` : ''} Identify the single most urgent operational action for the next 7 days + one risk. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Action ready.'); } else err('Agent returned empty.');
@@ -210,25 +242,36 @@ export function AgricultureActionPanel() {
         {rotResult && (
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5 max-h-40 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Rotation</div>
-            {(rotResult.plan ?? []).map((p, i) => <div key={i} className="text-[11px] text-zinc-300 mt-0.5"><span className="font-mono text-green-200">{p.season}</span>: {p.crop ?? '-'} <span className="text-zinc-400">({p.rotationFamily ?? '-'})</span></div>)}
-            {(rotResult.warnings ?? []).length > 0 && <div className="text-[10px] text-amber-300 mt-1">⚠ {rotResult.warnings?.join('; ')}</div>}
-            {(rotResult.coverCrops ?? []).length > 0 && <div className="text-[10px] text-emerald-300 mt-0.5">cover: {rotResult.coverCrops?.join(', ')}</div>}
+            {(rotResult.fields ?? []).map((f, i) => (
+              <div key={i} className="text-[11px] text-zinc-300 mt-0.5">
+                <span className="text-zinc-400">after </span>
+                <span className="font-mono text-green-200">{f.lastCrop ?? '?'}</span>
+                <span className="text-zinc-400"> → </span>
+                {(f.suggestedNext ?? []).length > 0 ? (f.suggestedNext ?? []).join(', ') : <span className="text-zinc-500">no recommendation</span>}
+                {f.soilNote && <div className="text-[10px] text-emerald-300 mt-0.5">{f.soilNote}</div>}
+                {(f.avoid ?? []).length > 0 && <div className="text-[10px] text-amber-300 mt-0.5">avoid: {(f.avoid ?? []).join(', ')}</div>}
+              </div>
+            ))}
+            {(rotResult.fields ?? []).length === 0 && <div className="text-[10px] text-zinc-500 mt-0.5">No rotation candidates.</div>}
           </div>
         )}
-        {waterResult && (
-          <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Irrigation · {waterResult.frequency}</div>
-            <div className="text-2xl font-bold text-cyan-300">{waterResult.totalGallons} <span className="text-xs text-zinc-400">gal/cycle</span></div>
-            <div className="text-[10px] text-zinc-400">{waterResult.perPlantLiters}L per plant</div>
-            <div className="text-[10px] text-zinc-400">next: {waterResult.nextWatering}</div>
-            {waterResult.warning && <div className="text-[10px] text-amber-300 italic">⚠ {waterResult.warning}</div>}
-          </div>
-        )}
+        {waterResult && (() => {
+          const wf = waterResult.fields?.[0];
+          return (
+            <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
+              <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Irrigation · {waterResult.daysAhead ?? 7}-day</div>
+              <div className="text-2xl font-bold text-cyan-300">{(waterResult.totalGallonsAllFields ?? 0).toLocaleString()} <span className="text-xs text-zinc-400">gal</span></div>
+              <div className="text-[10px] text-zinc-400">{wf?.totalIrrigationInches ?? 0}&quot; total irrigation</div>
+              <div className="text-[10px] text-zinc-400">{wf?.activeDays ?? 0} active · {wf?.skipDays ?? 0} skip days</div>
+            </div>
+          );
+        })()}
         {yieldResult && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Yield · {yieldResult.confidence}</div>
-            <div className="text-2xl font-bold text-amber-300">{yieldResult.predictedYield} <span className="text-xs text-zinc-400">{yieldResult.unit}</span></div>
-            {(yieldResult.risks ?? []).slice(0, 3).map((r, i) => <div key={i} className="text-[10px] text-red-300">⚠ {r}</div>)}
+            <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Yield · {yieldResult.crop}</div>
+            <div className="text-2xl font-bold text-amber-300">{yieldResult.estimatedYieldPerAcre} <span className="text-xs text-zinc-400">{yieldResult.unit}/ac</span></div>
+            <div className="text-[10px] text-zinc-400">{yieldResult.totalYield} {yieldResult.unit} total</div>
+            {yieldResult.band && <div className="text-[10px] text-zinc-400">band {yieldResult.band.low}–{yieldResult.band.high}</div>}
           </div>
         )}
       </div>
