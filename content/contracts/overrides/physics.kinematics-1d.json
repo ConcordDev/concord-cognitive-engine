@@ -1,0 +1,29 @@
+{
+  "macro_id": "physics.kinematics-1d",
+  "domain": "physics",
+  "name": "kinematics-1d",
+  "inputs": {
+    "v0": { "type": "number", "required": false },
+    "v": { "type": "number", "required": false },
+    "a": { "type": "number", "required": false },
+    "t": { "type": "number", "required": false },
+    "x": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.solved === 'object')",
+    "output.ok === false || ['v0','v','a','t','x'].every(function(k){ var val = output.result.solved[k]; return val == null || Number.isFinite(val); })",
+    "output.ok === false || (Array.isArray(output.result.equations) && output.result.equations.length === 4)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "v0": 0, "a": 9.81, "t": 2 }, "expect": { "ok": true } },
+    { "input": { "v0": 0, "a": 9.81, "x": 10 }, "expect": { "ok": true } },
+    { "input": { "v0": 0, "v": 20, "t": 2 }, "expect": { "ok": true } },
+    { "input": { "v0": 0, "t": 2 }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "v0": "1e999", "a": "Infinity", "t": "NaN" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (dispatch key 'physics.kinematics-1d'; 3-arg handler(ctx, virtualArtifact, params)). Deterministic pure compute: solves the missing one(s) of {v0,v,a,t,x} from the standard 4 SUVAT equations. Drives PhysicsActionPanel.actKin + PhysicsWorkbench.KinematicsTab; component renders result.solved.{v0,v,a,t,x} + result.equations.join(' · '). Validation: <3 finite inputs → ok:false. POISON fail-CLOSED: each input via Number(...) then filtered by Number.isFinite, so '1e999'/'Infinity'/'NaN' drop out (never solve to a non-finite value). Not assassin-driven (LENS_ACTIONS); authored spec pinned by server/tests/physics-lens-macros.test.js."
+}

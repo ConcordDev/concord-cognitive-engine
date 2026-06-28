@@ -66,14 +66,30 @@ export function PhysicsWorkbench({ open, onClose }: Props) {
 function KinematicsTab() {
   const [vals, setVals] = useState({ v0: '0', v: '', a: '9.81', t: '2', x: '' });
   const [result, setResult] = useState<{ solved: Record<string, number | null>; equations: string[] } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
+  // Surface BOTH a thrown fetch error AND a handler-level { ok:false, error }.
+  // The kinematics-1d handler returns ok:false (with a string error) when fewer
+  // than 3 of {v0,v,a,t,x} are finite — a silent `r.data.result || null` would
+  // hide that as a blank panel (the swallowed-fetch → silent-empty defect).
   const calc = async () => {
+    setBusy(true); setError(null);
     try {
       const input: Record<string, number | undefined> = {};
       for (const [k, v] of Object.entries(vals)) if (v.trim()) input[k] = Number(v);
       const r = await api.post('/api/lens/run', { domain: 'physics', action: 'kinematics-1d', input });
-      setResult(((r.data as { result?: typeof result }).result) || null);
-    } catch (e) { console.error(e); }
+      const env = r.data as { ok?: boolean; error?: string; result?: (typeof result) & { ok?: boolean; error?: string } };
+      const inner = env.result;
+      if (inner && inner.ok === false) { setResult(null); setError(inner.error || 'Could not solve.'); return; }
+      if (env.ok === false) { setResult(null); setError(env.error || 'Could not solve.'); return; }
+      if (!inner || !inner.solved) { setResult(null); setError('No solution returned.'); return; }
+      setResult(inner);
+    } catch (e) {
+      console.error(e);
+      setResult(null);
+      setError(e instanceof Error ? e.message : 'Request failed.');
+    } finally { setBusy(false); }
   };
 
   return (
@@ -89,8 +105,17 @@ function KinematicsTab() {
           </label>
         ))}
       </div>
-      <button type="button" onClick={calc}
-        className="px-3 py-1 rounded-md border border-indigo-500/40 bg-indigo-500/15 text-xs text-indigo-100">Solve</button>
+      <button type="button" onClick={calc} disabled={busy}
+        className="px-3 py-1 rounded-md border border-indigo-500/40 bg-indigo-500/15 text-xs text-indigo-100 disabled:opacity-50 inline-flex items-center gap-1.5">
+        {busy && <Loader2 className="w-3 h-3 animate-spin" />}Solve</button>
+
+      {error && (
+        <div role="alert" className="rounded border border-red-500/30 bg-red-500/10 p-2.5 text-xs text-red-300">{error}</div>
+      )}
+
+      {!result && !error && !busy && (
+        <p className="text-[11px] text-gray-500 italic">Enter values and Solve to compute the missing quantity.</p>
+      )}
 
       {result && (
         <div className="rounded border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-1 text-sm">

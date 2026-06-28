@@ -1,0 +1,29 @@
+{
+  "macro_id": "physics.projectile",
+  "domain": "physics",
+  "name": "projectile",
+  "inputs": {
+    "v0": { "type": "number", "required": true },
+    "angleDeg": { "type": "number", "required": true },
+    "h0": { "type": "number", "required": false },
+    "g": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || ['timeOfFlight_s','range_m','maxHeight_m','timeToApex_s','impactSpeed_mps','v0x_mps','v0y_mps'].every(function(k){ return Number.isFinite(output.result[k]); })",
+    "output.ok === false || output.result.range_m >= 0",
+    "output.ok === false || output.result.maxHeight_m >= 0",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "v0": 20, "angleDeg": 45, "h0": 0, "g": 9.81 }, "expect": { "ok": true } },
+    { "input": { "v0": 30, "angleDeg": 90, "h0": 0 }, "expect": { "ok": true } },
+    { "input": { "v0": 20, "angleDeg": 45, "h0": 10 }, "expect": { "ok": true } },
+    { "input": { "v0": 0, "angleDeg": 30 }, "expect": { "ok": false } },
+    { "input": { "v0": 20, "angleDeg": 120 }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "v0": "1e999", "angleDeg": 45 }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (dispatch key 'physics.projectile'; 3-arg). Deterministic pure compute: full projectile solution (ToF/range/apex/impact + launch components) from v0/angleDeg/h0/g. Drives PhysicsActionPanel.actProj + PhysicsWorkbench.ProjectileTab; component renders range_m/maxHeight_m/timeOfFlight_s/timeToApex_s/impactSpeed_mps/v0x_mps/v0y_mps. Validation: v0<=0 or angleDeg outside 0..90 → ok:false. POISON fail-CLOSED: Number.isFinite guards each input, so '1e999'/'NaN' are rejected (no Infinity range). Not assassin-driven (LENS_ACTIONS); authored spec pinned by server/tests/physics-lens-macros.test.js."
+}
