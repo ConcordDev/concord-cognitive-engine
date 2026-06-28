@@ -1,0 +1,22 @@
+{
+  "macro_id": "bio.crispr-design",
+  "domain": "bio",
+  "name": "crispr-design",
+  "inputs": {
+    "sequence": { "type": "string", "required": true }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.guides)",
+    "output.ok === false || output.result.guides.every(function(g){ return typeof g.guide === 'string' && g.guide.length === 20 && Number.isFinite(g.onTargetScore) && Number.isFinite(g.compositeScore); })",
+    "output.ok === false || output.result.guideCount === undefined || Number.isInteger(output.result.guideCount)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "sequence": "ATGGCCATGGCGCCCAGAACTGAGATCAATAGTACCCGTATTAACGGGTGA" }, "expect": { "ok": true } },
+    { "input": { "sequence": "ATGC" }, "expect": { "ok": false } },
+    { "input": { "sequence": "###" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/bio.js). MolecularWorkbench CrisprTab sends {sequence}; renders guides[{guide,pam,strand,position,gcPercent,onTargetScore,offTargetHits,specificityScore,compositeScore}] + topGuide + pam + targetLength + guideCount. SpCas9 NGG, 20 nt protospacer, requires >=30 bp. FAIL-CLOSED: non-ACGTN rejected. Pinned by server/tests/bio-lens-macros.test.js."
+}

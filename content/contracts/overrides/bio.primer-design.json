@@ -1,0 +1,26 @@
+{
+  "macro_id": "bio.primer-design",
+  "domain": "bio",
+  "name": "primer-design",
+  "inputs": {
+    "sequence": { "type": "string", "required": true },
+    "targetTm": { "type": "number", "required": false },
+    "targetLength": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.forward && typeof output.result.forward.sequence === 'string')",
+    "output.ok === false || (output.result.reverse && typeof output.result.reverse.sequence === 'string')",
+    "output.ok === false || Number.isFinite(output.result.forward.tm)",
+    "output.ok === false || Number.isFinite(output.result.forward.gcPercent)",
+    "output.ok === false || Number.isInteger(output.result.productSize)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "sequence": "ATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGC", "targetTm": 60, "targetLength": 20 }, "expect": { "ok": true } },
+    { "input": { "sequence": "ATGC" }, "expect": { "ok": false } },
+    { "input": { "sequence": "" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/bio.js). SequenceAnalyzer/BioActionPanel/BioWorkbench send {sequence,targetTm?,targetLength?}; render forward/reverse{sequence,length,tm,gcPercent} + productSize + notes. Requires >=100 bp. Pinned by server/tests/bio-lens-macros.test.js."
+}

@@ -1,0 +1,30 @@
+{
+  "macro_id": "bio.align-pairwise",
+  "domain": "bio",
+  "name": "align-pairwise",
+  "inputs": {
+    "seqA": { "type": "string", "required": true },
+    "seqB": { "type": "string", "required": true },
+    "match": { "type": "number", "required": false },
+    "mismatch": { "type": "number", "required": false },
+    "gap": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.score)",
+    "output.ok === false || typeof output.result.alignA === 'string'",
+    "output.ok === false || typeof output.result.alignB === 'string'",
+    "output.ok === false || typeof output.result.alignBars === 'string'",
+    "output.ok === false || output.result.alignA.length === output.result.alignB.length",
+    "output.ok === false || output.result.alignA.length === output.result.alignBars.length",
+    "output.ok === false || (Number.isFinite(output.result.identity) && output.result.identity >= 0 && output.result.identity <= 100)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "seqA": "GATTACA", "seqB": "GATTACA" }, "expect": { "ok": true } },
+    { "input": { "seqA": "ATGC" }, "expect": { "ok": false } },
+    { "input": { "seqA": "ATGC", "seqB": "GGGG", "match": "Infinity" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/bio.js). SequenceAnalyzer/BioActionPanel/BioWorkbench send {seqA,seqB,match?,mismatch?,gap?} and render alignA/alignB/alignBars/identity/score — the EXACT handler field names. (DEAD-SURFACE fix: SequenceAnalyzer previously read alignedA/alignedB/midline/identityPercent — none emitted by the handler — so the align result rendered blank.) FAIL-CLOSED: a non-finite match/mismatch/gap (Infinity/NaN) is rejected so Infinity can't leak into score. Pinned by server/tests/bio-lens-macros.test.js."
+}

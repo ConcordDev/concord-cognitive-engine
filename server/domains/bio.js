@@ -700,6 +700,12 @@ export default function registerBioActions(registerLensAction) {
 
   registerLensAction("bio", "sequence-analyze", (_ctx, _artifact, params = {}) => {
   try {
+    // Fail-CLOSED on a non-string sequence: a bare object/number would
+    // String()-coerce into garbage like "[object Object]" and report a
+    // fabricated GC%/Tm. Reject anything that isn't a primitive string.
+    if (params.sequence != null && typeof params.sequence !== "string") {
+      return { ok: false, error: "sequence must be a string" };
+    }
     const seq = String(params.sequence || "").replace(/\s/g, "").toUpperCase();
     if (!seq) return { ok: false, error: "sequence required" };
     if (seq.length > 100_000) return { ok: false, error: "sequence too long (max 100000)" };
@@ -773,9 +779,21 @@ export default function registerBioActions(registerLensAction) {
     const b = String(params.seqB || "").toUpperCase().trim();
     if (!a || !b) return { ok: false, error: "seqA and seqB required" };
     if (a.length > 2000 || b.length > 2000) return { ok: false, error: "sequences max 2000 each" };
-    const match = Number(params.match) || 2;
-    const mismatch = Number(params.mismatch) || -1;
-    const gap = Number(params.gap) || -2;
+    // Fail-CLOSED on poisoned scoring params: `Number(x) || default` lets
+    // Infinity/1e308 through (Infinity is truthy), which would leak Infinity
+    // into the alignment score. Reject any supplied-but-non-finite weight.
+    const scoreParam = (v, dflt) => {
+      if (v === undefined || v === null || v === "") return dflt;
+      const n = Number(v);
+      if (!Number.isFinite(n)) return null;
+      return n;
+    };
+    const match = scoreParam(params.match, 2);
+    const mismatch = scoreParam(params.mismatch, -1);
+    const gap = scoreParam(params.gap, -2);
+    if (match === null || mismatch === null || gap === null) {
+      return { ok: false, error: "match/mismatch/gap must be finite numbers" };
+    }
 
     const m = a.length;
     const n = b.length;
