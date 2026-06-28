@@ -1,0 +1,25 @@
+{
+  "macro_id": "emergency-services.dispatchOptimize",
+  "domain": "emergency-services",
+  "name": "dispatchOptimize",
+  "inputs": {
+    "units": { "type": "array", "required": false },
+    "incidents": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.totalUnits) && Number.isFinite(output.result.available) && Number.isFinite(output.result.activeIncidents))",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.coverageGap === 'boolean'",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.assignments)",
+    "output.ok === false || output.result.message !== undefined || output.result.assignments.every(function(a){ return typeof a.eta === 'string' && a.eta.indexOf('Infinity') === -1; })"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "units": [{ "name": "Medic 1", "status": "available", "distanceKm": 2 }], "incidents": [{ "type": "medical", "priority": 1 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "units": [], "incidents": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "units": [{ "name": "Ghost", "status": "available", "distanceKm": "1e999" }], "incidents": [{ "type": "fire", "priority": 2 }] } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler — dispatch key 'emergency-services.dispatchOptimize'. Component sends { artifact: { data: <parsed dispatch JSON {units,incidents}> } }; peeler unwraps so handler reads artifact.data.{units,incidents}. POISON: distanceKm coerced via finOr (Number()-based) so 'Infinity'/'1e999' collapse to the 5km/99km defaults — eta NEVER renders 'Infinity minutes'. Render contract (activeIncidents/available/coverageGap headline + assignments[{priority,assignedUnit,eta}] rows) pinned by server/tests/emergency-services-lens-macros.test.js. Authored spec, not assassin-driven."
+}
