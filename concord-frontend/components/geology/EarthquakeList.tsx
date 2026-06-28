@@ -39,10 +39,19 @@ export function EarthquakeList() {
   const [minMag, setMinMag] = useState(2.5);
   const [sinceHours, setSinceHours] = useState(24);
   const [events, setEvents] = useState<Quake[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [ran, setRan] = useState(false);
 
   const load = useMutation({
     mutationFn: async () => callMacro<{ events: Quake[] }>('recent-earthquakes', { minMagnitude: minMag, sinceHours, limit: 100 }),
-    onSuccess: (env) => { if (env.ok && env.result) setEvents(env.result.events); else setEvents([]); },
+    // EMPTY ≠ ERROR: a rejected macro (USGS unreachable) surfaces a distinct
+    // error banner; a successful-but-empty window renders the empty notice.
+    onSuccess: (env) => {
+      setRan(true);
+      if (env.ok && env.result) { setEvents(env.result.events || []); setError(null); }
+      else { setEvents([]); setError(env.error || 'USGS earthquake catalog unreachable'); }
+    },
+    onError: (e) => { setRan(true); setEvents([]); setError(e instanceof Error ? e.message : 'USGS earthquake catalog unreachable'); },
   });
 
   useEffect(() => {
@@ -70,6 +79,21 @@ export function EarthquakeList() {
           {load.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Reload'}
         </button>
       </div>
+      {error && (
+        <div className="flex items-center gap-2 rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button type="button" onClick={() => load.mutate()} disabled={load.isPending}
+            className="rounded border border-rose-400/40 px-2 py-0.5 text-rose-200 hover:bg-rose-500/20 disabled:opacity-50">
+            Retry
+          </button>
+        </div>
+      )}
+      {!error && ran && !load.isPending && events.length === 0 && (
+        <p className="py-4 text-center text-xs italic text-zinc-400">
+          No earthquakes ≥M{minMag.toFixed(1)} in the past {sinceHours}h.
+        </p>
+      )}
       <div className="space-y-1 max-h-[28rem] overflow-y-auto">
         {events.map((q) => (
           <motion.div key={q.id} layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className={`flex items-center gap-3 rounded border border-zinc-800 border-l-4 ${magClass(q.magnitude)} p-2`}>

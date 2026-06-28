@@ -1,0 +1,32 @@
+{
+  "macro_id": "geology.measurement-record",
+  "domain": "geology",
+  "name": "measurement-record",
+  "inputs": {
+    "planeKind": { "type": "string", "required": false },
+    "strike": { "type": "number", "required": true },
+    "dip": { "type": "number", "required": true },
+    "locationName": { "type": "string", "required": false },
+    "notes": { "type": "string", "required": false },
+    "lat": { "type": "number", "required": false },
+    "lon": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.measurement === 'object'",
+    "output.ok === false || (Number.isFinite(output.result.measurement.strike) && output.result.measurement.strike >= 0 && output.result.measurement.strike < 360)",
+    "output.ok === false || (Number.isFinite(output.result.measurement.dip) && output.result.measurement.dip >= 0 && output.result.measurement.dip <= 90)",
+    "output.ok === false || (Number.isFinite(output.result.measurement.dipDirection) && output.result.measurement.dipDirection >= 0 && output.result.measurement.dipDirection < 360)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "strike": 30, "dip": 45, "planeKind": "bedding" }, "expect": { "ok": true } },
+    { "input": { "strike": 370, "dip": 5 }, "expect": { "ok": true } },
+    { "input": { "strike": 30 }, "expect": { "ok": false } },
+    { "input": { "strike": 30, "dip": 120 }, "expect": { "ok": false } },
+    { "input": { "strike": "Infinity", "dip": 45 }, "expect": { "ok": false } },
+    { "input": { "strike": "1e999", "dip": 45 }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (dispatch key 'geology.measurement-record'); STATE-backed (STATE.geologyLens.measurements, per-user). StructuralCompass posts { planeKind, strike, dip, locationName, notes, lat?, lon? } flat (NOT artifact-wrapped). Records a planar structural measurement; dipDirection is the right-hand-rule 90°-CW-of-strike azimuth; strike normalizes to [0,360). Fail-CLOSED: strike/dip pass through geoNum (Number.isFinite guard → null) so a poisoned Infinity/NaN/1e999 is REJECTED ({ ok:false, error }) rather than producing a NaN dipDirection; dip is range-checked [0,90]. Pinned by server/tests/geology-lens-macros.test.js."
+}

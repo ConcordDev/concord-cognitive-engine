@@ -57,11 +57,15 @@ export function StructuralCompass() {
       lat: form.lat ? Number(form.lat) : undefined,
       lon: form.lon ? Number(form.lon) : undefined,
     });
-    if (r.data?.ok) {
+    // The /api/lens/run dispatch unwraps ONE { ok, result } layer, so a
+    // handler that rejects with { ok:false, error } surfaces as
+    // r.data.result.ok === false (r.data.ok is the always-true transport flag).
+    const inner = r.data?.result as { ok?: boolean; error?: string } | undefined;
+    if (r.data?.ok && inner?.ok !== false) {
       setForm({ planeKind: 'bedding', strike: '', dip: '', locationName: '', notes: '', lat: '', lon: '' });
       await refresh();
     } else {
-      setError(r.data?.error || 'Could not record measurement');
+      setError(inner?.error || r.data?.error || 'Could not record measurement');
     }
   }, [form, refresh]);
 

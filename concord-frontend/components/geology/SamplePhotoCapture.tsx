@@ -59,8 +59,9 @@ export function SamplePhotoCapture() {
         exifTakenAt: exif.takenAt ?? undefined,
         cameraModel: exif.cameraModel ?? undefined,
       });
-      if (r.data?.ok) { setCaption(''); await refresh(); }
-      else setError(r.data?.error || 'Could not attach photo');
+      const inner = r.data?.result as { ok?: boolean; error?: string } | undefined;
+      if (r.data?.ok && inner?.ok !== false) { setCaption(''); await refresh(); }
+      else setError(inner?.error || r.data?.error || 'Could not attach photo');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Photo attach failed');
     } finally {

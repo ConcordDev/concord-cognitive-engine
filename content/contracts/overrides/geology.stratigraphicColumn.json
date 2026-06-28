@@ -1,0 +1,23 @@
+{
+  "macro_id": "geology.stratigraphicColumn",
+  "domain": "geology",
+  "name": "stratigraphicColumn",
+  "inputs": {
+    "layers": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalThickness)",
+    "output.ok === false || output.result.message !== undefined || (Array.isArray(output.result.layers) && output.result.layers.every(l => Number.isFinite(l.thickness) && l.thickness >= 0 && Number.isFinite(l.depthTop) && Number.isFinite(l.depthBottom) && l.depthBottom >= l.depthTop))",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.layerCount)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "layers": [{ "name": "Topsoil", "thickness": 2 }, { "name": "Sandstone", "thickness": 8 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "layers": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "layers": [{ "name": "A", "thickness": "Infinity" }, { "name": "B", "thickness": "1e999" }, { "name": "C", "thickness": -5 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (dispatch key 'geology.stratigraphicColumn'). Pure-compute: accumulates per-layer thicknesses into depthTop/depthBottom + totalThickness. Fail-CLOSED: each thickness is finite-guarded and forced ≥0 so a poisoned Infinity/NaN/negative can never invert the depth axis (depthBottom >= depthTop always holds) or leak Infinity into totalThickness. An empty layer list returns a guidance message, not a crash. Pinned by server/tests/geology-lens-macros.test.js."
+}
