@@ -11,7 +11,11 @@ export default function registerAffectActions(registerLensAction) {
    * params.detectSarcasm — whether to run sarcasm heuristics (default true)
    */
   registerLensAction("affect", "sentimentAnalysis", (ctx, artifact, params) => {
-    const text = artifact.data.text || "";
+  try {
+    // Coerce defensively: a poisoned non-string `text` (number/object) must not
+    // throw on `.trim()` — fail CLOSED to the empty-input message, never crash.
+    const rawText = artifact?.data?.text;
+    const text = typeof rawText === "string" ? rawText : "";
     if (!text.trim()) {
       return { ok: true, result: { message: "No text provided for sentiment analysis." } };
     }
@@ -200,6 +204,7 @@ export default function registerAffectActions(registerLensAction) {
 
     artifact.data.sentimentAnalysis = result;
     return { ok: true, result };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
   /**
@@ -210,12 +215,16 @@ export default function registerAffectActions(registerLensAction) {
    * params.windowSize — smoothing window for arc detection (default 3)
    */
   registerLensAction("affect", "emotionTimeline", (ctx, artifact, params) => {
-    const entries = artifact.data.entries || [];
+  try {
+    // Guard CLOSED: a poisoned non-array `entries` must not throw on `.map()`.
+    const entries = Array.isArray(artifact?.data?.entries) ? artifact.data.entries : [];
     if (entries.length === 0) {
       return { ok: true, result: { message: "No entries provided for emotion timeline." } };
     }
 
-    const windowSize = params.windowSize || 3;
+    const windowSize = Number.isFinite(Number(params.windowSize)) && Number(params.windowSize) > 0
+      ? Number(params.windowSize)
+      : 3;
 
     // Simple inline lexicon for scoring
     const posWords = new Set(["happy", "joy", "love", "great", "excellent", "wonderful", "amazing",
@@ -342,6 +351,7 @@ export default function registerAffectActions(registerLensAction) {
 
     artifact.data.emotionTimeline = result;
     return { ok: true, result };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
   /**
@@ -353,7 +363,10 @@ export default function registerAffectActions(registerLensAction) {
    * params.gainKeywords — additional gain keywords (optional)
    */
   registerLensAction("affect", "empathyMap", (ctx, artifact, params) => {
-    const feedback = artifact.data.feedback || [];
+  try {
+    // Guard CLOSED: a poisoned non-array `feedback` (string iterates chars,
+    // object is non-iterable → throws) must collapse to the empty-input message.
+    const feedback = Array.isArray(artifact?.data?.feedback) ? artifact.data.feedback : [];
     if (feedback.length === 0) {
       return { ok: true, result: { message: "No feedback data provided for empathy mapping." } };
     }
@@ -399,8 +412,9 @@ export default function registerAffectActions(registerLensAction) {
     const gains = [];
     const themes = {};
 
-    for (const item of feedback) {
-      const text = item.text || "";
+    for (const rawItem of feedback) {
+      const item = rawItem && typeof rawItem === "object" ? rawItem : {};
+      const text = typeof item.text === "string" ? item.text : "";
       const lower = text.toLowerCase();
       const tokens = lower.replace(/[^a-z\s'-]/g, " ").split(/\s+/).filter(t => t.length > 1);
 
@@ -500,6 +514,7 @@ export default function registerAffectActions(registerLensAction) {
 
     artifact.data.empathyMap = result;
     return { ok: true, result };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
   // ---------------------------------------------------------------------------
@@ -1035,6 +1050,7 @@ export default function registerAffectActions(registerLensAction) {
   // (artifact.data.entries: [{ text, timestamp }]). Returns the shape the lens's
   // patternResult panel renders: patterns / triggers / cycles / correlations / summary.
   registerLensAction("affect", "detect-patterns", (ctx, artifact, _params = {}) => {
+  try {
     const entries = Array.isArray(artifact.data?.entries) ? artifact.data.entries
       : Array.isArray(artifact.data?.checkins) ? artifact.data.checkins : [];
     const STOP = new Set("the a an and or but i to of in is it im was are my me you we be for on with that this so just feel feeling felt today".split(" "));
@@ -1066,5 +1082,6 @@ export default function registerAffectActions(registerLensAction) {
           : "No journal entries yet — add a few check-ins to surface patterns.",
       },
     };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 }

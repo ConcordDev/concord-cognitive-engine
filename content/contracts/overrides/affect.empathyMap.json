@@ -1,0 +1,29 @@
+{
+  "macro_id": "affect.empathyMap",
+  "domain": "affect",
+  "name": "empathyMap",
+  "inputs": {
+    "feedback": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalFeedback)",
+    "output.ok === false || output.result.message !== undefined || (output.result.quadrants && ['thinks','feels','says','does'].every(function(q){ return output.result.quadrants[q] && Number.isFinite(output.result.quadrants[q].count) && Array.isArray(output.result.quadrants[q].items); }))",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.painPoints)",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.gains)",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.topThemes)",
+    "output.ok === false || output.result.message !== undefined || (output.result.summary && Number.isFinite(output.result.summary.totalPainPoints) && Number.isFinite(output.result.summary.totalGains) && Number.isFinite(output.result.summary.avgPainScore) && Number.isFinite(output.result.summary.avgGainScore) && Number.isFinite(output.result.summary.sentimentBalance))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "feedback": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "feedback": [{ "userId": "u1", "text": "the dashboard is confusing and slow, a real problem" }, { "userId": "u2", "text": "I love how easy and fast and simple it is" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "feedback": [{ "text": "I clicked buy and it was smooth and helpful" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "feedback": "not an array" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "feedback": { "x": 1 } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "feedback": [null, { "text": 123 }, "raw", { "text": "I love this it is great" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'affect.empathyMap'. /lenses/affect Analysis tab renders r.result.{totalFeedback,analyzedAt,quadrants.{thinks,feels,says,does}.{count,items[].text},painPoints[].{text,keywords},gains[].{text,keywords},topThemes[].{phrase,count},summary.{totalPainPoints,totalGains,avgPainScore,avgGainScore,sentimentBalance}}. Think/Feel/Say/Do quadrant classifier + pain/gain keyword detection. Empty/absent feedback → {ok:true,result.message}. FIXED (Phase-2 gate): a poisoned non-array feedback (string iterates chars / object non-iterable → throws) and a poisoned non-string item.text once threw; now Array.isArray + per-item typeof guards + try/catch. Not assassin-driven (LENS_ACTIONS); pinned by server/tests/affect-lens-macros.test.js."
+}

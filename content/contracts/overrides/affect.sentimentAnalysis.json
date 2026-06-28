@@ -1,0 +1,30 @@
+{
+  "macro_id": "affect.sentimentAnalysis",
+  "domain": "affect",
+  "name": "sentimentAnalysis",
+  "inputs": {
+    "text": { "type": "string", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || (output.result.vad && Number.isFinite(output.result.vad.valence) && Number.isFinite(output.result.vad.arousal) && Number.isFinite(output.result.vad.dominance))",
+    "output.ok === false || output.result.message !== undefined || ['positive','neutral','negative'].indexOf(output.result.sentimentLabel) >= 0",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.tokenCount)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.matchedTokens)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.coverage)",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.emotionHits)",
+    "output.ok === false || output.result.message !== undefined || ['low','moderate','high'].indexOf(output.result.sarcasmLikelihood) >= 0",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "text": "" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "text": "I am so happy and grateful, this is wonderful" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "text": "this terrible awful horrible day fills me with despair" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "text": "I am not happy" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "text": 9999 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "text": { "x": 1 } } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'affect.sentimentAnalysis'. /lenses/affect Analysis tab renders r.result.{sentimentLabel,primaryEmotion,isMixedEmotion,vad.{valence,arousal,dominance},tokenCount,matchedTokens,coverage,emotionHits[].{word,valence,negated},sarcasmIndicators[].detail,sarcasmLikelihood}. Deterministic VAD lexicon + negation/intensifier context. Absent/empty text → {ok:true,result.message} (panel message branch). FIXED (Phase-2 gate): a poisoned non-string text once threw `text.trim is not a function`; now typeof-guarded + try/catch so poison degrades to the message branch. Not assassin-driven (LENS_ACTIONS, not in runMacro MACROS map); pinned by server/tests/affect-lens-macros.test.js."
+}
