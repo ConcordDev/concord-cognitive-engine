@@ -1,0 +1,22 @@
+{
+  "macro_id": "mail.claim",
+  "domain": "mail",
+  "name": "claim",
+  "inputs": {
+    "id": { "type": "string", "required": true, "maxLength": 128 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.claimed === true",
+    "output.ok === false || (typeof output.payout === 'object' && output.payout !== null)",
+    "output.ok === false || output.payout.attachmentCc >= 0",
+    "output.ok === false || output.payout.codCcPaid >= 0",
+    "output.ok === false || Array.isArray(output.attachments.dtuIds)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "id": "mail_does_not_exist" }, "expect": { "ok": false, "error": "not_found" } }
+  ]
+}

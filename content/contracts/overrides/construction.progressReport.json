@@ -1,0 +1,27 @@
+{
+  "macro_id": "construction.progressReport",
+  "domain": "construction",
+  "name": "progressReport",
+  "inputs": {
+    "phases": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overallPlannedPercent)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overallActualPercent)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overallVariance)",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.behindPhases)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "phases": [] }, "expect": {} },
+    { "input": { "phases": [{ "name": "Sitework", "plannedPercent": 90, "actualPercent": 95 }, { "name": "Foundation", "plannedPercent": 60, "actualPercent": 52 }, { "name": "Framing", "plannedPercent": 40, "actualPercent": 20 }] }, "expect": { "ok": true } },
+    { "input": { "phases": [{ "name": "P", "plannedPercent": "NaN", "actualPercent": "Infinity" }] }, "expect": { "ok": true } },
+    { "input": { "phases": [{ "name": "Q", "plannedPercent": 1e308, "actualPercent": -1 }] }, "expect": { "ok": true } },
+    { "input": { "phases": "boom" }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/construction.js, registerLensAction('construction','progressReport',...)) — reached only via /api/lens/run on key 'construction.progressReport' (3-arg handler, virtualArtifact.data === input). DETERMINISTIC: per-phase variance = actual − planned (parseFloat||0, so 'NaN'/absent → 0); status on-track/slightly-behind/behind-schedule by ±10 band; overall planned/actual = round(mean), overallVariance = round(meanActual − meanPlanned); projectStatus on-schedule/minor-delay/significant-delay. Empty/absent/non-array phases degrade graceful (guidance message — note an empty [] still hits the message branch so {ok:true} with no numeric result; the fuzz case uses {} expect). The GC-bench panel double-wraps; calcData() peels the layer so it computes identically. NOT macro-assassin-driven (LENS_ACTIONS, not MACROS); authored spec pinned by server/tests/construction-lens-macros.test.js."
+}

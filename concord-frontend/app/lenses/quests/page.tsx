@@ -6,28 +6,44 @@
  * Active / Completed / Available tabs. Each active quest shows
  * objectives + progress + share-with-party button (visible when the
  * user is in a party).
+ *
+ * Backend: the real quest state machine in server/lib/quests/quest-engine.js,
+ * surfaced through the `quests` domain macros (server/domains/quests.js).
+ * `quests.mine` returns the lens-shaped active quests with merged objective
+ * progress. Party sharing rides the real /api/parties routes.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollText, Check, Clock, Users2, RefreshCcw, AlertCircle } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { lensRun } from '@/lib/api/client';
 
+interface Objective {
+  id?: string;
+  title?: string;
+  description?: string;
+  progress?: number;
+  target?: number;
+  complete?: boolean;
+}
 interface Quest {
   id: string;
   title?: string;
   description?: string;
   status?: string;
-  objectives?: Array<{ id?: string; title?: string; description?: string; progress?: number; target?: number; complete?: boolean }>;
+  objectives?: Objective[];
   reward?: { cc?: number; dtuIds?: string[]; title?: string };
 }
 
 type Tab = 'active' | 'completed' | 'available';
+type LoadState = 'loading' | 'error' | 'ready';
 
 export default function QuestsLensPage() {
   const [tab, setTab] = useState<Tab>('active');
   const [quests, setQuests] = useState<Quest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState<LoadState>('loading');
+  const [errMsg, setErrMsg] = useState<string | null>(null);
   const [partyId, setPartyId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
@@ -38,16 +54,32 @@ export default function QuestsLensPage() {
   }, []);
 
   const refresh = useCallback(async () => {
+    setState('loading');
+    setErrMsg(null);
     try {
-      const [q, p] = await Promise.all([
-        fetch(`/api/quests/mine`, { credentials: 'include' }).then((r) => r.json()).catch(() => null),
-        fetch('/api/parties/me', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
+      // Real quest state machine via the quests domain macro. The party lookup
+      // is best-effort (no party is a valid state, not an error).
+      const [qRes, p] = await Promise.all([
+        lensRun<{ ok: boolean; quests?: Quest[] }>('quests', 'mine', {}),
+        fetch('/api/parties/me', { credentials: 'include' })
+          .then((r) => r.json())
+          .catch(() => null),
       ]);
-      if (q?.ok) setQuests(q.quests || []);
+
+      const node = qRes?.data;
+      if (!node || node.ok === false || !node.result || node.result.ok === false) {
+        throw new Error(node?.error || 'Could not load your quests.');
+      }
+      setQuests(node.result.quests || []);
+
       if (p?.ok && p.party) setPartyId(p.party.party_id);
       else setPartyId(null);
-    } catch { /* network blip */ }
-    finally { setLoading(false); }
+
+      setState('ready');
+    } catch (e) {
+      setErrMsg(e instanceof Error ? e.message : 'Could not load your quests.');
+      setState('error');
+    }
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -64,13 +96,15 @@ export default function QuestsLensPage() {
       const j = await r.json();
       if (j.ok) showFlash('ok', 'Shared with party.');
       else showFlash('err', j.error || 'share failed');
+    } catch {
+      showFlash('err', 'share failed');
     } finally { setBusy(null); }
   }, [partyId, showFlash]);
 
   const filtered = useMemo(() => {
     return quests.filter((q) => {
       if (tab === 'active') return !q.status || q.status === 'active' || q.status === 'accepted';
-      if (tab === 'completed') return q.status === 'completed';
+      if (tab === 'completed') return q.status === 'completed' || q.status === 'rewarded';
       return q.status === 'available' || q.status === 'open';
     });
   }, [quests, tab]);
@@ -88,17 +122,17 @@ export default function QuestsLensPage() {
               <h1 className="text-base font-semibold tracking-tight sm:text-lg">Quest log</h1>
               <p className="mt-0.5 truncate text-xs text-slate-400">{quests.length} total quest{quests.length === 1 ? '' : 's'}</p>
             </div>
-            <button onClick={refresh} aria-label="Refresh" className="rounded-full border border-amber-500/30 bg-amber-500/10 p-1.5 text-amber-300 hover:bg-amber-500/20">
+            <button onClick={refresh} aria-label="Refresh quests" className="rounded-full border border-amber-500/30 bg-amber-500/10 p-1.5 text-amber-300 hover:bg-amber-500/20">
               <RefreshCcw className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div className="mx-auto mt-2 flex max-w-screen-2xl gap-1">
+          <div className="mx-auto mt-2 flex max-w-screen-2xl gap-1" role="tablist" aria-label="Quest filters">
             {(['active', 'completed', 'available'] as const).map((t) => (
-              <button key={t} onClick={() => setTab(t)} className={`rounded-md border px-3 py-1 text-[11px] font-medium capitalize ${tab === t ? 'border-amber-400 bg-amber-500/20 text-amber-100' : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-700/40'}`}>{t}</button>
+              <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-md border px-3 py-1 text-[11px] font-medium capitalize ${tab === t ? 'border-amber-400 bg-amber-500/20 text-amber-100' : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-700/40'}`}>{t}</button>
             ))}
           </div>
           {flash && (
-            <div className={`mx-auto mt-2 flex max-w-screen-2xl items-center gap-2 rounded-md px-3 py-1.5 text-[11px] ${flash.kind === 'ok' ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border border-rose-500/30 bg-rose-500/10 text-rose-200'}`}>
+            <div role="status" className={`mx-auto mt-2 flex max-w-screen-2xl items-center gap-2 rounded-md px-3 py-1.5 text-[11px] ${flash.kind === 'ok' ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border border-rose-500/30 bg-rose-500/10 text-rose-200'}`}>
               {flash.kind === 'ok' ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
               {flash.msg}
             </div>
@@ -106,12 +140,33 @@ export default function QuestsLensPage() {
         </header>
 
         <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
-          {loading ? (
+          {state === 'loading' ? (
             <ul className="space-y-3" aria-busy="true" aria-label="Loading quests">
               {[0, 1, 2].map((i) => <li key={i} className="h-16 animate-pulse rounded-xl border border-amber-500/15 bg-amber-500/5" />)}
             </ul>
+          ) : state === 'error' ? (
+            <div role="alert" className="mx-auto flex max-w-md flex-col items-center gap-3 px-4 py-12 text-center">
+              <AlertCircle className="h-8 w-8 text-rose-400" />
+              <p className="text-sm font-medium text-rose-200">Couldn&apos;t load your quests</p>
+              <p className="text-[12px] text-slate-400">{errMsg}</p>
+              <button onClick={refresh} className="mt-1 flex items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-[12px] font-medium text-amber-200 hover:bg-amber-500/20">
+                <RefreshCcw className="h-3.5 w-3.5" /> Try again
+              </button>
+            </div>
           ) : filtered.length === 0 ? (
-            <p className="px-4 py-8 text-center text-[12px] text-slate-500">No quests in this list.</p>
+            <div className="mx-auto flex max-w-md flex-col items-center gap-2 px-4 py-12 text-center">
+              <ScrollText className="h-7 w-7 text-amber-400/50" />
+              <p className="text-[13px] font-medium text-slate-300">
+                {tab === 'active' ? 'No active quests' : tab === 'completed' ? 'No completed quests yet' : 'No quests available'}
+              </p>
+              <p className="text-[12px] text-slate-500">
+                {tab === 'active'
+                  ? 'Talk to an NPC in the world to accept a quest — it will appear here with its objectives.'
+                  : tab === 'completed'
+                    ? 'Finish a quest and it will move here.'
+                    : 'Available offers show up here when an NPC has work for you.'}
+              </p>
+            </div>
           ) : (
             <ul className="space-y-3">
               {filtered.map((q) => (
@@ -122,7 +177,7 @@ export default function QuestsLensPage() {
                       {q.description && <p className="mt-0.5 text-[11px] text-amber-200/80">{q.description}</p>}
                     </div>
                     {tab === 'active' && partyId && (
-                      <button onClick={() => handleShare(q.id)} disabled={busy === `share-${q.id}`} className="flex items-center gap-1 rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/30 disabled:opacity-40">
+                      <button onClick={() => handleShare(q.id)} disabled={busy === `share-${q.id}`} aria-label={`Share ${q.title || q.id} with party`} className="flex items-center gap-1 rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/30 disabled:opacity-40">
                         <Users2 className="h-3 w-3" />
                         Share
                       </button>

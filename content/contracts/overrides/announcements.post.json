@@ -1,0 +1,21 @@
+{
+  "macro_id": "announcements.post",
+  "domain": "announcements",
+  "name": "post",
+  "inputs": {
+    "kind": { "type": "string", "required": true, "enum": ["feature_drop", "balance_change", "event", "news", "roadmap"] },
+    "title": { "type": "string", "required": true, "maxLength": 200 },
+    "body": { "type": "string", "required": true, "maxLength": 8000 },
+    "expiresAt": { "type": "number", "min": 0 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.id === 'string' && output.id.indexOf('ann_') === 0)",
+    "output.ok === true || typeof output.error === 'string' || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "kind": "news", "title": "x", "body": "y" }, "expect": { "ok": false, "error": "admin_only" } },
+    { "input": { "kind": "spam", "title": "x", "body": "y" }, "expect": { "ok": false } }
+  ]
+}

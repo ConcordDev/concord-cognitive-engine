@@ -1,0 +1,25 @@
+{
+  "macro_id": "cognition.driftAlerts",
+  "domain": "cognition",
+  "name": "driftAlerts",
+  "inputs": {
+    "severity": { "type": "string", "enum": ["info", "warning", "alert", "critical"] },
+    "type": { "type": "string", "maxLength": 60 },
+    "since": { "type": "string", "maxLength": 40 },
+    "limit": { "type": "number", "min": 1, "max": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.alerts))",
+    "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 0)",
+    "output.ok === false || (output.result.bySeverity && typeof output.result.bySeverity === 'object')",
+    "output.ok === false || Array.isArray(output.result.severities)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "severity": "critical", "limit": 50 }, "expect": { "ok": true } },
+    { "input": { "limit": -1 }, "expect": { "ok": false, "error": "invalid_limit" } }
+  ],
+  "_note": "Read-only wrapper over the real lattice drift-monitor (lazy-imported, pure in-process read of the live STATE drift store — no network/LLM). On a fresh/empty corpus it returns ok:true with an empty alerts[] and total:0 — never no_db (the drift store lives in STATE, not the DB). 'limit' is a fail-CLOSED numeric guard (poisoned → ok:false invalid_limit). If the drift-monitor is not loadable it returns ok:false drift_monitor_unavailable — never a fabricated success."
+}

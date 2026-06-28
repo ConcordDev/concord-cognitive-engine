@@ -1,0 +1,18 @@
+{
+  "macro_id": "code-quality.evaluateGate",
+  "domain": "code-quality",
+  "name": "evaluateGate",
+  "inputs": {
+    "scanId": { "type": "string", "maxLength": 60 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || ['PASS','FAIL'].includes(output.result.status)",
+    "output.ok === false || (Array.isArray(output.result.checks) && typeof output.result.passed === 'boolean')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "no_scans_yet" } }
+  ],
+  "_note": "Evaluates a prior scan against the caller's quality gate (reads per-user STATE). No scans yet → no_scans_yet (real read-state reason, NEVER no_db). After an analyze it returns PASS/FAIL + the per-criterion checks."
+}

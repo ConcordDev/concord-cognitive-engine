@@ -1,0 +1,23 @@
+{
+  "macro_id": "civic_bonds.get",
+  "domain": "civic_bonds",
+  "name": "get",
+  "inputs": {
+    "bondId": { "type": "string" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.reason !== 'no_db'",
+    "output.ok || typeof output.reason === 'string'",
+    "!output.ok || (output.bond && typeof output.bond.id === 'string')",
+    "!output.ok || (Array.isArray(output.pledges) && Array.isArray(output.milestones))",
+    "!output.ok || (output.quorum && typeof output.quorum.quorumMet === 'boolean')"
+  ],
+  "fuzz_cases": [
+    {
+      "input": { "bondId": "does_not_exist" },
+      "expect": { "ok": false, "reason": "bond_not_found" }
+    }
+  ]
+}

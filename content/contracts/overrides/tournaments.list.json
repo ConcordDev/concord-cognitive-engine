@@ -1,0 +1,23 @@
+{
+  "macro_id": "tournaments.list",
+  "domain": "tournaments",
+  "name": "list",
+  "inputs": {
+    "status": { "type": "string", "enum": ["upcoming", "checkin", "in_progress", "completed", "cancelled"] },
+    "format": { "type": "string", "enum": ["single_elimination", "double_elimination", "round_robin", "swiss"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "output.result && Array.isArray(output.result.tournaments)",
+    "output.result && output.result.counts && typeof output.result.counts === 'object'",
+    "typeof output.result.counts.upcoming === 'number'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "status": "completed" }, "expect": { "ok": true } },
+    { "input": { "format": "swiss" }, "expect": { "ok": true } },
+    { "input": { "status": "__garbage__" }, "expect": { "ok": true } }
+  ],
+  "_note": "tournaments.list returns the caller's status/format-filtered archive plus per-status counts. Empty STATE (fresh user) → ok:true with tournaments:[] and a zeroed counts map — NEVER no_db (this is a pure in-memory lens, no DB dependency). An unknown status/format filter is ignored (no throw), so the call still succeeds. Per-user isolated: one user never sees another's tournaments."
+}

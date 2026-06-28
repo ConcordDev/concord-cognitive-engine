@@ -1,0 +1,22 @@
+{
+  "macro_id": "forecast.multiDay",
+  "domain": "forecast",
+  "name": "multiDay",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 120 },
+    "days": { "type": "number", "min": 2, "max": 14 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.outlook)",
+    "output.ok === false || typeof output.days === 'number'",
+    "output.ok === false || output.outlook.length === output.days"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "days": 5 }, "expect": { "ok": true } },
+    { "input": { "days": -1 }, "expect": { "ok": false, "error": "invalid_days" } }
+  ],
+  "_note": "forecast.multiDay returns N (2-14, default 7) daily windows with honestly range-decaying confidence, off a freshly composed base. World-public read — {} returns ok:true. days is a fail-CLOSED numeric: a poisoned value (negative/NaN/Infinity/1e308) returns ok:false invalid_days, never a clamped ok:true. outlook.length always equals the resolved days."
+}

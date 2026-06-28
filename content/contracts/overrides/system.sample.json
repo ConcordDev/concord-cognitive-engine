@@ -1,0 +1,18 @@
+{
+  "macro_id": "system.sample",
+  "domain": "system",
+  "name": "sample",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.heapUsedMB === 'number')",
+    "output.ok === false || typeof output.result.cpuPct === 'number'",
+    "output.ok === false || (typeof output.result.heapPct === 'number' && output.result.heapPct >= 0 && output.result.heapPct <= 100)",
+    "output.ok === false || typeof output.result.ts === 'number'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Captures and returns ONE real process telemetry point (heap/rss/cpu/uptime/request-rate) into the shared ring buffer. Pure process introspection, no actor/DB dependency → always ok:true (NEVER no_db). heapPct is bounded 0..100."
+}

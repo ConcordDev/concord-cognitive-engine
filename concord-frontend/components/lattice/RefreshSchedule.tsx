@@ -17,9 +17,27 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Loader2, CalendarClock, FlaskRound, Check, X, Trophy,
+  AlertTriangle, RefreshCw,
 } from 'lucide-react';
 
 const BRAINS = ['conscious', 'subconscious', 'utility', 'repair'] as const;
+
+function ErrorRow({ message, onRetry, retrying }: { message: string; onRetry: () => void; retrying?: boolean }) {
+  return (
+    <div role="alert" className="flex flex-wrap items-center gap-2 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2.5 text-xs text-rose-200">
+      <AlertTriangle className="h-4 w-4 text-rose-400" aria-hidden />
+      <span className="flex-1">{message}</span>
+      <button
+        onClick={onRetry}
+        disabled={retrying}
+        className="inline-flex items-center gap-1 rounded bg-rose-900/40 px-2 py-1 font-medium hover:bg-rose-800/60 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-rose-400"
+      >
+        {retrying ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <RefreshCw className="h-3 w-3" aria-hidden />}
+        {retrying ? 'Retrying…' : 'Retry'}
+      </button>
+    </div>
+  );
+}
 const CADENCES = ['manual', 'daily', 'weekly'] as const;
 
 interface ScheduleRow {
@@ -124,7 +142,13 @@ export function RefreshSchedule() {
           after each pass.
         </p>
         {schedule.isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-fuchsia-500" />
+          <Loader2 role="status" aria-label="Loading schedule" className="h-4 w-4 animate-spin text-fuchsia-500" />
+        ) : schedule.isError ? (
+          <ErrorRow
+            message={(schedule.error as Error)?.message ?? 'Failed to load refresh schedule.'}
+            onRetry={() => schedule.refetch()}
+            retrying={schedule.isFetching}
+          />
         ) : (
           <div className="overflow-x-auto rounded border border-fuchsia-900/40">
             <table className="w-full font-mono text-xs">
@@ -263,7 +287,13 @@ export function RefreshSchedule() {
         )}
 
         {abTests.isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-fuchsia-500" />
+          <Loader2 role="status" aria-label="Loading A/B tests" className="h-4 w-4 animate-spin text-fuchsia-500" />
+        ) : abTests.isError ? (
+          <ErrorRow
+            message={(abTests.error as Error)?.message ?? 'Failed to load A/B tests.'}
+            onRetry={() => abTests.refetch()}
+            retrying={abTests.isFetching}
+          />
         ) : (abTests.data?.tests ?? []).length === 0 ? (
           <p className="rounded border border-fuchsia-900/30 bg-fuchsia-950/10 px-4 py-6 text-center text-xs text-fuchsia-600">
             No A/B tests yet — start one above.

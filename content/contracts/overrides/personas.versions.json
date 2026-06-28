@@ -1,0 +1,17 @@
+{
+  "macro_id": "personas.versions",
+  "domain": "personas",
+  "name": "versions",
+  "inputs": {
+    "personaId": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.versions)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Live boot reality: the reachable personas.versions is the Z4 roadmap stub — it ignores its input and returns a single { ok:true, versions:[{id:'v1',current:true}], reason:'single_version_only' } so the PersonaDetailPanel renders a one-version history without crashing. The full version-history macro (snapshots prior versions on every revise) lives in the currently-unwired server/domains/personas.js; once wired, versions becomes author/visibility-gated and returns result.versions with a real changelog per revision."
+}

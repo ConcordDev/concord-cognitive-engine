@@ -1,0 +1,27 @@
+{
+  "macro_id": "accounting.invoiceAging",
+  "domain": "accounting",
+  "name": "invoiceAging",
+  "inputs": {
+    "invoices": { "type": "array", "required": false },
+    "asOfDate": { "type": "string", "required": false, "maxLength": 32 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.totalOutstanding)",
+    "output.ok === false || Number.isFinite(output.result.totalOverdue)",
+    "output.ok === false || Number.isFinite(output.result.avgDaysOutstanding)",
+    "output.ok === false || (typeof output.result.buckets === 'object' && Number.isFinite(output.result.buckets.current.total))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "invoices": [] }, "expect": { "ok": true } },
+    { "input": { "invoices": [{ "invoiceId": "A", "customer": "X", "amount": 100, "dueDate": "2026-02-10" }, { "invoiceId": "B", "customer": "Y", "amount": 200, "dueDate": "2026-01-20" }], "asOfDate": "2026-02-01" }, "expect": { "ok": true } },
+    { "input": { "invoices": [{ "invoiceId": "C", "amount": "1e999", "dueDate": "2026-01-20" }], "asOfDate": "2026-02-01" }, "expect": { "ok": true } },
+    { "input": { "invoices": [{ "invoiceId": "D", "amount": "Infinity", "dueDate": "2026-01-20" }] }, "expect": { "ok": true } },
+    { "input": { "invoices": "x" }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'accounting.invoiceAging'. Deterministic pure compute. Buckets unpaid invoices (current/1-30/31-60/61-90/90+) by days overdue. POISON: amount via finNum so '1e999'/'Infinity' collapse to 0 and totalOutstanding/totalOverdue stay FINITE. Empty invoices → ok:true zero totals. Not assassin-driven (LENS_ACTIONS); authored spec pinned by server/tests/accounting-lens-macros.test.js."
+}

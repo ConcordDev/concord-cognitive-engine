@@ -1,0 +1,19 @@
+{
+  "macro_id": "fishing.species",
+  "domain": "fishing",
+  "name": "species",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 64 },
+    "biome": { "type": "string", "maxLength": 32 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.fish)",
+    "output.ok === false || typeof output.biome === 'string'",
+    "output.ok === false || output.fish.every(f => f.biome === output.biome || f.subBiome === output.biome)"
+  ],
+  "fuzz_cases": [
+    { "input": { "worldId": "concordia-hub", "biome": "river" }, "expect": { "ok": true } }
+  ]
+}

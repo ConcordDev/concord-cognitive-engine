@@ -1,0 +1,377 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "literary",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_input"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_input"
+          },
+          "input": {
+            "chunkId": "abc"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "chunkId": "__no_such_chunk__",
+            "note": "a reading"
+          }
+        }
+      ],
+      "inputs": {
+        "chunkId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        },
+        "note": {
+          "maxLength": 4000,
+          "required": true,
+          "type": "string"
+        },
+        "quote": {
+          "maxLength": 4000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || typeof output.dtuId === 'string'",
+        "output.ok === false || output.citedChunkId === input.chunkId"
+      ],
+      "macro_id": "literary.annotate",
+      "name": "annotate"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.crystallize",
+      "name": "crystallize"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.detail",
+      "name": "detail"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.provenance",
+      "name": "provenance"
+    },
+    {
+      "_derived": false,
+      "domain": "literary",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "chunkId": "__no_such_chunk__"
+          }
+        }
+      ],
+      "inputs": {
+        "chunkId": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "dtuId": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "limit": {
+          "max": 50,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.edges)",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || typeof output.dtuId === 'string'"
+      ],
+      "macro_id": "literary.resonance",
+      "name": "resonance"
+    },
+    {
+      "_derived": false,
+      "domain": "literary",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 50
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "includeCitations": false,
+            "limit": 20
+          }
+        }
+      ],
+      "inputs": {
+        "dtuId": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "includeCitations": {
+          "type": "boolean"
+        },
+        "includeResonance": {
+          "type": "boolean"
+        },
+        "limit": {
+          "max": 500,
+          "min": 10,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.nodes)",
+        "output.ok === false || Array.isArray(output.edges)",
+        "output.ok === false || (output.counts && output.counts.nodes === output.nodes.length && output.counts.edges === output.edges.length)",
+        "output.ok === false || output.edges.every(e => e.kind === 'resonance' || e.kind === 'citation')"
+      ],
+      "macro_id": "literary.resonance_graph",
+      "name": "resonance_graph"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.resonance_stats",
+      "name": "resonance_stats"
+    },
+    {
+      "_derived": true,
+      "domain": "literary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "literary.salience",
+      "name": "salience"
+    },
+    {
+      "_derived": false,
+      "domain": "literary",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "count": 0,
+            "ok": true,
+            "semantic": false
+          },
+          "input": {
+            "query": ""
+          }
+        },
+        {
+          "expect": {
+            "count": 0,
+            "ok": true
+          },
+          "input": {
+            "query": "   "
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 5,
+            "query": "conscience and mortality"
+          }
+        }
+      ],
+      "inputs": {
+        "candidateK": {
+          "max": 200,
+          "min": 1,
+          "type": "number"
+        },
+        "keyword": {
+          "type": "boolean"
+        },
+        "limit": {
+          "max": 50,
+          "min": 1,
+          "type": "number"
+        },
+        "query": {
+          "maxLength": 500,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.results)",
+        "output.ok === false || typeof output.count === 'number'",
+        "output.ok === false || output.count === output.results.length",
+        "output.ok === false || typeof output.semantic === 'boolean'",
+        "output.ok === false || output.results.every(r => typeof r.score === 'number')",
+        "output.ok === false || output.results.every(r => r.provenance && typeof r.provenance.title === 'string')"
+      ],
+      "macro_id": "literary.search",
+      "name": "search"
+    },
+    {
+      "_derived": false,
+      "domain": "literary",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "query": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 10,
+            "query": "power and conscience"
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 60,
+          "min": 2,
+          "type": "number"
+        },
+        "query": {
+          "maxLength": 500,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.nodes)",
+        "output.ok === false || Array.isArray(output.edges)",
+        "output.ok === false || output.nodes.every(n => typeof n.id === 'string' && typeof n.label === 'string')",
+        "output.ok === false || output.edges.every(e => typeof e.source === 'string' && typeof e.target === 'string')"
+      ],
+      "macro_id": "literary.semantic_graph",
+      "name": "semantic_graph"
+    },
+    {
+      "_derived": false,
+      "domain": "literary",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.sources === 'number'",
+        "output.ok === false || typeof output.chunks === 'number'",
+        "output.ok === false || typeof output.embedded === 'number'",
+        "output.ok === false || output.sources >= 0",
+        "output.ok === false || output.chunks >= 0",
+        "output.ok === false || output.embedded <= output.chunks"
+      ],
+      "macro_id": "literary.stats",
+      "name": "stats"
+    }
+  ],
+  "domain": "literary",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 11
+}

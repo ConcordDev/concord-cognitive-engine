@@ -1,0 +1,18 @@
+{
+  "macro_id": "ops.serviceGraph",
+  "domain": "ops",
+  "name": "serviceGraph",
+  "inputs": {
+    "rootServiceId": { "type": "string", "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.nodes) && Array.isArray(output.result.edges))",
+    "output.ok === false || (typeof output.result.serviceCount === 'number' && output.result.serviceCount === output.result.nodes.length)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Builds the dependency graph (nodes + edges) over the caller's registered services in per-user STATE.opsLens.services. With no services the assassin's owner actor gets ok:true, empty nodes/edges, serviceCount 0, blastRadius null (NEVER no_db). An unknown rootServiceId leaves blastRadius null without failing."
+}

@@ -114,6 +114,12 @@
       ]
     },
     {
+      "file": "cognitive-fingerprint-cycle.js",
+      "handlers": [
+        "runCognitiveFingerprintCycle"
+      ]
+    },
+    {
       "file": "combat-recovery-cycle.js",
       "handlers": [
         "runCombatRecoveryCycle"
@@ -383,6 +389,18 @@
       ]
     },
     {
+      "file": "literary-license-audit-cycle.js",
+      "handlers": [
+        "runLiteraryLicenseAuditCycle"
+      ]
+    },
+    {
+      "file": "literary-resonance-cycle.js",
+      "handlers": [
+        "runLiteraryResonanceCycle"
+      ]
+    },
+    {
       "file": "mercy-fund-cycle.js",
       "handlers": [
         "runMercyFundCycle"
@@ -501,6 +519,12 @@
       "file": "personal-beat-scheduler.js",
       "handlers": [
         "runPersonalBeatScheduler"
+      ]
+    },
+    {
+      "file": "plan-horizon-cycle.js",
+      "handlers": [
+        "runPlanHorizonCycle"
       ]
     },
     {
@@ -904,6 +928,10 @@
       "handlers": []
     },
     {
+      "file": "hypothesis-cycle.js",
+      "handlers": []
+    },
+    {
       "file": "hypothesis-engine.js",
       "handlers": []
     },
@@ -1097,5 +1125,5 @@
     }
   ],
   "orphan": [],
-  "scannedAt": "2026-06-12T03:58:46.342Z"
+  "scannedAt": "2026-06-26T23:17:31.920Z"
 }

@@ -1,0 +1,20 @@
+{
+  "macro_id": "sub_worlds.favorite",
+  "domain": "sub_worlds",
+  "name": "favorite",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 80 },
+    "favorite": { "type": "boolean" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.favorited === 'boolean'",
+    "output.ok === false || (typeof output.result.favorites === 'number' && output.result.favorites >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "world not found" } },
+    { "input": { "worldId": "does_not_exist" }, "expect": { "ok": false, "error": "world not found" } }
+  ],
+  "_note": "sub_worlds.favorite toggles a per-actor favorite on an existing world and maintains the world's favoriteCount (floored at 0). A missing/unknown worldId returns ok:false 'world not found' (the assassin drives it with no live worldId, so ok:false is the correct, non-no_db outcome). favorite defaults true. Live STATE + actor — never no_db."
+}

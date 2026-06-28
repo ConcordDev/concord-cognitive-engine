@@ -1,0 +1,47 @@
+{
+  "macro_id": "crisis.log_event",
+  "domain": "crisis",
+  "name": "log_event",
+  "inputs": {
+    "crisisId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    },
+    "note": {
+      "type": "string",
+      "required": true,
+      "maxLength": 500
+    },
+    "kind": {
+      "type": "string",
+      "maxLength": 32
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.entry.id === 'string'",
+    "output.ok === false || output.result.count >= 1",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": false,
+        "error": "missing_crisis_or_note"
+      }
+    },
+    {
+      "input": {
+        "crisisId": "cr_x",
+        "note": "Shelter opened"
+      },
+      "expect": {
+        "ok": true
+      }
+    }
+  ],
+  "_note": "Appends a status-log entry to a crisis timeline (in-memory store, persisted via debounced state save). Missing crisisId or note \u2192 missing_crisis_or_note. The appended entry is immediately readable via crisis.timeline."
+}

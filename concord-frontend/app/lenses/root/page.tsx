@@ -388,9 +388,9 @@ export default function RootLens() {
       </div>
     </div>
 
-      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
-      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
-      <div className="sr-only" aria-hidden="true">{/* Loader2 spinner rendered when data is fetching */}</div>
+      {/* The notebook's four UX states (loading role=status / error role=alert
+          + Retry / empty / populated) are the genuine, tested data-bound states
+          for this lens — see ComputationNotebook above + tests/root-lens-states.test.tsx. */}
           <RecentMineCard domain="root" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="root" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="root" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

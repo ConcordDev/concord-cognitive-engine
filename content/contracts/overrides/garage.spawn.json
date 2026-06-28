@@ -1,0 +1,25 @@
+{
+  "macro_id": "garage.spawn",
+  "domain": "garage",
+  "name": "spawn",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 64 },
+    "kind": { "type": "string", "maxLength": 32 },
+    "ownerKind": { "type": "string", "enum": ["player", "realm", "npc", "none"] },
+    "ownerId": { "type": "string", "maxLength": 64 },
+    "route_id": { "type": "string", "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.vehicleId === 'string' && output.vehicleId.length > 0)",
+    "output.ok === false || ['cart','boat','canal_taxi'].includes(output.kind)",
+    "output.ok === false || (typeof output.capacity === 'number' && output.capacity >= 1 && output.capacity <= 12)",
+    "output.ok === false || (typeof output.fare_cc === 'number' && output.fare_cc >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": { "worldId": "concordia-hub", "kind": "cart", "ownerKind": "none" }, "expect": { "ok": true } },
+    { "input": { "worldId": "concordia-hub", "kind": "spaceship", "ownerKind": "none" }, "expect": { "ok": false } },
+    { "input": { "worldId": "concordia-hub", "kind": "canal_taxi", "ownerKind": "none" }, "expect": { "ok": false } }
+  ]
+}

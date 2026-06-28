@@ -1,0 +1,20 @@
+{
+  "macro_id": "quests.claimRewards",
+  "domain": "quests",
+  "name": "claimRewards",
+  "inputs": {
+    "questId": { "type": "string", "required": true, "maxLength": 80 },
+    "userId": { "type": "string", "maxLength": 80 },
+    "worldId": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string' || typeof output.reason === 'string'",
+    "output.ok === false || Array.isArray(output.rewards)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "questId": "no_such_quest" }, "expect": { "ok": false } }
+  ]
+}

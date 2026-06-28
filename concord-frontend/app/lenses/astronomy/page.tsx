@@ -207,9 +207,10 @@ export default function AstronomyLensPage() {
   if (isLoading) {
     return (
       <div data-lens-theme="astronomy" className="flex items-center justify-center h-full p-8">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div role="status" aria-live="polite" className="text-center space-y-3">
+          <div className="w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mx-auto" aria-hidden="true" />
           <p className="text-sm text-gray-400">Scanning the cosmos...</p>
+          <span className="sr-only">Loading astronomy catalog…</span>
         </div>
       </div>
     );
@@ -217,8 +218,14 @@ export default function AstronomyLensPage() {
 
   if (isError) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div role="alert" className="flex flex-col items-center justify-center h-full p-8 gap-3">
         <ErrorState error={error?.message} onRetry={refetch} />
+        <button
+          onClick={() => refetch()}
+          className="px-4 py-2 bg-indigo-400/20 text-indigo-400 rounded-lg text-sm hover:bg-indigo-400/30 focus:outline-none focus:ring-2 focus:ring-amber-500"
+        >
+          Retry
+        </button>
       </div>
     );
   }

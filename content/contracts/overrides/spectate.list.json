@@ -1,0 +1,26 @@
+{
+  "macro_id": "spectate.list",
+  "domain": "spectate",
+  "name": "list",
+  "inputs": {
+    "limit": { "type": "number", "min": 1, "max": 1000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.spectacles)",
+    "output.ok === false || typeof output.count === 'number'",
+    "output.ok === false || typeof output.liveCount === 'number'",
+    "output.ok === false || output.spectacles.every(s => typeof s.worldId === 'string')",
+    "output.ok === false || output.spectacles.every(s => typeof s.watching === 'number' && s.watching >= 0)",
+    "output.ok === false || output.spectacles.every(s => typeof s.openMarketCount === 'number' && s.openMarketCount >= 0)",
+    "output.ok === false || output.spectacles.every(s => typeof s.live === 'boolean')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 25 }, "expect": { "ok": true } },
+    { "input": { "limit": 1e+308 }, "expect": { "ok": false } },
+    { "input": { "limit": -1 }, "expect": { "ok": false } }
+  ],
+  "_note": "Live world spectacles — merges in-memory watcher counts (spectator-mode) with open SPARKS markets (betting-markets). Pure read; honest-empty (live:false everywhere) when nothing is running."
+}

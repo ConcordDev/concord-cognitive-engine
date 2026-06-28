@@ -1,0 +1,24 @@
+{
+  "macro_id": "photography.compositionAnalysis",
+  "domain": "photography",
+  "name": "compositionAnalysis",
+  "inputs": {
+    "compositionRules": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.rulesApplied)",
+    "output.ok === false || (Number.isFinite(output.result.score) && output.result.score >= 0 && output.result.score <= 100)",
+    "output.ok === false || Array.isArray(output.result.allRules)",
+    "output.ok === false || Array.isArray(output.result.suggestions)",
+    "output.ok === false || ['strong-composition','basic-composition','no-rules-applied'].includes(output.result.strength)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "compositionRules": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "compositionRules": ["rule-of-thirds", "leading-lines", "depth"] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "compositionRules": ["bogus", "<script>alert(1)</script>", "symmetry"] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. NOT assassin-driven (LENS_ACTIONS only). Authored contract pinned by server/tests/photography-lens-macros.test.js. PhotographyActionPanel sends { artifact: { data: { compositionRules } } } (peeled to inner data → handler reads artifact.data.compositionRules). Only rules in the canonical 8-rule set count; unknown/XSS strings are filtered out (no injection reaches score). score = round(applied/8*100), bounded 0..100."
+}

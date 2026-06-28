@@ -1,0 +1,19 @@
+{
+  "macro_id": "forecast.regional",
+  "domain": "forecast",
+  "name": "regional",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.regions)",
+    "output.ok === false || output.regions.every(r => typeof r.id === 'string' && r.anchor && typeof r.anchor.x === 'number')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": true } }
+  ],
+  "_note": "forecast.regional reads real embodied signals at each of the 7 named district anchors (deterministic per region id). World-public read — {} returns ok:true with a regions array; each region carries a deterministic anchor and hasData flips true only where the embodied_signal_log has nearby rows (no invented weather). Never no_db."
+}

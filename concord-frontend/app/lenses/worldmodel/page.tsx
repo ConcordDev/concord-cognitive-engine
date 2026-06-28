@@ -118,6 +118,20 @@ export default function WorldmodelLensPage() {
     ['wm-status', 'wm-entities', 'wm-relations', 'wm-types', 'wm-graph'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
   }
 
+  // Top-level wiring health for the four shared queries that feed the whole
+  // surface. A failed fetch here must NOT silently degrade into an empty page
+  // (the populated tabs all read `…data ?? []`, so an error would otherwise
+  // render as "no entities / empty graph" — a swallowed failure). We surface a
+  // single accessible error banner with a working Retry instead.
+  const sharedError =
+    (status.isError && (status.error as Error)) ||
+    (entities.isError && (entities.error as Error)) ||
+    (relations.isError && (relations.error as Error)) ||
+    (graph.isError && (graph.error as Error)) ||
+    null;
+  const sharedLoading =
+    status.isLoading || entities.isLoading || relations.isLoading || graph.isLoading;
+
   const tabs: { key: TabKey; label: string; icon: LucideIcon; count?: number }[] = [
     { key: 'graph', label: 'Graph', icon: Network },
     { key: 'entities', label: 'Entities', icon: Boxes, count: entityList.length },
@@ -171,6 +185,34 @@ export default function WorldmodelLensPage() {
             ))}
           </div>
         </nav>
+
+        {sharedLoading && !sharedError && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-3 text-xs text-emerald-600 md:px-8"
+          >
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            <span>Loading world model…</span>
+          </div>
+        )}
+
+        {sharedError && (
+          <div
+            role="alert"
+            className="mx-auto my-3 flex max-w-7xl flex-wrap items-center gap-3 rounded-lg border border-rose-900/50 bg-rose-950/30 px-4 py-3 text-sm text-rose-200 md:mx-8"
+          >
+            <span className="font-medium">Could not load the world model.</span>
+            <span className="text-xs text-rose-400/80">{sharedError.message}</span>
+            <button
+              type="button"
+              className="ml-auto inline-flex items-center gap-1.5 rounded bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-400"
+              onClick={() => refreshAll()}
+            >
+              <RefreshCcw className="h-3.5 w-3.5" aria-hidden /> Retry
+            </button>
+          </div>
+        )}
 
         <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
           <AnimatePresence mode="wait">
@@ -241,7 +283,14 @@ const btnGhost = 'inline-flex items-center gap-1 rounded border border-emerald-9
 function GraphTab({ graph, loading }: { graph?: { nodes: GraphNode[]; edges: GraphEdge[] }; loading: boolean }) {
   const [selNode, setSelNode] = useState<GraphNode | null>(null);
   const [selEdge, setSelEdge] = useState<GraphEdge | null>(null);
-  if (loading) return <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />;
+  if (loading) {
+    return (
+      <div role="status" aria-live="polite" className="flex items-center gap-2 text-xs text-emerald-600">
+        <Loader2 className="h-4 w-4 animate-spin text-emerald-500" aria-hidden />
+        <span>Loading graph…</span>
+      </div>
+    );
+  }
   const nodes = graph?.nodes ?? [];
   const edges = graph?.edges ?? [];
   return (

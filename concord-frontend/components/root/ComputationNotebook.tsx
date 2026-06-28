@@ -111,16 +111,38 @@ export const ComputationNotebook = forwardRef<NotebookHandle, Props>(function Co
         </button>
       </div>
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-gray-400">
+        <div
+          data-testid="notebook-loading"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          className="flex items-center gap-2 text-xs text-gray-400"
+        >
           <Loader2 className="w-4 h-4 animate-spin" /> Loading…
         </div>
       )}
-      {error && <div className="text-xs text-red-400">{error}</div>}
-      {!loading && !error && items.length === 0 && (
-        <div className="text-xs text-gray-400">No saved computations yet. Evaluate something and press Save.</div>
+      {!loading && error && (
+        <div
+          data-testid="notebook-error"
+          role="alert"
+          className="flex items-center justify-between gap-3 text-xs text-red-400"
+        >
+          <span>{error}</span>
+          <button
+            onClick={() => void load()}
+            className="px-2 py-1 bg-red-900/30 hover:bg-red-900/50 border border-red-800 rounded text-red-300 shrink-0"
+          >
+            Retry
+          </button>
+        </div>
       )}
-      {items.length > 0 && (
-        <ul className="space-y-1.5">
+      {!loading && !error && items.length === 0 && (
+        <div data-testid="notebook-empty" className="text-xs text-gray-400">
+          No saved computations yet. Evaluate something and press Save.
+        </div>
+      )}
+      {!loading && !error && items.length > 0 && (
+        <ul data-testid="notebook-list" className="space-y-1.5">
           {items.map((c) => (
             <motion.li key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-3 py-2 border border-gray-800">

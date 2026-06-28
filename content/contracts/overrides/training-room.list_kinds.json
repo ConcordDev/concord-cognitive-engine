@@ -1,0 +1,17 @@
+{
+  "macro_id": "training-room.list_kinds",
+  "domain": "training-room",
+  "name": "list_kinds",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "Array.isArray(output.kinds)",
+    "output.kinds.length > 0",
+    "output.kinds.every(k => typeof k.kind === 'string' && k.startup_ms > 0 && k.active_ms > 0 && k.recovery_ms > 0)",
+    "output.kinds.every(k => (k.kind === 'bow' || k.kind === 'staff') ? k.parry_window_ms === 0 : k.parry_window_ms > 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ]
+}

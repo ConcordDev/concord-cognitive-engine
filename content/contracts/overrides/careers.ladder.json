@@ -1,0 +1,20 @@
+{
+  "macro_id": "careers.ladder",
+  "domain": "careers",
+  "name": "ladder",
+  "inputs": {
+    "trackId": { "type": "string", "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || (Array.isArray(output.ladder) && output.ladder.length === 10)",
+    "output.ok === false || output.ladder.every(t => typeof t.tier === 'number' && t.tier >= 1 && t.tier <= 10)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "unknown_track" } },
+    { "input": { "trackId": "chef" }, "expect": { "ok": true } },
+    { "input": { "trackId": "no_such_track" }, "expect": { "ok": false, "reason": "unknown_track" } }
+  ]
+}

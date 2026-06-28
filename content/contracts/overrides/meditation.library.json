@@ -1,0 +1,24 @@
+{
+  "macro_id": "meditation.library",
+  "domain": "meditation",
+  "name": "library",
+  "inputs": {
+    "category": { "type": "string", "enum": ["guided", "breathwork", "sleep_story", "soundscape", "sos"] },
+    "goal": { "type": "string", "maxLength": 40 },
+    "maxMinutes": { "type": "number", "min": 0, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.sessions)",
+    "output.ok === false || typeof output.result.count === 'number'",
+    "output.ok === false || output.result.sessions.length === output.result.count",
+    "output.ok === false || Array.isArray(output.result.categories)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "category": "guided" }, "expect": { "ok": true } },
+    { "input": { "goal": "sleep", "maxMinutes": 30 }, "expect": { "ok": true } }
+  ],
+  "_note": "Deterministic Calm/Headspace session catalog (no DB, no actor required). Filters by category/goal/maxMinutes; count always equals the returned sessions length. An empty filter returns the full library, never no_db."
+}

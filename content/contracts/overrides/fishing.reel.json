@@ -1,0 +1,22 @@
+{
+  "macro_id": "fishing.reel",
+  "domain": "fishing",
+  "name": "reel",
+  "inputs": {
+    "sessionId": { "type": "string", "maxLength": 80 },
+    "reactionMs": { "type": "number", "min": 0, "max": 60000 },
+    "tensionAccuracy": { "type": "number", "min": 0, "max": 1 },
+    "fishingSkill": { "type": "number", "min": 0, "max": 100 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.fish && typeof output.fish.id === 'string')",
+    "output.ok === false || (typeof output.qualityScore === 'number' && output.qualityScore >= 0 && output.qualityScore <= 1)",
+    "output.ok === false || ['perfect','good','fair','poor'].includes(output.tier)",
+    "output.ok === false || (output.mint && typeof output.mint.ok === 'boolean')"
+  ],
+  "fuzz_cases": [
+    { "input": { "sessionId": "fish_does_not_exist", "tensionAccuracy": 0.5 }, "expect": { "ok": false } }
+  ]
+}

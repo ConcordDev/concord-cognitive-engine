@@ -1,0 +1,21 @@
+{
+  "macro_id": "staking.set_auto_compound",
+  "domain": "staking",
+  "name": "set_auto_compound",
+  "inputs": {
+    "stakeId": { "type": "string", "required": true, "maxLength": 200 },
+    "enabled": { "type": "boolean" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.stakeId === 'string' && output.result.stakeId.length > 0)",
+    "output.ok === false || typeof output.result.autoCompound === 'boolean'",
+    "output.ok === false || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "missing_stake_id" } },
+    { "input": { "stakeId": "stk_does_not_exist", "enabled": true }, "expect": { "ok": false, "error": "not_found" } }
+  ],
+  "_note": "set_auto_compound is a user-scoped WRITE on an existing position. Internal owner actor → {} hits real validation (missing_stake_id), never no_actor. An unknown stakeId returns not_found (the fresh assassin user owns no positions). No numeric input to guard."
+}

@@ -1,0 +1,16 @@
+{
+  "macro_id": "sandbox.deleteTelemetry",
+  "domain": "sandbox",
+  "name": "deleteTelemetry",
+  "inputs": { "sampleId": { "type": "string", "maxLength": 80 } },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.count === 'number' && output.result.count >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "telemetry_sample_not_found" } },
+    { "input": { "sampleId": "nope" }, "expect": { "ok": false, "error": "telemetry_sample_not_found" } }
+  ],
+  "_note": "Removes one of the caller's telemetry samples by id from per-user STATE. A missing/unknown id fails-closed with 'telemetry_sample_not_found' (NEVER no_db). The assassin's internal owner actor has none → telemetry_sample_not_found."
+}

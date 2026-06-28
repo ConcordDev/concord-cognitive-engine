@@ -108,8 +108,29 @@ export function WebResearchTool() {
         </div>
       </div>
 
+      {busy && (
+        <div role="status" aria-live="polite" className="flex items-center gap-2 rounded border border-yellow-900/40 bg-yellow-950/10 px-3 py-2 text-sm text-yellow-400">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Searching the live web…
+        </div>
+      )}
+
       {error && (
-        <div className="rounded border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-300">{error}</div>
+        <div role="alert" className="flex items-center justify-between gap-3 rounded border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-300">
+          <span>{error}</span>
+          <button
+            onClick={() => runSearch(query)}
+            disabled={!query.trim() || busy}
+            className="shrink-0 rounded border border-red-800/60 px-2 py-0.5 text-xs text-red-200 hover:bg-red-900/40 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-red-400"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {!busy && !error && !payload && (
+        <div className="rounded-lg border border-dashed border-yellow-900/40 bg-yellow-950/5 px-3 py-8 text-center text-sm text-yellow-700">
+          Search the live web across DuckDuckGo + Wikipedia — results are readable and citable into a DTU.
+        </div>
       )}
 
       {payload && (

@@ -1,0 +1,25 @@
+{
+  "macro_id": "staking.estimate_rewards",
+  "domain": "staking",
+  "name": "estimate_rewards",
+  "inputs": {
+    "poolId": { "type": "string", "enum": ["flex", "core", "growth"] },
+    "principalCc": { "type": "number", "min": 0, "max": 1000000000 },
+    "months": { "type": "number", "min": 1, "max": 60 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.aprPct === 'number' && Number.isFinite(output.result.aprPct))",
+    "output.ok === false || (Array.isArray(output.result.monthly) && output.result.monthly.length === output.result.months)",
+    "output.ok === false || (typeof output.result.compoundTermCc === 'number' && output.result.compoundTermCc >= output.result.termCc)",
+    "output.ok === false || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "poolId": "core", "principalCc": 1000, "months": 12 }, "expect": { "ok": true } },
+    { "input": { "poolId": "growth", "principalCc": 5, "months": 6 }, "expect": { "ok": false } },
+    { "input": { "poolId": "core", "principalCc": 1e308, "months": 6 }, "expect": { "ok": false, "error": "invalid_principalCc" } },
+    { "input": { "poolId": "nope", "principalCc": 100, "months": 6 }, "expect": { "ok": false, "error": "unknown_pool" } }
+  ],
+  "_note": "estimate_rewards is a PURE compute (no actor, no write). Returns a simple-vs-compound projection. fail-CLOSED numeric guard rejects poisoned principalCc/months BEFORE projecting (no Infinity in the monthly[] series). compoundTermCc >= termCc always holds for non-negative rates."
+}

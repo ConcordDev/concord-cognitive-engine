@@ -1,0 +1,169 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "announcements",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "id": "ann_does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.announcement && typeof output.announcement.id === 'string')",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "announcements.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "announcements",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "kind": "roadmap"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "limit": 1e+308
+          }
+        }
+      ],
+      "inputs": {
+        "kind": {
+          "enum": [
+            "feature_drop",
+            "balance_change",
+            "event",
+            "news",
+            "roadmap"
+          ],
+          "type": "string"
+        },
+        "limit": {
+          "max": 200,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true || typeof output.reason === 'string'",
+        "!output.ok || Array.isArray(output.announcements)",
+        "!output.ok || output.announcements.every(a => typeof a.id === 'string' && a.id.length > 0)",
+        "!output.ok || output.announcements.every(a => ['feature_drop','balance_change','event','news','roadmap'].includes(a.kind))",
+        "!output.ok || (!input || !input.kind || output.announcements.every(a => a.kind === input.kind))",
+        "!output.ok || output.announcements.every(a => a.expires_at === null || a.expires_at > Math.floor(Date.now()/1000))"
+      ],
+      "macro_id": "announcements.list",
+      "name": "list"
+    },
+    {
+      "_derived": false,
+      "domain": "announcements",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "admin_only",
+            "ok": false
+          },
+          "input": {
+            "body": "y",
+            "kind": "news",
+            "title": "x"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "body": "y",
+            "kind": "spam",
+            "title": "x"
+          }
+        }
+      ],
+      "inputs": {
+        "body": {
+          "maxLength": 8000,
+          "required": true,
+          "type": "string"
+        },
+        "expiresAt": {
+          "min": 0,
+          "type": "number"
+        },
+        "kind": {
+          "enum": [
+            "feature_drop",
+            "balance_change",
+            "event",
+            "news",
+            "roadmap"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.id === 'string' && output.id.indexOf('ann_') === 0)",
+        "output.ok === true || typeof output.error === 'string' || typeof output.reason === 'string'"
+      ],
+      "macro_id": "announcements.post",
+      "name": "post"
+    }
+  ],
+  "domain": "announcements",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 3
+}

@@ -1,0 +1,1372 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.access_knowledge",
+      "name": "access_knowledge"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.acquire_interlock",
+      "name": "acquire_interlock"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.adapt_governance",
+      "name": "adapt_governance"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.add_accountability_edge",
+      "name": "add_accountability_edge"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.add_accountability_node",
+      "name": "add_accountability_node"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.add_deferred_evidence",
+      "name": "add_deferred_evidence"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.add_pool_evidence",
+      "name": "add_pool_evidence"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.add_redundancy",
+      "name": "add_redundancy"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.arbitrate_priority",
+      "name": "arbitrate_priority"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.archive_knowledge",
+      "name": "archive_knowledge"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.budget_status",
+      "name": "budget_status"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.check_compatibility_envelope",
+      "name": "check_compatibility_envelope"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.check_context_validity",
+      "name": "check_context_validity"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.check_escrow_condition",
+      "name": "check_escrow_condition"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.check_plan_compatibility",
+      "name": "check_plan_compatibility"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.check_safety_thresholds",
+      "name": "check_safety_thresholds"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.check_time_capsules",
+      "name": "check_time_capsules"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.compute_attribution",
+      "name": "compute_attribution"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.consistency_report",
+      "name": "consistency_report"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.consume_resources",
+      "name": "consume_resources"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.contest_escrow",
+      "name": "contest_escrow"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.coordination_health",
+      "name": "coordination_health"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.create_accountability_graph",
+      "name": "create_accountability_graph"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.create_canon",
+      "name": "create_canon"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.create_cold_start_seed",
+      "name": "create_cold_start_seed"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.create_evidence_pool",
+      "name": "create_evidence_pool"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.create_interlock",
+      "name": "create_interlock"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.create_protocol",
+      "name": "create_protocol"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.create_resource_budget",
+      "name": "create_resource_budget"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.create_resource_pool",
+      "name": "create_resource_pool"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.create_time_capsule",
+      "name": "create_time_capsule"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.declare_intent",
+      "name": "declare_intent"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.defer_conclusion",
+      "name": "defer_conclusion"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.define_safety_threshold",
+      "name": "define_safety_threshold"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.detect_breaches",
+      "name": "detect_breaches"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.detect_dead_knowledge",
+      "name": "detect_dead_knowledge"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.discover_capabilities",
+      "name": "discover_capabilities"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.draw_from_pool",
+      "name": "draw_from_pool"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.encode_portable",
+      "name": "encode_portable"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.estimate_half_life",
+      "name": "estimate_half_life"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.execute_cold_start",
+      "name": "execute_cold_start"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.execute_migration",
+      "name": "execute_migration"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.execute_rollback",
+      "name": "execute_rollback"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.execute_substrate_migration",
+      "name": "execute_substrate_migration"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.execute_succession",
+      "name": "execute_succession"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.exhaustion_alerts",
+      "name": "exhaustion_alerts"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.form_coalition",
+      "name": "form_coalition"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.generate_post_mortem",
+      "name": "generate_post_mortem"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.get_degradation",
+      "name": "get_degradation"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.get_dissents_by_consensus",
+      "name": "get_dissents_by_consensus"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.get_replay",
+      "name": "get_replay"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.identify_at_risk",
+      "name": "identify_at_risk"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.identify_minimum_viable",
+      "name": "identify_minimum_viable"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.initiate_rollback",
+      "name": "initiate_rollback"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.join_coalition",
+      "name": "join_coalition"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.join_protocol",
+      "name": "join_protocol"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.map_dependencies",
+      "name": "map_dependencies"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.pause_protocol",
+      "name": "pause_protocol"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.perform_triage",
+      "name": "perform_triage"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.plan_migration",
+      "name": "plan_migration"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.plan_substrate_migration",
+      "name": "plan_substrate_migration"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.plan_succession",
+      "name": "plan_succession"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.preserve_dissent",
+      "name": "preserve_dissent"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.protocol_status",
+      "name": "protocol_status"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.query_history",
+      "name": "query_history"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reconstruct_state",
+      "name": "reconstruct_state"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.record_checkpoint",
+      "name": "record_checkpoint"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.record_replay_event",
+      "name": "record_replay_event"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.record_suppression_attempt",
+      "name": "record_suppression_attempt"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.register_adaptive_governance",
+      "name": "register_adaptive_governance"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.register_cascade_monitor",
+      "name": "register_cascade_monitor"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.register_commitment",
+      "name": "register_commitment"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.register_dependency",
+      "name": "register_dependency"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.register_invariant",
+      "name": "register_invariant"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.register_knowledge",
+      "name": "register_knowledge"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.register_operation",
+      "name": "register_operation"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.register_substrate",
+      "name": "register_substrate"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.rehearse_succession",
+      "name": "rehearse_succession"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.release_escrow",
+      "name": "release_escrow"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.release_interlock",
+      "name": "release_interlock"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.release_resources",
+      "name": "release_resources"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.report_cascade_event",
+      "name": "report_cascade_event"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reserve_resources",
+      "name": "reserve_resources"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.resolve_deferral",
+      "name": "resolve_deferral"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.resolve_negotiation",
+      "name": "resolve_negotiation"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.resource_accounting",
+      "name": "resource_accounting"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.resurrect_knowledge",
+      "name": "resurrect_knowledge"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.return_to_pool",
+      "name": "return_to_pool"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.seal_escrow",
+      "name": "seal_escrow"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.select_resolution",
+      "name": "select_resolution"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.set_degradation",
+      "name": "set_degradation"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.start_negotiation",
+      "name": "start_negotiation"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.start_replay",
+      "name": "start_replay"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.submit_plan",
+      "name": "submit_plan"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.submit_position",
+      "name": "submit_position"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.take_snapshot",
+      "name": "take_snapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.transition_commitment",
+      "name": "transition_commitment"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.translate_knowledge",
+      "name": "translate_knowledge"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.validate_invariant",
+      "name": "validate_invariant"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.verify_canon",
+      "name": "verify_canon"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.verify_history_chain",
+      "name": "verify_history_chain"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.verify_knowledge_integrity",
+      "name": "verify_knowledge_integrity"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.verify_portability",
+      "name": "verify_portability"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.veto_protocol",
+      "name": "veto_protocol"
+    }
+  ],
+  "domain": "loaf",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 105
+}

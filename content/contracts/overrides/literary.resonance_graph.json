@@ -1,0 +1,24 @@
+{
+  "macro_id": "literary.resonance_graph",
+  "domain": "literary",
+  "name": "resonance_graph",
+  "inputs": {
+    "dtuId": { "type": "string", "maxLength": 120 },
+    "limit": { "type": "number", "min": 10, "max": 500 },
+    "includeResonance": { "type": "boolean" },
+    "includeCitations": { "type": "boolean" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.nodes)",
+    "output.ok === false || Array.isArray(output.edges)",
+    "output.ok === false || (output.counts && output.counts.nodes === output.nodes.length && output.counts.edges === output.edges.length)",
+    "output.ok === false || output.edges.every(e => e.kind === 'resonance' || e.kind === 'citation')"
+  ],
+  "fuzz_cases": [
+    { "input": { "limit": 50 }, "expect": { "ok": true } },
+    { "input": { "limit": 20, "includeCitations": false }, "expect": { "ok": true } }
+  ],
+  "_note": "Unified resonance + citation force-graph (GraphView shape). counts mirror nodes/edges lengths. Empty tables → empty graph, never an error."
+}

@@ -4505,6 +4505,39 @@ export const PRODUCTIZATION_PHASES: ProductionPhase[] = [
     acceptanceCriteria: ['Profile artifact persists with full CRUD', 'Quest completion awards XP', 'Turn resolution applies outcomes', 'DTU exhaust for all game actions'],
     status: 'blocked',
   },
+
+  // ── PHASE 191: Literary ─────────────────────────────────────────
+  {
+    order: 191,
+    lensId: 'literary',
+    name: 'Literary Lattice',
+    rationale: 'Turns humanity’s public-domain corpus into a living, citable semantic substrate. Hybrid retrieval + cross-domain resonance makes every other lens richer; reader annotations self-grow the lattice.',
+    dependsOn: [1],
+    incumbents: ['Project Gutenberg', 'Google Books', 'JSTOR', 'Perplexity'],
+    artifacts: [
+      { name: 'Annotation', persistsWithoutDTU: true, storageDomain: 'literary', requiredFields: ['id', 'chunkId', 'note', 'citedDtuId', 'userId', 'createdAt'] },
+      { name: 'Passage', persistsWithoutDTU: true, storageDomain: 'literary', requiredFields: ['id', 'dtuId', 'sourceId', 'content', 'heading'] },
+      { name: 'Work', persistsWithoutDTU: true, storageDomain: 'literary', requiredFields: ['id', 'title', 'author', 'license', 'gutenbergId'] },
+    ],
+    engines: [
+      { name: 'hybrid-retrieval', description: 'BM25 (sparse) + dense embedding retrieval fused with Reciprocal Rank Fusion + lexical rerank', trigger: 'on_demand' },
+      { name: 'resonance-crystallizer', description: 'Records cross-domain resonance edges from literary chunk-DTUs into other lenses by embedding cosine', trigger: 'automatic' },
+      { name: 'salience-ranker', description: 'Ranks the most-bridged passages by resonance salience as MEGA/HYPER consolidation seeds', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'search-ground-provenance', steps: ['query', 'sparse-bm25', 'dense-embed', 'rrf-fuse', 'lexical-rerank', 'attach-provenance'], engines: ['hybrid-retrieval'] },
+      { name: 'annotate-crystallize', steps: ['select-passage', 'annotate', 'mint-derivative-dtu', 'compute-resonance', 'rank-salience'], engines: ['resonance-crystallizer', 'salience-ranker'] },
+    ],
+    acceptanceCriteria: [
+      'Annotation artifact persists in the lens store + mints a derivative DTU citing the source passage',
+      'Search degrades honestly to keyword-only when the embedder is offline (semantic flag is real)',
+      'Every hit carries source provenance (title, author, license, gutenberg id, backing DTU)',
+      'Cross-domain resonance edges + citation lineage compose the resonance force-graph',
+      'Resonance graph exports as GraphML / CSV / JSON',
+      'At least one pipeline (search-ground-provenance) is end-to-end functional',
+    ],
+    status: 'ready',
+  },
 ];
 
 // ── Derived helpers ─────────────────────────────────────────────

@@ -1,0 +1,17 @@
+{
+  "macro_id": "meditation.dailyPrompt",
+  "domain": "meditation",
+  "name": "dailyPrompt",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.date === 'string'",
+    "output.ok === false || typeof output.result.prompt === 'string'",
+    "output.ok === false || output.result.prompt.length > 0"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Date-deterministic mindful-presence prompt (no LLM, no DB). Same ISO day → same prompt. Always ok:true with a non-empty prompt."
+}

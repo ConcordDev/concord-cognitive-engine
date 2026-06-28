@@ -139,19 +139,32 @@ export default function PharmacyLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8" role="status" aria-busy="true" aria-live="polite">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-neon-green border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading...</p>
+          <p className="text-sm text-gray-400">Loading medications…</p>
+          <span className="sr-only">Loading pharmacy data</span>
         </div>
       </div>
     );
   }
 
   if (isError) {
+    // role=alert + a WORKING Retry that re-fetches the feed — never a silent
+    // empty page (the swallowed-fetch → blank "no meds" defect). The inner
+    // ErrorState already renders a "Try again" affordance wired to refetch; the
+    // explicit Retry button here guarantees a deterministic re-fetch control.
     return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message} onRetry={refetch} />
+      <div className="flex items-center justify-center h-full p-8" role="alert">
+        <div className="text-center space-y-3">
+          <ErrorState error={error?.message || 'Failed to load pharmacy data'} onRetry={refetch} />
+          <button
+            onClick={() => refetch()}
+            className="px-4 py-2 bg-neon-green/20 text-neon-green border border-neon-green/30 rounded-lg hover:bg-neon-green/30 transition-colors focus:outline-none focus:ring-2 focus:ring-neon-green"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }

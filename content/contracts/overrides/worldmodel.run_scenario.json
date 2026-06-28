@@ -1,0 +1,23 @@
+{
+  "macro_id": "worldmodel.run_scenario",
+  "domain": "worldmodel",
+  "name": "run_scenario",
+  "inputs": {
+    "name": { "type": "string", "maxLength": 120 },
+    "steps": { "type": "number", "min": 1, "max": 60 },
+    "growth": { "type": "number", "min": -0.5, "max": 0.5 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.trajectory)",
+    "output.ok === false || Number.isFinite(output.result.total)",
+    "output.ok === false || output.result.trajectory.every(row => Object.values(row).every(v => Number.isFinite(v)))",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "steps": 1e9, "growth": 1e308 }, "expect": { "ok": false } }
+  ],
+  "_note": "worldmodel.run_scenario (LENS_ACTIONS handler). Forward simulation: nv = v*(1+g) + Σ(neighbour * weight * 0.1), with g clamped to [-0.5,0.5], step count clamped to [1,60], and EVERY value clamped to ±VALUE_CAP (1e12) so the trajectory is ALWAYS finite even for a 1e308 seed — fail-CLOSED magnitude bound (pinned by the numeric-guard suite in server/tests/worldmodel-lens-macros.test.js). With no entities the macro fail-CLOSES to ok:false 'no entities to simulate' rather than fabricating a trajectory — hence both fuzz cases expect ok:false (the assassin's owner actor has an empty world model). LENS_ACTIONS-served; not driven by the MACROS-only assassin."
+}

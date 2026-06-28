@@ -1,0 +1,18 @@
+{
+  "macro_id": "careers.counter",
+  "domain": "careers",
+  "name": "counter",
+  "inputs": {
+    "contractId": { "type": "string", "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || (typeof output.contractId === 'string' && output.contractId.length > 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "not_found" } },
+    { "input": { "contractId": "ctr_missing", "terms": { "baseWage": 50 } }, "expect": { "ok": false, "reason": "not_found" } }
+  ]
+}

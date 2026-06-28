@@ -113,8 +113,12 @@ export default function FilmStudiosPage() {
   // Discover films
   const { data: discoveredFilms, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['film-studio', 'discover', searchQuery],
-    queryFn: () => apiHelpers.filmStudio.discover({ q: searchQuery || undefined }).then(r => r.data?.films || r.data?.items || r.data || []).catch((e) => { console.warn('[FilmStudios] Query failed:', e?.message); return []; }),
-    initialData: [],
+    // NOTE: do NOT swallow the rejection into `return []` — that resolves the
+    // query successfully, so `isError` never fires and a real network failure
+    // renders as a silently-empty page. Let the error propagate so the
+    // `role="alert"` error state + working Retry surface (defect class fixed in
+    // ~12 sibling lenses).
+    queryFn: () => apiHelpers.filmStudio.discover({ q: searchQuery || undefined }).then(r => r.data?.films || r.data?.items || r.data || []),
   });
   const myFilms = useMemo(() => myFilmItems.map(i => ({ ...(i.data as unknown as FilmProject), id: i.id, title: i.title })), [myFilmItems]);
 
@@ -433,7 +437,9 @@ export default function FilmStudiosPage() {
           ))}
         </div>
 
-        {(isError || isError2) && <ErrorState error={error?.message || error2?.message} onRetry={() => { refetch(); refetch2(); }} />}
+        {/* My-films artifact error surfaces globally; the discover query has its
+            own role="alert" state inside the Discover tab below. */}
+        {isError2 && <ErrorState error={error2?.message} onRetry={() => { refetch2(); }} />}
 
         {/* Discover */}
         {tab === 'discover' && (
@@ -443,41 +449,67 @@ export default function FilmStudiosPage() {
               <input ref={searchInputRef}
               value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search films, creators, genres..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-purple/50" />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(discoveredFilms as FilmProject[]).map((film: FilmProject, idx: number) => (
-                <motion.div
-                  key={film.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.04 }}
-                  whileHover={{ scale: 1.02 }}
-                  className="relative bg-white/5 border border-white/10 rounded-lg p-4 hover:border-neon-purple/30 transition-colors cursor-pointer"
+            {/* Four explicit UX states: loading → error → empty → populated */}
+            {isLoading ? (
+              <div role="status" aria-live="polite" className="flex flex-col items-center justify-center py-16 text-gray-400 text-sm gap-3" data-testid="film-discover-loading">
+                <Loader2 className="w-6 h-6 animate-spin text-neon-purple" />
+                <span>Loading films…</span>
+              </div>
+            ) : isError ? (
+              <div role="alert" className="flex flex-col items-center justify-center py-16 text-center gap-3" data-testid="film-discover-error">
+                <p className="text-sm text-red-400">Couldn&apos;t load films{error?.message ? `: ${error.message}` : '.'}</p>
+                <button
+                  onClick={() => refetch()}
+                  className="px-4 py-2 text-xs bg-neon-purple/20 text-neon-purple border border-neon-purple/30 rounded-lg hover:bg-neon-purple/30 transition-colors"
                 >
-                  {idx === 0 && (
-                    <div className="absolute -top-2 left-3 flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-yellow-500/80 to-orange-500/80 text-[10px] font-bold text-black">
-                      <Sparkles className="w-2.5 h-2.5" /> Featured
-                    </div>
-                  )}
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-medium text-sm pr-2">{film.title}</h3>
-                    {resolutionBadge(film.resolution)}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                    {typePill(film.type)}
-                    {film.duration && (
-                      <span className="text-[10px] text-gray-400 flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{Math.round(film.duration / 60)}m</span>
+                  Retry
+                </button>
+              </div>
+            ) : ((discoveredFilms as FilmProject[] | undefined) ?? []).length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center gap-3" data-testid="film-discover-empty">
+                <Film className="w-8 h-8 text-gray-500" />
+                <p className="text-sm text-gray-400">No films found. Create your first film to get started.</p>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="px-4 py-2 text-xs bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30 rounded-lg hover:bg-neon-cyan/30 transition-colors flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Create your first film
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="film-discover-grid">
+                {((discoveredFilms as FilmProject[] | undefined) ?? []).map((film: FilmProject, idx: number) => (
+                  <motion.div
+                    key={film.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.04 }}
+                    whileHover={{ scale: 1.02 }}
+                    className="relative bg-white/5 border border-white/10 rounded-lg p-4 hover:border-neon-purple/30 transition-colors cursor-pointer"
+                  >
+                    {idx === 0 && (
+                      <div className="absolute -top-2 left-3 flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-yellow-500/80 to-orange-500/80 text-[10px] font-bold text-black">
+                        <Sparkles className="w-2.5 h-2.5" /> Featured
+                      </div>
                     )}
-                  </div>
-                  <div className="flex gap-2 mt-3">
-                    <button onClick={() => setPreviewFilm(film)} className="flex-1 text-xs py-1.5 bg-neon-purple/20 rounded hover:bg-neon-purple/30 flex items-center justify-center gap-1"><Play className="w-3 h-3" /> Preview</button>
-                    <button onClick={() => { navigator.clipboard?.writeText(window.location.href).then(() => showToast('success', 'Link copied to clipboard')).catch(() => showToast('error', 'Failed to copy link')); }} className="text-xs py-1.5 px-2 bg-white/5 rounded hover:bg-white/10" aria-label="Share"><Share2 className="w-3 h-3" /></button>
-                  </div>
-                </motion.div>
-              ))}
-              {!isLoading && (discoveredFilms as FilmProject[]).length === 0 && (
-                <div className="col-span-full text-center py-12 text-gray-400 text-sm">No films found. Create your first film to get started.</div>
-              )}
-            </div>
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-medium text-sm pr-2">{film.title}</h3>
+                      {resolutionBadge(film.resolution)}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                      {typePill(film.type)}
+                      {film.duration && (
+                        <span className="text-[10px] text-gray-400 flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{Math.round(film.duration / 60)}m</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <button onClick={() => setPreviewFilm(film)} className="flex-1 text-xs py-1.5 bg-neon-purple/20 rounded hover:bg-neon-purple/30 flex items-center justify-center gap-1"><Play className="w-3 h-3" /> Preview</button>
+                      <button onClick={() => { navigator.clipboard?.writeText(window.location.href).then(() => showToast('success', 'Link copied to clipboard')).catch(() => showToast('error', 'Failed to copy link')); }} className="text-xs py-1.5 px-2 bg-white/5 rounded hover:bg-white/10" aria-label="Share"><Share2 className="w-3 h-3" /></button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -605,7 +637,7 @@ export default function FilmStudiosPage() {
                 </div>
               </div>
 
-              {/* Viewer count placeholder */}
+              {/* Viewer count — honest em-dash/0 until a live party reports counts */}
               <div className="flex items-center gap-4 px-3 py-2.5 bg-white/5 rounded-lg">
                 <div className="flex items-center gap-1.5 text-xs text-gray-400">
                   <Eye className="w-3.5 h-3.5" />

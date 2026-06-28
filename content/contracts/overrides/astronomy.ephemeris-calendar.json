@@ -1,0 +1,26 @@
+{
+  "macro_id": "astronomy.ephemeris-calendar",
+  "domain": "astronomy",
+  "name": "ephemeris-calendar",
+  "inputs": {
+    "latitude": { "type": "number" },
+    "longitude": { "type": "number" },
+    "startDate": { "type": "string" },
+    "days": { "type": "number" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || (Array.isArray(output.result.calendar) && output.result.calendar.length === output.result.count)",
+    "output.ok !== true || output.result.calendar.every(d => typeof d.date === 'string' && d.moonIllumination >= 0 && d.moonIllumination <= 1)",
+    "output.ok !== true || output.result.days <= 60",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "latitude": 40.7, "longitude": -74.0, "startDate": "2026-06-21", "days": 3 }, "expect": { "ok": true } },
+    { "input": { "latitude": 40, "longitude": -74, "startDate": "notadate" }, "expect": { "ok": false } },
+    { "input": { "startDate": "2026-06-21" }, "expect": { "ok": false } },
+    { "input": { "latitude": 91, "longitude": 200, "startDate": "2026-06-21", "days": 99999 }, "expect": { "ok": true } }
+  ],
+  "_note": "astronomy.ephemeris-calendar is a pure rise/set-sampling LENS_ACTIONS handler. It produces one calendar row per day (moon phase + illumination + Sun/Moon rise/set ISO timestamps) for a clamped span (days ∈ [1,60]). parseObserver clamps lat/lon into the physical envelope, so the poisoned case (lat 91, days 99999) still returns a valid 60-day calendar with an in-range observer. A malformed startDate or a missing observer is rejected. try/catch-wrapped — never throws. LENS_ACTIONS-only; AstronomySkySection / SkyChartWorkbench reach it via /api/lens/run."
+}

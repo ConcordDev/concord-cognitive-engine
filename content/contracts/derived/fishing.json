@@ -1,0 +1,245 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "fishing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "biome": "water",
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "biome": {
+          "maxLength": 32,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.sessionId === 'string'",
+        "output.ok === false || (typeof output.biteAtEpochMs === 'number' && output.biteAtEpochMs > 0)",
+        "output.ok === false || (typeof output.candidateCount === 'number' && output.candidateCount >= 1)"
+      ],
+      "macro_id": "fishing.cast",
+      "name": "cast"
+    },
+    {
+      "_derived": false,
+      "domain": "fishing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "biome": {
+          "maxLength": 32,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.fish)",
+        "output.ok === false || output.fish.every(f => typeof f.id === 'string' && f.id.length > 0)",
+        "output.ok === false || output.fish.every(f => typeof f.rarity === 'string')",
+        "output.ok === false || output.fish.every(f => typeof f.biome === 'string' || typeof f.subBiome === 'string')"
+      ],
+      "macro_id": "fishing.catalog",
+      "name": "catalog"
+    },
+    {
+      "_derived": true,
+      "domain": "fishing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fishing.catches",
+      "name": "catches"
+    },
+    {
+      "_derived": true,
+      "domain": "fishing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fishing.create",
+      "name": "create"
+    },
+    {
+      "_derived": true,
+      "domain": "fishing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fishing.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "fishing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fishing.list",
+      "name": "list"
+    },
+    {
+      "_derived": false,
+      "domain": "fishing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "sessionId": "fish_does_not_exist",
+            "tensionAccuracy": 0.5
+          }
+        }
+      ],
+      "inputs": {
+        "fishingSkill": {
+          "max": 100,
+          "min": 0,
+          "type": "number"
+        },
+        "reactionMs": {
+          "max": 60000,
+          "min": 0,
+          "type": "number"
+        },
+        "sessionId": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "tensionAccuracy": {
+          "max": 1,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.fish && typeof output.fish.id === 'string')",
+        "output.ok === false || (typeof output.qualityScore === 'number' && output.qualityScore >= 0 && output.qualityScore <= 1)",
+        "output.ok === false || ['perfect','good','fair','poor'].includes(output.tier)",
+        "output.ok === false || (output.mint && typeof output.mint.ok === 'boolean')"
+      ],
+      "macro_id": "fishing.reel",
+      "name": "reel"
+    },
+    {
+      "_derived": true,
+      "domain": "fishing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fishing.resolve_cast",
+      "name": "resolve_cast"
+    },
+    {
+      "_derived": true,
+      "domain": "fishing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fishing.session",
+      "name": "session"
+    },
+    {
+      "_derived": false,
+      "domain": "fishing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "biome": "river",
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "biome": {
+          "maxLength": 32,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.fish)",
+        "output.ok === false || typeof output.biome === 'string'",
+        "output.ok === false || output.fish.every(f => f.biome === output.biome || f.subBiome === output.biome)"
+      ],
+      "macro_id": "fishing.species",
+      "name": "species"
+    }
+  ],
+  "domain": "fishing",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 10
+}

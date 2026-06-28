@@ -1,0 +1,18 @@
+{
+  "macro_id": "cognition.deleteExport",
+  "domain": "cognition",
+  "name": "deleteExport",
+  "inputs": {
+    "exportId": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.count === 'number' && output.result.count >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "export_not_found" } },
+    { "input": { "exportId": "does_not_exist" }, "expect": { "ok": false, "error": "export_not_found" } }
+  ],
+  "_note": "Removes one of the caller's saved exports by id from the per-user in-memory ledger. A missing/unknown id fails-closed with 'export_not_found' (a real validation reason, never no_db). The macro-assassin's internal owner actor has no exports → export_not_found."
+}

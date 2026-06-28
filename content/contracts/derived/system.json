@@ -1,0 +1,553 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.alert-ack",
+      "name": "alert-ack"
+    },
+    {
+      "_derived": false,
+      "domain": "system",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.rules))",
+        "output.ok === false || (typeof output.result.ruleCount === 'number' && output.result.ruleCount === output.result.rules.length)",
+        "output.ok === false || (Array.isArray(output.result.firing) && output.result.firingCount === output.result.firing.length)",
+        "output.ok === false || output.result.firingCount <= output.result.ruleCount"
+      ],
+      "macro_id": "system.alerts",
+      "name": "alerts"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.analogize",
+      "name": "analogize"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.autogen",
+      "name": "autogen"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.cartograph",
+      "name": "cartograph"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.continuity",
+      "name": "continuity"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.dashboard-load",
+      "name": "dashboard-load"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.dashboard-reset",
+      "name": "dashboard-reset"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.dashboard-save",
+      "name": "dashboard-save"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.dream",
+      "name": "dream"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.evolution",
+      "name": "evolution"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.gapScan",
+      "name": "gapScan"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.heartbeat-health",
+      "name": "heartbeat-health"
+    },
+    {
+      "_derived": false,
+      "domain": "system",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 30
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": -1
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "maximum": 365,
+          "minimum": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.snapshots))",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.snapshots.length)",
+        "output.ok === false || (output.result.trend === null || typeof output.result.trend === 'object')",
+        "output.ok === false || (typeof output.result.capacity === 'number' && output.result.capacity === 365)"
+      ],
+      "macro_id": "system.history",
+      "name": "history"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.history-snapshot",
+      "name": "history-snapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.live-status",
+      "name": "live-status"
+    },
+    {
+      "_derived": false,
+      "domain": "system",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "level": "error",
+            "limit": 50
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": -5
+          }
+        }
+      ],
+      "inputs": {
+        "lens": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "level": {
+          "enum": [
+            "error",
+            "warn",
+            "info",
+            "debug"
+          ],
+          "type": "string"
+        },
+        "limit": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "number"
+        },
+        "search": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "since": {
+          "type": "string"
+        },
+        "source": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.entries))",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.entries.length)",
+        "output.ok === false || (output.result.tally && typeof output.result.tally.error === 'number')",
+        "output.ok === false || Array.isArray(output.result.sources)",
+        "output.ok === false || typeof output.result.bufferSize === 'number'"
+      ],
+      "macro_id": "system.logs",
+      "name": "logs"
+    },
+    {
+      "_derived": false,
+      "domain": "system",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 10
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": "NaN"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": 1e+308
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "maximum": 720,
+          "minimum": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.samples))",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.samples.length)",
+        "output.ok === false || output.result.count >= 1",
+        "output.ok === false || (output.result.latest && typeof output.result.latest.heapUsedMB === 'number')",
+        "output.ok === false || (typeof output.result.capacity === 'number' && output.result.capacity === 720)"
+      ],
+      "macro_id": "system.metrics",
+      "name": "metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.promotionTick",
+      "name": "promotionTick"
+    },
+    {
+      "_derived": false,
+      "domain": "system",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.heapUsedMB === 'number')",
+        "output.ok === false || typeof output.result.cpuPct === 'number'",
+        "output.ok === false || (typeof output.result.heapPct === 'number' && output.result.heapPct >= 0 && output.result.heapPct <= 100)",
+        "output.ok === false || typeof output.result.ts === 'number'"
+      ],
+      "macro_id": "system.sample",
+      "name": "sample"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.synthesize",
+      "name": "synthesize"
+    },
+    {
+      "_derived": true,
+      "domain": "system",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "system.trace-record",
+      "name": "trace-record"
+    },
+    {
+      "_derived": false,
+      "domain": "system",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 25
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": "NaN"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": 1e+308
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.spans))",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.spans.length)",
+        "output.ok === false || (typeof output.result.p50 === 'number' && typeof output.result.p95 === 'number' && typeof output.result.p99 === 'number')",
+        "output.ok === false || (typeof output.result.errorRate === 'number' && output.result.errorRate >= 0)",
+        "output.ok === false || Array.isArray(output.result.routes)"
+      ],
+      "macro_id": "system.traces",
+      "name": "traces"
+    }
+  ],
+  "domain": "system",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 24
+}

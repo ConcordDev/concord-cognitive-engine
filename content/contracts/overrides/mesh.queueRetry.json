@@ -1,0 +1,18 @@
+{
+  "macro_id": "mesh.queueRetry",
+  "domain": "mesh",
+  "name": "queueRetry",
+  "inputs": {
+    "frameId": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.delivered === 'boolean')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "frame not found" } },
+    { "input": { "frameId": "nope" }, "expect": { "ok": false, "error": "frame not found" } }
+  ],
+  "_note": "Retries a queued store-and-forward frame from per-user STATE keyed by ctx.actor.userId. An unknown/missing frameId fails-closed with 'frame not found' (NEVER no_db). When the destination node is online, the frame is delivered + dequeued and the underlying message flips to delivered; otherwise it stays pending with attempts incremented. The assassin's owner actor has no queued frames."
+}

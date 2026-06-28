@@ -1,0 +1,293 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.available_providers",
+      "name": "available_providers"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.budget_check",
+      "name": "budget_check"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.budget_status",
+      "name": "budget_status"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.health_list",
+      "name": "health_list"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.list_fallbacks",
+      "name": "list_fallbacks"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.org_key_add_member",
+      "name": "org_key_add_member"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.org_key_create",
+      "name": "org_key_create"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.org_key_remove_member",
+      "name": "org_key_remove_member"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.org_keys_list",
+      "name": "org_keys_list"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.provider_models",
+      "name": "provider_models"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.record_health",
+      "name": "record_health"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.record_usage",
+      "name": "record_usage"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.remove",
+      "name": "remove"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.resolve_route",
+      "name": "resolve_route"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.set",
+      "name": "set"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.set_active",
+      "name": "set_active"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.set_budget",
+      "name": "set_budget"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.set_fallback",
+      "name": "set_fallback"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.set_model",
+      "name": "set_model"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.test",
+      "name": "test"
+    },
+    {
+      "_derived": true,
+      "domain": "byo_keys",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "byo_keys.usage_summary",
+      "name": "usage_summary"
+    }
+  ],
+  "domain": "byo_keys",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 22
+}

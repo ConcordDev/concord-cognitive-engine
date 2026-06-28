@@ -1,0 +1,23 @@
+{
+  "macro_id": "ghost-hunt.create",
+  "domain": "ghost-hunt",
+  "name": "create",
+  "inputs": {
+    "residueId": { "type": "string", "maxLength": 96 },
+    "title": { "type": "string", "maxLength": 200 },
+    "notes": { "type": "string", "maxLength": 4000 },
+    "visibility": { "type": "string", "enum": ["private", "internal", "public", "marketplace"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || (typeof output.dtuId === 'string' && output.dtuId.length > 0)",
+    "output.ok === false || (output.dossier && output.dossier.kind === 'ghost_residue')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_residue_id" } },
+    { "input": { "residueId": "nonexistent_residue" }, "expect": { "ok": false, "reason": "residue_not_found" } },
+    { "input": { "residueId": "x", "visibility": "haunted" }, "expect": { "ok": false, "reason": "invalid_visibility" } }
+  ]
+}

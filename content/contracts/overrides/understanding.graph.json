@@ -1,0 +1,22 @@
+{
+  "macro_id": "understanding.graph",
+  "domain": "understanding",
+  "name": "graph",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result === 'object' && output.result !== null",
+    "Array.isArray(output.result.nodes)",
+    "Array.isArray(output.result.edges)",
+    "Array.isArray(output.result.orphans)",
+    "output.result.nodeCount === output.result.nodes.length",
+    "output.result.edgeCount === output.result.edges.length",
+    "output.result.orphanCount === output.result.orphans.length",
+    "output.result.nodes.every(n => typeof n.degree === 'number' && n.degree >= 0)",
+    "output.result.edges.every(e => e.kind === 'manual' || e.kind === 'wiki')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ]
+}

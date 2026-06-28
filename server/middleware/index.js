@@ -12,6 +12,45 @@ import crypto from "crypto";
 import securityHeaders from './security-headers.js';
 
 /**
+ * Maximum nesting depth allowed in a parsed JSON request body. Deeply-nested
+ * JSON is a cheap DoS vector: the express body parser caps SIZE but not DEPTH,
+ * and a ~50KB payload can nest tens of thousands of levels deep — enough to
+ * blow the stack in any downstream recursive consumer (validators, serializers,
+ * sanitizers). 32 is comfortably above any legitimate API shape in this app.
+ */
+export const JSON_MAX_DEPTH = Number(process.env.CONCORD_JSON_MAX_DEPTH) || 32;
+
+/**
+ * Iterative (no-recursion) depth check on an already-parsed value. Walks the
+ * object/array graph with an explicit stack so the GUARD itself can't be the
+ * thing that blows the stack. Returns true when nesting stays within `max`.
+ *
+ * Depth counts each level of nested object/array; primitives are depth 0.
+ *
+ * @param {*} value   parsed JSON value
+ * @param {number} [max=JSON_MAX_DEPTH]
+ * @returns {boolean} true if within depth, false if it exceeds `max`
+ */
+export function jsonDepthWithin(value, max = JSON_MAX_DEPTH) {
+  if (value === null || typeof value !== "object") return true;
+  // Stack of [node, depth]. Depth 1 = the top-level object/array.
+  const stack = [[value, 1]];
+  while (stack.length) {
+    const [node, depth] = stack.pop();
+    if (depth > max) return false;
+    if (node === null || typeof node !== "object") continue;
+    // Both arrays and plain objects: descend into each value one level deeper.
+    const children = Array.isArray(node) ? node : Object.values(node);
+    for (const child of children) {
+      if (child !== null && typeof child === "object") {
+        stack.push([child, depth + 1]);
+      }
+    }
+  }
+  return true;
+}
+
+/**
  * Configure all middleware on the Express app.
  *
  * @param {import('express').Application} app - Express application instance
@@ -150,6 +189,24 @@ export default function configureMiddleware(app, deps) {
     })(req, res, next);
   });
   app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+  // ---- JSON depth guard ----
+  // express.json() enforces a SIZE limit but no DEPTH limit. A small payload
+  // can nest tens of thousands of levels deep and blow the stack in any
+  // recursive downstream consumer (DoS). Reject anything past JSON_MAX_DEPTH
+  // with a 400 — normal payloads (depth < 32) pass untouched. Iterative check,
+  // so the guard itself never recurses.
+  app.use((req, res, next) => {
+    const body = req.body;
+    if (body && typeof body === "object" && !jsonDepthWithin(body, JSON_MAX_DEPTH)) {
+      return res.status(400).json({
+        ok: false,
+        error: "json_too_deep",
+        message: `Request body nesting exceeds the maximum depth of ${JSON_MAX_DEPTH}`,
+      });
+    }
+    next();
+  });
 
   // ---- Body parser error handler ----
   // express.json() throws on malformed JSON, empty bodies with a content-

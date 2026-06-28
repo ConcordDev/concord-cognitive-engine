@@ -1,0 +1,332 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.answer",
+      "name": "answer"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.ask",
+      "name": "ask"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.ask_with_upload",
+      "name": "ask_with_upload"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.export_markdown",
+      "name": "export_markdown"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.export_thread_markdown",
+      "name": "export_thread_markdown"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.extract_citations",
+      "name": "extract_citations"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.focus_modes",
+      "name": "focus_modes"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.related_questions",
+      "name": "related_questions"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.share_answer",
+      "name": "share_answer"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.share_resolve",
+      "name": "share_resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.sources_preview",
+      "name": "sources_preview"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.space_add_answer",
+      "name": "space_add_answer"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.space_create",
+      "name": "space_create"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.space_delete",
+      "name": "space_delete"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.space_get",
+      "name": "space_get"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.space_list",
+      "name": "space_list"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.space_remove_answer",
+      "name": "space_remove_answer"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.space_share",
+      "name": "space_share"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.thread_delete",
+      "name": "thread_delete"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.thread_get",
+      "name": "thread_get"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.thread_list",
+      "name": "thread_list"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.upload_delete",
+      "name": "upload_delete"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.upload_list",
+      "name": "upload_list"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.upload_source",
+      "name": "upload_source"
+    },
+    {
+      "_derived": true,
+      "domain": "expert_mode",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "expert_mode.web_search",
+      "name": "web_search"
+    }
+  ],
+  "domain": "expert_mode",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 25
+}

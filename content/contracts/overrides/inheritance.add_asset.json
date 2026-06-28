@@ -1,0 +1,25 @@
+{
+  "macro_id": "inheritance.add_asset",
+  "domain": "inheritance",
+  "name": "add_asset",
+  "inputs": {
+    "label": { "type": "string", "required": true, "maxLength": 200 },
+    "category": { "type": "string", "enum": ["property", "recipe", "currency", "artifact", "other"] },
+    "valueCc": { "type": "number", "min": 0, "max": 1000000 },
+    "location": { "type": "string", "maxLength": 200 },
+    "notes": { "type": "string", "maxLength": 1000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.asset && typeof output.result.asset.id === 'string')",
+    "output.ok === false || (typeof output.result.asset.valueCc === 'number' && Number.isFinite(output.result.asset.valueCc) && output.result.asset.valueCc >= 0 && output.result.asset.valueCc <= 1000000)",
+    "output.ok === false || Array.isArray(output.result.assets)"
+  ],
+  "fuzz_cases": [
+    { "input": { "label": "Manor of Asbir", "category": "property", "valueCc": 500 }, "expect": { "ok": true } },
+    { "input": { "category": "property", "valueCc": 50 }, "expect": { "ok": false, "error": "missing_label" } },
+    { "input": { "label": "Poisoned estate", "valueCc": 1e308 }, "expect": { "ok": false, "error": "invalid numeric field: valueCc" } }
+  ],
+  "_note": "add_asset writes an asset into the caller's in-memory estate (globalThis._concordSTATE.inheritanceEstates, scoped to the assassin's internal owner actor). label is required (missing_label). valueCc is fail-CLOSED via badCc() BEFORE the asset is created — a poisoned value (NaN/Infinity/-1/1e308/>1e6) returns ok:false 'invalid numeric field: valueCc' so it can never inflate totalAssetValueCc / byCategory sums. A bounded value <= 1e6 is accepted and clamped >= 0. No real wallet/ledger CC is minted; the estate value is the exact sum of stored asset valueCc fields."
+}

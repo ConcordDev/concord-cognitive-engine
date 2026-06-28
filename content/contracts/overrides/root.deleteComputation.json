@@ -1,0 +1,18 @@
+{
+  "macro_id": "root.deleteComputation",
+  "domain": "root",
+  "name": "deleteComputation",
+  "inputs": {
+    "id": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": { "id": "rc_does_not_exist" }, "expect": { "ok": false, "error": "computation not found" } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "root.deleteComputation removes a saved computation from the caller's per-user notebook by id. With a live owner actor + STATE, an unknown id (the realistic isolated-call reality) fails-CLOSED with ok:false 'computation not found', never a throw or no_db. A matching id splices the row and returns the new total."
+}

@@ -1,0 +1,215 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.analyze_failure",
+      "name": "analyze_failure"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.detect_collapse",
+      "name": "detect_collapse"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.evaluate_transfer",
+      "name": "evaluate_transfer"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.invalidate_assumption",
+      "name": "invalidate_assumption"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.list_disagreements",
+      "name": "list_disagreements"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.list_failures",
+      "name": "list_failures"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.list_invariants",
+      "name": "list_invariants"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.list_paradoxes",
+      "name": "list_paradoxes"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.record_failure",
+      "name": "record_failure"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.register_assumption",
+      "name": "register_assumption"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.register_coexisting_models",
+      "name": "register_coexisting_models"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.register_disagreement",
+      "name": "register_disagreement"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.register_invariant",
+      "name": "register_invariant"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.register_paradox",
+      "name": "register_paradox"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.meta_reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.meta_reasoning.trace_lineage",
+      "name": "trace_lineage"
+    }
+  ],
+  "domain": "loaf.meta_reasoning",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 16
+}

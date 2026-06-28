@@ -1,0 +1,34 @@
+{
+  "macro_id": "deity.pilgrim_log",
+  "domain": "deity",
+  "name": "pilgrim_log",
+  "inputs": {
+    "deityId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 64
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.pilgrims)",
+    "output.ok === false || output.pilgrims.every(p => p && typeof p.pilgrim_user_id === 'string')",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": false,
+        "reason": "missing_deityId"
+      }
+    },
+    {
+      "input": { "deityId": "does-not-exist-9999" },
+      "expect": {
+        "ok": true
+      }
+    }
+  ]
+}

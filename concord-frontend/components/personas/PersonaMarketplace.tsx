@@ -35,24 +35,35 @@ export function PersonaMarketplace({ onOpen }: { onOpen: (personaId: string) => 
   const [category, setCategory] = useState('');
   const [sort, setSort] = useState<'popular' | 'recent' | 'rating'>('popular');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
-    const [b, f] = await Promise.all([
-      lensRun('personas', 'browse', { query, tag, category, sort }),
-      lensRun('personas', 'facets', {}),
-    ]);
-    if (b.data?.ok) {
-      const res = b.data.result as any;
-      setRows((res.personas || []) as PersonaCard[]);
-      setTotal(res.total || 0);
+    setError(null);
+    try {
+      const [b, f] = await Promise.all([
+        lensRun('personas', 'browse', { query, tag, category, sort }),
+        lensRun('personas', 'facets', {}),
+      ]);
+      if (b.data?.ok) {
+        const res = b.data.result as any;
+        setRows((res.personas || []) as PersonaCard[]);
+        setTotal(res.total || 0);
+      } else {
+        // Fail closed: an unreachable browse macro must surface, not render
+        // as an empty (but "loaded") marketplace.
+        setError(b.data?.error || 'Could not load the marketplace.');
+      }
+      if (f.data?.ok) {
+        const res = f.data.result as any;
+        setTags((res.tags || []) as Facet[]);
+        setCategories((res.categories || []) as Facet[]);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load the marketplace.');
+    } finally {
+      setLoading(false);
     }
-    if (f.data?.ok) {
-      const res = f.data.result as any;
-      setTags((res.tags || []) as Facet[]);
-      setCategories((res.categories || []) as Facet[]);
-    }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -127,7 +138,15 @@ export function PersonaMarketplace({ onOpen }: { onOpen: (personaId: string) => 
       )}
 
       {loading ? (
-        <div className="text-zinc-400 py-6 text-center">Loading marketplace…</div>
+        <div role="status" aria-live="polite" className="text-zinc-400 py-6 text-center">Loading marketplace…</div>
+      ) : error ? (
+        <div role="alert" className="text-center py-8 border border-red-800/50 bg-red-950/30 rounded-xl">
+          <p className="text-sm text-red-300">{error}</p>
+          <button
+            type="button" onClick={load}
+            className="mt-3 text-xs text-red-200 underline hover:text-red-100 focus:outline-none focus:ring-2 focus:ring-amber-500 rounded"
+          >Retry</button>
+        </div>
       ) : rows.length === 0 ? (
         <div className="text-center text-zinc-400 italic py-8 border border-zinc-800 rounded-xl">
           No published personas match. Author one and publish it to seed the marketplace.

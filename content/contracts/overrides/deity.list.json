@@ -1,0 +1,29 @@
+{
+  "macro_id": "deity.list",
+  "domain": "deity",
+  "name": "list",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.deities)",
+    "output.ok === false || output.deities.every(d => d && (d.id !== undefined && d.id !== null))",
+    "output.ok === false || output.deities.every(d => typeof d.name === 'string')",
+    "output.ok === false || output.deities.every(d => typeof d.pilgrim_count === 'number' && d.pilgrim_count >= 0)",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": { "limit": 5 },
+      "expect": {
+        "ok": true
+      }
+    }
+  ]
+}

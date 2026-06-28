@@ -14,8 +14,24 @@ import {
   listAuthoredLore, getAuthoredLore, authoredLoreFacets, cosmologySpine,
 } from "../lib/authored-lore.js";
 
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) BEFORE it can
+// silently clamp through the lib's Math.max/min bounds. An absent field is fine
+// (the macro uses its default). Returns null when clean, or the offending key.
+// Copied from the literary domain — the fail-CLOSED contract the macro-assassin
+// V2 vectors probe.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 export default function registerLoreMacros(register) {
   register("lore", "list", async (_ctx, input = {}) => {
+    const bad = badNumericField(input, ["limit"]);
+    if (bad) return { ok: false, reason: `invalid_${bad}` };
     return {
       ok: true,
       events: listAuthoredLore({

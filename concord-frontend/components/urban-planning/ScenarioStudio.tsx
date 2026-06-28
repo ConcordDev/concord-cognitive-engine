@@ -117,13 +117,26 @@ export function ScenarioStudio() {
   const [efficiency, setEfficiency] = useState('0.82');
   const [description, setDescription] = useState('');
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const r = await lensRun<{ scenarios: Scenario[] }>('urban-planning', 'scenario-list', {});
-    if (r.data.ok && r.data.result) setScenarios(r.data.result.scenarios);
-    else setError(r.data.error || 'failed to load scenarios');
-    setLoading(false);
+    setLoadError(null);
+    try {
+      const r = await lensRun<{ scenarios: Scenario[] }>('urban-planning', 'scenario-list', {});
+      if (r.data.ok && r.data.result) {
+        setScenarios(r.data.result.scenarios);
+      } else {
+        // Do NOT swallow a load failure into a silently-empty page — surface it
+        // as a dedicated error state with a working Retry (loadError, below).
+        setLoadError(r.data.error || 'failed to load scenarios');
+      }
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'failed to load scenarios');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -335,8 +348,26 @@ export function ScenarioStudio() {
 
       {/* Scenario cards with massing + impacts */}
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-400">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading scenarios…
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center gap-2 text-xs text-zinc-400"
+        >
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Loading scenarios…</span>
+        </div>
+      ) : loadError ? (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-500/30 bg-red-500/5 p-6 text-center"
+        >
+          <p className="text-sm text-red-300">{loadError}</p>
+          <button
+            onClick={refresh}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-200 hover:bg-red-500/20"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Retry
+          </button>
         </div>
       ) : scenarios.length === 0 ? (
         <div className="rounded-lg border border-dashed border-zinc-800 p-8 text-center text-xs text-zinc-400">

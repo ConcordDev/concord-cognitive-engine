@@ -141,6 +141,24 @@ function ensureForecastTable(db) {
   db.exec(`CREATE INDEX IF NOT EXISTS idx_forecasts_world ON world_forecasts(world_id, composed_at DESC)`);
 }
 
+// Fail-CLOSED numeric guard (mirrors server/domains/literary.js#badNumericField).
+// The forecast.* macros are registered INLINE in server.js, so the guard cannot
+// live at the macro layer — it lives here, at the lib boundary the macros call.
+// A caller that PASSES a numeric field (days/hours/limit) must pass a finite,
+// non-negative, in-range one; an absent field is fine (the fn uses its default).
+// Without this, a poisoned value (NaN/Infinity/1e308/negative) would silently
+// clamp through Math.min/Math.max to a default rather than being rejected.
+// Returns the offending key when poisoned, or null when clean.
+function badNumericField(input, keys) {
+  if (!input || typeof input !== "object") return null;
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 // Deterministic 0..1 hash from a string — used to spread region anchors and
 // to vary an extrapolated curve without inventing random data.
 function strHash(s) {
@@ -179,6 +197,7 @@ export function regionAnchor(regionId) {
 // each day inherits the measured-baseline kind unless drift/faction signal
 // pushes it. Confidence honestly degrades the further out we look.
 export async function composeMultiDay(db, STATE, worldId, days = 7) {
+  if (badNumericField({ days }, ["days"])) return { ok: false, error: "invalid_days" };
   const base = await composeForecast(db, STATE, worldId);
   if (!base.ok) return base;
   const n = Math.min(14, Math.max(2, parseInt(days, 10) || 7));
@@ -218,6 +237,7 @@ export async function composeMultiDay(db, STATE, worldId, days = 7) {
 // measured baseline; humidity is the inverse. No fabricated readings — the
 // curve is the standard diurnal model applied to the measured mean.
 export async function composeHourly(db, STATE, worldId, hours = 24) {
+  if (badNumericField({ hours }, ["hours"])) return { ok: false, error: "invalid_hours" };
   const base = await composeForecast(db, STATE, worldId);
   if (!base.ok) return base;
   const n = Math.min(48, Math.max(6, parseInt(hours, 10) || 24));
@@ -282,6 +302,7 @@ export async function composeRegional(db, STATE, worldId) {
 // to past.composed_at + 24h. Both sides are real persisted rows.
 export async function forecastAccuracy(db, worldId, limit = 20) {
   if (!db || !worldId) return { ok: false, reason: "missing_inputs" };
+  if (badNumericField({ limit }, ["limit"])) return { ok: false, error: "invalid_limit" };
   try {
     ensureForecastTable(db);
     const rows = db.prepare(`
@@ -345,6 +366,7 @@ export async function forecastAccuracy(db, worldId, limit = 20) {
 // Historical archive — list persisted forecasts with extracted trend points.
 export function forecastArchive(db, worldId, limit = 50) {
   if (!db || !worldId) return { ok: false, reason: "missing_inputs" };
+  if (badNumericField({ limit }, ["limit"])) return { ok: false, error: "invalid_limit" };
   try {
     ensureForecastTable(db);
     const rows = db.prepare(`

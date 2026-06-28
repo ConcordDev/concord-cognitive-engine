@@ -1,0 +1,26 @@
+{
+  "macro_id": "code-quality.trackIssue",
+  "domain": "code-quality",
+  "name": "trackIssue",
+  "inputs": {
+    "rule": { "type": "string", "maxLength": 60 },
+    "severity": { "type": "string", "enum": ["critical","high","medium","low","info"] },
+    "message": { "type": "string", "maxLength": 500 },
+    "file": { "type": "string", "maxLength": 200 },
+    "line": { "type": "number", "min": 0, "max": 1000000 },
+    "scanId": { "type": "string", "maxLength": 60 },
+    "assignee": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.issue && typeof output.result.issue.id === 'string')",
+    "output.ok === false || output.result.issue.status === 'open'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "rule_and_message_required" } },
+    { "input": { "rule": "empty-catch", "message": "swallows errors", "line": -1 }, "expect": { "ok": false, "error": "invalid_line" } },
+    { "input": { "rule": "empty-catch", "message": "swallows errors" }, "expect": { "ok": true } }
+  ],
+  "_note": "Promotes a finding to a tracked issue in per-user STATE. rule + message are required → {} rejects rule_and_message_required. The assassin owner writes a fresh issue row (NEVER no_db). line is a fail-CLOSED numeric guard: a poisoned NaN/Infinity/-1/1e308 → invalid_line."
+}

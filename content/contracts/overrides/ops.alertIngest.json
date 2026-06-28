@@ -1,0 +1,21 @@
+{
+  "macro_id": "ops.alertIngest",
+  "domain": "ops",
+  "name": "alertIngest",
+  "inputs": {
+    "signature": { "type": "string", "maxLength": 200 },
+    "message": { "type": "string", "maxLength": 500 },
+    "severity": { "type": "string", "maxLength": 8 },
+    "sourceSystem": { "type": "string", "maxLength": 60 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.alert && typeof output.result.alert.id === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "signature required" } },
+    { "input": { "signature": "cpu-high", "message": "CPU 99%" }, "expect": { "ok": true } }
+  ],
+  "_note": "Ingests an inbound alert into per-user STATE.opsLens.alerts; maps it to a registered service by signature/alert-key when one matches. Empty signature fails-closed. The owner actor with no services ingests a row with serviceId null (NEVER no_db)."
+}

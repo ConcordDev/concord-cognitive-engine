@@ -180,13 +180,22 @@ export function DeityDetailPanel({
   };
 
   if (loading) {
-    return <div className="text-sm text-zinc-400 italic py-6">Summoning deity…</div>;
+    return <div role="status" aria-live="polite" aria-busy="true" className="text-sm text-zinc-400 italic py-6">Summoning deity…</div>;
   }
   if (error && !detail) {
     return (
-      <div className="space-y-3">
+      <div role="alert" className="space-y-3">
         <div className="rounded border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">{error}</div>
-        <button type="button" onClick={onClose} className="text-xs text-zinc-400 hover:text-zinc-200">← Back to pantheon</button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="rounded border border-rose-500/40 px-3 py-1 text-xs text-rose-200 hover:bg-rose-500/10 focus:outline-none focus:ring-2 focus:ring-rose-500"
+          >
+            Retry
+          </button>
+          <button type="button" onClick={onClose} className="text-xs text-zinc-400 hover:text-zinc-200">← Back to pantheon</button>
+        </div>
       </div>
     );
   }
@@ -226,7 +235,7 @@ export function DeityDetailPanel({
 
       {deity.creed && <p className="text-xs italic text-zinc-400 border-l-2 border-purple-700/40 pl-3">{deity.creed}</p>}
 
-      {error && <div className="rounded border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">{error}</div>}
+      {error && <div role="alert" className="rounded border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">{error}</div>}
 
       {/* Edit form — author only */}
       {editing && edit && (

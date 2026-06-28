@@ -1,0 +1,21 @@
+{
+  "macro_id": "goddess.react",
+  "domain": "goddess",
+  "name": "react",
+  "inputs": {
+    "dispatchId": { "type": "number", "min": 1, "required": true },
+    "kind": { "type": "string", "enum": ["heard", "blessed", "grieved", "questioned", "vowed"] },
+    "note": { "type": "string", "maxLength": 280 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.reactionCount === 'number'",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "dispatchId": 1, "kind": "smitten" }, "expect": { "ok": false } },
+    { "input": { "dispatchId": 1e308, "kind": "heard" }, "expect": { "ok": false } }
+  ]
+}

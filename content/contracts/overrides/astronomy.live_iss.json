@@ -1,0 +1,16 @@
+{
+  "macro_id": "astronomy.live_iss",
+  "domain": "astronomy",
+  "name": "live_iss",
+  "external_io": true,
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": {} }
+  ],
+  "_note": "astronomy.live_iss (server/domains/astronomy-live.js) fetches the current ISS location from a live API (wheretheiss.at). EXTERNAL-IO — auto-skipped by the harness (name matches /^live_/) and driven against this static contract only. Fail-soft: on network failure it returns { ok:false, reason:... } and never throws. The /lenses/astronomy NasaLivePanel calls it via lensRun({ domain:'astronomy', name:'live_iss' }) (and polls it on a 5s interval while the ISS tab is open). Marked external_io:true so it is never driven against the live endpoint."
+}

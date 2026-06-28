@@ -1,0 +1,23 @@
+{
+  "macro_id": "engineering.meshGenerate",
+  "domain": "engineering",
+  "name": "meshGenerate",
+  "inputs": {
+    "model": { "type": "object", "required": false },
+    "divisions": { "type": "number", "required": false }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.mesh && Array.isArray(output.result.mesh.nodes) && Array.isArray(output.result.mesh.members))",
+    "output.ok === false || (output.result.stats && Number.isInteger(output.result.stats.divisions) && output.result.stats.divisions >= 1 && output.result.stats.divisions <= 20)",
+    "output.ok === false || (Number.isFinite(output.result.stats.meshElements) && output.result.stats.meshElements >= 0)",
+    "output.ok === false || Number.isFinite(output.result.stats.avgElementLength)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "model": { "nodes": [{ "id": "N1", "x": 0, "y": 0, "z": 0 }, { "id": "N2", "x": 5, "y": 0, "z": 0 }], "members": [{ "id": "M1", "nodeI": "N1", "nodeJ": "N2", "area": 0.01, "momentI": 1e-5, "elasticModulus": 2e11, "allowableStress": 2.5e8 }] }, "divisions": 4 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "model": { "nodes": [], "members": [] } } } }, "expect": { "ok": false } }
+  ],
+  "_note": "Beam-frame discretisation (page.tsx Analysis tab). Subdivides each member into N (clamped [1,20]) sub-elements → meshElements = members × divisions. stats carries {divisions, meshNodes, meshElements, avgElementLength} — the exact fields the stat cards render. Empty model → ok:false. Reads from artifact.data. Pure compute, no STATE, deterministic."
+}

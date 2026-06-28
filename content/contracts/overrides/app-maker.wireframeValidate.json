@@ -1,0 +1,25 @@
+{
+  "macro_id": "app-maker.wireframeValidate",
+  "domain": "app-maker",
+  "name": "wireframeValidate",
+  "inputs": {
+    "wireframe": { "type": "object", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.valid === 'boolean'",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.issues)",
+    "output.ok === false || output.result.message !== undefined || (typeof output.result.summary.navigationCompleteness === 'number' && Number.isFinite(output.result.summary.navigationCompleteness))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "wireframe": { "screens": [{ "name": "Home", "links": ["Detail"], "actions": [{ "type": "navigate" }] }, { "name": "Detail", "links": ["Home"], "actions": [{ "type": "back" }] }] } }, "expect": { "ok": true } },
+    { "input": { "wireframe": { "screens": [{ "name": "Home", "links": ["Ghost"] }] } }, "expect": { "ok": true } },
+    { "input": { "wireframe": { "screens": [] } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "wireframe": { "screens": "bad" } }, "expect": {} }
+  ],
+  "_note": "app-maker.wireframeValidate is a LENS_ACTIONS handler (server/domains/appmaker.js:235), reached only via /api/lens/run on the HYPHENATED key 'app-maker.wireframeValidate'. DETERMINISTIC graph lint: BFS reachability + broken-link/dead-end/orphan/unreachable detection over a wireframe's screen graph — no LLM, no network. A broken link (link target not in the screen set) makes valid:false. An empty/absent/non-array wireframe degrades graceful (ok:true 'No wireframe screens to validate' OR a caught handler_error), never throws. LENS_ACTIONS-only → not driven by the MACROS-based macro-assassin; pinned behaviorally by server/tests/appmaker-lens-macros.test.js + server/tests/app-maker-domain-parity.test.js."
+}

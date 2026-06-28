@@ -23,7 +23,7 @@ import { DispatchArchive } from '@/components/goddess/DispatchArchive';
 import { ToneSubscriptions } from '@/components/goddess/ToneSubscriptions';
 import { TONE_COLOR, KNOWN_TONES, type Dispatch } from '@/components/goddess/types';
 import { lensRun } from '@/lib/api/client';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Loader2 } from 'lucide-react';
 
 type Tab = 'feed' | 'archive' | 'alerts';
 
@@ -38,22 +38,40 @@ export default function GoddessPage() {
 
   const [dispatches, setDispatches] = useState<Dispatch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [worldId, setWorldId] = useState('concordia-hub');
   const [tab, setTab] = useState<Tab>('feed');
   const [toneFilter, setToneFilter] = useState<string>('');
   const [openId, setOpenId] = useState<number | null>(null);
+  // Bumped to re-run the feed fetch on demand (Retry control).
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let alive = true;
     const refresh = async () => {
-      const r = await lensRun<RecentResult>('goddess', 'recent', { worldId, limit: 50 });
-      if (alive && r.data?.ok && r.data.result) setDispatches(r.data.result.dispatches || []);
-      if (alive) setLoading(false);
+      try {
+        const r = await lensRun<RecentResult>('goddess', 'recent', { worldId, limit: 50 });
+        if (!alive) return;
+        if (r.data?.ok && r.data.result) {
+          setDispatches(r.data.result.dispatches || []);
+          setError(null);
+        } else {
+          // A failed fetch must surface — never silently collapse into the
+          // empty state (which would read as "goddess has not spoken").
+          setError(r.data?.error || 'Could not reach the goddess feed.');
+        }
+      } catch (e) {
+        if (alive) setError(e instanceof Error ? e.message : 'Could not reach the goddess feed.');
+      } finally {
+        if (alive) setLoading(false);
+      }
     };
     void refresh();
     const interval = window.setInterval(refresh, 60_000);
     return () => { alive = false; window.clearInterval(interval); };
-  }, [worldId]);
+  }, [worldId, reloadKey]);
+
+  const retryFeed = () => { setError(null); setLoading(true); setReloadKey((k) => k + 1); };
 
   const filtered = useMemo(
     () => (toneFilter ? dispatches.filter((d) => d.tone === toneFilter) : dispatches),
@@ -143,7 +161,22 @@ export default function GoddessPage() {
                 </div>
 
                 {loading ? (
-                  <div className="text-zinc-400">Listening…</div>
+                  <div role="status" aria-busy="true" className="flex items-center gap-2 text-zinc-400">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Listening…
+                  </div>
+                ) : error ? (
+                  <div
+                    role="alert"
+                    className="rounded-xl border border-red-500/30 bg-red-500/5 p-6 text-center text-sm text-red-300"
+                  >
+                    <p>{error}</p>
+                    <button
+                      type="button" onClick={retryFeed}
+                      className="mt-3 rounded border border-red-400/40 px-3 py-1.5 text-xs text-red-200 hover:bg-red-500/10"
+                    >
+                      Retry
+                    </button>
+                  </div>
                 ) : filtered.length === 0 ? (
                   <div className="text-center text-zinc-400 italic py-12 border border-zinc-800 rounded-xl">
                     {toneFilter

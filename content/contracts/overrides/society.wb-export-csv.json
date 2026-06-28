@@ -1,0 +1,21 @@
+{
+  "macro_id": "society.wb-export-csv",
+  "domain": "society",
+  "name": "wb-export-csv",
+  "inputs": {
+    "rows": { "type": "array" },
+    "columns": { "type": "array" },
+    "filename": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.csv === 'string')",
+    "output.ok === false || (typeof output.result.rowCount === 'number' && output.result.rowCount >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "rows array required" } },
+    { "input": { "rows": [] }, "expect": { "ok": false, "error": "rows array required" } }
+  ],
+  "_note": "Pure-compute CSV serialiser of a caller-supplied rows array. No network/DB. Empty/absent rows fail-closed with 'rows array required'. The malicious XSS/garbage payload for rows/columns is serialised as inert CSV text (never executed), still returning an object. NEVER no_db."
+}

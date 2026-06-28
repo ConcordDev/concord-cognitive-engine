@@ -1,0 +1,27 @@
+{
+  "macro_id": "accounting.trialBalance",
+  "domain": "accounting",
+  "name": "trialBalance",
+  "inputs": {
+    "accounts": { "type": "array", "required": false },
+    "asOfDate": { "type": "string", "required": false, "maxLength": 32 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.totalDebits === 'number' && Number.isFinite(output.result.totalDebits))",
+    "output.ok === false || (typeof output.result.totalCredits === 'number' && Number.isFinite(output.result.totalCredits))",
+    "output.ok === false || Number.isFinite(output.result.difference)",
+    "output.ok === false || typeof output.result.isBalanced === 'boolean'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "accounts": [] }, "expect": { "ok": true } },
+    { "input": { "accounts": [{ "accountNumber": "1000", "name": "Cash", "type": "asset", "entries": [{ "date": "2026-01-01", "debit": 1000, "credit": 0 }, { "date": "2026-01-02", "debit": 0, "credit": 1000 }] }] }, "expect": { "ok": true } },
+    { "input": { "accounts": [{ "accountNumber": "1000", "type": "asset", "entries": [{ "date": "2026-01-01", "debit": "Infinity", "credit": 0 }] }] }, "expect": { "ok": true } },
+    { "input": { "accounts": [{ "accountNumber": "1000", "type": "asset", "entries": [{ "date": "2026-01-01", "debit": "1e999", "credit": "NaN" }] }] }, "expect": { "ok": true } },
+    { "input": { "accounts": "not-an-array" }, "expect": {} }
+  ],
+  "_note": "accounting.trialBalance is a LENS_ACTIONS handler (server/domains/accounting.js, registerLensAction('accounting','trialBalance',...)), NOT a runMacro/MACROS macro — reached only via /api/lens/accounting/:id/run + /api/lens/run, dispatched on the EXACT key 'accounting.trialBalance' (3-arg handler(ctx, virtualArtifact, input) with virtualArtifact.data === input). The /lenses/accounting page drives it through useRunArtifact('accounting'). DETERMINISTIC pure compute (no LLM, no network). POISON: debit/credit are coerced via finNum — non-finite (Infinity/NaN from 'Infinity'/'1e999') OR beyond-1e15 magnitude collapse to 0, so every total stays FINITE (the *100 cents-rounding can never overflow). Empty/absent/non-array accounts degrade graceful (ok:true zero totals, or a caught handler_error), never throws. Because it lives in LENS_ACTIONS (not MACROS), the macro-assassin's enumerateMacros(MACROS) pipeline does NOT drive this contract — it is an authored behavioral spec pinned by server/tests/accounting-lens-macros.test.js."
+}

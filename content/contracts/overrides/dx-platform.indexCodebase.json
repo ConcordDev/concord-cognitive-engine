@@ -1,0 +1,24 @@
+{
+  "macro_id": "dx-platform.indexCodebase",
+  "domain": "dx-platform",
+  "name": "indexCodebase",
+  "inputs": {
+    "codebaseId": { "type": "string", "maxLength": 200 },
+    "name": { "type": "string", "maxLength": 200 },
+    "files": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.codebaseId === 'string')",
+    "output.ok === false || (typeof output.result.fileCount === 'number' && output.result.fileCount >= 1)",
+    "output.ok === false || (output.result.totalLines >= 0 && output.result.totalBytes >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "no_files" } },
+    { "input": { "files": [] }, "expect": { "ok": false, "error": "no_files" } },
+    { "input": { "files": [{ "nope": 1 }] }, "expect": { "ok": false, "error": "no_valid_files" } },
+    { "input": { "codebaseId": "cb_a", "name": "Repo", "files": [{ "path": "a.js", "content": "const x = 1;\nconst y = 2;" }] }, "expect": { "ok": true } }
+  ],
+  "_note": "Indexes user-supplied {path,content} files into per-user STATE keyed by ctx.actor.userId. Empty/invalid file lists fail-closed; a valid file set writes a fresh codebase row for the assassin's internal owner actor (NEVER no_db)."
+}

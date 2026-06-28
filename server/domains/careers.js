@@ -27,6 +27,19 @@ function gate(ctx) {
 function authed(ctx) { const u = ctx?.actor?.userId; return u ? String(u) : null; }
 const clamp01 = (x) => Math.max(0, Math.min(1, Number(x) || 0));
 
+// Fail-CLOSED numeric guard: any present numeric field must be finite + in a
+// sane range. An absent field is fine (the macro uses its default). Poisoned
+// values (NaN/Infinity/1e308/negative) are rejected up-front so they can never
+// reach the clamp helpers or the DB layer. Returns the offending key, or null.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 export default function registerCareerMacros(register) {
   register("careers", "tracks", async (ctx) => {
     const g = gate(ctx); if (g) return g;
@@ -45,6 +58,8 @@ export default function registerCareerMacros(register) {
   register("careers", "work", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
     const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const b = badNumericField(input, ["tier", "attribute", "skillInput"]);
+    if (b) return { ok: false, reason: `invalid_${b}` };
     const trackId = input.trackId;
     if (!isTrack(trackId)) return { ok: false, reason: "unknown_track" };
     const tier = Math.max(1, Math.min(10, Number(input.tier) || 1));
@@ -77,6 +92,8 @@ export default function registerCareerMacros(register) {
   register("careers", "offer", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
     const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const b = badNumericField(input, ["tier", "baseWage", "durationDays", "signingBonus", "workerReputation"]);
+    if (b) return { ok: false, reason: `invalid_${b}` };
     // the player is one party; the other is supplied. offeredBy = the player.
     return offerContract(ctx.db, {
       worldId: input.worldId || "concordia-hub",

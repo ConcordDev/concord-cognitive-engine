@@ -1,0 +1,22 @@
+{
+  "macro_id": "ledger.faction_economy",
+  "domain": "ledger",
+  "name": "faction_economy",
+  "inputs": {
+    "worldId": { "type": "string", "required": false, "maxLength": 80 },
+    "factionId": { "type": "string", "required": true, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.factionId === 'string'",
+    "output.ok === false || Array.isArray(output.fundedBy)",
+    "output.ok === false || Array.isArray(output.liensAgainst)",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "factionId": "house_pell" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "worldId": "sere", "factionId": "__none__" }, "expect": { "ok": true } }
+  ]
+}

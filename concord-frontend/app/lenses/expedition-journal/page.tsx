@@ -22,7 +22,7 @@ import { StageCard, type StageView } from '@/components/expedition-journal/Stage
 import { ExpeditionSummary, type SummaryData, type Badge } from '@/components/expedition-journal/ExpeditionSummary';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertTriangle, Compass } from 'lucide-react';
 
 interface WorldCatalogEntry {
   worldId: string;
@@ -55,20 +55,30 @@ export default function ExpeditionJournalPage() {
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<'world' | 'summary'>('world');
 
   // Load the authored world catalog once.
-  useEffect(() => {
-    (async () => {
+  const loadWorlds = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
       const r = await lensRun('expedition-journal', 'worlds', {});
       if (r.data?.ok && r.data.result) {
         const ws = (r.data.result.worlds as WorldCatalogEntry[]) || [];
         setWorlds(ws);
         if (ws.length > 0) setActiveWorld((cur) => cur || ws[0].worldId);
+      } else {
+        setError(r.data?.error || 'Could not load expeditions.');
       }
+    } catch {
+      setError('Could not reach the expedition service.');
+    } finally {
       setLoading(false);
-    })();
+    }
   }, []);
+
+  useEffect(() => { void loadWorlds(); }, [loadWorlds]);
 
   const loadProgress = useCallback(async (worldId: string) => {
     if (!worldId) return;
@@ -116,45 +126,86 @@ export default function ExpeditionJournalPage() {
           </p>
         </header>
 
-        <nav className="mb-4 flex gap-2 border-b border-white/10 pb-2">
+        <nav role="tablist" aria-label="Expedition journal views" className="mb-4 flex gap-2 border-b border-white/10 pb-2">
           <button
             type="button"
+            role="tab"
+            aria-selected={tab === 'world'}
             onClick={() => setTab('world')}
-            className={`rounded px-3 py-1 text-xs ${tab === 'world' ? 'bg-emerald-600/30 text-emerald-200' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
+            className={`rounded px-3 py-1 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${tab === 'world' ? 'bg-emerald-600/30 text-emerald-200' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
           >
             World expeditions
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={tab === 'summary'}
             onClick={() => setTab('summary')}
-            className={`rounded px-3 py-1 text-xs ${tab === 'summary' ? 'bg-emerald-600/30 text-emerald-200' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
+            className={`rounded px-3 py-1 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${tab === 'summary' ? 'bg-emerald-600/30 text-emerald-200' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
           >
             Cross-world summary
           </button>
         </nav>
 
+        {/* LOADING state */}
         {loading && (
-          <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading expeditions…</div>
+          <div role="status" aria-live="polite" aria-busy="true" className="flex items-center gap-2 text-sm text-gray-400">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Loading expeditions…
+          </div>
         )}
 
-        {!loading && tab === 'world' && (
+        {/* ERROR state */}
+        {!loading && error && (
+          <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-rose-500/30 bg-rose-500/5 p-4 text-sm text-rose-200">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-rose-400" aria-hidden="true" />
+              <span>{error}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadWorlds()}
+              className="rounded bg-rose-600/30 px-3 py-1 text-xs text-rose-100 hover:bg-rose-600/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* EMPTY state */}
+        {!loading && !error && worlds.length === 0 && (
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-white/10 bg-white/5 p-8 text-center text-sm text-gray-400">
+            <Compass className="h-8 w-8 text-emerald-400/60" aria-hidden="true" />
+            <p className="text-base text-emerald-200">No expeditions to chart yet</p>
+            <p className="max-w-sm text-xs text-gray-400">
+              The canon-world expedition catalog is empty. Visit a world in the World lens to begin logging your first expedition.
+            </p>
+          </div>
+        )}
+
+        {/* POPULATED state — world expeditions */}
+        {!loading && !error && worlds.length > 0 && tab === 'world' && (
           <>
-            <nav className="mb-5 flex gap-2 overflow-x-auto border-b border-white/10 pb-2">
-              {worlds.map((w) => (
-                <button
-                  key={w.worldId}
-                  type="button"
-                  onClick={() => setActiveWorld(w.worldId)}
-                  className={`flex items-center gap-1.5 whitespace-nowrap rounded px-3 py-1 text-xs transition-colors ${
-                    activeWorld === w.worldId ? 'bg-emerald-600/30 text-emerald-200' : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                  }`}
-                >
-                  {summary?.worlds.find((sw) => sw.worldId === w.worldId)?.expeditionComplete && (
-                    <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                  )}
-                  {WORLD_LABELS[w.worldId] || w.worldId}
-                </button>
-              ))}
+            <nav role="tablist" aria-label="Canon worlds" className="mb-5 flex gap-2 overflow-x-auto border-b border-white/10 pb-2">
+              {worlds.map((w) => {
+                const complete = summary?.worlds.find((sw) => sw.worldId === w.worldId)?.expeditionComplete;
+                const label = WORLD_LABELS[w.worldId] || w.worldId;
+                return (
+                  <button
+                    key={w.worldId}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeWorld === w.worldId}
+                    aria-label={complete ? `${label} (expedition complete)` : label}
+                    onClick={() => setActiveWorld(w.worldId)}
+                    className={`flex items-center gap-1.5 whitespace-nowrap rounded px-3 py-1 text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
+                      activeWorld === w.worldId ? 'bg-emerald-600/30 text-emerald-200' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                    }`}
+                  >
+                    {complete && <CheckCircle2 className="h-3 w-3 text-emerald-400" aria-hidden="true" />}
+                    {label}
+                  </button>
+                );
+              })}
             </nav>
 
             {progress && (
@@ -186,7 +237,7 @@ export default function ExpeditionJournalPage() {
           </>
         )}
 
-        {!loading && tab === 'summary' && <ExpeditionSummary data={summary} badges={badges} />}
+        {!loading && !error && worlds.length > 0 && tab === 'summary' && <ExpeditionSummary data={summary} badges={badges} />}
       </div>
       <RecentMineCard domain="expedition-journal" limit={10} hideWhenEmpty className="mt-4" />
       <AutoActionStrip domain="expedition-journal" hideWhenEmpty className="mt-3" />

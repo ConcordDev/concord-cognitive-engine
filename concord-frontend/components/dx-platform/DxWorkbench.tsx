@@ -63,23 +63,67 @@ export function DxWorkbench() {
   const [tab, setTab] = useState<Tab>('codebases');
   const [codebases, setCodebases] = useState<CodebaseRow[]>([]);
   const [activeCb, setActiveCb] = useState<string>('');
-  const [loadingCb, setLoadingCb] = useState(false);
+  const [loadingCb, setLoadingCb] = useState(true);
+  const [cbError, setCbError] = useState<string | null>(null);
+  const [loadedOnce, setLoadedOnce] = useState(false);
 
   const refreshCodebases = useCallback(async () => {
     setLoadingCb(true);
+    setCbError(null);
     try {
       const r = await lensRun('dx-platform', 'listCodebases', {});
       if (r.data?.ok && r.data.result) {
         const list = (r.data.result as { codebases: CodebaseRow[] }).codebases || [];
         setCodebases(list);
         setActiveCb((prev) => prev || list[0]?.id || '');
+      } else {
+        setCbError(r.data?.error || 'Could not load your codebases.');
       }
+    } catch {
+      setCbError('Network error loading codebases.');
     } finally {
       setLoadingCb(false);
+      setLoadedOnce(true);
     }
   }, []);
 
   useEffect(() => { void refreshCodebases(); }, [refreshCodebases]);
+
+  // Four-UX-state surface for the codebase substrate the whole workbench
+  // hangs off — loading / error (+ retry) / empty / populated. The per-tab
+  // panels below each carry their own inline empty/loading affordances.
+  if (loadingCb && !loadedOnce) {
+    return (
+      <div
+        data-testid="dx-workbench-loading"
+        role="status"
+        aria-busy="true"
+        className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 p-6 text-xs text-zinc-400"
+      >
+        <Spinner /> Loading your codebases…
+      </div>
+    );
+  }
+  if (cbError) {
+    return (
+      <div
+        data-testid="dx-workbench-error"
+        role="alert"
+        className="space-y-3 rounded border border-red-500/30 bg-red-500/10 p-6 text-xs text-red-300"
+      >
+        <p className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4" aria-hidden /> {cbError}
+        </p>
+        <button
+          type="button"
+          onClick={() => { void refreshCodebases(); }}
+          className="rounded border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-200 hover:border-red-400"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -199,7 +243,10 @@ function CodebasesTab({
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div
+      className="grid gap-4 md:grid-cols-2"
+      data-testid={codebases.length === 0 ? 'dx-workbench-empty' : 'dx-workbench-codebases'}
+    >
       {/* Index a codebase */}
       <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-4 space-y-3">
         <h3 className="flex items-center gap-2 text-sm font-medium text-white">

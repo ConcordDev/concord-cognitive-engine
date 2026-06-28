@@ -1,0 +1,25 @@
+{
+  "macro_id": "mesh.addNode",
+  "domain": "mesh",
+  "name": "addNode",
+  "inputs": {
+    "name": { "type": "string", "maxLength": 60 },
+    "hops": { "type": "number", "min": 1, "max": 16 },
+    "quality": { "type": "number", "min": 0, "max": 1 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.node && typeof output.result.node.id === 'string')",
+    "output.ok === false || (output.result.node.hops >= 1 && output.result.node.hops <= 16)",
+    "output.ok === false || (output.result.node.quality >= 0 && output.result.node.quality <= 1)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "node name required" } },
+    { "input": { "name": "", "hops": -1 }, "expect": { "ok": false, "error": "node name required" } },
+    { "input": { "name": "Field radio", "hops": -1 }, "expect": { "ok": false, "error": "invalid_hops" } },
+    { "input": { "name": "Field radio", "quality": 1e308 }, "expect": { "ok": false, "error": "invalid_quality" } },
+    { "input": { "name": "Field radio", "transports": ["lora"], "hops": 3, "quality": 0.7 }, "expect": { "ok": true } }
+  ],
+  "_note": "Registers/renames a per-user peer node into globalThis._concordSTATE.meshNodes keyed by ctx.actor.userId. STATE-backed — the assassin's internal owner actor writes a fresh row (NEVER no_db). Empty name fails-closed; hops/quality are fail-CLOSED numeric guards (poisoned NaN/Infinity/-1/1e308 → invalid_<field>, never a clamped ok:true). Absent hops/quality default to 1 / 0.85; an unknown transport list falls back to ['internet']."
+}

@@ -1,0 +1,23 @@
+{
+  "macro_id": "crisis.resource_deploy",
+  "domain": "crisis",
+  "name": "resource_deploy",
+  "inputs": {
+    "resourceId": { "type": "string", "required": true, "maxLength": 120 },
+    "crisisId": { "type": "string", "maxLength": 120 },
+    "amount": { "type": "number" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.resource.deployed === 'number'",
+    "output.ok === false || output.result.resource.deployed <= output.result.resource.quantity",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "missing_resource_id" } },
+    { "input": { "resourceId": "__nope__" }, "expect": { "ok": false, "error": "resource_not_found" } },
+    { "input": { "resourceId": "__nope__", "amount": "Infinity" }, "expect": { "ok": false, "error": "bad_numeric_field" } }
+  ],
+  "_note": "Deploys (positive) or recalls (negative) a resource amount against a crisis. amount may be negative (recall), so the guard checks finiteness + magnitude (|amount| <= 1e6) rather than badNumericField's negative-reject. Missing id → missing_resource_id; unknown id → resource_not_found; over-cap/non-finite amount → bad_numeric_field (checked before the lookup)."
+}

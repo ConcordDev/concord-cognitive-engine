@@ -1,0 +1,26 @@
+{
+  "macro_id": "construction.criticalPath",
+  "domain": "construction",
+  "name": "criticalPath",
+  "inputs": {
+    "tasks": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.projectDuration)",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.criticalPath)",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.tasks)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "tasks": [] }, "expect": { "ok": true } },
+    { "input": { "tasks": [{ "name": "Excavate", "duration": 5, "dependencies": [] }, { "name": "Foundation", "duration": 10, "dependencies": ["Excavate"] }, { "name": "Framing", "duration": 15, "dependencies": ["Foundation"] }] }, "expect": { "ok": true } },
+    { "input": { "tasks": [{ "name": "A", "duration": "NaN", "dependencies": ["missing-dep"] }] }, "expect": { "ok": true } },
+    { "input": { "tasks": [{ "name": "X", "duration": 1e308, "dependencies": [] }] }, "expect": { "ok": true } },
+    { "input": { "tasks": "boom" }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/construction.js, registerLensAction('construction','criticalPath',...)) — reached only via /api/lens/run on key 'construction.criticalPath' (3-arg handler, virtualArtifact.data === input). DETERMINISTIC CPM forward/backward pass: earlyStart = max predecessor earlyFinish, projectDuration = max earlyFinish, lateFinish = min successor lateStart (or projectDuration), slack = lateStart − earlyStart, critical path = tasks with slack 0. duration = parseInt(t.duration) || 1 (so 'NaN'/absent → 1). Missing dependency ids resolve to earlyFinish 0 (no throw). Empty/absent/non-array tasks degrade graceful (guidance message). The GC-bench panel double-wraps; calcData() peels the layer so it computes identically. NOT macro-assassin-driven (LENS_ACTIONS, not MACROS); authored spec pinned by server/tests/construction-lens-macros.test.js."
+}

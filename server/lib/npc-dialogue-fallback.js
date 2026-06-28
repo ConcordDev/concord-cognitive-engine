@@ -120,4 +120,63 @@ export function composeDeterministicDialogue(ctx = {}) {
   return { greeting, subtext: subtext || null, mood: m };
 }
 
+// Per-choice deterministic follow-up lines for the /dialogue/respond path.
+// PLAYTEST #1: the respond path fell back to a flat "<name> responds to your
+// choice." when the brain was unavailable — the opener was given a grounded
+// fallback (above) but the follow-up wasn't. These read as a person, keyed off
+// the choice + the archetype/job/quest the route already loaded. {name}/{job}/
+// {fac} are filled when known; {quest} only for the quest choice.
+const RESPONSE_LINES = {
+  quest: [
+    "Aye, there's work if you've the stomach for it. {quest} Do this and you'll not find me ungrateful.",
+    "As it happens, I do need a hand. {quest} Bring it done and we'll talk reward.",
+    "You came at the right time. {quest} Say the word and it's yours to take on.",
+  ],
+  trade: [
+    "I deal in what my trade affords — tools of my craft, a few oddments, what the road leaves me. Coin first, then we talk.",
+    "Browse, then. What I have is honest goods at an honest price; I've no patience for haggling.",
+    "Goods? Some. What a {job} keeps to hand, and a little besides. Show me your purse and I'll show you my wares.",
+  ],
+  ask_work: [
+    "Day to day? It's the same round — rise, see to my work as a {job}, and keep my head down. It pays, mostly.",
+    "I do what I'm set to. There's always more of it than there are hours, but a {job}'s lot is steady enough.",
+    "My work keeps me busy from first light. Dull to tell, but it's mine, and I do it well.",
+  ],
+  ask_world: [
+    "Word travels slow out here, but I'll tell you what I've heard — the {fac} have been restless, and folk are uneasy with it.",
+    "Strange days. They say things stir beyond the walls; whether it's truth or drink talking, I couldn't swear.",
+    "If you're after rumor, there's no shortage. Keep your wits about you on the roads — that's my only counsel.",
+  ],
+  goodbye: [
+    "Go well, then. The road's long and the light won't hold.",
+    "Off with you. Mind how you go.",
+    "We're done? So be it. Don't be a stranger — or do; it's all the same to me.",
+  ],
+};
+
+/**
+ * Compose a grounded follow-up reply deterministically for a dialogue choice,
+ * from the same context the /dialogue/respond route already loads. Used when the
+ * brain is unavailable or returns empty output, so an LLM-off box still answers
+ * in character instead of "<name> responds to your choice."
+ *
+ * @param {{ npcId?:string, npcName?:string, archetype?:string, job?:string,
+ *           faction?:string, choice:string, questTitle?:string }} ctx
+ * @returns {string} a 1-2 sentence in-character reply
+ */
+export function composeDeterministicResponse(ctx = {}) {
+  const { npcId, npcName = "They", archetype = "default", job = null,
+          faction = null, choice = "ask_world", questTitle = null } = ctx;
+  const pool = RESPONSE_LINES[choice] || RESPONSE_LINES.ask_world;
+  const seed = hash(`${npcId || npcName}|${choice}`);
+  let line = pool[seed % pool.length];
+  const jobWord = job && job !== "none" ? String(job).replace(/_/g, " ")
+    : (archetype && archetype !== "default" ? String(archetype).replace(/_/g, " ") : "tradesperson");
+  const questBit = questTitle ? `There's "${String(questTitle)}" that wants doing.` : "There's a task that wants doing.";
+  return line
+    .replace("{quest}", questBit)
+    .replace("{job}", jobWord)
+    .replace("{fac}", faction ? String(faction).replace(/_/g, " ") : "factions hereabouts");
+}
+
 export const DIALOGUE_FALLBACK_CONSTANTS = Object.freeze({ MOODS });

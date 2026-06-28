@@ -1,0 +1,24 @@
+{
+  "macro_id": "bounties.submit",
+  "domain": "bounties",
+  "name": "submit",
+  "inputs": {
+    "bountyId": { "type": "string", "required": true, "maxLength": 64 },
+    "summary": { "type": "string", "required": true, "maxLength": 240 },
+    "link": { "type": "string", "maxLength": 400 },
+    "notes": { "type": "string", "maxLength": 2000 },
+    "milestoneId": { "type": "string", "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.submission && typeof output.result.submission.id === 'string')",
+    "output.ok === false || output.result.submission.status === 'pending'",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "bounty not found" } },
+    { "input": { "bountyId": "__nope__", "summary": "a valid summary here" }, "expect": { "ok": false, "error": "bounty not found" } }
+  ],
+  "_note": "bounties.submit files a claimant's work against an existing bounty. Unknown bountyId → ok:false 'bounty not found'. summary must be >= 8 chars. The owner cannot submit to their own bounty. A new submission starts status 'pending' and flips the bounty open->claimed. milestoneId, if supplied, must exist on the bounty. No money moves on submit."
+}

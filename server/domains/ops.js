@@ -10,8 +10,61 @@
 // escalation policies, on-call calendar + overrides, notification
 // dispatch, service directory + dependency mapping, MTTA/MTTR analytics,
 // and a public status page.
+//
+// REGISTRATION (saved-class fix, 2026-06): this file used to register through
+// the legacy `registerLensAction(domain, action, (ctx, artifact, params))`
+// convention AND was NEVER imported by server.js — so every `ops.*` macro
+// (incidentCreate / alertIngest / serviceGraph / analytics / statusPage / …)
+// was invisible to runMacro and to POST /api/lens/run → every call hit
+// `unknown_macro`, leaving the lens components (IncidentConsole, OpsActionPanel)
+// dead-wired even though both were fully built front-to-back. It is now wired
+// through the canonical `register` (MACROS) registry — `registerOpsActions(register)`
+// in server.js — so the macros are reachable BOTH via POST /api/lens/run AND
+// via runMacro (which the contract engine + macro-assassin + behavior-smoke
+// harness drive).
+//
+// To keep the verified handler bodies below byte-for-byte identical, the
+// default export adapts the canonical 2-arg `(ctx, input)` signature back to
+// the legacy `(ctx, artifact, params)` shape via the `registerLensAction` shim
+// — `params` (and `artifact.data`) carry the input, identical to what
+// `/api/lens/run` would have built. Handlers return a `{ ok, result }` envelope
+// (the dispatcher's `_unwrapLensEnvelope` strips the `result` layer so the
+// frontend reads `r.data.result.<field>`).
+//
+// All persistence is per-user in globalThis._concordSTATE.opsLens. No
+// fake/seed data — every value is real user input or a deterministic
+// computation over it.
+//
+// Fail-CLOSED numeric guard: every macro that accepts a numeric input
+// (minutesOpen / limit / sinceDays / tier / afterMinutes) calls
+// `badNumericField` BEFORE using it, rejecting NaN/Infinity/1e308/negative
+// instead of silently clamping them to an accepted result (the macro-assassin's
+// V2 vector probes exactly this).
 
-export default function registerOpsActions(registerLensAction) {
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) BEFORE use.
+// An absent/null/undefined field is fine (the macro uses its default). Returns
+// null when clean, else the offending key. Copied from server/domains/literary.js.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input == null || input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e9) return k;
+  }
+  return null;
+}
+
+export default function registerOpsActions(register) {
+  // Legacy-convention shim: adapt canonical register(ctx, input) → the verified
+  // (ctx, artifact, params) handler bodies below, unchanged. `params` carries
+  // the input; `artifact.data` mirrors it for the two macros that read it.
+  const registerLensAction = (domain, action, handler) =>
+    register(domain, action, (ctx, input = {}) => {
+      const inp = input && typeof input === "object" ? input : {};
+      const artifact = inp.artifact && typeof inp.artifact === "object"
+        ? inp.artifact
+        : { id: null, domain, type: "domain_action", data: inp, meta: {} };
+      return handler(ctx, artifact, inp);
+    });
   // ───────────────────────── persistent state ─────────────────────────
   function getOpsState() {
     const STATE = globalThis._concordSTATE;
@@ -142,6 +195,8 @@ export default function registerOpsActions(registerLensAction) {
    * escalationCheck — check if an incident has breached escalation thresholds.
    */
   registerLensAction("ops", "escalationCheck", (_ctx, _artifact, params = {}) => {
+    const badNum = badNumericField(params, ["minutesOpen"]);
+    if (badNum) return { ok: false, error: `invalid_${badNum}` };
     const sev = params.severity || "sev3";
     const minutesOpen = parseFloat(params.minutesOpen) || 0;
     const threshold = SEV_THRESHOLD_MIN[sev] ?? 60;
@@ -329,6 +384,8 @@ export default function registerOpsActions(registerLensAction) {
     try {
       const s = getOpsState();
       if (!s) return { ok: false, error: "state unavailable" };
+      const badNum = badNumericField(params, ["limit"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const userId = actId(ctx);
       const limit = Math.max(1, Math.min(200, parseInt(params.limit, 10) || 50));
       const alerts = ensureList(s.alerts, userId).slice(0, limit);
@@ -351,6 +408,10 @@ export default function registerOpsActions(registerLensAction) {
       if (!name) return { ok: false, error: "name required" };
       const rawTiers = Array.isArray(params.tiers) ? params.tiers : [];
       if (rawTiers.length === 0) return { ok: false, error: "at least one tier required" };
+      for (const t of rawTiers) {
+        const badTier = badNumericField(t || {}, ["afterMinutes"]);
+        if (badTier) return { ok: false, error: `invalid_tier_${badTier}` };
+      }
       const tiers = rawTiers.map((t, i) => ({
         level: i + 1,
         afterMinutes: Math.max(0, parseFloat(t.afterMinutes) || 0),
@@ -387,6 +448,8 @@ export default function registerOpsActions(registerLensAction) {
       const s = getOpsState();
       if (!s) return { ok: false, error: "state unavailable" };
       const userId = actId(ctx);
+      const badNum = badNumericField(params, ["minutesOpen"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const policy = ensureList(s.policies, userId).find((p) => p.id === params.policyId);
       if (!policy) return { ok: false, error: "policy not found" };
       const minutesOpen = Math.max(0, parseFloat(params.minutesOpen) || 0);
@@ -532,6 +595,8 @@ export default function registerOpsActions(registerLensAction) {
     try {
       const s = getOpsState();
       if (!s) return { ok: false, error: "state unavailable" };
+      const badNum = badNumericField(params, ["tier"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const userId = actId(ctx);
       const target = String(params.target || "").trim();
       if (!target) return { ok: false, error: "target required" };
@@ -679,6 +744,8 @@ export default function registerOpsActions(registerLensAction) {
     try {
       const s = getOpsState();
       if (!s) return { ok: false, error: "state unavailable" };
+      const badNum = badNumericField(params, ["sinceDays"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const userId = actId(ctx);
       const sinceDays = Math.max(1, parseInt(params.sinceDays, 10) || 90);
       const cutoff = Date.now() - sinceDays * 86400000;

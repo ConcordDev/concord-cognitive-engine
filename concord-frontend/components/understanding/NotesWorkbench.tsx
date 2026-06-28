@@ -196,11 +196,22 @@ export function NotesWorkbench({
           <Plus className="w-4 h-4" /> New note
         </button>
 
-        {error && <p className="text-xs text-rose-300">{error}</p>}
+        {error && (
+          <div role="alert" className="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded p-2 space-y-1.5">
+            <p>{error}</p>
+            <button
+              onClick={() => refresh()}
+              className="px-2 py-1 text-[11px] bg-rose-600 hover:bg-rose-500 rounded text-white inline-flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-rose-400"
+            >
+              <Loader2 className="w-3 h-3" /> Retry
+            </button>
+          </div>
+        )}
 
         {loading ? (
-          <div className="flex items-center gap-2 text-white/60 text-sm">
+          <div role="status" className="flex items-center gap-2 text-white/60 text-sm">
             <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+            <span className="sr-only">Loading notes</span>
           </div>
         ) : visibleNotes.length === 0 ? (
           <p className="text-white/50 text-sm">

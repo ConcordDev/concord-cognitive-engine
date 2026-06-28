@@ -1,0 +1,285 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.add_step",
+      "name": "add_step"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.conclude",
+      "name": "conclude"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.create_chain",
+      "name": "create_chain"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.get_trace",
+      "name": "get_trace"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.list_chains",
+      "name": "list_chains"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.recent_mine",
+      "name": "recent_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "reasoning",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "depth": 3,
+            "mode": "deductive",
+            "topic": "Does X imply Y?"
+          }
+        },
+        {
+          "expect": {
+            "error": "topic_or_question_required",
+            "ok": false
+          },
+          "input": {
+            "mode": "deductive"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_mode",
+            "ok": false
+          },
+          "input": {
+            "mode": "not_a_mode",
+            "topic": "valid topic"
+          }
+        }
+      ],
+      "inputs": {
+        "depth": {
+          "max": 5,
+          "min": 1,
+          "type": "number"
+        },
+        "mode": {
+          "enum": [
+            "deductive",
+            "inductive",
+            "abductive",
+            "adversarial",
+            "analogical",
+            "temporal",
+            "counterfactual"
+          ],
+          "type": "string"
+        },
+        "question": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "topic": {
+          "maxLength": 2000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.traceId === 'string'",
+        "output.ok === false || Array.isArray(output.chains)",
+        "Array.isArray(output.modes) && output.modes.length === 7"
+      ],
+      "macro_id": "reasoning.run",
+      "name": "run"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.status",
+      "name": "status"
+    },
+    {
+      "_derived": false,
+      "domain": "reasoning",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "traceId_required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "no_trace",
+            "ok": false
+          },
+          "input": {
+            "traceId": "hlr_trace_definitely_absent_zzz"
+          }
+        }
+      ],
+      "inputs": {
+        "traceId": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.trace === 'object' && output.trace !== null)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "reasoning.trace",
+      "name": "trace"
+    },
+    {
+      "_derived": false,
+      "domain": "reasoning",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 10
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 9999
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 100,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "Array.isArray(output.traces)",
+        "output.traces.length <= 100",
+        "Array.isArray(output.modes) && output.modes.length === 7"
+      ],
+      "macro_id": "reasoning.traces",
+      "name": "traces"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.validate_step",
+      "name": "validate_step"
+    }
+  ],
+  "domain": "reasoning",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 12
+}

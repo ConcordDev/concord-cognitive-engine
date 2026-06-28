@@ -1,0 +1,23 @@
+{
+  "macro_id": "cooking.recipes-scale",
+  "domain": "cooking",
+  "name": "recipes-scale",
+  "inputs": {
+    "id": { "type": "string", "required": true },
+    "targetServings": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.factor === 'number' && Number.isFinite(output.result.factor))",
+    "output.ok === false || output.result.targetServings >= 1",
+    "output.ok === false || Array.isArray(output.result.ingredients)",
+    "output.ok === false || output.result.ingredients.every(i => i.qty === null || Number.isFinite(i.qty))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "id": "does-not-exist", "targetServings": 6 }, "expect": { "ok": false } },
+    { "input": { "id": "does-not-exist", "targetServings": 1e308 }, "expect": { "ok": false } }
+  ],
+  "_note": "cooking.recipes-scale scales a STORED recipe's ingredient quantities by targetServings/servings. Fail-CLOSED on poisoned numerics: a non-finite or absurd targetServings is clamped to [1,10000] (falling back to the recipe's own servings when non-finite) so it can NEVER mint Infinity/NaN quantities — qty is always finite or null. Rejects an unknown/missing recipe id (ok:false). State-backed (per-user, in STATE.cookingLens); with no STATE returns ok:false 'STATE unavailable' (degrade-graceful). Path-3 LENS_ACTIONS macro — fuzz cases here all resolve to ok:false because the assassin has no seeded recipe; real positive-path scaling math is pinned in server/tests/cooking-lens-macros.test.js."
+}

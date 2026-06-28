@@ -1,0 +1,24 @@
+{
+  "macro_id": "society.wb-bubble-frames",
+  "domain": "society",
+  "name": "wb-bubble-frames",
+  "inputs": {
+    "countries": { "type": "array" },
+    "xIndicator": { "type": "string", "maxLength": 80 },
+    "yIndicator": { "type": "string", "maxLength": 80 },
+    "sizeIndicator": { "type": "string", "maxLength": 80 },
+    "startYear": { "type": "number", "min": 1960, "max": 2100 },
+    "endYear": { "type": "number", "min": 1960, "max": 2100 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "countries must be array of 2-30 ISO-3 codes" } },
+    { "input": { "countries": ["USA"] }, "expect": { "ok": false, "error": "countries must be array of 2-30 ISO-3 codes" } },
+    { "input": { "countries": ["USA", "GBR"], "startYear": -1 }, "expect": { "ok": false, "error": "invalid startYear" } },
+    { "input": { "countries": ["USA", "GBR"], "xIndicator": "<script>alert(1)</script>" }, "expect": { "ok": false, "error": "xIndicator must be a World Bank code or alias" } }
+  ],
+  "_note": "Builds animated Gapminder bubble frames (x/y/size indicators per year) for 2-30 countries. Fuzz_cases land on PRE-NETWORK validation: count range, the fail-CLOSED numeric guard on startYear/endYear (poisoned -> ok:false invalid <field>, never a clamped ok:true), and the indicator-code format guard (XSS blocked before URL interpolation). NEVER no_db (no DB)."
+}

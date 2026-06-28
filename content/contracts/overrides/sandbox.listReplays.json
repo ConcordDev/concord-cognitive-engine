@@ -1,0 +1,16 @@
+{
+  "macro_id": "sandbox.listReplays",
+  "domain": "sandbox",
+  "name": "listReplays",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.replays))",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.replays.length)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Reads the caller's saved replays as frames-omitted summaries from per-user STATE. The assassin's internal owner actor has none → ok:true with an empty array and count 0 (NEVER no_db)."
+}

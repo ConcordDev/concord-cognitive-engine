@@ -75,17 +75,19 @@ function memDb() {
       t.ledger.push({ id: args[0], userId: args[1], amount: args[2], ref: args[3] });
       return { changes: 1 };
     }
-    if (n.startsWith("UPDATE dtus SET created_by")) {
-      const [newOwner, dtuId] = args;
+    // The real lib stamps an escrow marker into the `data` JSON column at send.
+    if (n.startsWith("UPDATE dtus SET data = json_set")) {
+      const [dtuId] = args;
       const d = t.dtus.get(dtuId);
-      if (d) { d.created_by = newOwner; return { changes: 1 }; }
+      if (d) { d.mail_escrow = 1; return { changes: 1 }; }
       return { changes: 0 };
     }
-    if (n.startsWith("UPDATE dtus SET meta_json = json_set")) {
-      return { changes: 1 };
-    }
-    if (n.startsWith("UPDATE dtus SET meta_json = json_remove")) {
-      return { changes: 1 };
+    // …and transfers ownership via `creator_id` (+ clears the marker) at claim.
+    if (n.startsWith("UPDATE dtus SET creator_id")) {
+      const [newOwner, dtuId] = args;
+      const d = t.dtus.get(dtuId);
+      if (d) { d.creator_id = newOwner; delete d.mail_escrow; return { changes: 1 }; }
+      return { changes: 0 };
     }
     return { changes: 0 };
   }
@@ -142,7 +144,7 @@ function memDb() {
     transaction(fn) { return () => fn(); },
     _t: t,
     _seedWallet(userId, balance) { t.wallets.set(userId, balance); },
-    _seedDtu(id, ownerId) { t.dtus.set(id, { id, created_by: ownerId }); },
+    _seedDtu(id, ownerId) { t.dtus.set(id, { id, creator_id: ownerId }); },
   };
   return db;
 }
@@ -208,6 +210,17 @@ describe("Phase U1 — player mail", () => {
     assert.equal(r.ok, true);
     assert.equal(db._t.wallets.get("u2"), 150);
     assert.equal(db._t.wallets.get("u1"), 550);  // received COD
+  });
+
+  it("claim transfers DTU ownership from sender to recipient", () => {
+    db._seedDtu("dtu1", "u1");
+    const { id } = sendMail(db, { fromUserId: "u1", toUserId: "u2", subject: "Gift", attachmentDtuIds: ["dtu1"] });
+    assert.equal(db._t.dtus.get("dtu1").mail_escrow, 1);  // escrowed at send
+    const r = claimAttachments(db, id, "u2");
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.attachments.dtuIds, ["dtu1"]);
+    assert.equal(db._t.dtus.get("dtu1").creator_id, "u2");  // ownership moved
+    assert.equal(db._t.dtus.get("dtu1").mail_escrow, undefined);  // marker cleared
   });
 
   it("claim is idempotent — re-claim returns alreadyClaimed", () => {

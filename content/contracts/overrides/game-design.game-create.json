@@ -1,0 +1,24 @@
+{
+  "macro_id": "game-design.game-create",
+  "domain": "game-design",
+  "name": "game-create",
+  "inputs": {
+    "title": { "type": "string", "required": true, "maxLength": 160 },
+    "genre": { "type": "string", "required": false, "maxLength": 40 },
+    "platform": { "type": "string", "required": false, "maxLength": 40 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.game === 'object' && typeof output.result.game.id === 'string')",
+    "output.ok === false || output.result.game.title.length <= 160",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "title": "Skybound", "genre": "platformer" }, "expect": { "ok": true } },
+    { "input": { "title": "   " }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "title": "<script>alert(1)</script>" }, "expect": { "ok": true } }
+  ],
+  "_note": "game-design.game-create is a LENS_ACTIONS handler (server/domains/gamedesign.js, default export registerGameDesignActions; HYPHENATED domain 'game-design' registered from the non-hyphen file via server/domains/index.js PATH 3). It is reached ONLY via /api/lens/run dispatch (server.js:39150, handler(ctx, virtualArtifact, input)), reading params from the 3rd arg. DETERMINISTIC + in-memory (globalThis._concordSTATE.gameDesignLens Maps, per-user keyed by ctx.actor.userId) — no DB, no LLM, no network. A blank/absent title rejects ('game title required'); title/genre/platform are length-clamped via gdClean so an XSS probe string is stored inert and bounded, never executed. Because no derived MACROS contract exists for this LENS_ACTIONS macro, the macro-assassin's enumerateMacros(MACROS) pipeline does NOT drive this override (base lookup at macro-assassin.mjs:98 is undefined → skipped); it is authored as a behavioral spec + pinned by server/tests/game-design-lens-macros.test.js."
+}

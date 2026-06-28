@@ -1,0 +1,21 @@
+{
+  "macro_id": "sessions.get",
+  "domain": "sessions",
+  "name": "get",
+  "inputs": {
+    "sessionId": { "type": "string", "maxLength": 64 },
+    "eventLimit": { "type": "number", "min": 1, "max": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.session && typeof output.session.id === 'string')",
+    "output.ok === false || Array.isArray(output.events)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_session_id" } },
+    { "input": { "sessionId": "does-not-exist" }, "expect": { "ok": false, "reason": "not_found" } },
+    { "input": { "sessionId": "does-not-exist", "eventLimit": -1 }, "expect": { "ok": false, "reason": "invalid_eventLimit" } }
+  ],
+  "_note": "sessions.get loads one of the CALLER's sessions + its recent events. It requires a sessionId (missing → missing_session_id) and only resolves rows owned by ctx.actor.userId (a foreign or unknown id → not_found, never a leak). eventLimit is a fail-CLOSED numeric guard (invalid_eventLimit). Pure read; never no_db under the assassin."
+}

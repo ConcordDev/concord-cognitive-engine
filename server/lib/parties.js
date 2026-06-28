@@ -73,8 +73,8 @@ export function inviteToParty(db, partyId, fromUserId, toUserId) {
   const inviteId = _genId("inv");
   try {
     db.prepare(`
-      INSERT INTO party_invites (id, party_id, invited_by, invited_id, status, created_at)
-      VALUES (?, ?, ?, ?, 'pending', unixepoch())
+      INSERT INTO party_invites (id, party_id, invited_by, invited_id, status, created_at, expires_at)
+      VALUES (?, ?, ?, ?, 'pending', unixepoch(), unixepoch() + 86400)
     `).run(inviteId, partyId, fromUserId, toUserId);
     return { ok: true, inviteId };
   } catch (err) {

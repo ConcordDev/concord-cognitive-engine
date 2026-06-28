@@ -1,0 +1,26 @@
+{
+  "macro_id": "insurance.policy-add",
+  "domain": "insurance",
+  "name": "policy-add",
+  "inputs": {
+    "carrier": { "type": "string", "maxLength": 120 },
+    "policyNumber": { "type": "string", "maxLength": 120 },
+    "kind": { "type": "string", "enum": ["auto", "home", "health", "life", "umbrella", "renters", "pet", "travel", "business"] },
+    "annualPremium": { "type": "number", "min": 0, "max": 1000000000 },
+    "deductible": { "type": "number", "min": 0, "max": 1000000000 },
+    "liabilityLimit": { "type": "number", "min": 0, "max": 1000000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.policy && typeof output.result.policy.id === 'string')",
+    "output.ok === false || output.result.policy.status === 'active'",
+    "output.ok === false || output.result.policy.annualPremium >= 0"
+  ],
+  "fuzz_cases": [
+    { "input": { "carrier": "Acme Mutual", "policyNumber": "P-1001", "kind": "auto", "annualPremium": 1200 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false, "error": "carrier and policyNumber required" } },
+    { "input": { "carrier": "Acme", "policyNumber": "P-2", "annualPremium": 1e308 }, "expect": { "ok": false, "error": "invalid_annualPremium" } }
+  ],
+  "_note": "insurance.policy-add adds a real-world insurance policy for the /lenses/insurance workbench into globalThis._concordSTATE.insLens. carrier + policyNumber are required (rejects 'carrier and policyNumber required'). Fail-CLOSED: poisoned annualPremium/deductible/liabilityLimit returns ok:false invalid_<field> BEFORE the write. STATE-backed with the internal actor — NEVER no_db."
+}

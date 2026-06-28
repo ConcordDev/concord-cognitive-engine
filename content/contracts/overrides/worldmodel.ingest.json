@@ -1,0 +1,24 @@
+{
+  "macro_id": "worldmodel.ingest",
+  "domain": "worldmodel",
+  "name": "ingest",
+  "inputs": {
+    "entityId": { "type": "string", "required": true, "maxLength": 200 },
+    "attribute": { "type": "string", "maxLength": 60 },
+    "mode": { "type": "string", "enum": ["set", "increment"] },
+    "value": { "type": "number" },
+    "source": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.event && Number.isFinite(output.result.event.to))",
+    "output.ok === false || Number.isFinite(output.result.entity.attributes[output.result.event.attribute])",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "entityId": "ghost", "mode": "increment", "value": 1e308 }, "expect": { "ok": false } }
+  ],
+  "_note": "worldmodel.ingest (LENS_ACTIONS handler). Sets/increments a numeric attribute on a target entity and appends an immutable log row. A poisoned (Infinity/NaN/1e308/over-long) value is coerced by num() to a finite number — the stored attribute is ALWAYS finite (pinned by the numeric-guard suite). An unknown entityId fail-CLOSES to ok:false 'target entity not found' rather than fabricating one — so both fuzz cases (empty input; ghost entity in the assassin's empty world) expect ok:false. LENS_ACTIONS-served; exercised in server/tests/worldmodel-lens-macros.test.js, not by the MACROS-only assassin."
+}

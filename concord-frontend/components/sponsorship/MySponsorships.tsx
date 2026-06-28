@@ -25,9 +25,14 @@ export function MySponsorships({ refreshKey, onChange }: { refreshKey: number; o
   const [history, setHistory] = useState<Record<string, Dispatch[]>>({});
   const [openHistory, setOpenHistory] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
+    setLoading(true);
+    setError(null);
     const r = await lensRun('sponsorship', 'list_for_user', {});
+    setLoading(false);
     if (r.data?.ok && r.data.result) {
       const list: Sponsorship[] = r.data.result.sponsorships || [];
       setItems(list);
@@ -37,6 +42,8 @@ export function MySponsorships({ refreshKey, onChange }: { refreshKey: number; o
         if (tr.data?.ok && tr.data.result) tmap[sp.creatorId] = tr.data.result.tiers || [];
       }
       setTiersByCreator(tmap);
+    } else {
+      setError(r.data?.error || 'Could not load your memberships.');
     }
   };
 
@@ -69,7 +76,20 @@ export function MySponsorships({ refreshKey, onChange }: { refreshKey: number; o
       {msg && (
         <div className="bg-emerald-950/50 border border-emerald-700/50 text-emerald-200 px-3 py-2 rounded-lg text-sm">{msg}</div>
       )}
-      {items.length === 0 ? (
+      {loading ? (
+        <div role="status" aria-live="polite" className="text-center text-zinc-400 italic py-6 border border-zinc-800 rounded-xl">
+          Loading your memberships…
+        </div>
+      ) : error ? (
+        <div role="alert" className="text-center py-6 border border-rose-800/60 bg-rose-950/30 rounded-xl">
+          <p className="text-rose-300 text-sm">{error}</p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="mt-2 bg-rose-800 hover:bg-rose-700 text-white text-xs px-4 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >Retry</button>
+        </div>
+      ) : items.length === 0 ? (
         <div className="text-center text-zinc-400 italic py-6 border border-zinc-800 rounded-xl">
           No active sponsorships. Browse the Discover tab to find a creator.
         </div>

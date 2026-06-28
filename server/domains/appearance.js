@@ -240,6 +240,134 @@ export default function registerAppearanceMacros(register) {
     }
   }, { note: "Load appearance for a specific avatar." });
 
+  // ── appearance.options ──────────────────────────────────────────────
+  // The REAL per-slot catalog the renderer honors. Every assetId below is a
+  // genuine enum value consumed by the procedural avatar mesh builder
+  // (concord-frontend/lib/world-lens/character-schema.ts) and the appearance
+  // save shape (bodyArchetype / hairStyle / clothing.{top,bottom,boots}.kind /
+  // facial.jawShape, plus hat / accessory / cape / carry layers). NO synthetic
+  // names, NO fabricated prices — these are the free, always-renderable base
+  // set. Deterministic: the lists are fixed enums, returned in a stable order.
+  //
+  // Source of truth (mirrored, kept in sync):
+  //   BodyArchetype          character-schema.ts:61
+  //   HairStyle              character-schema.ts:196
+  //   FacialFeatures.jawShape character-schema.ts:214
+  //   ClothingTopKind        character-schema.ts:226
+  //   ClothingBottomKind     character-schema.ts:231
+  //   ClothingKit.boots.kind  character-schema.ts:250
+  //   ClothingHatKind        character-schema.ts:236
+  //   Accessories.augments    character-schema.ts:262 (eye / arm chrome → "glasses"/"hand")
+  //   ClothingKit.cape        character-schema.ts:246 (→ "back")
+  //   Accessories.carry       character-schema.ts:260 (→ "hand")
+  //   FITZPATRICK_SKIN        character-schema.ts:139 (skin tones)
+  //   HAIR_PALETTE keys       character-schema.ts:155 (color swatches)
+  register("appearance", "options", async (ctx) => {
+    // Humanize an enum value: 'synth-jacket' / 'left-arm' → 'Synth Jacket' / 'Left Arm'.
+    const humanize = (v) =>
+      String(v)
+        .split(/[-_]/)
+        .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+        .join(" ");
+    const opt = (assetId, extra) => ({ assetId, name: humanize(assetId), ...(extra || {}) });
+    const slot = (vals) => vals.map((v) => opt(v));
+
+    // Renderable enums (mirror of character-schema.ts — every value is real).
+    const BODY = ["slim", "average", "stocky", "tall", "broad", "petite", "legend"];
+    const HAIR = [
+      "bald", "shaved", "short", "medium", "long", "ponytail", "bun",
+      "braids", "locs", "dreads", "mohawk", "topknot", "undercut",
+    ];
+    const FACE = ["round", "square", "pointed", "soft"]; // jawShape
+    const TOP = [
+      "shirt", "vest", "coat", "robe", "apron", "tunic", "jacket", "trench",
+      "breastplate", "synth-jacket", "cassock", "kanga", "duster", "cape",
+    ];
+    const BOTTOM = [
+      "pants", "skirt", "shorts", "robe", "trousers", "kilt", "leggings",
+      "sarong", "cargo", "leather-pants", "breeches",
+    ];
+    const SHOES = ["sandal", "boot", "greaves", "barefoot"]; // boots.kind
+    const HAT = [
+      "cap", "tophat", "beret", "hood", "helmet", "fedora", "turban",
+      "circlet", "wreath", "visor", "goggle", "crown", "horned-helm",
+    ];
+    // "Glasses" maps to the renderer's eye-region cosmetics: visor/goggle hats
+    // worn over the eyes + the eye-augment material set (chrome/matte/gold).
+    const GLASSES = ["visor", "goggle", "eye-chrome", "eye-matte-black", "eye-gold"];
+    // "Back" maps to the cape layer (ClothingKit.cape + pattern).
+    const BACK = ["cape-plain", "cape-striped", "cape-glyph"];
+    // "Hand" maps to the visible carried-prop layer (Accessories.carry) + the
+    // arm-augment material set (chrome arm etc.).
+    const HAND = [
+      "sword", "staff", "pistol", "rifle", "bow", "satchel", "tome",
+      "tool-belt", "pouch", "arm-chrome", "arm-matte-black", "arm-gold",
+    ];
+    // "Particle" maps to the marking/aura emissive set the renderer honors —
+    // markings.kind + the emissive-glyph PBR material.
+    const PARTICLE = ["tattoo", "scar-pattern", "paint", "glyph"];
+
+    // Real skin tones — the Fitzpatrick I–VI variants the renderer resolves
+    // (FITZPATRICK_SKIN in character-schema.ts). These ARE colors, so they
+    // carry a `color` hex swatch.
+    const SKIN_TONES = [
+      ["pale-cool", "#f6dabb"], ["pale-warm", "#fadec7"],
+      ["fair-cool", "#e8beac"], ["fair-warm", "#f0c8b6"],
+      ["olive-cool", "#d3a18f"], ["olive-warm", "#cf8e74"],
+      ["tan-cool", "#bd8d74"], ["tan-warm", "#c89878"],
+      ["brown-cool", "#815c49"], ["brown-warm", "#8d6a52"],
+      ["dark-brown-cool", "#4d332d"], ["dark-brown-warm", "#5a3d30"],
+    ].map(([assetId, color]) => ({ assetId, name: humanize(assetId), color }));
+
+    // Hair / clothing color swatches — the modal hex of each HAIR_PALETTE key.
+    const COLORS = [
+      ["black", "#1a1410"], ["dark-brown", "#3d2818"], ["brown", "#6a4828"],
+      ["light-brown", "#9a7048"], ["blonde", "#c8a070"], ["light-blonde", "#e8d4a8"],
+      ["red", "#a04018"], ["silver", "#c8c8c8"], ["cyber-magenta", "#ff2bd5"],
+      ["cyber-cyan", "#30e8ff"], ["drift-violet", "#a060ff"], ["bloodline-red", "#c83020"],
+    ].map(([assetId, color]) => ({ assetId, name: humanize(assetId), color }));
+
+    // Optionally fold in the player's saved/owned cosmetics. These are REAL
+    // user-authored outfits (saved_outfits, mig 221), surfaced as owned. No
+    // fabricated prices — owned items are marked owned:true. Best-effort; a DB
+    // without the table degrades to the base set above.
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    const savedOutfits = [];
+    if (db && userId) {
+      try {
+        const rows = db.prepare(
+          `SELECT id, name FROM saved_outfits WHERE user_id = ? ORDER BY updated_at DESC LIMIT 50`,
+        ).all(userId);
+        for (const r of rows) {
+          savedOutfits.push({ assetId: r.id, name: r.name, owned: true });
+        }
+      } catch { /* table optional */ }
+    }
+
+    return {
+      ok: true,
+      slots: {
+        body: slot(BODY),
+        hair: slot(HAIR),
+        face: slot(FACE),
+        top: slot(TOP),
+        bottom: slot(BOTTOM),
+        shoes: slot(SHOES),
+        hat: slot(HAT),
+        glasses: slot(GLASSES),
+        back: slot(BACK),
+        hand: slot(HAND),
+        particle: slot(PARTICLE),
+      },
+      skinTones: SKIN_TONES,
+      colors: COLORS,
+      savedOutfits,
+    };
+  }, {
+    note: "Real per-slot avatar appearance catalog — every option is a renderable enum honored by character-schema.ts / the procedural mesh builder. No fabricated prices; base options are free/owned.",
+  });
+
   register("appearance", "faction_visual", async (ctx, input = {}) => {
     const { worldId, factionId } = input || {};
     if (!worldId || !factionId) return { ok: false, reason: "missing_inputs" };

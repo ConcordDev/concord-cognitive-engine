@@ -1,0 +1,23 @@
+{
+  "macro_id": "sessions.advance",
+  "domain": "sessions",
+  "name": "advance",
+  "inputs": {
+    "sessionId": { "type": "string", "maxLength": 64 },
+    "toStep": { "type": "string", "maxLength": 64 },
+    "note": { "type": "string", "maxLength": 500 },
+    "stateMerge": { "type": "object" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.session && typeof output.session.currentStep === 'string')",
+    "output.ok === false || output.session.stepCount >= 1"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_session_id" } },
+    { "input": { "sessionId": "x" }, "expect": { "ok": false, "reason": "missing_to_step" } },
+    { "input": { "sessionId": "does-not-exist", "toStep": "plan" }, "expect": { "ok": false, "reason": "not_found" } }
+  ],
+  "_note": "sessions.advance transitions a session owned by the caller to a new step and appends an 'advanced' event. Requires sessionId (missing → missing_session_id) and toStep (missing → missing_to_step); a foreign/unknown id → not_found. A write {} returns a real validation reason, NEVER no_db."
+}

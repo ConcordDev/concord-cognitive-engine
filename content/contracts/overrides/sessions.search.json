@@ -1,0 +1,25 @@
+{
+  "macro_id": "sessions.search",
+  "domain": "sessions",
+  "name": "search",
+  "inputs": {
+    "query": { "type": "string", "maxLength": 120 },
+    "lensId": { "type": "string", "maxLength": 64 },
+    "status": { "type": "string", "enum": ["open", "paused", "completed", "abandoned"] },
+    "sort": { "type": "string", "enum": ["recent", "oldest", "title", "lens", "steps"] },
+    "limit": { "type": "number", "min": 1, "max": 100 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.sessions)",
+    "output.ok === false || (typeof output.total === 'number' && output.total >= 0)",
+    "output.ok === false || typeof output.sort === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "query": "war", "sort": "steps", "limit": 25 }, "expect": { "ok": true } },
+    { "input": { "limit": -1 }, "expect": { "ok": false, "reason": "invalid_limit" } }
+  ],
+  "_note": "sessions.search searches/sorts the caller's own sessions (per-user scoped). {} returns ok:true with the caller's (empty, for the assassin actor) result set and the resolved sort. sort defaults to recent; an unknown sort falls back to recent ORDER BY. limit is a fail-CLOSED numeric guard (invalid_limit). Never no_db / no_user under the assassin."
+}

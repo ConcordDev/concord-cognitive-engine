@@ -1,0 +1,19 @@
+{
+  "macro_id": "gallery.compare",
+  "domain": "gallery",
+  "name": "compare",
+  "inputs": {
+    "ids": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "ids": [1] }, "expect": { "ok": false } },
+    { "input": { "ids": [] }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "gallery.compare fetches 2-4 Cleveland Museum artwork records by id and computes a structured attribute diff. Fewer than 2 or more than 4 valid positive ids rejects BEFORE any outbound fetch ('at least 2 ... ids required' / 'at most 4 ...'), keeping these fuzz cases network-free. The success path is external-IO (live CMA API) and not fuzzed."
+}

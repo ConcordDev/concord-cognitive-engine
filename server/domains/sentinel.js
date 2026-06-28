@@ -17,6 +17,45 @@
 // All state is per-user, persisted on globalThis._concordSTATE Maps so it
 // survives across macro calls within a process. Handlers never throw —
 // every path returns { ok: boolean, result?, error? }.
+//
+// REGISTRATION (saved-class fix, 2026-06): this file used to register through
+// the legacy `registerLensAction(domain, action, (ctx, artifact, params), spec)`
+// convention AND was NEVER imported by server.js — so every `sentinel.*` macro
+// (triage.* / monitor.* / alerts.* / metrics.series / intel.* / scan.* / query.*)
+// was invisible to runMacro and to POST /api/lens/run → every call hit
+// `unknown_macro`, leaving the lens components (SentinelTriage / SentinelMonitors /
+// SentinelMetrics / SentinelIntel / SentinelScanConfig / SentinelSemantic)
+// dead-wired. It is now wired through the canonical `register` (MACROS) registry
+// — `registerSentinelActions(register)` in server.js — so the macros are reachable
+// BOTH via POST /api/lens/run AND via runMacro (which the contract engine +
+// macro-assassin + behavior-smoke harness drive).
+//
+// To keep the verified handler bodies below byte-for-byte identical, the default
+// export adapts the canonical 2-arg `(ctx, input)` signature back to the legacy
+// `(ctx, artifact, params)` shape via the `registerLensAction` shim — `params`
+// (and `artifact.data`) carry the input, identical to what `/api/lens/run` would
+// have built. Handlers return a `{ ok, result }` envelope (the dispatcher's
+// `_unwrapLensEnvelope` strips the `result` layer so the frontend reads
+// `r.data.result.<field>`). All state is per-user (no publicReadDomains entry —
+// every read is keyed by the caller's own ctx.actor.userId).
+//
+// Fail-CLOSED numeric guard: macros that take a numeric input (intervalMinutes /
+// relevance / days / limit) call `badNumericField` BEFORE using it, rejecting
+// NaN/Infinity/1e308/negative with `invalid_<field>` instead of silently clamping
+// the poison to an accepted value (the macro-assassin's V2 vector probes exactly
+// this). Copied from server/domains/literary.js.
+
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) BEFORE using it.
+// An absent/null field is fine (the macro uses its default). Returns null when
+// clean, else the offending key.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input == null || input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e9) return k;
+  }
+  return null;
+}
 
 function getState() {
   const g = globalThis;
@@ -73,7 +112,18 @@ function normalizeSeverity(sev) {
   return SEVERITY_RANK[v] != null ? v : 'unknown';
 }
 
-export default function registerSentinelActions(registerLensAction) {
+export default function registerSentinelActions(register) {
+  // Legacy-convention shim: adapt canonical register(ctx, input) → the
+  // verified (ctx, artifact, params) handler bodies below, unchanged.
+  const registerLensAction = (domain, action, handler, spec) =>
+    register(domain, action, (ctx, input = {}) => {
+      const inp = input && typeof input === 'object' ? input : {};
+      const artifact = inp.artifact && typeof inp.artifact === 'object'
+        ? inp.artifact
+        : { id: null, domain, type: 'domain_action', data: inp, meta: {} };
+      return handler(ctx, artifact, inp);
+    }, spec);
+
   // ── Threat triage ──────────────────────────────────────────────────────
 
   /**
@@ -192,6 +242,8 @@ export default function registerSentinelActions(registerLensAction) {
   registerLensAction('sentinel', 'monitor.create', (ctx, artifact, params) => {
     try {
       const p = { ...(artifact?.data || {}), ...(params || {}) };
+      const badNum = badNumericField(p, ['intervalMinutes']);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const id = userId(ctx, params);
       const s = getState();
       const monitors = userMap(s.sentinelMonitors, id);
@@ -351,6 +403,8 @@ export default function registerSentinelActions(registerLensAction) {
   registerLensAction('sentinel', 'timeline.list', (ctx, artifact, params) => {
     try {
       const p = { ...(artifact?.data || {}), ...(params || {}) };
+      const badNum = badNumericField(p, ['limit']);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const id = userId(ctx, params);
       let events = [...userList(getState().sentinelTimeline, id)];
       if (p.kind) events = events.filter((e) => e.kind === p.kind);
@@ -389,6 +443,8 @@ export default function registerSentinelActions(registerLensAction) {
   registerLensAction('sentinel', 'metrics.series', (ctx, artifact, params) => {
     try {
       const p = { ...(artifact?.data || {}), ...(params || {}) };
+      const badNum = badNumericField(p, ['days']);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const id = userId(ctx, params);
       const s = getState();
       const events = userList(s.sentinelTimeline, id);
@@ -433,6 +489,8 @@ export default function registerSentinelActions(registerLensAction) {
       const caseId = p.caseId;
       if (!caseId) return { ok: false, error: 'caseId required' };
       if (!p.intelDomain || !p.summary) return { ok: false, error: 'intelDomain and summary required' };
+      const badNum = badNumericField(p, ['relevance']);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const s = getState();
       const c = userMap(s.sentinelCases, id).get(caseId);
       if (!c) return { ok: false, error: 'case not found' };

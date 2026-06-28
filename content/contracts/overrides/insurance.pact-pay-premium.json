@@ -1,0 +1,21 @@
+{
+  "macro_id": "insurance.pact-pay-premium",
+  "domain": "insurance",
+  "name": "pact-pay-premium",
+  "inputs": {
+    "pactId": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.pactId === 'string'",
+    "output.ok === false || Number.isFinite(output.result.premiumPaidSparks)",
+    "output.ok === false || output.result.premiumPaidSparks >= 0",
+    "output.ok === false || output.result.installments >= 1"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "pact not found" } },
+    { "input": { "pactId": "nope" }, "expect": { "ok": false, "error": "pact not found" } }
+  ],
+  "_note": "insurance.pact-pay-premium records one recurring-premium installment (weekly/monthly pacts only) — it accumulates premiumPaidSparks by the pact's already-validated premiumSparks and advances nextPremiumDueAt. The caller passes NO numeric amount (the installment is the pact's stored premium), so there is no fail-open amount surface here; the amount was guarded at pact-write. Upfront pacts reject ('this pact has an upfront premium'); non-active pacts reject. STATE-backed per-user via the internal owner actor — unknown/empty pactId returns 'pact not found', NEVER no_db. Sparks-only; no CC touched."
+}

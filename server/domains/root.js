@@ -15,6 +15,29 @@ import { decimalToRefusalGlyphs, refusalGlyphsToDecimal }
 import { add, subtract, multiply, divide } from "../lib/refusal-algebra/operations.js";
 
 export default function registerRootActions(registerLensAction) {
+  // NOTE (2026-06-27): root.js uses the legacy 3-arg registerLensAction(domain,
+  // action, (ctx, artifact, params)) convention and is loaded by
+  // server/domains/index.js (rootLens in the domainModules array → server.js
+  // `domainModules.forEach(mod => mod(registerLensAction))`). It is NOT
+  // saved-class — it was already wired via index.js. Do NOT add a canonical-
+  // register shim here or rename the param: index.js calls this with the real
+  // 3-arg registerLensAction, so a shim would double-wrap the handler params.
+  // (The Phase-2 pass kept only the fail-closed numeric guard below.)
+
+  // ─── fail-CLOSED numeric guard ────────────────────────────────────────
+  // Reject poisoned numeric inputs (NaN/Infinity/negative/huge/non-numeric)
+  // instead of silently clamping them to a default. Mirrors
+  // domains/literary.js#badNumericField.
+  function badNumericField(input, keys) {
+    for (const k of keys) {
+      const v = input?.[k];
+      if (v === undefined || v === null || v === "") continue;
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+    }
+    return null;
+  }
+
   // ─── per-user STATE ───────────────────────────────────────────────────
   function getRootState() {
     const STATE = globalThis._concordSTATE;
@@ -417,6 +440,8 @@ export default function registerRootActions(registerLensAction) {
   registerLensAction("root", "history", (ctx, _artifact, params = {}) => {
     const s = getRootState();
     if (!s) return { ok: false, error: "STATE unavailable" };
+    const badNum = badNumericField(params, ["limit"]);
+    if (badNum) return { ok: false, error: "invalid_limit" };
     let list = [...rootList(s.computations, rootActor(ctx))];
     if (params.kind) list = list.filter((c) => c.kind === String(params.kind));
     const limit = Math.max(1, Math.min(200, parseInt(params.limit, 10) || 30));

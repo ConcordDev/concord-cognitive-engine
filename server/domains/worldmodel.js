@@ -370,11 +370,25 @@ export default function registerWorldmodelActions(registerLensAction) {
   // Output is a real per-step trajectory, deterministic for given inputs.
   // ---------------------------------------------------------------------------
 
+  // Fail-CLOSED magnitude bound on a modeled value. `num()` accepts any finite
+  // float — including 1e308 — but compounding growth over up to 60 steps could
+  // overflow a finite-but-extreme seed to Infinity, poisoning the whole
+  // trajectory + total. capValue() clamps every value that enters or is produced
+  // by the simulation to ±VALUE_CAP so the trajectory is ALWAYS finite. NaN/±Inf
+  // collapse to 0. VALUE_CAP (1e12) is far above any legitimate modeled quantity
+  // yet leaves headroom for 60 steps of growth/propagation without overflow.
+  const VALUE_CAP = 1e12;
+  function capValue(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 0;
+    return Math.min(VALUE_CAP, Math.max(-VALUE_CAP, n));
+  }
+
   function runTrajectory({ entities, relations, steps, growth, shocks }) {
     // entities: [{id, value}], relations: [{from,to,weight}]
     const stepCount = clamp(steps, 1, 60, 10);
     const g = clamp(growth, -0.5, 0.5, 0.0);
-    const state = new Map(entities.map((e) => [e.id, num(e.value, 0)]));
+    const state = new Map(entities.map((e) => [e.id, capValue(num(e.value, 0))]));
     const shockMap = new Map(); // step -> [{id, delta}]
     for (const sh of (shocks || [])) {
       const at = clamp(sh.step, 1, stepCount, 1);
@@ -405,7 +419,7 @@ export default function registerWorldmodelActions(registerLensAction) {
         if (next.has(sh.id)) next.set(sh.id, next.get(sh.id) + sh.delta);
       }
       state.clear();
-      for (const [k, v] of next) state.set(k, Number(v.toFixed(4)));
+      for (const [k, v] of next) state.set(k, Number(capValue(v).toFixed(4)));
       trajectory.push({
         step: s,
         ...Object.fromEntries(Array.from(state.entries())),

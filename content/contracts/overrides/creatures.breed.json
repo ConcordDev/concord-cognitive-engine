@@ -1,0 +1,24 @@
+{
+  "macro_id": "creatures.breed",
+  "domain": "creatures",
+  "name": "breed",
+  "inputs": {
+    "environment": { "type": "string", "maxLength": 80 },
+    "sameEnvironmentBonus": { "type": "boolean" },
+    "worldId": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.hybrid && typeof output.hybrid.id === 'string' && output.hybrid.id.length > 0)",
+    "output.ok === false || (typeof output.hybrid.massKg === 'number' && output.hybrid.massKg > 0)",
+    "output.ok === false || (typeof output.stability === 'number' && output.stability > 0 && output.stability <= 1)",
+    "output.ok === false || ['quadruped','winged_quadruped','winged_biped','humanoid','serpentine','amorphous','polyped','eel','shark','fish','cephalopod','biped'].includes(output.hybrid.topology)",
+    "output.ok === false || Array.isArray(output.parents)",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "a": { "species_id": "wolf" } }, "expect": { "ok": false } }
+  ]
+}

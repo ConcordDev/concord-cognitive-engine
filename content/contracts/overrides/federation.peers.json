@@ -1,0 +1,19 @@
+{
+  "macro_id": "federation.peers",
+  "domain": "federation",
+  "name": "peers",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.configured))",
+    "output.ok === false || Array.isArray(output.result.trustGraph)",
+    "output.ok === false || output.result.trustGraph.length <= 50",
+    "output.ok === false || typeof output.result.federationEnabled === 'boolean'",
+    "output.ok === false || output.result.configured.every(p => typeof p.hasToken === 'boolean')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "federation.peers is a lens-action macro (registered into LENS_ACTIONS via domains/index.js, dispatched (ctx, virtualArtifact, input) at server.js:39150) — it is NOT a runMacro/MACROS contract, so the assassin (which reads the derived MACROS set) does not exercise it; this override documents the live reality. It reads STATE.settings.federationPeers + the DB-backed listPeers helper (envelope-unwrapped: { ok, peers } -> array, sliced to 50) and NEVER returns no_db — the DB path is try/catch-wrapped and degrades to an empty trustGraph on minimal builds. configured exposes only { id, url, hasToken } — the raw peer token is structurally omitted, never surfaced. Returns ok:true with empty arrays for an internal/owner actor with no configured peers."
+}

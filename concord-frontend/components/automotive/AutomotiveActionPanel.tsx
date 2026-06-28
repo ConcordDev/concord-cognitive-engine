@@ -30,8 +30,8 @@ function pickMessage(e: unknown): string { const ax = e as { response?: { data?:
 interface VinResult { vin: string; make?: string; model?: string; year?: string; trim?: string; bodyClass?: string; driveType?: string; engineCylinders?: string; engineDisplacementL?: string; fuelType?: string; transmission?: string; gvwr?: string; manufacturer?: string; plantCountry?: string; batteryKWh?: string; electrificationLevel?: string }
 interface Recall { nhtsaId?: string; component?: string; summary?: string; consequence?: string; remedy?: string; reportReceivedDate?: string }
 interface RecallResult { count?: number; recalls?: Recall[]; make?: string; model?: string; year?: number }
-interface MaintItem { service?: string; mileageDue?: number; monthsDue?: number; status?: string; priority?: string }
-interface MaintResult { items?: MaintItem[]; nextService?: string; overdueCount?: number }
+interface MaintItem { service?: string; intervalMiles?: number; milesUntilDue?: number; status?: string; priority?: string }
+interface MaintResult { services?: MaintItem[]; nextService?: string; overdueCount?: number }
 interface DiagResult { code?: string; description?: string; category?: string; severity?: string; commonCauses?: string[]; estimatedCost?: string }
 
 export function AutomotiveActionPanel() {
@@ -216,7 +216,7 @@ export function AutomotiveActionPanel() {
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Maintenance · {maintResult.overdueCount ?? 0} overdue</div>
             <div className="text-[11px] text-zinc-300">next: <span className="text-amber-200">{maintResult.nextService}</span></div>
-            {(maintResult.items ?? []).slice(0, 5).map((m, i) => <div key={i} className={cn('text-[10px] mt-0.5', m.status === 'overdue' ? 'text-red-300' : m.status === 'due-soon' ? 'text-amber-300' : 'text-zinc-400')}>{m.service} · {m.mileageDue?.toLocaleString()}mi{m.priority ? ` · ${m.priority}` : ''}</div>)}
+            {(maintResult.services ?? []).slice(0, 5).map((m, i) => <div key={i} className={cn('text-[10px] mt-0.5', m.status === 'due-now' ? 'text-red-300' : m.status === 'upcoming' ? 'text-amber-300' : 'text-zinc-400')}>{m.service} · {(m.milesUntilDue ?? m.intervalMiles)?.toLocaleString()}mi{m.priority ? ` · ${m.priority}` : ''}</div>)}
           </div>
         )}
         {diagResult && (

@@ -1,0 +1,18 @@
+{
+  "macro_id": "code-quality.annotate",
+  "domain": "code-quality",
+  "name": "annotate",
+  "inputs": {
+    "scanId": { "type": "string", "maxLength": 60 },
+    "file": { "type": "string", "maxLength": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.files))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "no_scans_yet" } }
+  ],
+  "_note": "Reads per-line annotations off a prior scan in per-user STATE. The assassin's internal owner actor has run no scans yet, so {} returns no_scans_yet (a real read-state reason, NEVER no_db). After an analyze it returns ok:true with the annotation map."
+}

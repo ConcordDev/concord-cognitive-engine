@@ -1,0 +1,25 @@
+{
+  "macro_id": "civic_bonds.spillover",
+  "domain": "civic_bonds",
+  "name": "spillover",
+  "inputs": {
+    "scope": { "type": "string" },
+    "worldId": { "type": "string" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.reason !== 'no_db'",
+    "!output.ok || (typeof output.amount === 'number' && output.amount >= 0 && Number.isFinite(output.amount))"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": { "ok": true }
+    },
+    {
+      "input": { "scope": "city", "worldId": "concordia-hub" },
+      "expect": { "ok": true }
+    }
+  ]
+}

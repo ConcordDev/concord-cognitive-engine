@@ -1,0 +1,202 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.compare_simulations",
+      "name": "compare_simulations"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.create_rehearsal",
+      "name": "create_rehearsal"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.create_science_program",
+      "name": "create_science_program"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.create_simulation",
+      "name": "create_simulation"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.deploy_policy",
+      "name": "deploy_policy"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.generate_education_pipeline",
+      "name": "generate_education_pipeline"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.identify_missing_sciences",
+      "name": "identify_missing_sciences"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.list_rehearsals",
+      "name": "list_rehearsals"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.list_simulations",
+      "name": "list_simulations"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.record_science_run",
+      "name": "record_science_run"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.revert_policy",
+      "name": "revert_policy"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.run_rehearsal",
+      "name": "run_rehearsal"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.step_simulation",
+      "name": "step_simulation"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.civilization",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.civilization.test_governance",
+      "name": "test_governance"
+    }
+  ],
+  "domain": "loaf.civilization",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 15
+}

@@ -1,0 +1,241 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.archive.decoded",
+      "name": "archive.decoded"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.archive.fossils",
+      "name": "archive.fossils"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.emergency.alert",
+      "name": "emergency.alert"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.emergency.resolve",
+      "name": "emergency.resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.emergency.status",
+      "name": "emergency.status"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.energy.grid",
+      "name": "energy.grid"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.energy.map",
+      "name": "energy.map"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.identity.verify",
+      "name": "identity.verify"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.market.earnings",
+      "name": "market.earnings"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.market.topology",
+      "name": "market.topology"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.neural.readiness",
+      "name": "neural.readiness"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.protocol.stats",
+      "name": "protocol.stats"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.sense.patterns",
+      "name": "sense.patterns"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.sense.readings",
+      "name": "sense.readings"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.spectrum.available",
+      "name": "spectrum.available"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.spectrum.map",
+      "name": "spectrum.map"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "foundation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundation.synthesis.correlations",
+      "name": "synthesis.correlations"
+    }
+  ],
+  "domain": "foundation",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 18
+}

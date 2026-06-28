@@ -1,0 +1,20 @@
+{
+  "macro_id": "film-studios.cost-report",
+  "domain": "film-studios",
+  "name": "cost-report",
+  "inputs": {
+    "projectId": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof (output.error || output.reason) === 'string'",
+    "output.ok !== true || (Number.isFinite(output.result.totalEstimated) && Number.isFinite(output.result.totalActual) && Number.isFinite(output.result.variance))",
+    "output.ok !== true || (typeof output.result.overBudget === 'boolean' && Number.isFinite(output.result.spentPct))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "projectId": "ghost_999" }, "expect": { "ok": false, "error": "project not found" } }
+  ],
+  "_note": "film-studios.cost-report aggregates a project's budget lines into estimate-vs-actual variance, per-department and per-line, biggest overruns first (LENS_ACTIONS / domains/filmstudios.js, in-memory per-user STATE.filmLens). It is wrapped in try/catch and returns { ok:false, error:'handler_error' } on any internal throw, and { ok:false, error:'project not found' } for an unknown / not-owned projectId. STATE-unavailable degrades to { ok:false, error:'STATE unavailable' }. All money math (estimated/actual/variance/committed/spentPct) is computed from line values that budget-line-add/-update already clamp via fmNum to finite + non-negative, so the report output stays finite. No DB, no CC; per-user isolation via the actor's userId key."
+}

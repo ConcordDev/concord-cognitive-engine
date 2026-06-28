@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { discoveryJuice } from '@/lib/concordia/juice';
+import { pushSystem } from './SystemFeed';
 
 interface Cluster {
   id: string;
@@ -164,7 +165,12 @@ export default function PowerClusterLayer({ worldId, pollMs = 12000, enabled = t
         const g = orbsRef.current.get(clusterId);
         if (scene && g) { disposeGroup(scene, g); orbsRef.current.delete(clusterId); }
         discoveryJuice();
-        window.dispatchEvent(new CustomEvent('concordia:power-cluster-claimed', { detail: payload }));
+        // Surface the claim on the System feed — the former
+        // `concordia:power-cluster-claimed` dispatch had no consumer; the
+        // diegetic effects (orb pop + discovery juice) already fire above, so
+        // route the player-facing notice through the real System feed instead.
+        const tagLabel = payload.powerTag ? String(payload.powerTag).replace(/[_-]/g, ' ') : 'Power cluster';
+        pushSystem('POWER CLUSTER CLAIMED', payload.tier ? `${tagLabel} · tier ${payload.tier}` : tagLabel, 'power');
       }
     } catch { /* keep orb; retry next proximity pass */ }
     finally { claimingRef.current.delete(clusterId); }

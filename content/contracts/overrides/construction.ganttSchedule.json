@@ -1,0 +1,26 @@
+{
+  "macro_id": "construction.ganttSchedule",
+  "domain": "construction",
+  "name": "ganttSchedule",
+  "inputs": {
+    "tasks": { "type": "array", "required": false },
+    "startDate": { "type": "string", "required": false, "maxLength": 32 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || Array.isArray(output.result.bars)",
+    "output.ok === false || output.result.bars.length === 0 || Number.isFinite(output.result.projectDuration)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "tasks": [] }, "expect": { "ok": true } },
+    { "input": { "tasks": [{ "name": "A", "duration": 5, "dependencies": [] }, { "name": "B", "duration": 7, "dependencies": ["A"] }], "startDate": "2026-06-01" }, "expect": { "ok": true } },
+    { "input": { "tasks": [{ "name": "C", "duration": "NaN", "dependencies": ["ghost"] }], "startDate": "<script>alert(1)</script>" }, "expect": { "ok": true } },
+    { "input": { "tasks": [{ "name": "D", "duration": 1e308, "dependencies": [] }] }, "expect": { "ok": true } },
+    { "input": { "tasks": "boom" }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/construction.js, registerLensAction('construction','ganttSchedule',...)) — reached only via /api/lens/run on key 'construction.ganttSchedule' (3-arg handler; reads tasks from calcData(artifact).tasks OR params.tasks). DETERMINISTIC: runs the same CPM forward/backward pass as criticalPath, then maps to bars with startDay/endDay/startDate/endDate (Date arithmetic off startDate || now). Empty/absent/non-array tasks → { bars: [], message } (degrade graceful). A bad startDate yields Invalid-Date strings but never throws (whole body try/catch → {ok:false} on hard error). The GC-bench panel double-wraps; calcData() peels the layer so it computes identically. NOT macro-assassin-driven (LENS_ACTIONS, not MACROS); authored spec pinned by server/tests/construction-domain-parity.test.js + server/tests/construction-lens-macros.test.js."
+}

@@ -45,6 +45,8 @@ export default function DeitiesPage() {
   const [deities, setDeities] = useState<Deity[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // compose form
   const [composing, setComposing] = useState(false);
@@ -59,20 +61,24 @@ export default function DeitiesPage() {
   const [sort, setSort] = useState<SortKind>('popularity');
 
   const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     const usingFilter = query.trim() || toneAxis || minPilgrims > 0 || sort !== 'popularity';
-    if (usingFilter) {
-      const r = await lensRun<{ deities: Deity[] }>('deity', 'search', {
-        query: query.trim() || undefined,
-        toneAxis: toneAxis || undefined,
-        minTone: toneAxis ? minTone : undefined,
-        minPilgrims: minPilgrims || undefined,
-        sort,
-      });
-      if (r.data.ok && r.data.result) setDeities(r.data.result.deities || []);
+    const r = usingFilter
+      ? await lensRun<{ deities: Deity[] }>('deity', 'search', {
+          query: query.trim() || undefined,
+          toneAxis: toneAxis || undefined,
+          minTone: toneAxis ? minTone : undefined,
+          minPilgrims: minPilgrims || undefined,
+          sort,
+        })
+      : await lensRun<{ deities: Deity[] }>('deity', 'list', { limit: 50 });
+    if (r.data.ok && r.data.result) {
+      setDeities(r.data.result.deities || []);
     } else {
-      const r = await lensRun<{ deities: Deity[] }>('deity', 'list', { limit: 50 });
-      if (r.data.ok && r.data.result) setDeities(r.data.result.deities || []);
+      setError(r.data.error || 'Could not load the pantheon.');
     }
+    setLoading(false);
   }, [query, toneAxis, minTone, minPilgrims, sort]);
 
   useEffect(() => { void refresh(); }, [refresh, refreshKey]);
@@ -228,7 +234,22 @@ export default function DeitiesPage() {
               </div>
             </div>
 
-            {deities.length === 0 ? (
+            {loading ? (
+              <div role="status" aria-live="polite" aria-busy="true" className="py-8 text-center italic text-zinc-400">
+                Gathering the pantheon…
+              </div>
+            ) : error ? (
+              <div role="alert" className="space-y-3 rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 text-center">
+                <p className="text-sm text-rose-300">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => void refresh()}
+                  className="rounded-lg border border-rose-500/40 px-4 py-1.5 text-xs font-medium text-rose-200 hover:bg-rose-500/10 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : deities.length === 0 ? (
               <div className="py-8 text-center italic text-zinc-400">
                 No deities match. {query || toneAxis || minPilgrims ? 'Loosen the filter or' : 'Be the first to'} compose one.
               </div>

@@ -1,0 +1,17 @@
+{
+  "macro_id": "sandbox.catalog",
+  "domain": "sandbox",
+  "name": "catalog",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.weapons) && output.result.weapons.length >= 5)",
+    "output.ok === false || (Array.isArray(output.result.skills) && output.result.skills.length >= 5)",
+    "output.ok === false || (Array.isArray(output.result.behaviors) && output.result.behaviors.length === 4)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Returns the fixed Combat Sandbox engine vocabulary (5 weapons, 5 skills, 4 dummy behaviors) the picker UIs render. A pure read of in-module constants — no STATE, no DB, no actor dependency — so {} always returns ok:true (NEVER no_db)."
+}

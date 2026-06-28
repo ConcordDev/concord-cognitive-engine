@@ -37,6 +37,7 @@ export function GarageSection() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [fuel, setFuel] = useState<FuelEntry[]>([]);
   const [service, setService] = useState<ServiceEntry[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -47,13 +48,17 @@ export function GarageSection() {
 
   const refreshVehicles = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const r = await lensRun({ domain: 'automotive', action: 'vehicles-list', input: {} });
+      // lensRun never throws — an HTTP/macro failure surfaces as data.ok=false.
+      // Surface it instead of silently rendering an empty garage.
+      if (!r.data?.ok) { setLoadError(r.data?.error || 'Failed to load garage'); return; }
       const list = (r.data?.result?.vehicles || []) as Vehicle[];
       setVehicles(list);
       if (list.length > 0 && !activeId) setActiveId(list[0].id);
       if (list.length === 0) setActiveId(null);
-    } catch (e) { console.error('[Garage] vehicles', e); }
+    } catch (e) { console.error('[Garage] vehicles', e); setLoadError(e instanceof Error ? e.message : 'Failed to load garage'); }
     finally { setLoading(false); }
   }, [activeId]);
 
@@ -213,11 +218,17 @@ export function GarageSection() {
           <span className="text-xs font-semibold text-gray-200 flex-1">Garage</span>
           <button aria-label="Add" onClick={addVehicle} className="p-0.5 text-sky-300 hover:text-sky-200"><Plus className="w-3.5 h-3.5" /></button>
         </header>
-        <ul className="flex-1 overflow-y-auto">
+        <ul className="flex-1 overflow-y-auto" aria-label="Garage vehicles">
           {loading ? (
-            <li className="px-3 py-3 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</li>
+            <li role="status" aria-live="polite" className="px-3 py-3 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading garage…</li>
+          ) : loadError ? (
+            <li role="alert" className="px-3 py-4 text-xs text-rose-300 text-center">
+              <AlertTriangle className="w-4 h-4 mx-auto mb-1" />
+              <div className="mb-2">{loadError}</div>
+              <button onClick={() => refreshVehicles()} className="text-sky-300 underline">Retry</button>
+            </li>
           ) : vehicles.length === 0 ? (
-            <li className="px-3 py-6 text-xs text-gray-400 text-center italic">No vehicles. <button onClick={addVehicle} className="text-sky-300 underline">Add one</button></li>
+            <li className="px-3 py-6 text-xs text-gray-400 text-center italic">No vehicles yet. <button onClick={addVehicle} className="text-sky-300 underline">Add your first vehicle</button></li>
           ) : vehicles.map(v => (
             <li key={v.id} onClick={() => setActiveId(v.id)} className={cn('group px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-white/[0.04]', activeId === v.id && 'bg-sky-500/10 border-l-2 border-sky-400')}>
               <Car className={cn('w-4 h-4', activeId === v.id ? 'text-sky-300' : 'text-gray-400')} />

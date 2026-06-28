@@ -1,0 +1,23 @@
+{
+  "macro_id": "calendar.events-create",
+  "domain": "calendar",
+  "name": "events-create",
+  "inputs": {
+    "title": { "type": "string", "maxLength": 200 },
+    "start": { "type": "string" },
+    "end": { "type": "string" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.event && typeof output.result.event.id === 'string')",
+    "output.ok === false || (Number.isFinite(new Date(output.result.event.start).getTime()) && Number.isFinite(new Date(output.result.event.end).getTime()))",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "title": "   " }, "expect": { "ok": false } },
+    { "input": { "title": "Sync", "start": "not-a-date" }, "expect": { "ok": false } }
+  ],
+  "_note": "calendar.events-create is a LENS_ACTIONS (PATH 3) handler that appends an event to the caller's per-user STATE.calendarLens.events map (keyed by aidCal(ctx)). FAIL-CLOSED: an empty/whitespace title rejects ('title required'); an unparseable start rejects ('valid start (ISO) required') — no row is persisted on either. A missing end defaults to start+1h, so the persisted event always has finite start AND end. Per-user isolation: events-list/events-delete only see the caller's rows. degrade-graceful: returns ok:false 'STATE unavailable' (never throws) when globalThis._concordSTATE is absent. macro-assassin drives runMacro (which does not resolve LENS_ACTIONS); this contract is the spec for the lens path, and server/tests/calendar-lens-macros.test.js + calendar-domain-parity.test.js are the drivers. No CC, no network."
+}

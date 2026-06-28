@@ -1,0 +1,221 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "deity",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "name": "Veyra",
+            "ok": true
+          },
+          "input": {
+            "name": "Veyra",
+            "toneVector": {
+              "mystery": 0.6,
+              "refusal": 0.2,
+              "warmth": 0.7
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_name"
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "creed": {
+          "maxLength": 600,
+          "type": "string"
+        },
+        "domainTitle": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.deityId !== undefined && output.deityId !== null)",
+        "output.ok === false || typeof output.name === 'string'",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "deity.compose",
+      "name": "compose"
+    },
+    {
+      "_derived": false,
+      "domain": "deity",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 5
+          }
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.deities)",
+        "output.ok === false || output.deities.every(d => d && (d.id !== undefined && d.id !== null))",
+        "output.ok === false || output.deities.every(d => typeof d.name === 'string')",
+        "output.ok === false || output.deities.every(d => typeof d.pilgrim_count === 'number' && d.pilgrim_count >= 0)",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "deity.list",
+      "name": "list"
+    },
+    {
+      "_derived": false,
+      "domain": "deity",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_deityId"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "deityId": "does-not-exist-9999"
+          }
+        }
+      ],
+      "inputs": {
+        "deityId": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.pilgrims)",
+        "output.ok === false || output.pilgrims.every(p => p && typeof p.pilgrim_user_id === 'string')",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "deity.pilgrim_log",
+      "name": "pilgrim_log"
+    },
+    {
+      "_derived": false,
+      "domain": "deity",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_deityId"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "deityId": "does-not-exist-9999"
+          }
+        }
+      ],
+      "inputs": {
+        "deityId": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        },
+        "originPeer": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.deityId !== undefined && output.deityId !== null)",
+        "output.ok === false || (typeof output.newPilgrimCount === 'number' && output.newPilgrimCount >= 1)",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "deity.pilgrimage",
+      "name": "pilgrimage"
+    },
+    {
+      "_derived": false,
+      "domain": "deity",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_deityId"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "deityId": "does-not-exist-9999"
+          }
+        }
+      ],
+      "inputs": {
+        "deityId": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.toneVector !== null && typeof output.toneVector === 'object')",
+        "output.ok === false || Array.isArray(output.templates)",
+        "output.ok === false || (output.thresholds !== null && typeof output.thresholds === 'object')",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "deity.tone_vector",
+      "name": "tone_vector"
+    }
+  ],
+  "domain": "deity",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 5
+}

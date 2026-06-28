@@ -1,0 +1,22 @@
+{
+  "macro_id": "staking.transfer_receipt",
+  "domain": "staking",
+  "name": "transfer_receipt",
+  "inputs": {
+    "receiptId": { "type": "string", "required": true, "maxLength": 200 },
+    "toUserId": { "type": "string", "required": true, "maxLength": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.receiptId === 'string' && output.result.receiptId.length > 0)",
+    "output.ok === false || (typeof output.result.faceValueCc === 'number' && output.result.faceValueCc >= 0)",
+    "output.ok === false || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "missing_receipt_id" } },
+    { "input": { "receiptId": "rcpt_x" }, "expect": { "ok": false, "error": "missing_recipient" } },
+    { "input": { "receiptId": "rcpt_x", "toUserId": "other_user" }, "expect": { "ok": false, "error": "not_found" } }
+  ],
+  "_note": "transfer_receipt is a user-scoped WRITE moving a liquid-staking receipt to another user. Internal owner actor → {} hits real validation (missing_receipt_id), never no_actor. Missing recipient and self-transfer are rejected; an unknown receipt returns not_found for the fresh assassin user."
+}

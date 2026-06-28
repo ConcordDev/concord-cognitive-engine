@@ -53,12 +53,16 @@ import { PartyPanel } from '@/components/world/PartyPanel';
 import { MapPingLayer } from '@/components/world/MapPingLayer';
 import { KillFeed } from '@/components/world/KillFeed';
 import { DiseaseStatusHUD } from '@/components/world/DiseaseStatusHUD';
+import { MountHud } from '@/components/world/MountHud';
 import SubtitleDisplay from '@/components/accessibility/SubtitleDisplay';
 import ScreenReaderAnnouncer from '@/components/accessibility/ScreenReaderAnnouncer';
 import WorldAccessibilityMenu from '@/components/accessibility/WorldAccessibilityMenu';
 import WorldQuestLogPanel from '@/components/world/WorldQuestLogPanel';
 import WorldMarketplacePanel from '@/components/world/WorldMarketplacePanel';
 import WorldAdventureKitPanel from '@/components/world/WorldAdventureKitPanel';
+import { CharacterSheetPanel } from '@/components/world-lens/CharacterSheetPanel';
+import { AbilityCooldownHud } from '@/components/world-lens/AbilityCooldownHud';
+import { TargetNameplate } from '@/components/world-lens/TargetNameplate';
 import {
   DeformationStore,
   replayDeformations,
@@ -617,9 +621,20 @@ const CollaborationTools = dynamic(() => import('@/components/world-lens/Collabo
 const LiveCollaboration = dynamic(() => import('@/components/world-lens/LiveCollaboration'), {
   ssr: false,
 });
-const EventsGatherings = dynamic(() => import('@/components/world-lens/EventsGatherings'), {
-  ssr: false,
-});
+const WorldEventBoard = dynamic(
+  () =>
+    import('@/components/world/WorldEventBoard').then((m) => ({
+      default: m.WorldEventBoard,
+    })),
+  { ssr: false }
+);
+const AuctionBrowsePanel = dynamic(
+  () =>
+    import('@/components/world/AuctionBrowsePanel').then((m) => ({
+      default: m.AuctionBrowsePanel,
+    })),
+  { ssr: false }
+);
 const SocialProofFeed = dynamic(() => import('@/components/world-lens/SocialProofFeed'), {
   ssr: false,
 });
@@ -1036,13 +1051,6 @@ const LeaderboardPanel = dynamic(
     })),
   { ssr: false }
 );
-const WorldEventsPanel = dynamic(
-  () =>
-    import('@/components/concordia/world/WorldEventsPanel').then((m) => ({
-      default: m.WorldEventsPanel,
-    })),
-  { ssr: false }
-);
 const ArenaPanel = dynamic(
   () => import('@/components/concordia/world/ArenaPanel').then((m) => ({ default: m.ArenaPanel })),
   { ssr: false }
@@ -1135,6 +1143,7 @@ import {
   Store,
   ScrollText,
   Backpack,
+  Gavel,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -1993,7 +2002,8 @@ export default function WorldLensPage() {
     | 'profile'
     | 'collaboration'
     | 'livecollab'
-    | 'events'
+    | 'eventboard'
+    | 'auctions'
     | 'socialproof'
     | 'notifications'
     | 'smartnotify'
@@ -2008,11 +2018,11 @@ export default function WorldLensPage() {
     | 'guild'
     | 'season'
     | 'leaderboard'
-    | 'worldevents'
     | 'arena'
     | 'jobs'
     | 'lore'
     | 'timeline'
+    | 'character'
   >('none');
   // Local player avatar — mutable so moves update it in place. On
   // first mount we ask the server for saved state (via player:load)
@@ -4643,7 +4653,7 @@ export default function WorldLensPage() {
           <DiegeticSurfaces
             playerPosition={playerAvatar.position}
             onOpenMap={() => setShowPanel('map')}
-            onOpenSheet={() => setShowPanel('inventory')}
+            onOpenSheet={() => setShowPanel('character')}
             onOpenInventory={() => setShowPanel('inventory')}
           />
           <SocialOverlay
@@ -5301,7 +5311,7 @@ export default function WorldLensPage() {
               const npc = rawWorldNPCs.find((n) => n.id === npcId);
               if (npc) openNPCDialogue(npc);
             }}
-            onOpenWorldEvents={() => setShowPanel('worldevents')}
+            onOpenWorldEvents={() => setShowPanel('eventboard')}
             onOpenQuestLog={() => setShowPanel('questlog')}
           />
 
@@ -5451,7 +5461,8 @@ export default function WorldLensPage() {
                 { key: 'profile', label: 'Profile', icon: Eye },
                 { key: 'collaboration', label: 'Collab', icon: HeartHandshake },
                 { key: 'livecollab', label: 'Live Co-op', icon: Radio },
-                { key: 'events', label: 'Events', icon: CalendarDays },
+                { key: 'eventboard', label: 'Events', icon: CalendarDays },
+                { key: 'auctions', label: 'Auctions', icon: Gavel },
                 { key: 'socialproof', label: 'Social', icon: ThumbsUp },
                 { key: 'notifications', label: 'Notifs', icon: Bell },
                 { key: 'smartnotify', label: 'Smart', icon: BellRing },
@@ -5466,7 +5477,6 @@ export default function WorldLensPage() {
                 { key: 'guild', label: 'Guild', icon: Users },
                 { key: 'season', label: 'Season', icon: Award },
                 { key: 'leaderboard', label: 'Board', icon: Trophy },
-                { key: 'worldevents', label: 'Events+', icon: CalendarDays },
                 { key: 'arena', label: 'Arena', icon: Swords },
                 { key: 'jobs', label: 'Jobs', icon: Briefcase },
                 { key: 'lore', label: 'Lore', icon: BookOpen },
@@ -5496,6 +5506,11 @@ export default function WorldLensPage() {
           {showPanel === 'inventory' && (
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
               <InventoryPanel onClose={() => setShowPanel('none')} />
+            </div>
+          )}
+          {showPanel === 'character' && (
+            <div className="absolute top-4 left-4 z-20 w-96 max-w-[92vw] max-h-[80vh] overflow-auto pointer-events-auto">
+              <CharacterSheetPanel worldId={activeDistrict.id} onClose={() => setShowPanel('none')} />
             </div>
           )}
           {showPanel === 'timeline' && (
@@ -5560,7 +5575,7 @@ export default function WorldLensPage() {
           {showPanel === 'map' && (
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
               <MapNavigation
-                playerPosition={{ x: 0, y: 0 }}
+                playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.z }}
                 district={activeDistrict.name}
                 buildings={worldBuildings.map((b) => ({
                   id: b.id,
@@ -5603,8 +5618,17 @@ export default function WorldLensPage() {
               onClose={() => setShowPanel('none')}
             />
           )}
-          {showPanel === 'worldevents' && (
-            <WorldEventsPanel worldId="concordia-hub" onClose={() => setShowPanel('none')} />
+          {showPanel === 'eventboard' && (
+            <WorldEventBoard
+              worldId={activeDistrict?.id || currentWorldId}
+              onClose={() => setShowPanel('none')}
+            />
+          )}
+          {showPanel === 'auctions' && (
+            <AuctionBrowsePanel
+              worldId={activeDistrict?.id || currentWorldId}
+              onClose={() => setShowPanel('none')}
+            />
           )}
           {showPanel === 'arena' && (
             <ArenaPanel playerId={playerAvatar.id} onClose={() => setShowPanel('none')} />
@@ -5717,11 +5741,6 @@ export default function WorldLensPage() {
                 editHistory={[]}
                 conflicts={[]}
               />
-            </div>
-          )}
-          {showPanel === 'events' && (
-            <div className="absolute top-4 left-4 z-20 w-96 max-h-[70vh] overflow-auto pointer-events-auto">
-              <EventsGatherings worldId={activeDistrict?.id || 'concordia-hub'} />
             </div>
           )}
           {showPanel === 'socialproof' && (
@@ -6475,6 +6494,17 @@ export default function WorldLensPage() {
 
       {/* Phase W — disease HUD (top-right; renders only when infected). */}
       <DiseaseStatusHUD />
+
+      {/* Mount HUD (bottom-right; summon/dismiss + live stamina/care bar).
+          Renders nothing when the player has no mounts. */}
+      <MountHud worldId={currentWorldId} />
+
+      {/* MMO completeness — combat/character QoL HUDs. AbilityCooldownHud polls
+          world.combat-prefs-get (renders nothing with no bound abilities);
+          TargetNameplate surfaces the locked-on target's live health from the
+          real NPC list + combat events (renders nothing with no lock-on). */}
+      <AbilityCooldownHud />
+      <TargetNameplate npcs={rawWorldNPCs} />
 
       {/* World Actions Panel */}
       <div className="px-4 py-3 border-t border-white/10">

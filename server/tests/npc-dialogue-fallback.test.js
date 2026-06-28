@@ -8,7 +8,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { composeDeterministicDialogue } from "../lib/npc-dialogue-fallback.js";
+import { composeDeterministicDialogue, composeDeterministicResponse } from "../lib/npc-dialogue-fallback.js";
 
 describe("T1.1 — composeDeterministicDialogue", () => {
   it("is deterministic for the same (npc, mood)", () => {
@@ -57,5 +57,42 @@ describe("T1.1 — composeDeterministicDialogue", () => {
 
   it("normalizes 'warm' → friendly", () => {
     assert.equal(composeDeterministicDialogue({ npcId: "n5", mood: "warm" }).mood, "friendly");
+  });
+});
+
+describe("composeDeterministicResponse (PLAYTEST #1 — /dialogue/respond fallback)", () => {
+  const CHOICES = ["quest", "trade", "ask_work", "ask_world", "goodbye"];
+
+  it("produces a non-empty in-character reply for every valid choice", () => {
+    for (const choice of CHOICES) {
+      const r = composeDeterministicResponse({ npcId: "n1", npcName: "Maren", archetype: "trader", job: "merchant", choice });
+      assert.equal(typeof r, "string");
+      assert.ok(r.length > 0, `empty response for ${choice}`);
+      // The flat stub must never appear.
+      assert.ok(!/responds to your choice/i.test(r), `flat stub leaked for ${choice}`);
+    }
+  });
+
+  it("is deterministic (same inputs → same line)", () => {
+    const a = composeDeterministicResponse({ npcId: "n2", choice: "ask_world", faction: "iron_pact" });
+    const b = composeDeterministicResponse({ npcId: "n2", choice: "ask_world", faction: "iron_pact" });
+    assert.equal(a, b);
+  });
+
+  it("fills the quest title into the quest reply when present", () => {
+    const r = composeDeterministicResponse({ npcId: "n3", choice: "quest", questTitle: "The Sunken Bell" });
+    assert.ok(r.includes("The Sunken Bell"), `quest title not woven in: ${r}`);
+    assert.ok(!r.includes("{quest}"), "unfilled {quest} placeholder");
+  });
+
+  it("never leaves unfilled placeholders and degrades with no context", () => {
+    const r = composeDeterministicResponse({ choice: "trade" });
+    assert.ok(!/\{(job|fac|quest)\}/.test(r), `unfilled placeholder: ${r}`);
+    assert.ok(r.length > 0);
+  });
+
+  it("unknown choice degrades to a world-rumor reply (no throw)", () => {
+    const r = composeDeterministicResponse({ npcId: "n6", choice: "not_a_real_choice" });
+    assert.ok(r.length > 0);
   });
 });

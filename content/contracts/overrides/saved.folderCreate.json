@@ -1,0 +1,21 @@
+{
+  "macro_id": "saved.folderCreate",
+  "domain": "saved",
+  "name": "folderCreate",
+  "inputs": {
+    "name": { "type": "string", "required": true, "maxLength": 120 },
+    "color": { "type": "string", "maxLength": 20 },
+    "description": { "type": "string", "maxLength": 400 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.folder && typeof output.result.folder.id === 'string')",
+    "output.ok === false || (typeof output.result.folder.name === 'string' && output.result.folder.name.length > 0)"
+  ],
+  "fuzz_cases": [
+    { "input": { "name": "Reading list" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false, "error": "need_name" } }
+  ],
+  "_note": "saved.folderCreate makes a per-user collection. An empty/blank name rejects need_name; a case-insensitive duplicate name rejects duplicate_name. color defaults to 'amber'. The folder id is a real handle items can be filed under and unfiled from on folderDelete."
+}

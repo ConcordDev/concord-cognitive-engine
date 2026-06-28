@@ -1,0 +1,59 @@
+{
+  "macro_id": "crisis.assign",
+  "domain": "crisis",
+  "name": "assign",
+  "inputs": {
+    "crisisId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    },
+    "responder": {
+      "type": "string",
+      "required": true,
+      "maxLength": 80
+    },
+    "role": {
+      "type": "string",
+      "maxLength": 40
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.entry.id === 'string'",
+    "output.ok === false || output.result.roles.includes(output.result.entry.role)",
+    "output.ok === false || output.result.teamSize >= 1",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": false,
+        "error": "missing_crisis_or_responder"
+      }
+    },
+    {
+      "input": {
+        "crisisId": "cr_x",
+        "responder": "Maya",
+        "role": "bogus_role"
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "crisisId": "cr_x2",
+        "responder": "Lee",
+        "role": "incident_commander"
+      },
+      "expect": {
+        "ok": true
+      }
+    }
+  ],
+  "_note": "Assigns a responder to a crisis with a command role; an unrecognized role is coerced to 'responder'; declaring a second incident_commander demotes the prior one to operations_chief. Logs the assignment onto the timeline. Missing crisisId/responder \u2192 missing_crisis_or_responder."
+}

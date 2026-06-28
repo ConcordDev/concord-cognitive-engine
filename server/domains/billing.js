@@ -2,6 +2,19 @@
 // Domain actions for billing and invoicing: invoice calculation, revenue recognition, churn prediction.
 
 export default function registerBillingActions(registerLensAction) {
+  // Finite-coercion guard for money compute. parseFloat("Infinity")||0 === Infinity
+  // and parseFloat("1e999")||0 === Infinity — both are TRUTHY so the `||0` fallback
+  // never fires, letting a non-finite value poison a subtotal/total. finNum collapses
+  // any non-finite (Infinity / -Infinity / NaN) OR absurd-magnitude (> 1e12) input to 0
+  // so every downstream sum stays finite (fail-CLOSED on the compute path). The 1e12
+  // ceiling also stops a finite-but-huge value from overflowing to Infinity at the
+  // ×100 cents-rounding step (1e308 * 100 === Infinity).
+  const FIN_CAP = 1e12;
+  const finNum = (v, d = 0) => {
+    const n = parseFloat(v);
+    return Number.isFinite(n) && Math.abs(n) <= FIN_CAP ? n : d;
+  };
+
   /**
    * invoiceCalculation
    * Calculate invoice totals with tiered pricing, volume discounts, tax computation,
@@ -18,7 +31,7 @@ export default function registerBillingActions(registerLensAction) {
     const lineItems = artifact.data.lineItems || [];
     const pricingTiers = artifact.data.pricingTiers || [];
     const discountRules = artifact.data.discountRules || [];
-    const taxRate = parseFloat(params.taxRate) || 0;
+    const taxRate = finNum(params.taxRate);
     const currency = params.currency || "USD";
     const exchangeRates = params.exchangeRates || {};
 
@@ -44,7 +57,7 @@ export default function registerBillingActions(registerLensAction) {
         const unitsInTier = Math.min(remaining, tierRange);
 
         if (unitsInTier > 0 && remaining > 0) {
-          cost += unitsInTier * tier.pricePerUnit;
+          cost += unitsInTier * finNum(tier.pricePerUnit);
           remaining -= unitsInTier;
         }
 
@@ -53,7 +66,7 @@ export default function registerBillingActions(registerLensAction) {
 
       // Any remaining units at last tier price
       if (remaining > 0 && sorted.length > 0) {
-        cost += remaining * sorted[sorted.length - 1].pricePerUnit;
+        cost += remaining * finNum(sorted[sorted.length - 1].pricePerUnit);
       }
 
       return cost;
@@ -62,8 +75,8 @@ export default function registerBillingActions(registerLensAction) {
     // Process each line item
     let subtotal = 0;
     const processedItems = lineItems.map((item, idx) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const unitPrice = parseFloat(item.unitPrice) || 0;
+      const quantity = finNum(item.quantity);
+      const unitPrice = finNum(item.unitPrice);
       const isTaxable = item.taxable !== false;
 
       const lineTotal = pricingTiers.length > 0
@@ -100,7 +113,7 @@ export default function registerBillingActions(registerLensAction) {
         case "volume":
           if (totalQuantity >= (rule.threshold || 0)) {
             // Volume discount: percentage off based on volume
-            discountAmount = Math.round(subtotal * (parseFloat(rule.value) || 0) * 100) / 100;
+            discountAmount = Math.round(subtotal * finNum(rule.value) * 100) / 100;
             appliedDiscounts.push({
               type: "volume",
               reason: `Volume threshold ${rule.threshold} met (qty: ${totalQuantity})`,
@@ -110,16 +123,16 @@ export default function registerBillingActions(registerLensAction) {
           break;
 
         case "percentage":
-          discountAmount = Math.round(subtotal * (parseFloat(rule.value) || 0) * 100) / 100;
+          discountAmount = Math.round(subtotal * finNum(rule.value) * 100) / 100;
           appliedDiscounts.push({
             type: "percentage",
-            reason: `${Math.round((parseFloat(rule.value) || 0) * 100)}% discount`,
+            reason: `${Math.round(finNum(rule.value) * 100)}% discount`,
             amount: discountAmount,
           });
           break;
 
         case "fixed":
-          discountAmount = Math.min(subtotal, parseFloat(rule.value) || 0);
+          discountAmount = Math.min(subtotal, finNum(rule.value));
           appliedDiscounts.push({
             type: "fixed",
             reason: `Fixed discount`,
@@ -150,7 +163,7 @@ export default function registerBillingActions(registerLensAction) {
     if (Object.keys(exchangeRates).length > 0) {
       convertedTotal = {};
       for (const [curr, rate] of Object.entries(exchangeRates)) {
-        convertedTotal[curr] = Math.round(total * parseFloat(rate) * 100) / 100;
+        convertedTotal[curr] = Math.round(total * finNum(rate) * 100) / 100;
       }
     }
 
@@ -218,7 +231,7 @@ export default function registerBillingActions(registerLensAction) {
     const contractResults = contracts.map(contract => {
       const startDate = new Date(contract.startDate);
       const endDate = new Date(contract.endDate);
-      const totalValue = parseFloat(contract.totalValue) || 0;
+      const totalValue = finNum(contract.totalValue);
       const deliverables = contract.deliverables || [];
       const billingSchedule = contract.billingSchedule || [];
 
@@ -229,10 +242,10 @@ export default function registerBillingActions(registerLensAction) {
 
       // ASC 606 Step 4: Allocate transaction price to deliverables
       // Using relative standalone selling price method
-      const totalStandalonePrice = deliverables.reduce((s, d) => s + (parseFloat(d.standalonePrice) || 0), 0);
+      const totalStandalonePrice = deliverables.reduce((s, d) => s + finNum(d.standalonePrice), 0);
 
       const deliverableAllocation = deliverables.map(d => {
-        const standalonePrice = parseFloat(d.standalonePrice) || 0;
+        const standalonePrice = finNum(d.standalonePrice);
         const allocationRatio = totalStandalonePrice > 0 ? standalonePrice / totalStandalonePrice : 0;
         const allocatedAmount = Math.round(totalValue * allocationRatio * 100) / 100;
 
@@ -261,7 +274,7 @@ export default function registerBillingActions(registerLensAction) {
       // Billing vs recognition analysis
       const totalBilled = billingSchedule
         .filter(b => new Date(b.date) <= recognitionDate)
-        .reduce((s, b) => s + (parseFloat(b.amount) || 0), 0);
+        .reduce((s, b) => s + finNum(b.amount), 0);
 
       const unbilledRevenue = Math.round(Math.max(0, deliverableBasedRecognized - totalBilled) * 100) / 100;
       const deferredFromBilling = Math.round(Math.max(0, totalBilled - deliverableBasedRecognized) * 100) / 100;
@@ -361,7 +374,7 @@ export default function registerBillingActions(registerLensAction) {
       }
 
       // Feature 1: Average days past due (higher = riskier)
-      const delays = payments.map(p => parseFloat(p.daysPastDue) || 0);
+      const delays = payments.map(p => finNum(p.daysPastDue));
       const avgDelay = delays.reduce((s, d) => s + d, 0) / delays.length;
 
       // Feature 2: Delay trend (increasing delays = riskier)
@@ -375,7 +388,7 @@ export default function registerBillingActions(registerLensAction) {
       }
 
       // Feature 3: Payment amount decline
-      const amounts = payments.map(p => parseFloat(p.amount) || 0);
+      const amounts = payments.map(p => finNum(p.amount));
       let amountDecline = 0;
       if (amounts.length >= 3) {
         const recentAmts = amounts.slice(-3);
@@ -386,7 +399,7 @@ export default function registerBillingActions(registerLensAction) {
       }
 
       // Feature 4: Usage decline
-      const usageValues = payments.map(p => parseFloat(p.usage)).filter(u => !isNaN(u));
+      const usageValues = payments.map(p => parseFloat(p.usage)).filter(u => Number.isFinite(u));
       let usageDecline = 0;
       if (usageValues.length >= 3) {
         const recentUsage = usageValues.slice(-3);
@@ -397,7 +410,7 @@ export default function registerBillingActions(registerLensAction) {
       }
 
       // Feature 5: Support ticket frequency (high = mixed signal, but often precedes churn)
-      const tickets = payments.map(p => parseFloat(p.supportTickets) || 0);
+      const tickets = payments.map(p => finNum(p.supportTickets));
       const avgTickets = tickets.reduce((s, t) => s + t, 0) / tickets.length;
 
       // Feature 6: Tenure effect (newer customers churn more)
@@ -468,7 +481,7 @@ export default function registerBillingActions(registerLensAction) {
       .reduce((s, p) => {
         const cust = customers.find(c => c.id === p.customerId);
         const payments = cust?.monthlyPayments || [];
-        const lastPayment = payments.length > 0 ? parseFloat(payments[payments.length - 1].amount) || 0 : 0;
+        const lastPayment = payments.length > 0 ? finNum(payments[payments.length - 1].amount) : 0;
         return s + lastPayment * 12;
       }, 0);
 

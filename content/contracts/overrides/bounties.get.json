@@ -1,0 +1,19 @@
+{
+  "macro_id": "bounties.get",
+  "domain": "bounties",
+  "name": "get",
+  "inputs": {
+    "bountyId": { "type": "string", "required": true, "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.bounty && typeof output.result.bounty.id === 'string')",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "bounty not found" } },
+    { "input": { "bountyId": "__no_such_bounty__" }, "expect": { "ok": false, "error": "bounty not found" } }
+  ],
+  "_note": "bounties.get reads a single bounty by id from the cross-user board. An absent or unknown bountyId returns ok:false 'bounty not found' (never throws, never no_db). On success returns the public view (pool/paid rollups, milestones, submissions, dispute)."
+}

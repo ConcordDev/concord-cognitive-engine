@@ -109,31 +109,41 @@ export default function InheritancePage() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const flash = (m: string) => { setStatus(m); window.setTimeout(() => setStatus(null), 5000); };
 
   const loadAll = useCallback(async () => {
-    const [ov, ben, wl, as, ex, lk, pt, nt, ls] = await Promise.all([
-      run('estate_overview'), run('list_beneficiaries'), run('list_will_versions'),
-      run('list_assets'), run('list_executors'), run('list_locks'),
-      run('probate_timeline'), run('list_notices'), run('list_open'),
-    ]);
-    if (ov?.ok) setOverview(ov.result);
-    if (ben?.ok) { setBeneficiaries(ben.result.beneficiaries || []); setRemainderPct(ben.result.remainderPct ?? 100); }
-    if (wl?.ok) {
-      setWills(wl.result.versions || []);
-      const av = (wl.result.versions || []).find((w: WillVersion) => w.status === 'active') || null;
-      setActiveWill(av);
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const [ov, ben, wl, as, ex, lk, pt, nt, ls] = await Promise.all([
+        run('estate_overview'), run('list_beneficiaries'), run('list_will_versions'),
+        run('list_assets'), run('list_executors'), run('list_locks'),
+        run('probate_timeline'), run('list_notices'), run('list_open'),
+      ]);
+      if (ov?.ok) setOverview(ov.result);
+      if (ben?.ok) { setBeneficiaries(ben.result.beneficiaries || []); setRemainderPct(ben.result.remainderPct ?? 100); }
+      if (wl?.ok) {
+        setWills(wl.result.versions || []);
+        const av = (wl.result.versions || []).find((w: WillVersion) => w.status === 'active') || null;
+        setActiveWill(av);
+      }
+      if (as?.ok) { setAssets(as.result.assets || []); setAssetByCat(as.result.byCategory || {}); }
+      if (ex?.ok) setExecutors(ex.result.executors || []);
+      if (lk?.ok) { setLocks(lk.result.locks || []); setEscrowedCc(lk.result.escrowedCc || 0); }
+      if (pt?.ok) { setTimeline(pt.result.events || []); setPendingTransfers(pt.result.pendingTransfers || 0); }
+      if (nt?.ok) setNotices(nt.result.notices || []);
+      // list_open is the inline MACROS-style macro: it returns { ok, listings } un-nested.
+      const lr = ls as any;
+      if (lr?.ok) setListings(lr.listings || lr.result?.listings || []);
+    } catch (err) {
+      // A swallowed fetch failure used to leave the page stuck on "Loading…"
+      // (the defect fixed across the sibling lenses). Surface it instead.
+      setLoadError(err instanceof Error ? err.message : 'Failed to load your estate.');
+    } finally {
+      setLoading(false);
     }
-    if (as?.ok) { setAssets(as.result.assets || []); setAssetByCat(as.result.byCategory || {}); }
-    if (ex?.ok) setExecutors(ex.result.executors || []);
-    if (lk?.ok) { setLocks(lk.result.locks || []); setEscrowedCc(lk.result.escrowedCc || 0); }
-    if (pt?.ok) { setTimeline(pt.result.events || []); setPendingTransfers(pt.result.pendingTransfers || 0); }
-    if (nt?.ok) setNotices(nt.result.notices || []);
-    // list_open is the inline MACROS-style macro: it returns { ok, listings } un-nested.
-    const lr = ls as any;
-    if (lr?.ok) setListings(lr.listings || lr.result?.listings || []);
-    setLoading(false);
   }, []);
 
   useEffect(() => { void loadAll(); }, [loadAll]);
@@ -286,10 +296,40 @@ export default function InheritancePage() {
           ))}
         </nav>
 
-        {loading ? <div className="text-zinc-400">Loading estate…</div> : (
+        {loading ? (
+          <div role="status" aria-live="polite" className="flex items-center gap-2 py-10 text-zinc-400">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" aria-hidden="true" />
+            <span>Loading estate…</span>
+          </div>
+        ) : loadError ? (
+          <div role="alert" className="rounded-xl border border-rose-700/50 bg-rose-950/40 p-6 text-center">
+            <p className="text-sm text-rose-200">Couldn’t load your estate.</p>
+            <p className="mt-1 font-mono text-[11px] text-rose-300/70">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => { void loadAll(); }}
+              className="mt-3 rounded bg-amber-700 px-4 py-1.5 text-xs font-medium text-white hover:bg-amber-600"
+            >Retry</button>
+          </div>
+        ) : (
           <>
             {/* ── Overview ─────────────────────────────────────────── */}
             {tab === 'overview' && overview && (
+              overview.beneficiaryCount === 0 && overview.assetCount === 0
+                && overview.willCount === 0 && overview.executorCount === 0 && overview.lockCount === 0 ? (
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950 py-12 text-center">
+                  <h2 className="text-sm font-semibold text-zinc-200">Your estate is empty</h2>
+                  <p className="mx-auto mt-1 max-w-md text-xs text-zinc-400">
+                    Start planning: name a beneficiary, author a will, or inventory an asset.
+                    Everything you add appears in the probate timeline.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setTab('beneficiaries')}
+                    className="mt-3 rounded bg-amber-700 px-4 py-1.5 text-xs font-medium text-white hover:bg-amber-600"
+                  >Name your first beneficiary</button>
+                </div>
+              ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {[
@@ -324,6 +364,7 @@ export default function InheritancePage() {
                   </div>
                 )}
               </div>
+              )
             )}
 
             {/* ── Beneficiaries ────────────────────────────────────── */}

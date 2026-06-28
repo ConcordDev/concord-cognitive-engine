@@ -137,30 +137,58 @@ export default function GalleryPage() {
 
   const [sigils, setSigils] = useState<Sigil[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [tab, setTab] = useState<GalleryTab>('browse');
 
   useEffect(() => {
     let alive = true;
+    setLoading(true);
+    setError(null);
     (async () => {
       const r = await macro('compression_art', 'list_for_user');
-      if (alive && r?.ok) setSigils(r.sigils || []);
-      if (alive) setLoading(false);
+      if (!alive) return;
+      if (r?.ok) {
+        setSigils(r.sigils || []);
+      } else {
+        // Surface a real error state (network failure → null; macro error → r.error).
+        setError(r?.error || 'Could not load your sigil gallery. Check your connection and retry.');
+      }
+      setLoading(false);
     })();
     return () => { alive = false; };
-  }, []);
+  }, [reloadKey]);
 
   if (loading) return (
     <LensShell lensId="gallery">
       <FirstRunTour lensId="gallery" />
       <DepthBadge lensId="gallery" size="sm" className="ml-2" />
       <LensVerticalHero lensId="gallery" className="mx-6 mt-4" />
-      <div className="p-8 text-zinc-400 flex items-center gap-2 focus:ring-2">
-        <Loader2 className="w-4 h-4 animate-spin" />
+      <div role="status" aria-live="polite" aria-busy="true" className="p-8 text-zinc-400 flex items-center gap-2 focus:ring-2">
+        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
         Loading your gallery…
       </div>
           <RecentMineCard domain="gallery" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="gallery" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="gallery" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+    </LensShell>
+  );
+
+  if (error) return (
+    <LensShell lensId="gallery">
+      <FirstRunTour lensId="gallery" />
+      <DepthBadge lensId="gallery" size="sm" className="ml-2" />
+      <LensVerticalHero lensId="gallery" className="mx-6 mt-4" />
+      <div role="alert" className="m-6 sm:m-8 rounded-xl border border-red-800/50 bg-red-950/30 p-6 text-center">
+        <p className="text-sm text-red-300">{error}</p>
+        <button
+          type="button"
+          onClick={() => setReloadKey((k) => k + 1)}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-red-700/60 bg-red-900/30 px-3 py-1.5 text-[12px] font-medium text-red-200 hover:bg-red-900/50 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+        >
+          Retry
+        </button>
+      </div>
     </LensShell>
   );
 

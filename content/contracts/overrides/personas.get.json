@@ -1,0 +1,19 @@
+{
+  "macro_id": "personas.get",
+  "domain": "personas",
+  "name": "get",
+  "inputs": {
+    "id": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.persona && typeof output.persona === 'object')",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "id": "__no_such_persona__" }, "expect": { "ok": false } }
+  ],
+  "_note": "Live boot reality: the personas.get reachable at runtime is the Z4 thin wrapper in server.js (reads input.id from STATE.customPersonas). With no actor-owned persona seeded it returns ok:false (missing_id / persona_not_found) — never no_db, never a throw. The full marketplace get (reviews + isAuthor) is in server/domains/personas.js but that module is currently UNWIRED (registerPersonasActions is never imported); wiring it makes get author/visibility-gated and adds result.reviews. See server/tests/personas-lens-macros.test.js for the intended shape."
+}

@@ -61,10 +61,20 @@ interface SavedChart { id: string; title: string; createdAt: string; permalink: 
 
 async function macro<T>(action: string, input: Record<string, unknown>): Promise<{ ok: boolean; result?: T; error?: string }> {
   try {
-    const r = await lensRun<any>('society', action, input);
-    // lensRun unwraps the outer envelope; the macro itself returns { ok, result }.
-    if (r && typeof r === 'object' && 'ok' in r) return r as { ok: boolean; result?: T; error?: string };
-    return { ok: true, result: r as T };
+    // lensRun returns `{ data: { ok, result, error } }`, already unwrapping the
+    // server's `{ ok, result }` envelope down to the macro's `result` payload.
+    // PRIOR BUG: this helper checked `'ok' in r` on the OUTER `{ data }` object
+    // (which has no `ok` key), so it returned `{ ok:true, result: { data } }` —
+    // every view then read `result.indicators` off the wrong object and showed
+    // nothing. Read `r.data` (or the bare value for a non-enveloped return).
+    const r = await lensRun<T>('society', action, input);
+    const env = (r && typeof r === 'object' && 'data' in r ? (r as { data: unknown }).data : r) as
+      { ok?: boolean; result?: T; error?: string } | T;
+    if (env && typeof env === 'object' && ('ok' in env || 'error' in env)) {
+      const e = env as { ok?: boolean; result?: T; error?: string };
+      return { ok: e.ok !== false && !e.error, result: e.result, error: e.error };
+    }
+    return { ok: true, result: env as T };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
@@ -241,8 +251,24 @@ function CountrySelect({ value, onChange }: { value: string; onChange: (v: strin
   );
 }
 
-function ErrorBox({ msg }: { msg: string }) {
-  return <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{msg}</div>;
+function ErrorBox({ msg, testId, onRetry }: { msg: string; testId?: string; onRetry?: () => void }) {
+  return (
+    <div
+      data-testid={testId}
+      role="alert"
+      className="flex flex-wrap items-center gap-2 rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300"
+    >
+      <span>{msg}</span>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="ml-auto rounded border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[11px] text-red-200 hover:bg-red-500/20"
+        >
+          Retry
+        </button>
+      )}
+    </div>
+  );
 }
 
 function downloadCsv(filename: string, csv: string) {
@@ -699,38 +725,60 @@ function SavedView() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Four mutually-exclusive UX states (honest by construction — every branch is
+  // a pure function of the real wb-list-charts macro result): LOADING (role=
+  // status), ERROR (role=alert + working Retry), EMPTY, POPULATED.
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold text-zinc-300">Saved charts (shareable permalinks)</h3>
         <button onClick={load} disabled={loading}
+          aria-label="Refresh saved charts"
           className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] text-zinc-300 hover:text-cyan-300">
-          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Refresh'}
+          {loading ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : 'Refresh'}
         </button>
       </div>
-      {error && <ErrorBox msg={error} />}
-      {charts.length === 0 && !loading && !error && (
-        <p className="rounded border border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-400">
+
+      {loading ? (
+        <div
+          data-testid="society-saved-loading"
+          role="status"
+          aria-busy="true"
+          aria-live="polite"
+          className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950/40 px-3 py-6 text-xs text-zinc-400"
+        >
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-400" aria-hidden />
+          <span>Loading saved charts…</span>
+        </div>
+      ) : error ? (
+        <ErrorBox testId="society-saved-error" msg={error} onRetry={load} />
+      ) : charts.length === 0 ? (
+        <p
+          data-testid="society-saved-empty"
+          className="rounded border border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-400"
+        >
           No saved charts yet — plot a chart and click &ldquo;Share link&rdquo;.
         </p>
+      ) : (
+        <ul data-testid="society-saved-list" className="space-y-1">
+          {charts.map((c) => {
+            const full = typeof window !== 'undefined' ? window.location.origin + c.permalink : c.permalink;
+            return (
+              <li key={c.id} className="flex items-center gap-3 rounded border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-xs">
+                <Link2 className="h-3.5 w-3.5 text-cyan-400" aria-hidden />
+                <span className="text-zinc-200">{c.title}</span>
+                <span className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleDateString()}</span>
+                <button
+                  aria-label={`Copy permalink for ${c.title}`}
+                  onClick={() => { if (navigator.clipboard) navigator.clipboard.writeText(full).catch(() => {}); }}
+                  className="ml-auto rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/20">
+                  Copy link
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       )}
-      <ul className="space-y-1">
-        {charts.map((c) => {
-          const full = typeof window !== 'undefined' ? window.location.origin + c.permalink : c.permalink;
-          return (
-            <li key={c.id} className="flex items-center gap-3 rounded border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-xs">
-              <Link2 className="h-3.5 w-3.5 text-cyan-400" />
-              <span className="text-zinc-200">{c.title}</span>
-              <span className="text-[10px] text-zinc-400">{new Date(c.createdAt).toLocaleDateString()}</span>
-              <button
-                onClick={() => { if (navigator.clipboard) navigator.clipboard.writeText(full).catch(() => {}); }}
-                className="ml-auto rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/20">
-                Copy link
-              </button>
-            </li>
-          );
-        })}
-      </ul>
     </div>
   );
 }

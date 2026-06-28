@@ -1,0 +1,27 @@
+{
+  "macro_id": "literary.search",
+  "domain": "literary",
+  "name": "search",
+  "inputs": {
+    "query": { "type": "string", "maxLength": 500 },
+    "limit": { "type": "number", "min": 1, "max": 50 },
+    "candidateK": { "type": "number", "min": 1, "max": 200 },
+    "keyword": { "type": "boolean" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.results)",
+    "output.ok === false || typeof output.count === 'number'",
+    "output.ok === false || output.count === output.results.length",
+    "output.ok === false || typeof output.semantic === 'boolean'",
+    "output.ok === false || output.results.every(r => typeof r.score === 'number')",
+    "output.ok === false || output.results.every(r => r.provenance && typeof r.provenance.title === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": { "query": "" }, "expect": { "ok": true, "count": 0, "semantic": false } },
+    { "input": { "query": "   " }, "expect": { "ok": true, "count": 0 } },
+    { "input": { "query": "conscience and mortality", "limit": 5 }, "expect": { "ok": true } }
+  ],
+  "_note": "Hybrid BM25+dense (RRF) literary search. Empty/whitespace query → empty result set, never an error. Every hit carries provenance. count must equal results.length."
+}

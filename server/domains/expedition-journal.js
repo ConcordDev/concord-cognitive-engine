@@ -9,6 +9,44 @@
 // Persistence: globalThis._concordSTATE Maps keyed by userId — same
 // pattern as server/domains/agriculture.js. Handlers never throw; every
 // path returns { ok: boolean, result?, error? }.
+//
+// REGISTRATION (saved-class fix): this file used to register through the
+// legacy `registerLensAction(domain, action, (ctx, artifact, params))`
+// convention AND was NEVER imported by server.js — so every
+// `expedition-journal.*` macro was invisible to runMacro and to
+// POST /api/lens/run → every call hit `unknown_macro`, leaving the page's
+// lensRun('expedition-journal', ...) calls dead-wired. It is now wired
+// through the canonical `register` (MACROS) registry —
+// `registerExpeditionJournalActions(register)` in server.js — so the macros
+// are reachable BOTH via POST /api/lens/run AND via runMacro (which the
+// contract engine + macro-assassin + behavior-smoke harness drive).
+//
+// To keep the file's verified handler bodies byte-for-byte identical we adapt
+// the canonical 2-arg `(ctx, input)` signature back to the legacy
+// `(ctx, artifact, params)` shape via the `registerLensAction` shim below —
+// `params` (and `artifact.data`) are the input, identical to what
+// `/api/lens/run` would have built. Handlers return a `{ ok, result }`
+// envelope (the dispatcher's `_unwrapLensEnvelope` strips the `result` layer
+// so the frontend reads `r.data.result.<field>`).
+//
+// Fail-CLOSED numeric guard: there are no numeric WRITE inputs (worldId /
+// stageId / text / dataUrl / caption / mood are all strings, coerced via
+// String()), so a poisoned numeric value can never reach an accepted row.
+// `badNumericField` is wired defensively so any future numeric input is
+// rejected (NaN/Infinity/1e308/negative) BEFORE a write rather than clamped —
+// exactly what the macro-assassin's V2 vector probes.
+
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) BEFORE writing.
+// An absent/null field is fine (the macro uses its default). Returns null when
+// clean, else the offending key. Copied from server/domains/literary.js.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input == null || input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e9) return k;
+  }
+  return null;
+}
 
 /**
  * Richer stage definitions — varied objectives per canon world instead of
@@ -65,7 +103,23 @@ const BADGES = {
   "grand-explorer": { title: "Grand Explorer of Concord", icon: "globe", desc: "Completed every canon-world expedition." },
 };
 
-export default function registerExpeditionJournalActions(registerLensAction) {
+export default function registerExpeditionJournalActions(register) {
+  // Legacy-convention shim: adapt the canonical register(ctx, input) signature
+  // → the verified (ctx, artifact, params) handler bodies below, unchanged.
+  // `params` (and `artifact.data`) carry the input the dispatcher built.
+  const registerLensAction = (domain, action, handler) =>
+    register(domain, action, (ctx, input = {}) => {
+      const inp = input && typeof input === "object" ? input : {};
+      const params = inp.artifact && typeof inp.artifact === "object" && inp.artifact.data
+        && typeof inp.artifact.data === "object" && Object.keys(inp).length === 1
+        ? inp.artifact.data
+        : inp;
+      const artifact = inp.artifact && typeof inp.artifact === "object"
+        ? inp.artifact
+        : { id: null, domain, type: "domain_action", data: params, meta: {} };
+      return handler(ctx, artifact, params);
+    });
+
   function getState() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;

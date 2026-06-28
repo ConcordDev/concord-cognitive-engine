@@ -1,0 +1,18 @@
+{
+  "macro_id": "astronomy.live_apod",
+  "domain": "astronomy",
+  "name": "live_apod",
+  "external_io": true,
+  "inputs": {
+    "date": { "type": "string" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": {} }
+  ],
+  "_note": "astronomy.live_apod (server/domains/astronomy-live.js) fetches NASA's Astronomy Picture of the Day over the network. EXTERNAL-IO — auto-skipped by the harness (name matches /^live_/), so it is driven against this static contract only, never against the live NASA endpoint. The handler is fail-soft: on any fetch/parse failure it returns { ok:false, reason:... } and never throws, so the {ok:boolean} + string-reason invariants hold regardless of network state. The /lenses/astronomy NasaLivePanel calls it via lensRun({ domain:'astronomy', name:'live_apod' }). Marked external_io:true so no harness drives it against a live API."
+}

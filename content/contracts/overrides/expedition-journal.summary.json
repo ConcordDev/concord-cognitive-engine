@@ -1,0 +1,18 @@
+{
+  "macro_id": "expedition-journal.summary",
+  "domain": "expedition-journal",
+  "name": "summary",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.worlds))",
+    "output.ok === false || (output.result.completedStages <= output.result.totalStages)",
+    "output.ok === false || (output.result.overallPercent >= 0 && output.result.overallPercent <= 100)",
+    "output.ok === false || (output.result.completedWorlds <= output.result.totalWorlds)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Cross-world rollup for the caller from STATE — per-world views + total/completed stages + XP/level + entry/photo counts. The assassin's internal owner actor returns ok:true with a zeroed-out summary (NEVER no_db). completedStages never exceeds totalStages; overallPercent is 0..100; completedWorlds never exceeds totalWorlds."
+}

@@ -1,0 +1,32 @@
+{
+  "macro_id": "cognitive-replay.filter",
+  "domain": "cognitive-replay",
+  "name": "filter",
+  "inputs": {
+    "brain": { "type": "string", "required": false, "maxLength": 80 },
+    "tool": { "type": "string", "required": false, "maxLength": 80 },
+    "role": { "type": "string", "required": false, "maxLength": 40 },
+    "sessionId": { "type": "string", "required": false, "maxLength": 200 },
+    "fromTs": { "type": "number", "required": false },
+    "toTs": { "type": "number", "required": false },
+    "limit": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.events)",
+    "output.ok === false || (Number.isFinite(output.result.count) && output.result.count >= 0)",
+    "output.ok === false || output.result.count <= 1000",
+    "output.ok === false || Number.isFinite(output.result.totalMatching)",
+    "output.ok === false || (output.result.facets && Array.isArray(output.result.facets.brains))",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "brain": "conscious" }, "expect": { "ok": true } },
+    { "input": { "role": "user" }, "expect": { "ok": true } },
+    { "input": { "limit": 1e308 }, "expect": { "ok": true } },
+    { "input": { "brain": "<script>alert(1)</script>" }, "expect": { "ok": true } }
+  ],
+  "_note": "cognitive-replay.filter slices the caller's live chat-session corpus by brain/tool/role/session/date. `limit` is fail-CLOSED clamped to [1,1000] (Number(x)||300 then Math.min(1000,Math.max(1,…))). The brain/tool/role values are used only as equality filters over the corpus — an XSS probe string simply matches nothing, never executes. Facets are the deduped/sorted vocab of the caller's own corpus, so an empty corpus returns empty facet arrays with ok:true (degrade-graceful). No user-supplied value is ever written back to STATE — filter is read-only."
+}

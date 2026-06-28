@@ -1,0 +1,18 @@
+{
+  "macro_id": "understanding.overview",
+  "domain": "understanding",
+  "name": "overview",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result === 'object' && output.result !== null",
+    "typeof output.result.noteCount === 'number' && output.result.noteCount >= 0",
+    "typeof output.result.manualLinkCount === 'number' && output.result.manualLinkCount >= 0",
+    "typeof output.result.wikiLinkCount === 'number' && output.result.wikiLinkCount >= 0",
+    "typeof output.result.tagCount === 'number' && output.result.tagCount >= 0"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ]
+}

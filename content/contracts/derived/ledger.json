@@ -1,0 +1,167 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "ledger",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "sere"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "__no_such_world__"
+          }
+        }
+      ],
+      "inputs": {
+        "worldId": {
+          "maxLength": 80,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.worldId === 'string'",
+        "output.ok === false || Array.isArray(output.managedParity)",
+        "output.ok === false || Array.isArray(output.extractionLiens)",
+        "output.ok === false || output.total === output.managedParity.length + output.extractionLiens.length",
+        "output.ok === false || output.managedParity.every(p => typeof p.funder === 'string' && Array.isArray(p.fundsBothSidesOf))",
+        "output.ok === false || output.extractionLiens.every(l => typeof l.creditor === 'string' && l.debtor && typeof l.debtor.id === 'string')"
+      ],
+      "macro_id": "ledger.anomalies",
+      "name": "anomalies"
+    },
+    {
+      "_derived": false,
+      "domain": "ledger",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "factionId": "house_pell"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "factionId": "__none__",
+            "worldId": "sere"
+          }
+        }
+      ],
+      "inputs": {
+        "factionId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 80,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.factionId === 'string'",
+        "output.ok === false || Array.isArray(output.fundedBy)",
+        "output.ok === false || Array.isArray(output.liensAgainst)",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "ledger.faction_economy",
+      "name": "faction_economy"
+    },
+    {
+      "_derived": false,
+      "domain": "ledger",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 10
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "limit": -1
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "limit": "NaN"
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 1000000,
+          "min": 0,
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.byType)",
+        "output.ok === false || output.byType.every(r => typeof r.type === 'string' && typeof r.n === 'number')",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "ledger.flow_summary",
+      "name": "flow_summary"
+    }
+  ],
+  "domain": "ledger",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 3
+}

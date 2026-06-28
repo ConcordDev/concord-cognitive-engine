@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   User, Scissors, Smile, Shirt, PanelBottom, Footprints,
   Crown, Glasses, Backpack, Hand, Sparkles, Save, Check, Palette,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { lensRun } from '@/lib/api/client';
 
 // ──────────────────────────── Types ──────────────────────────────
 
@@ -15,11 +16,31 @@ interface SlotDefinition {
   icon: React.ComponentType<{ className?: string; size?: number | string }>;
 }
 
+/**
+ * A real renderable option from the `appearance.options` macro. `assetId` is
+ * the exact enum value the avatar renderer + `appearance.save` expect; `name`
+ * is the humanized label. `color` is present ONLY when the option genuinely is
+ * a color swatch (skin tones / palette colors), never a placeholder thumbnail.
+ * `owned` marks the player's saved cosmetics. There are NO fabricated prices.
+ */
 interface SlotOption {
   assetId: string;
   name: string;
-  price: number; // 0 = base/free, >0 = marketplace CC cost
-  color: string; // placeholder thumbnail color
+  color?: string;
+  owned?: boolean;
+}
+
+interface ColorOption {
+  assetId: string;
+  name: string;
+  color: string;
+}
+
+interface AppearanceOptions {
+  slots: Record<string, SlotOption[]>;
+  skinTones: ColorOption[];
+  colors: ColorOption[];
+  savedOutfits: SlotOption[];
 }
 
 interface CharacterCustomizerProps {
@@ -44,29 +65,6 @@ const SLOTS: SlotDefinition[] = [
   { id: 'particle', label: 'Particle', icon: Sparkles },
 ];
 
-// ──────────────────────────── Placeholder Data ──────────────────
-
-const PLACEHOLDER_COLORS = [
-  '#6366f1', '#ec4899', '#14b8a6', '#f59e0b', '#8b5cf6',
-  '#ef4444', '#22c55e', '#3b82f6', '#f97316', '#06b6d4',
-];
-
-function generateSlotOptions(slotId: string): SlotOption[] {
-  const count = slotId === 'body' ? 5 : slotId === 'particle' ? 3 : 8;
-  return Array.from({ length: count }, (_, i) => ({
-    assetId: `${slotId}-${i + 1}`,
-    name: `${slotId.charAt(0).toUpperCase() + slotId.slice(1)} ${i + 1}`,
-    price: i < 3 ? 0 : (i + 1) * 50,
-    color: PLACEHOLDER_COLORS[i % PLACEHOLDER_COLORS.length],
-  }));
-}
-
-const SKIN_TONES = [
-  '#f9dcc4', '#f5c7a1', '#e8a87c', '#d08b5b', '#c67b4e',
-  '#a96642', '#8d5524', '#704214', '#4a2c0a', '#2c1810',
-  '#ff9999', '#cc99ff', '#99ccff', '#99ffcc', '#ffff99',
-];
-
 // ──────────────────────────── Component ─────────────────────────
 
 export function CharacterCustomizer({
@@ -76,8 +74,31 @@ export function CharacterCustomizer({
 }: CharacterCustomizerProps) {
   const [activeSlot, setActiveSlot] = useState<string>('body');
   const [selections, setSelections] = useState<Record<string, string>>({ ...currentProfile });
-  const [skinColor, setSkinColor] = useState<string>(currentProfile.skin ?? '#e8a87c');
+  const [skinColor, setSkinColor] = useState<string>(currentProfile.skin ?? '');
   const [saving, setSaving] = useState(false);
+
+  // Real options fetched from the backend. `null` = loading; an error sets
+  // loadError and we render an honest empty state — NEVER fabricated options.
+  const [options, setOptions] = useState<AppearanceOptions | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await lensRun<AppearanceOptions>('appearance', 'options', {});
+      if (cancelled) return;
+      if (res.data.ok && res.data.result?.slots) {
+        const result = res.data.result;
+        setOptions(result);
+        // Default the skin tone to the first real renderer-supported tone
+        // (only if the player hasn't already picked one).
+        setSkinColor((prev) => prev || result.skinTones?.[0]?.color || '');
+      } else {
+        setLoadError(res.data.error || 'Could not load appearance options.');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleSelectOption = useCallback((slotId: string, assetId: string) => {
     setSelections((prev) => {
@@ -93,7 +114,7 @@ export function CharacterCustomizer({
 
   const handleSave = useCallback(async () => {
     setSaving(true);
-    const profile = { ...selections, skin: skinColor };
+    const profile = { ...selections, ...(skinColor ? { skin: skinColor } : {}) };
     try {
       onSave?.(profile);
     } finally {
@@ -101,11 +122,38 @@ export function CharacterCustomizer({
     }
   }, [selections, skinColor, onSave]);
 
-  const slotOptions = generateSlotOptions(activeSlot);
   const activeSlotDef = SLOTS.find((s) => s.id === activeSlot)!;
+  const slotOptions: SlotOption[] = options?.slots?.[activeSlot] ?? [];
+  const skinTones: ColorOption[] = options?.skinTones ?? [];
+
+  // ── Honest empty state: options failed to load. NO fabricated fallback. ──
+  if (loadError) {
+    return (
+      <div
+        className={cn('flex flex-col items-center justify-center gap-3 rounded-2xl bg-zinc-900 border border-zinc-800 p-8 text-center', className)}
+        data-testid="customizer-load-error"
+      >
+        <Palette className="h-8 w-8 text-zinc-600" />
+        <p className="text-sm font-medium text-zinc-300">Couldn&apos;t load appearance options</p>
+        <p className="text-xs text-zinc-500 max-w-xs">{loadError}</p>
+      </div>
+    );
+  }
+
+  // ── Loading state ──
+  if (!options) {
+    return (
+      <div
+        className={cn('flex items-center justify-center rounded-2xl bg-zinc-900 border border-zinc-800 p-8 min-h-[200px]', className)}
+        data-testid="customizer-loading"
+      >
+        <p className="text-sm text-zinc-400 italic">Loading appearance options…</p>
+      </div>
+    );
+  }
 
   return (
-    <div className={cn('flex flex-col gap-4 rounded-2xl bg-zinc-900 border border-zinc-800 p-4', className)}>
+    <div className={cn('flex flex-col gap-4 rounded-2xl bg-zinc-900 border border-zinc-800 p-4', className)} data-testid="character-customizer">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-zinc-100">Character Customizer</h2>
@@ -154,35 +202,28 @@ export function CharacterCustomizer({
 
         {/* ── Center Panel: Character Preview ── */}
         <div className="flex-1 flex flex-col items-center justify-center rounded-xl bg-zinc-950 border border-zinc-800 min-w-[200px]">
-          {/* Placeholder avatar */}
           <div className="relative w-40 h-56 flex flex-col items-center justify-center">
-            {/* Body silhouette */}
+            {/* Body silhouette — head tinted by chosen skin tone */}
             <div
               className="w-20 h-20 rounded-full border-2 border-zinc-700"
-              style={{ backgroundColor: skinColor }}
+              style={skinColor ? { backgroundColor: skinColor } : undefined}
             />
-            <div
-              className="w-24 h-28 rounded-t-xl mt-1 border-2 border-zinc-700"
-              style={{
-                backgroundColor: selections.top
-                  ? slotOptions.find((o) => o.assetId === selections.top)?.color ?? '#374151'
-                  : '#374151',
-              }}
-            />
+            <div className="w-24 h-28 rounded-t-xl mt-1 border-2 border-zinc-700 bg-zinc-800" />
 
-            {/* Equipped badges */}
+            {/* Equipped labels — show the real chosen enum value per slot */}
             <div className="mt-4 flex flex-wrap gap-1 justify-center max-w-[180px]">
               {Object.entries(selections).map(([slotId, assetId]) => {
                 const slotDef = SLOTS.find((s) => s.id === slotId);
                 if (!slotDef) return null;
                 const SlotIcon = slotDef.icon;
+                const opt = options.slots?.[slotId]?.find((o) => o.assetId === assetId);
                 return (
                   <span
                     key={slotId}
                     className="inline-flex items-center gap-0.5 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400"
                   >
                     <SlotIcon className="h-3 w-3" />
-                    {assetId.split('-')[1]}
+                    {opt?.name ?? assetId}
                   </span>
                 );
               })}
@@ -198,73 +239,74 @@ export function CharacterCustomizer({
             {activeSlotDef.label}
           </h3>
 
-          <div className="grid grid-cols-2 gap-2 overflow-y-auto max-h-[420px] pr-1">
-            {slotOptions.map((option) => {
-              const isEquipped = selections[activeSlot] === option.assetId;
-              return (
-                <button
-                  key={option.assetId}
-                  onClick={() => handleSelectOption(activeSlot, option.assetId)}
-                  className={cn(
-                    'flex flex-col items-center gap-1.5 rounded-lg p-2 text-xs transition-colors border',
-                    isEquipped
-                      ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300'
-                      : 'bg-zinc-800/60 border-zinc-700/50 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200',
-                  )}
-                >
-                  {/* Placeholder thumbnail */}
-                  <div
-                    className="w-full aspect-square rounded-md"
-                    style={{ backgroundColor: option.color }}
-                  />
-                  <span className="truncate w-full text-center">{option.name}</span>
-                  <span className={cn(
-                    'text-[10px]',
-                    option.price === 0 ? 'text-emerald-400' : 'text-amber-400',
-                  )}>
-                    {option.price === 0 ? 'Free' : `${option.price} CC`}
-                  </span>
-                  {isEquipped && (
-                    <span className="inline-flex items-center gap-0.5 rounded bg-indigo-600/30 px-1.5 py-0.5 text-[10px] text-indigo-300">
-                      <Check className="h-3 w-3" /> Equipped
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+          {slotOptions.length === 0 ? (
+            <p className="text-xs text-zinc-500 italic">No options available for this slot.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 overflow-y-auto max-h-[420px] pr-1">
+              {slotOptions.map((option) => {
+                const isEquipped = selections[activeSlot] === option.assetId;
+                return (
+                  <button
+                    key={option.assetId}
+                    onClick={() => handleSelectOption(activeSlot, option.assetId)}
+                    className={cn(
+                      'flex flex-col items-center gap-1.5 rounded-lg p-2 text-xs transition-colors border',
+                      isEquipped
+                        ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300'
+                        : 'bg-zinc-800/60 border-zinc-700/50 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200',
+                    )}
+                  >
+                    {/* Swatch only when the option genuinely is a color */}
+                    {option.color ? (
+                      <div
+                        className="w-full aspect-square rounded-md border border-zinc-700"
+                        style={{ backgroundColor: option.color }}
+                      />
+                    ) : (
+                      <div className="w-full aspect-square rounded-md bg-zinc-900 border border-zinc-700/60 flex items-center justify-center">
+                        {(() => { const Icon = activeSlotDef.icon; return <Icon className="h-5 w-5 text-zinc-600" />; })()}
+                      </div>
+                    )}
+                    <span className="truncate w-full text-center">{option.name}</span>
+                    {option.owned && (
+                      <span className="text-[10px] text-emerald-400">Owned</span>
+                    )}
+                    {isEquipped && (
+                      <span className="inline-flex items-center gap-0.5 rounded bg-indigo-600/30 px-1.5 py-0.5 text-[10px] text-indigo-300">
+                        <Check className="h-3 w-3" /> Equipped
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Bottom: Skin Tone Color Picker (real renderer-supported tones) ── */}
+      {skinTones.length > 0 && (
+        <div className="flex items-center gap-3 rounded-xl bg-zinc-950 border border-zinc-800 px-4 py-3">
+          <Palette className="h-4 w-4 text-zinc-400 shrink-0" />
+          <span className="text-xs text-zinc-400 shrink-0">Skin Tone</span>
+
+          <div className="flex gap-1.5 flex-wrap">
+            {skinTones.map((tone) => (
+              <button
+                key={tone.assetId}
+                onClick={() => setSkinColor(tone.color)}
+                className={cn(
+                  'h-7 w-7 rounded-full border-2 transition-transform hover:scale-110',
+                  skinColor === tone.color ? 'border-indigo-400 scale-110' : 'border-zinc-700',
+                )}
+                style={{ backgroundColor: tone.color }}
+                aria-label={`Skin tone ${tone.name}`}
+                title={tone.name}
+              />
+            ))}
           </div>
         </div>
-      </div>
-
-      {/* ── Bottom: Skin Tone Color Picker ── */}
-      <div className="flex items-center gap-3 rounded-xl bg-zinc-950 border border-zinc-800 px-4 py-3">
-        <Palette className="h-4 w-4 text-zinc-400 shrink-0" />
-        <span className="text-xs text-zinc-400 shrink-0">Skin Tone</span>
-
-        <div className="flex gap-1.5 flex-wrap">
-          {SKIN_TONES.map((tone) => (
-            <button
-              key={tone}
-              onClick={() => setSkinColor(tone)}
-              className={cn(
-                'h-7 w-7 rounded-full border-2 transition-transform hover:scale-110',
-                skinColor === tone ? 'border-indigo-400 scale-110' : 'border-zinc-700',
-              )}
-              style={{ backgroundColor: tone }}
-              aria-label={`Skin tone ${tone}`}
-            />
-          ))}
-        </div>
-
-        {/* Custom color input */}
-        <input
-          type="color"
-          value={skinColor}
-          onChange={(e) => setSkinColor(e.target.value)}
-          className="h-7 w-7 rounded cursor-pointer border border-zinc-700 bg-transparent shrink-0"
-          title="Custom skin color"
-        />
-      </div>
+      )}
     </div>
   );
 }

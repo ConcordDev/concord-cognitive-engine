@@ -204,8 +204,29 @@ export function CompileTool() {
         </div>
       </div>
 
+      {busy && (
+        <div role="status" aria-live="polite" className="flex items-center gap-2 rounded border border-yellow-900/40 bg-yellow-950/10 px-3 py-2 text-xs text-yellow-400">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> Compiling…
+        </div>
+      )}
+
       {error && (
-        <div className="rounded border border-red-900/50 bg-red-950/30 px-3 py-2 font-mono text-xs text-red-300">{error}</div>
+        <div role="alert" className="flex items-start justify-between gap-3 rounded border border-red-900/50 bg-red-950/30 px-3 py-2 font-mono text-xs text-red-300">
+          <span className="min-w-0 break-words">{error}</span>
+          <button
+            onClick={compile}
+            disabled={busy || !src.trim()}
+            className="shrink-0 rounded border border-red-800/60 px-2 py-0.5 text-[11px] text-red-200 hover:bg-red-900/40 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-red-400"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {!busy && !error && !result && (
+        <div className="rounded-lg border border-dashed border-yellow-900/40 bg-yellow-950/5 px-3 py-6 text-center text-xs text-yellow-700">
+          Paste TypeScript/JSX above and press Compile — output appears here with copy, download, and per-build history.
+        </div>
       )}
 
       {result && (

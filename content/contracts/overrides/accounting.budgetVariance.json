@@ -1,0 +1,29 @@
+{
+  "macro_id": "accounting.budgetVariance",
+  "domain": "accounting",
+  "name": "budgetVariance",
+  "inputs": {
+    "budget": { "type": "array", "required": false },
+    "period": { "type": "string", "required": false, "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.totalPlanned)",
+    "output.ok === false || Number.isFinite(output.result.totalActual)",
+    "output.ok === false || Number.isFinite(output.result.totalVariance)",
+    "output.ok === false || Number.isFinite(output.result.totalVariancePct)",
+    "output.ok === false || Array.isArray(output.result.lineItems)",
+    "output.ok === false || output.result.lineItems.every(function(l){ return Number.isFinite(l.variance) && Number.isFinite(l.variancePct); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "budget": [] }, "expect": { "ok": true } },
+    { "input": { "budget": [{ "category": "Marketing", "planned": 1000, "actual": 1200 }, { "category": "Travel", "planned": 500, "actual": 400 }], "period": "Q1" }, "expect": { "ok": true } },
+    { "input": { "budget": [{ "category": "X", "planned": "Infinity", "actual": "1e999" }] }, "expect": { "ok": true } },
+    { "input": { "budget": [{ "category": "Y", "planned": 0, "actual": "NaN" }] }, "expect": { "ok": true } },
+    { "input": { "budget": "nope" }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'accounting.budgetVariance'. Deterministic pure compute. variancePct guards planned===0 → 0 (no NaN/Infinity divide). POISON: planned/actual via finNum so '1e999'/'Infinity' collapse to 0; every line + total stays FINITE. Not assassin-driven (LENS_ACTIONS); authored spec pinned by server/tests/accounting-lens-macros.test.js."
+}

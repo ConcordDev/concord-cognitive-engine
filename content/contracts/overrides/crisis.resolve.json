@@ -1,0 +1,20 @@
+{
+  "macro_id": "crisis.resolve",
+  "domain": "crisis",
+  "name": "resolve",
+  "inputs": {
+    "crisisId": { "type": "string", "required": true, "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || output.crisisId === input.crisisId",
+    "output.reason !== 'no_db'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_crisis_id" } },
+    { "input": { "crisisId": "__no_such_crisis__" }, "expect": { "ok": false, "reason": "not_found_or_already_resolved" } }
+  ],
+  "_note": "Marks a crisis resolved by the caller (stamps resolved_at + resolved_by). Missing id → missing_crisis_id; an unknown/already-resolved id → not_found_or_already_resolved (the UPDATE matched 0 rows). On success echoes crisisId + resolvedBy."
+}

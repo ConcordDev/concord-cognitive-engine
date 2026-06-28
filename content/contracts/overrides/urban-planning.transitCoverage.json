@@ -1,0 +1,26 @@
+{
+  "macro_id": "urban-planning.transitCoverage",
+  "domain": "urban-planning",
+  "name": "transitCoverage",
+  "inputs": {
+    "stops": { "type": "array", "required": true },
+    "parcels": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || Array.isArray(output.result.catchments)",
+    "output.ok === false || (typeof output.result.totalCatchmentAcres === 'number' && Number.isFinite(output.result.totalCatchmentAcres))",
+    "output.ok === false || (typeof output.result.parcelsServed === 'number' && output.result.parcelsServed >= 0)",
+    "output.ok === false || (output.result.parcelsServed <= output.result.parcelsEvaluated)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "stops": [{ "id": "s1", "mode": "rail", "lat": 37.78, "lng": -122.41 }], "parcels": [{ "id": "p1", "lat": 37.7805, "lng": -122.4105 }] }, "expect": { "ok": true } },
+    { "input": { "stops": [{ "mode": "hyperloop", "lat": 0, "lng": 0 }] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false, "error": "stops array required" } },
+    { "input": { "stops": [] }, "expect": { "ok": false, "error": "stops array required" } }
+  ],
+  "_note": "urban-planning.transitCoverage is a LENS_ACTIONS handler (server/domains/urbanplanning.js, PATH-3, hyphenated key). DETERMINISTIC walk-shed analysis: each stop gets a mode-based walk radius (bus 400m, brt 600m, rail/ferry 800m; unknown → bus 400m), a circular catchment area in acres (π r² / 4046.86), and parcels are counted served via a haversine-lite point-in-circle test. An empty/absent stops array rejects with 'stops array required' (never throws). Reads input from artifact.data merged over params; no DB, no network. parcelsServed is always ≤ parcelsEvaluated. LENS_ACTIONS-only → not driven by the macro-assassin; pinned by server/tests/urban-planning-lens-macros.test.js."
+}

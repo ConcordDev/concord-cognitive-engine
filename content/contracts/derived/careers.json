@@ -1,0 +1,381 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "careers",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "contractId": "ctr_does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "contractId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || output.status === 'active'"
+      ],
+      "macro_id": "careers.accept",
+      "name": "accept"
+    },
+    {
+      "_derived": false,
+      "domain": "careers",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.contracts)",
+        "output.ok === false || output.contracts.every(c => typeof c.id === 'string' && typeof c.status === 'string')"
+      ],
+      "macro_id": "careers.contracts",
+      "name": "contracts"
+    },
+    {
+      "_derived": false,
+      "domain": "careers",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "contractId": "ctr_missing",
+            "terms": {
+              "baseWage": 50
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "contractId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (typeof output.contractId === 'string' && output.contractId.length > 0)"
+      ],
+      "macro_id": "careers.counter",
+      "name": "counter"
+    },
+    {
+      "_derived": false,
+      "domain": "careers",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "unknown_track"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "trackId": "chef"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "unknown_track"
+          },
+          "input": {
+            "trackId": "no_such_track"
+          }
+        }
+      ],
+      "inputs": {
+        "trackId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (Array.isArray(output.ladder) && output.ladder.length === 10)",
+        "output.ok === false || output.ladder.every(t => typeof t.tier === 'number' && t.tier >= 1 && t.tier <= 10)"
+      ],
+      "macro_id": "careers.ladder",
+      "name": "ladder"
+    },
+    {
+      "_derived": false,
+      "domain": "careers",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_parties"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "unknown_track"
+          },
+          "input": {
+            "trackId": "ghost",
+            "workerId": "n1"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_baseWage"
+          },
+          "input": {
+            "baseWage": "Infinity",
+            "trackId": "chef",
+            "workerId": "n1"
+          }
+        }
+      ],
+      "inputs": {
+        "baseWage": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "durationDays": {
+          "max": 1000000,
+          "min": 1,
+          "type": "number"
+        },
+        "employerId": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "signingBonus": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "tier": {
+          "max": 10,
+          "min": 1,
+          "type": "number"
+        },
+        "trackId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "workerId": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (typeof output.contractId === 'string' && output.contractId.length > 0)"
+      ],
+      "macro_id": "careers.offer",
+      "name": "offer"
+    },
+    {
+      "_derived": false,
+      "domain": "careers",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "contractId": "ctr_missing"
+          }
+        }
+      ],
+      "inputs": {
+        "contractId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || output.status === 'rejected'"
+      ],
+      "macro_id": "careers.reject",
+      "name": "reject"
+    },
+    {
+      "_derived": false,
+      "domain": "careers",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.categories)",
+        "output.ok === false || Array.isArray(output.tracks)",
+        "output.ok === false || output.tracks.every(t => typeof t.id === 'string' && t.id.length > 0)",
+        "output.ok === false || output.tracks.every(t => typeof t.activity === 'string')"
+      ],
+      "macro_id": "careers.tracks",
+      "name": "tracks"
+    },
+    {
+      "_derived": false,
+      "domain": "careers",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "unknown_track"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "attribute": 0.8,
+            "skillInput": 0.8,
+            "tier": 5,
+            "trackId": "chef"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_tier"
+          },
+          "input": {
+            "tier": "1e308",
+            "trackId": "chef"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "unknown_track"
+          },
+          "input": {
+            "trackId": "ghost_job"
+          }
+        }
+      ],
+      "inputs": {
+        "attribute": {
+          "max": 1,
+          "min": 0,
+          "type": "number"
+        },
+        "skillInput": {
+          "max": 1,
+          "min": 0,
+          "type": "number"
+        },
+        "tier": {
+          "max": 10,
+          "min": 1,
+          "type": "number"
+        },
+        "trackId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (typeof output.wage === 'number' && output.wage >= 0)",
+        "output.ok === false || (typeof output.performanceScore === 'number' && output.performanceScore >= 0 && output.performanceScore <= 1)",
+        "output.ok === false || (typeof output.xp === 'number' && output.xp >= 0)"
+      ],
+      "macro_id": "careers.work",
+      "name": "work"
+    }
+  ],
+  "domain": "careers",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 8
+}

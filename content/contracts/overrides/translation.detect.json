@@ -1,0 +1,24 @@
+{
+  "macro_id": "translation.detect",
+  "domain": "translation",
+  "name": "detect",
+  "inputs": {
+    "text": { "type": "string", "maxLength": 8000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.language === 'string')",
+    "output.ok === false || output.result.code === null || typeof output.result.code === 'string'",
+    "output.ok === false || typeof output.result.confidence === 'number'",
+    "output.ok === false || (output.result.confidence >= 0 && output.result.confidence <= 1)",
+    "output.ok === false || typeof output.result.method === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "text": "el gato esta en la casa y no quiere salir" }, "expect": { "ok": true } },
+    { "input": { "text": "the quick brown fox is jumping over the lazy dog" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false, "error": "text required" } },
+    { "input": { "text": "   " }, "expect": { "ok": false, "error": "text required" } }
+  ],
+  "_note": "translation.detect identifies the source language. It runs a REAL deterministic offline detector (Unicode-script + function-word heuristics) so a known string returns a grounded { language, code, confidence in [0,1], method } with NO network/LLM. Empty/whitespace text → ok:false 'text required'. An available LLM only refines the offline baseline (method:'llm'); an LLM failure falls back to the offline verdict and never errors."
+}

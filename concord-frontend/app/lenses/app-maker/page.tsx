@@ -55,18 +55,27 @@ export default function AppMakerLens() {
     { lensId: 'app-maker' }
   );
 
-  // Backend action wiring
-  const runAction = useRunArtifact('appmaker');
-  const { items: appmakerItems } = useLensData<Record<string, unknown>>('appmaker', 'app', { seed: [] });
+  // Backend action wiring. The registered domain is "app-maker" (hyphen) —
+  // every handler in server/domains/appmaker.js registers under that id and the
+  // /api/lens/:domain/:id/run dispatch keys on the exact `${domain}.${action}`
+  // string (no normalization), so a non-hyphen "appmaker" domain string would
+  // resolve to NO receiver (unknown_macro / ok:false). Must match the backend
+  // registration AND the AppBuilderStudio (`DOMAIN = 'app-maker'`).
+  const runAction = useRunArtifact('app-maker');
+  const { items: appmakerItems } = useLensData<Record<string, unknown>>('app-maker', 'app', { seed: [] });
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
 
+  const [lastAction, setLastAction] = useState<string | null>(null);
+
   const handleAppmakerAction = async (action: string) => {
+    setLastAction(action);
+    setActionError(null);
     let targetId = appmakerItems[0]?.id;
     // Auto-create an app artifact if none exists yet
     if (!targetId) {
       try {
-        const created = await apiHelpers.lens.create('appmaker', {
+        const created = await apiHelpers.lens.create('app-maker', {
           type: 'app',
           title: 'App Maker Workspace',
           data: { template: selectedTemplate, name: appBuildName || 'Untitled App' },
@@ -74,24 +83,37 @@ export default function AppMakerLens() {
         targetId = created?.data?.artifact?.id;
       } catch (e) {
         console.error('[AppMaker] Failed to auto-create artifact:', e);
-        setActionResult({ message: 'No app artifact found. Please create an app first.' });
+        setActionResult(null);
+        setActionError(e instanceof Error ? e.message : 'Failed to create app workspace.');
         return;
       }
       if (!targetId) {
-        setActionResult({ message: 'No app artifact found. Please create an app first.' });
+        setActionResult(null);
+        setActionError('No app artifact found. Please create an app first.');
         return;
       }
     }
     setIsRunning(action);
     try {
       const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+      if (res.ok === false) {
+        setActionResult(null);
+        setActionError(String((res as Record<string, unknown>).error || 'Unknown error'));
+      } else {
+        setActionResult(res.result as Record<string, unknown>);
+      }
+    } catch (e) {
+      console.error(`Action ${action} failed:`, e);
+      setActionResult(null);
+      setActionError(e instanceof Error ? e.message : 'Unknown error');
+    }
     setIsRunning(null);
   };
 
   const [apps, setApps] = useState<AppEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [appsError, setAppsError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('crm');
@@ -107,10 +129,19 @@ export default function AppMakerLens() {
   }, []);
 
   const loadApps = async () => {
+    setLoading(true);
+    setAppsError(null);
     try {
       const resp = await apiHelpers.apps.list();
       setApps(resp.data?.apps || []);
-    } catch (e) { console.error('[AppMaker] Failed to load apps:', e); useUIStore.getState().addToast({ type: 'error', message: 'Failed to load apps' }); }
+    } catch (e) {
+      console.error('[AppMaker] Failed to load apps:', e);
+      // Surface the failure instead of swallowing it into a silently-empty
+      // list — an empty page must mean "genuinely no apps", never "the fetch
+      // failed". A role=alert + working Retry recovers the surface.
+      setAppsError(e instanceof Error ? e.message : 'Failed to load apps');
+      useUIStore.getState().addToast({ type: 'error', message: 'Failed to load apps' });
+    }
     setLoading(false);
   };
 
@@ -273,6 +304,39 @@ export default function AppMakerLens() {
           </button>
         </div>
 
+        {/* Action: genuine loading state */}
+        {isRunning && (
+          <div role="status" aria-live="polite" className="mt-4 flex items-center gap-2 p-3 bg-lattice-deep rounded-lg border border-lattice-border text-sm text-gray-300">
+            <Loader2 className="w-4 h-4 text-neon-cyan animate-spin" />
+            <span>Running {isRunning}…</span>
+          </div>
+        )}
+
+        {/* Action: error state with a WORKING Retry that re-runs the action */}
+        {!isRunning && actionError && (
+          <div role="alert" className="mt-4 p-3 bg-red-500/10 rounded-lg border border-red-500/30">
+            <div className="flex items-center gap-2 text-sm text-red-400">
+              <AlertTriangle className="w-4 h-4" />
+              <span>Action failed: {actionError}</span>
+            </div>
+            {lastAction && (
+              <button
+                onClick={() => handleAppmakerAction(lastAction)}
+                className="mt-2 text-xs px-3 py-1 rounded bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Action: empty state — no result yet, no error, not running */}
+        {!isRunning && !actionError && !actionResult && (
+          <p className="mt-4 text-xs text-gray-500">
+            Run an action above to scaffold a structure, measure UI complexity, or validate a wireframe.
+          </p>
+        )}
+
         {/* Action Result Display */}
         {actionResult && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-3 bg-lattice-deep rounded-lg border border-lattice-border">
@@ -427,7 +491,22 @@ export default function AppMakerLens() {
           )}
         </div>
         {loading ? (
-          <p className="text-sm text-gray-400">Loading...</p>
+          <p role="status" aria-live="polite" className="text-sm text-gray-400 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" /> Loading your apps…
+          </p>
+        ) : appsError ? (
+          <div role="alert" className="p-3 bg-red-500/10 rounded-lg border border-red-500/30">
+            <div className="flex items-center gap-2 text-sm text-red-400">
+              <AlertTriangle className="w-4 h-4" />
+              <span>{appsError}</span>
+            </div>
+            <button
+              onClick={loadApps}
+              className="mt-2 text-xs px-3 py-1 rounded bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30"
+            >
+              Retry
+            </button>
+          </div>
         ) : apps.length === 0 ? (
           <p className="text-sm text-gray-400">No apps yet. Create your first one above.</p>
         ) : (() => {

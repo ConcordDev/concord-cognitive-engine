@@ -1,0 +1,50 @@
+{
+  "macro_id": "wellness.strainLog",
+  "domain": "wellness",
+  "name": "strainLog",
+  "inputs": {
+    "minutesByZone": {
+      "type": "object"
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.strain === 'number')",
+    "output.ok === false || (output.result.strain >= 0 && output.result.strain <= 21)",
+    "output.ok === false || ['all-out','strenuous','moderate','light','minimal'].includes(output.result.band)",
+    "output.ok === false || (typeof output.result.totalActiveMin === 'number' && output.result.totalActiveMin >= 0)"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "minutesByZone": {
+          "z3": 40,
+          "z4": 20,
+          "z5": 10
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "minutesByZone": {
+          "z1": "Infinity"
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "invalid_z1"
+      }
+    }
+  ],
+  "_note": "Pure-compute Whoop-scale (0-21) strain from per-zone elevated minutes. Empty/absent zones \u2192 strain 0 'minimal' (ok:true). Per-zone values are fail-CLOSED guarded via badNumericField \u2014 a poisoned zone value returns ok:false invalid_z<N>. The 'strain' key in the {} expect refers to output.result.strain (assassin reads the raw runMacro envelope). No DB."
+}

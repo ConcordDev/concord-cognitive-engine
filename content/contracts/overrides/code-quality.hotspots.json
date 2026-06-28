@@ -1,0 +1,18 @@
+{
+  "macro_id": "code-quality.hotspots",
+  "domain": "code-quality",
+  "name": "hotspots",
+  "inputs": {
+    "scanId": { "type": "string", "maxLength": 60 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.functionHotspots))",
+    "output.ok === false || Array.isArray(output.result.fileHotspots)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "no_scans_yet" } }
+  ],
+  "_note": "Ranks duplication + complexity hotspots off a prior scan in per-user STATE. No scans yet → no_scans_yet (real read-state reason, NEVER no_db)."
+}

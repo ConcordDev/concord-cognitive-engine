@@ -131,6 +131,25 @@ export function lockInDeduction(db, userId, crimeId, opts = {}) {
   }
 }
 
+/**
+ * Fetch a single open/closed crime by id (the public-safe columns the
+ * board shows) together with its collected evidence. Returns null when
+ * the crime doesn't exist. Never throws. Note: `criminal_id` (the answer)
+ * is deliberately NOT selected — the board must not leak the culprit.
+ */
+export function getCrimeWithEvidence(db, crimeId) {
+  if (!db || !crimeId) return null;
+  try {
+    const crime = db.prepare(`
+      SELECT id, world_id, crime_type, location_type, location_id, victim_id,
+             status, confidence, occurred_at, resolved_at
+      FROM crime_events WHERE id = ?
+    `).get(crimeId);
+    if (!crime) return null;
+    return { crime, evidence: listEvidenceForCrime(db, crimeId) };
+  } catch { return null; }
+}
+
 export function getDeductionsByUser(db, userId, limit = 20) {
   if (!db || !userId) return [];
   try {

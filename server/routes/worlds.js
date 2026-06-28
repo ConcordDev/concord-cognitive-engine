@@ -20,6 +20,7 @@ import { travelToWorld, applyWorldRulesToPlayer } from "../lib/transit.js";
 import { spawnWorldNativeEmergent, getWorldEmergents, getCrossWorldEmergents, growAffinity } from "../lib/world-emergents.js";
 import { seedWorldContent } from "../lib/world-seeder.js";
 import { getNearbyNodes, getUndergroundNodes, gatherFromNode, updateSwimState, checkSwimState, respawnExpiredNodes } from "../lib/world-gathering.js";
+import { withEntityLock } from "../lib/entity-lock.js";
 import { getWorldMarket, getResourcePrice, recordTransaction } from "../lib/world-economy.js";
 import { issueDirective, voteOnDirective, getActiveDirectives, getDirectiveHistory } from "../lib/world-governance.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
@@ -1423,10 +1424,19 @@ export default function createWorldsRouter({ requireAuth, db }) {
         ).all(npcId);
       } catch { /* table may not exist */ }
 
+      // Deterministic, in-character fallback (PLAYTEST #1) — composed from the
+      // same grounding the LLM prompt uses, so an LLM-off / unavailable box still
+      // answers as a person instead of "<name> responds to your choice."
+      const { composeDeterministicResponse } = await import("../lib/npc-dialogue-fallback.js");
+      const _respondFallback = composeDeterministicResponse({
+        npcId, npcName, archetype: npc.archetype, job: npc.job_type,
+        faction: npc.faction, choice, questTitle: quests[0]?.title || null,
+      });
+
       // Build follow-up prompt
       const { selectBrain } = await import("../lib/brain-config.js").catch(() => ({ selectBrain: null }));
       if (!selectBrain) {
-        return res.json({ ok: true, response: `${npcName} responds to your choice.` });
+        return res.json({ ok: true, response: _respondFallback });
       }
 
       const { handle } = await selectBrain("subconscious", { callerId: "world:npc:dialogue:respond" });
@@ -1453,7 +1463,8 @@ export default function createWorldsRouter({ requireAuth, db }) {
       ].filter(Boolean).join('\n');
 
       const response = await handle.generate(promptLines);
-      const safeResponse = response?.slice(0, 800) || `${npcName} nods and moves on.`;
+      // Empty/garbled LLM output → the grounded deterministic reply, not a flat stub.
+      const safeResponse = (response && response.trim()) ? response.slice(0, 800) : _respondFallback;
 
       // Track talk_to quest objectives whenever a player responds to an NPC
       try {
@@ -1641,12 +1652,19 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const { worldId, nodeId } = req.params;
       const { toolType = 'hands', toolTier = 1, skillLevel = 1, x, z, element } = req.body;
 
+      // Adversarial-hardening: serialize the read-modify-write on this node so
+      // two concurrent gathers (double-click / two shard writers) can't both
+      // run the gather → inventory-upsert window and double-credit. The node
+      // decrement itself is already atomic (world-gathering.js G4); this lock
+      // additionally closes the SELECT-then-INSERT inventory-upsert race that
+      // sits AFTER an `await import(...)` boundary below.
+      const result = await withEntityLock(`gather:${nodeId}`, async () => {
       const result = gatherFromNode(db, nodeId, req.user.id, {
         toolType, toolTier: parseInt(toolTier), skillLevel: parseInt(skillLevel),
         playerPos: (x != null && z != null) ? { x: parseFloat(x), z: parseFloat(z) } : null,
       });
 
-      if (!result.ok) return res.status(400).json(result);
+      if (!result.ok) return result;
 
       // ── Layer 7.5: terrain affinity yield boost ───────────────────────────
       // Earth-aligned (physical) gatherers extract more from stone/ore;
@@ -1699,6 +1717,11 @@ export default function createWorldsRouter({ requireAuth, db }) {
           `).run(req.user.id, item.item, item.quantity, worldId, JSON.stringify({ name: item.name, quality: item.quality }));
         }
       }
+
+      return result;
+      }); // end withEntityLock(gather:nodeId)
+
+      if (!result.ok) return res.status(400).json(result);
 
       // Emit real-time update to other players in the same world
       req.app.locals.io?.to(`world:${worldId}`).emit('world:node-update', {
@@ -3182,7 +3205,20 @@ export default function createWorldsRouter({ requireAuth, db }) {
               worldId, hp: bars.hp, maxHp: bars.max_hp, source: 'near_death_survived',
             });
           }
-        } catch { /* awakening surfacing is best-effort */ }
+          // Low-health signal for the screen-reader / a11y bridge. The world page
+          // subscribes to `player:low-health` (SR_BRIDGE_EVENTS) but until now
+          // nothing emitted it — a receiver with no caller. Fire it whenever the
+          // player drops below LOW_HEALTH_FRACTION so the announce / HUD cue is a
+          // pure function of a real backend event.
+          const LOW_HEALTH_FRACTION = 0.3;
+          if (bars && bars.max_hp > 0 && bars.hp / bars.max_hp <= LOW_HEALTH_FRACTION) {
+            req.app.locals.io?.to(`user:${userId}`)?.emit?.("player:low-health", {
+              worldId, hp: bars.hp, maxHp: bars.max_hp,
+              fraction: Math.max(0, bars.hp / bars.max_hp),
+              source: 'npc_attack',
+            });
+          }
+        } catch { /* awakening + low-health surfacing is best-effort */ }
       }
 
       res.json({ ok: true, damageResult, eventId, kill, message: kill ? 'You have been defeated' : undefined });

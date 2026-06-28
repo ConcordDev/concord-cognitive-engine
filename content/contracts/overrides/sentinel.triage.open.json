@@ -1,0 +1,23 @@
+{
+  "macro_id": "sentinel.triage.open",
+  "domain": "sentinel",
+  "name": "triage.open",
+  "inputs": {
+    "threatId": { "type": "string", "maxLength": 120 },
+    "title": { "type": "string", "maxLength": 200 },
+    "severity": { "type": "string", "enum": ["critical", "high", "medium", "low", "info", "unknown"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.case && typeof output.result.case.caseId === 'string')",
+    "output.ok === false || output.result.case.state === 'open'",
+    "output.ok === false || typeof output.result.created === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "threatId required" } },
+    { "input": { "title": "no id" }, "expect": { "ok": false, "error": "threatId required" } },
+    { "input": { "threatId": "t-assassin-1", "severity": "critical", "title": "C2 beacon" }, "expect": { "ok": true } }
+  ],
+  "_note": "Promotes a detected threat into a per-user triage case persisted in globalThis._concordSTATE.sentinelCases keyed by ctx.actor.userId. STATE-backed — the assassin's internal owner actor writes a fresh case row (NEVER no_db). Missing threatId fails-closed. Idempotent on threatId: a re-open of the same threat returns created:false with the existing case; an unrecognised severity normalises to 'unknown'."
+}

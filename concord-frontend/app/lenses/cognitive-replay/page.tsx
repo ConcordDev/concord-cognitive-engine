@@ -75,30 +75,46 @@ export default function CognitiveReplayPage() {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [scrubIdx, setScrubIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [sinceDays, setSinceDays] = useState(7);
   const [tab, setTab] = useState<Tab>('Wrapped');
   const [jumpEventId, setJumpEventId] = useState<string | null>(null);
   const [sharedSnapshot, setSharedSnapshot] = useState<SharedSnapshot | null>(null);
 
+  // Load the live cognitive timeline. A fetch/transport failure surfaces a real
+  // error state with a working Retry — it must NOT be swallowed into a silently
+  // empty page (an offline backend reads identical to "no activity" otherwise).
   useEffect(() => {
     let alive = true;
     (async () => {
-      const r = await fetch('/api/lens/run', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain: 'chat', name: 'timeline', input: { limit: 200 } }),
-      }).catch(() => null);
-      if (!alive) return;
-      const data = r ? await r.json().catch(() => null) : null;
-      if (data?.ok && Array.isArray(data.events)) {
-        setEvents(data.events);
-        setScrubIdx(Math.max(0, data.events.length - 1));
+      setLoading(true);
+      setError(null);
+      try {
+        const r = await fetch('/api/lens/run', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ domain: 'chat', name: 'timeline', input: { limit: 200 } }),
+        });
+        if (!alive) return;
+        if (!r.ok) throw new Error(`timeline request failed (${r.status})`);
+        const data = await r.json().catch(() => null);
+        if (!data?.ok) throw new Error(typeof data?.error === 'string' ? data.error : 'failed to load cognitive timeline');
+        const evs = Array.isArray(data.events) ? data.events : [];
+        setEvents(evs);
+        setScrubIdx(Math.max(0, evs.length - 1));
+      } catch (e) {
+        if (!alive) return;
+        setError(e instanceof Error ? e.message : 'failed to load cognitive timeline');
+      } finally {
+        if (alive) setLoading(false);
       }
-      setLoading(false);
     })();
     return () => { alive = false; };
-  }, []);
+  }, [reloadKey]);
+
+  const retry = useCallback(() => setReloadKey((k) => k + 1), []);
 
   // If the URL carries ?snapshot=<id>, resolve the shared snapshot.
   useEffect(() => {
@@ -123,13 +139,33 @@ export default function CognitiveReplayPage() {
       <LensShell lensId="cognitive-replay">
         <FirstRunTour lensId="cognitive-replay" />
         <DepthBadge lensId="cognitive-replay" size="sm" className="ml-2" />
-        <div className="p-8 text-zinc-400 flex items-center gap-2">
+        <div role="status" aria-live="polite" className="p-8 text-zinc-400 flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin focus:ring-2 focus:outline-none sm:text-base" />
           Loading your cognitive timeline…
         </div>
         <RecentMineCard domain="cognitive-replay" limit={10} hideWhenEmpty className="mt-4" />
         <AutoActionStrip domain="cognitive-replay" hideWhenEmpty className="mt-3" />
         <CrossLensRecentsPanel lensId="cognitive-replay" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </LensShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <LensShell lensId="cognitive-replay">
+        <div className="p-8 sm:p-12">
+          <h1 className="text-xl font-bold text-zinc-100">Cognitive Replay</h1>
+          <div role="alert" className="mt-4 max-w-md rounded-lg border border-rose-500/30 bg-rose-500/5 p-4">
+            <p className="text-sm font-medium text-rose-200">Couldn&apos;t load your cognitive timeline.</p>
+            <p className="mt-1 text-xs text-rose-300/80">{error}</p>
+            <button
+              onClick={retry}
+              className="mt-3 rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-100 hover:bg-rose-500/20"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
       </LensShell>
     );
   }
@@ -141,6 +177,12 @@ export default function CognitiveReplayPage() {
           <BookOpen className="w-8 h-8 text-zinc-600 mb-2" />
           <h1 className="text-xl font-bold text-zinc-100">Cognitive Replay</h1>
           <p className="mt-2 text-zinc-400">No timeline events yet. Have a chat session and come back.</p>
+          <a
+            href="/lenses/chat"
+            className="mt-4 inline-block rounded-md border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20"
+          >
+            Start a chat session
+          </a>
         </div>
       </LensShell>
     );

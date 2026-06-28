@@ -1,0 +1,22 @@
+{
+  "macro_id": "crisis.alerts",
+  "domain": "crisis",
+  "name": "alerts",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 80 },
+    "sinceMs": { "type": "number", "min": 0, "max": 1000000000000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.alerts)",
+    "output.ok === false || typeof output.result.unacknowledged === 'number'",
+    "output.ok === false || typeof output.result.cursor === 'number'",
+    "output.error !== 'no_db'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "sinceMs": "not-a-number" }, "expect": { "ok": false, "reason": "bad_numeric_field" } }
+  ],
+  "_note": "Push feed: new/escalated unresolved crises since a cursor. A live-DB read with {} → ok:true (no required input). sinceMs is fail-CLOSED via badNumericField — a non-finite/negative value → ok:false bad_numeric_field, never a poisoned scan."
+}

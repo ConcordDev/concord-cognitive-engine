@@ -1,0 +1,22 @@
+{
+  "macro_id": "auctions.place_buy_order",
+  "domain": "auctions",
+  "name": "place_buy_order",
+  "inputs": {
+    "itemDescriptor": { "type": "string", "required": true, "maxLength": 200 },
+    "unitPriceCc": { "type": "number", "min": 1, "max": 1000000 },
+    "quantity": { "type": "number", "min": 1, "max": 100000 },
+    "itemKind": { "type": "string", "enum": ["dtu", "inventory"] },
+    "worldId": { "type": "string", "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.escrowCc === 'number' && output.escrowCc > 0)",
+    "output.ok === false || (typeof output.buyOrderId === 'string' && output.buyOrderId.length > 0)",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } }
+  ]
+}

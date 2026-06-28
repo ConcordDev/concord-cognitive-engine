@@ -1,0 +1,23 @@
+{
+  "macro_id": "sandbox.recordTelemetry",
+  "domain": "sandbox",
+  "name": "recordTelemetry",
+  "inputs": {
+    "name": { "type": "string", "maxLength": 60 },
+    "frameTimes": { "type": "array" },
+    "hitstops": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.sample && typeof output.result.sample.id === 'string')",
+    "output.ok === false || (typeof output.result.sample.avgFps === 'number' && output.result.sample.avgFps > 0)",
+    "output.ok === false || (output.result.sample.jankFrames >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "no_frame_samples" } },
+    { "input": { "frameTimes": [] }, "expect": { "ok": false, "error": "no_frame_samples" } },
+    { "input": { "frameTimes": [16.6, 16.7, 40] }, "expect": { "ok": true } }
+  ],
+  "_note": "Persists one named frame-time/hitstop telemetry sample into per-user STATE keyed by ctx.actor.userId; derives avgFrameMs/avgFps/p95/jankFrames + hitstop stats from the real samples. Non-finite/non-positive frame values are filtered; an empty resulting set fails-closed with 'no_frame_samples' (NEVER no_db). The assassin's internal owner actor writes a fresh row."
+}

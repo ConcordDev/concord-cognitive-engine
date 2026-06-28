@@ -1,0 +1,17 @@
+{
+  "macro_id": "crisis.map",
+  "domain": "crisis",
+  "name": "map",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.incidents)",
+    "output.ok === false || typeof output.result.count === 'number'",
+    "output.ok === false || typeof output.result.sources === 'object'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Geospatial incident layer merging live USGS quakes + NWS alerts (free no-key feeds, 5-min cache). Network failure degrades gracefully: each source is independently try/caught and records an *Error key in result.sources, so the macro still returns ok:true with whatever incidents it could fetch (incidents:[] when both feeds are down). A read with {} → ok:true."
+}

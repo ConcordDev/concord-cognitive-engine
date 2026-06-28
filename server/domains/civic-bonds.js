@@ -19,6 +19,18 @@ function gate(ctx) {
   if (!ctx?.db) return { ok: false, reason: "no_db" };
   return null;
 }
+// Fail-CLOSED numeric guard (mirrors server/domains/literary.js#badNumericField):
+// any present numeric field that is NaN / Infinity / negative / absurd is
+// rejected up front so a poisoned payload can never reach the engine. Returns
+// the offending key or null. The lib also re-validates downstream (belt + braces).
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e9) return k;
+  }
+  return null;
+}
 function authed(ctx) {
   const uid = ctx?.actor?.userId;
   return uid ? String(uid) : null;
@@ -55,6 +67,8 @@ export default function registerCivicBondsMacros(register) {
   register("civic_bonds", "create", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
     const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const bad = badNumericField(input, ["targetAmount", "denomination", "returnRate", "quorum", "approvalThreshold"]);
+    if (bad) return { ok: false, reason: "bad_numeric_field", field: bad };
     return createBond(ctx.db, { ...input, proposerId: uid });
   }, { note: "open a bond drive (ruler/leader/officer)" });
 
@@ -73,6 +87,8 @@ export default function registerCivicBondsMacros(register) {
   register("civic_bonds", "pledge", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
     const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const bad = badNumericField(input, ["amount"]);
+    if (bad) return { ok: false, reason: "bad_numeric_field", field: bad };
     return pledgeToBond(ctx.db, input.bondId, { entityKind: "player", entityId: uid, amount: input.amount });
   }, { note: "pledge sparks (escrowed, 5% cap, denomination-stepped)" });
 
@@ -91,6 +107,8 @@ export default function registerCivicBondsMacros(register) {
   register("civic_bonds", "complete_milestone", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
     const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const bad = badNumericField(input, ["idx"]);
+    if (bad) return { ok: false, reason: "bad_numeric_field", field: bad };
     return completeMilestone(ctx.db, input.bondId, input.idx);
   }, { note: "mark a milestone complete" });
 

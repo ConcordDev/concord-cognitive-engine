@@ -1,0 +1,19 @@
+{
+  "macro_id": "society.wb-save-chart",
+  "domain": "society",
+  "name": "wb-save-chart",
+  "inputs": {
+    "spec": { "type": "object" },
+    "title": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.id === 'string')",
+    "output.ok === false || (typeof output.result.permalink === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "spec object required" } }
+  ],
+  "_note": "Persists a chart spec to the per-user in-memory permalink store (globalThis._concordSTATE.societyCharts) and returns a shareable id + permalink. STATE-backed via the internal owner actor. A missing spec fails-closed with 'spec object required'; the V2 deep-nested object IS a valid spec, so it returns ok:true with a real id. NEVER no_db."
+}

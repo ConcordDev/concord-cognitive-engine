@@ -1,0 +1,19 @@
+{
+  "macro_id": "housing.set_visibility",
+  "domain": "housing",
+  "name": "set_visibility",
+  "inputs": {
+    "houseId": { "type": "string", "required": true, "maxLength": 80 },
+    "visibility": { "type": "string", "required": true, "enum": ["private", "friends", "public"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string' || typeof output.reason === 'string'",
+    "output.ok === false || ['private','friends','public'].includes(output.visibility)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "houseId": "ph_x", "visibility": "nonsense" }, "expect": { "ok": false } }
+  ]
+}

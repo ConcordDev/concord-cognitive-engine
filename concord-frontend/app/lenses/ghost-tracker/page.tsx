@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useLensData } from '@/lib/hooks/use-lens-data';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -76,6 +77,19 @@ export default function GhostTrackerPage() {
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [sort, setSort] = useState<string>('recent');
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Saved Spectral Dossiers — real artifact-backed persistence (no mock seed).
+  // The canonical dossier DTU is minted by ghost-hunt.create from ResidueDetail;
+  // this index pins them per-user so they survive a reload + are listable here.
+  const {
+    items: dossiers,
+    isLoading: dossiersLoading,
+    isError: dossiersError,
+  } = useLensData<{ residueId?: string; drift_type?: string; severity?: string }>(
+    'ghost-tracker',
+    'spectral_dossier',
+    { noSeed: true, limit: 20 },
+  );
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -219,6 +233,43 @@ export default function GhostTrackerPage() {
             </section>
           </div>
         </div>
+
+        <section
+          className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"
+          aria-label="Saved Spectral Dossiers"
+        >
+          <h3 className="mb-2 text-xs uppercase tracking-wide text-violet-400">Saved dossiers</h3>
+          {dossiersLoading && (
+            <p role="status" className="text-xs text-gray-400">Loading dossiers…</p>
+          )}
+          {!dossiersLoading && dossiersError && (
+            <p role="alert" className="text-xs text-rose-300">
+              Dossier index unreachable.
+            </p>
+          )}
+          {!dossiersLoading && !dossiersError && dossiers.length === 0 && (
+            <p className="text-xs text-gray-400">
+              No dossiers yet. Confront a residue, then save its case file.
+            </p>
+          )}
+          {!dossiersLoading && !dossiersError && dossiers.length > 0 && (
+            <ul className="space-y-1.5">
+              {dossiers.map((d) => (
+                <li
+                  key={d.id}
+                  className="rounded border border-violet-700/30 bg-violet-900/10 px-3 py-2 text-xs text-gray-200"
+                >
+                  <span className="font-medium text-violet-200">{d.title}</span>
+                  {d.data?.drift_type && (
+                    <span className="ml-2 text-gray-400">
+                      {d.data.drift_type} · {d.data.severity}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <ConfrontHistory refreshKey={refreshKey} />

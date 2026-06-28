@@ -1,0 +1,21 @@
+{
+  "macro_id": "translation.batch",
+  "domain": "translation",
+  "name": "batch",
+  "inputs": {
+    "items": { "type": "array" },
+    "targetLanguage": { "type": "string", "maxLength": 60 },
+    "formality": { "type": "string", "enum": ["neutral", "formal", "informal"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.translations))",
+    "output.ok === false || output.result.translations.length === output.result.count"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "items[] required" } },
+    { "input": { "items": ["x"] }, "expect": { "ok": false, "error": "targetLanguage required" } }
+  ],
+  "_note": "translation.batch translates an array of strings in one LLM pass, order-preserving. Like translate it requires the local LLM; offline/brain-down → ok:false translation_unavailable (never fabricated). Validation rejects (items[] required / targetLanguage required / too many / too long) fire BEFORE any LLM call. count === translations.length when ok."
+}

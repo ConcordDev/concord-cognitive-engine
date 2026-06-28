@@ -1,0 +1,20 @@
+{
+  "macro_id": "housing.place_furniture",
+  "domain": "housing",
+  "name": "place_furniture",
+  "inputs": {
+    "houseId": { "type": "string", "required": true, "maxLength": 80 },
+    "roomId": { "type": "string", "required": true, "maxLength": 80 },
+    "item": { "type": "object", "required": true }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string' || typeof output.reason === 'string'",
+    "output.ok === false || (typeof output.layoutSize === 'number' && output.layoutSize >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "houseId": "ph_x", "roomId": "r_x", "item": { "itemId": "sofa" } }, "expect": { "ok": false } }
+  ]
+}

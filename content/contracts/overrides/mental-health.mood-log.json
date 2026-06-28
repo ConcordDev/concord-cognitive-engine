@@ -1,0 +1,28 @@
+{
+  "macro_id": "mental-health.mood-log",
+  "domain": "mental-health",
+  "name": "mood-log",
+  "inputs": {
+    "mood": { "type": "number", "required": true },
+    "energy": { "type": "number", "required": false },
+    "label": { "type": "string", "required": false, "maxLength": 40 },
+    "note": { "type": "string", "required": false, "maxLength": 500 },
+    "date": { "type": "string", "required": false, "maxLength": 10 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.entry && typeof output.result.entry.id === 'string')",
+    "output.ok === false || (output.result.entry.mood >= 1 && output.result.entry.mood <= 5)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "mood": 4, "note": "ok day" }, "expect": { "ok": true } },
+    { "input": { "mood": 0 }, "expect": { "ok": false } },
+    { "input": { "mood": 6 }, "expect": { "ok": false } },
+    { "input": { "mood": 1e308 }, "expect": { "ok": false } },
+    { "input": { "mood": "5; DROP TABLE" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "mental-health.mood-log is a LENS_ACTIONS macro (server/domains/mentalhealth.js, registered via registerLensAction → PATH 3 / domains/index.js). It is in-memory (globalThis._concordSTATE.mentalHealthLens.moods, a per-user Map), so it is NOT enumerated by the runMacro-based assassin (which walks MACROS only). These invariants describe the {ok,result} envelope verified by server/tests/mental-health-lens-macros.test.js. FAIL-CLOSED money/clinical guard: mood must round into 1-5 — Infinity/1e308/NaN/non-numeric strings reject as 'mood must be 1–5', so no poisoned mood value can enter the substrate. No user-supplied clinical data is fabricated; every value the lens shows is a real logged entry."
+}

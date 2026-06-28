@@ -1,0 +1,26 @@
+{
+  "macro_id": "saved.add",
+  "domain": "saved",
+  "name": "add",
+  "inputs": {
+    "kind": { "type": "string", "enum": ["post", "dtu", "article", "artifact", "link", "other"] },
+    "refId": { "type": "string", "maxLength": 200 },
+    "title": { "type": "string", "maxLength": 400 },
+    "url": { "type": "string", "maxLength": 1000 },
+    "tags": { "type": "array" },
+    "note": { "type": "string", "maxLength": 2000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.item && typeof output.result.item.id === 'string')",
+    "output.ok === false || typeof output.result.deduped === 'boolean'",
+    "output.ok === false || ['post','dtu','article','artifact','link','other'].includes(output.result.item.kind)",
+    "output.ok === false || ['unread','read','archived'].includes(output.result.item.state)"
+  ],
+  "fuzz_cases": [
+    { "input": { "kind": "link", "title": "Concord docs", "url": "https://x" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false, "error": "need_title_or_ref" } }
+  ],
+  "_note": "saved.add saves any item for the caller. A save needs a title OR a refId OR a url; with none it rejects need_title_or_ref. kind defaults to 'other' and state to 'unread'. A repeat (kind, refId) returns the original row with deduped:true (idempotent, never a second row)."
+}

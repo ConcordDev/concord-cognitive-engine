@@ -1,0 +1,23 @@
+{
+  "macro_id": "forecast.subscribeAlert",
+  "domain": "forecast",
+  "name": "subscribeAlert",
+  "inputs": {
+    "kind": { "type": "string", "enum": ["severe_event", "drift", "weather", "any"] },
+    "worldId": { "type": "string", "maxLength": 120 },
+    "minConfidence": { "type": "number", "min": 0, "max": 1 },
+    "weatherKinds": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.subscription && typeof output.subscription.id === 'string')",
+    "output.ok === false || ['severe_event','drift','weather','any'].includes(output.subscription.kind)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "kind": "drift", "minConfidence": 0.7 }, "expect": { "ok": true } },
+    { "input": { "kind": "nonsense" }, "expect": { "ok": false, "reason": "bad_kind" } }
+  ],
+  "_note": "forecast.subscribeAlert creates a per-user alert subscription. kind defaults to 'severe_event' so {} returns ok:true (assassin owner actor). An out-of-enum kind rejects bad_kind. minConfidence clamps to [0,1]; worldId defaults to 'concordia-hub'. The returned subscription.id is a real handle unsubscribeAlert removes."
+}

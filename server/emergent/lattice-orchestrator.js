@@ -99,15 +99,23 @@ export async function runPeriodicDriftScan({ db: _db, state: _state, tickCount: 
         const conclusions = [];
         for (const a of alerts.slice(0, 3)) {
           try {
+            // NOTE (2026-06-27 dead-caller fix): this call was triply broken and
+            // the entire drift→HLR resolution path was dead — runHLR returned
+            // {ok:false} on every alert. (1) it reads `topic`/`question`, not an
+            // `input` field, so it failed `topic_or_question_required`; (2)
+            // `constraint_check` is NOT a valid REASONING_MODES value → invalid_mode;
+            // (3) the synthesised conclusion is returned at the TOP LEVEL as
+            // `synthesizedConclusion`, not under `output`. Deductive reasoning is the
+            // right mode for "does this drift violate the system's constraints".
             const r = hlr.runHLR({
-              input: `Drift alert: ${a.kind ?? a.type ?? "unknown"}. ${a.summary ?? a.message ?? ""}`,
-              mode: "constraint_check",
+              question: `Drift alert: ${a.kind ?? a.type ?? "unknown"}. ${a.summary ?? a.message ?? ""} — does this violate the system's invariants, and what resolves it?`,
+              mode: "deductive",
               tags: ["drift_resolution"],
             });
             // Collect the chain conclusions + the synthesised conclusion so the
             // autonomous reasoning can be FORMALLY self-checked below.
             for (const ch of (r?.chains || [])) if (ch?.conclusion) conclusions.push(ch.conclusion);
-            const synth = r?.output?.synthesizedConclusion;
+            const synth = r?.synthesizedConclusion;
             if (synth) conclusions.push(synth);
           } catch (err) {
             try { logger.debug("lattice-orchestrator", "hlr_route_failed", { error: err?.message }); } catch { /* ignore */ }

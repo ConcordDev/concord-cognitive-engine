@@ -1,0 +1,21 @@
+{
+  "macro_id": "sessions.annotate",
+  "domain": "sessions",
+  "name": "annotate",
+  "inputs": {
+    "sessionId": { "type": "string", "maxLength": 64 },
+    "note": { "type": "string", "maxLength": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.eventId === 'number'",
+    "output.ok === false || typeof output.note === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_session_id" } },
+    { "input": { "sessionId": "x" }, "expect": { "ok": false, "reason": "missing_note" } },
+    { "input": { "sessionId": "does-not-exist", "note": "remember this" }, "expect": { "ok": false, "reason": "not_found" } }
+  ],
+  "_note": "sessions.annotate appends a free-text annotation event to a caller-owned session. Requires sessionId + a non-empty note; a foreign/unknown id → not_found. A write {} returns a real validation reason, NEVER no_db."
+}

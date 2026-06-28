@@ -106,12 +106,17 @@ test("CodeQL drift: vm.runIn* only in audit-approved files", () => {
 });
 
 test("CodeQL drift: new Function(...) only in audit-approved files", () => {
-  // Approved sites (both AST-validated via acorn — wave 3 + wave 3.4):
-  //   - domains/invariant.js#evaluateExpression (invariantCheck lens action)
-  //   - routes/simulation.js (monte-carlo `fn` expression evaluator)
+  // Approved sites:
+  //   - domains/invariant.js#evaluateExpression (invariantCheck lens action) — acorn AST whitelist
+  //   - routes/simulation.js (monte-carlo `fn` expression evaluator) — acorn AST whitelist
+  //   - lib/invariant-eval.js — the Orchestrated Invariant Engine evaluator. `expr` is a
+  //     DEV-AUTHORED contract invariant (content/contracts/*, never user input), evaluated against
+  //     a macro's (input, output). Compile-once cache; never throws (returns false on a bad expr).
+  //     Same risk class as invariant.js: the strings are not user-controlled at runtime.
   const allowed = [
     "server/domains/invariant.js",
     "server/routes/simulation.js",
+    "server/lib/invariant-eval.js",
   ];
   const violations = scan(/new\s+Function\s*\(/, allowed);
   if (violations.length > 0) {

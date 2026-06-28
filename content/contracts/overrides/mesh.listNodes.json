@@ -1,0 +1,17 @@
+{
+  "macro_id": "mesh.listNodes",
+  "domain": "mesh",
+  "name": "listNodes",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.nodes))",
+    "output.ok === false || (typeof output.result.total === 'number' && output.result.total === output.result.nodes.length)",
+    "output.ok === false || (typeof output.result.online === 'number' && output.result.online <= output.result.total)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Reads the caller's known nodes with presence (online if lastSeen < 5min) from per-user STATE. The assassin's internal owner actor has none yet → ok:true with an empty nodes[] and total 0 (NEVER no_db)."
+}

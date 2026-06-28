@@ -1,0 +1,20 @@
+{
+  "macro_id": "tools.esign-list",
+  "domain": "tools",
+  "name": "esign-list",
+  "inputs": {
+    "status": { "type": "string", "enum": ["out_for_signature", "completed", "voided", "all"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.envelopes))",
+    "output.ok === false || typeof output.result.total === 'number'",
+    "output.ok === false || output.result.total === output.result.envelopes.length"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "status": "completed" }, "expect": { "ok": true } }
+  ],
+  "_note": "tools.esign-list reads the caller's e-signature envelopes from globalThis._concordSTATE.toolsLens.envelopes, keyed by ctx.actor.userId, optionally filtered by status. STATE-backed, per-user — the macro-assassin runs with an internal owner actor, so {} returns ok:true with an empty envelopes array (NEVER no_db). total always equals envelopes.length."
+}

@@ -1,0 +1,18 @@
+{
+  "macro_id": "saved.remove",
+  "domain": "saved",
+  "name": "remove",
+  "inputs": {
+    "id": { "type": "string", "required": true, "maxLength": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.removed === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "need_id" } },
+    { "input": { "id": "does_not_exist" }, "expect": { "ok": false, "error": "not_found" } }
+  ],
+  "_note": "saved.remove deletes a saved item by id. A missing id rejects need_id; an unknown id rejects not_found (so a double-remove is a clean not_found, never a phantom success). On success it echoes the removed id."
+}

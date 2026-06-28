@@ -1,0 +1,23 @@
+{
+  "macro_id": "code-quality.analyze",
+  "domain": "code-quality",
+  "name": "analyze",
+  "inputs": {
+    "source": { "type": "string", "maxLength": 200000 },
+    "file": { "type": "string", "maxLength": 200 },
+    "language": { "type": "string", "maxLength": 20 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.scanId === 'string')",
+    "output.ok === false || (output.result.metrics && typeof output.result.metrics.maintainability === 'number')",
+    "output.ok === false || ['A','B','C','D','F'].includes(output.result.grade)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "no_source_provided" } },
+    { "input": { "source": "" }, "expect": { "ok": false, "error": "all_files_empty" } },
+    { "input": { "source": "const a = 1;\n", "file": "a.js" }, "expect": { "ok": true } }
+  ],
+  "_note": "Runs the real static analyzer over submitted source — tokenizes + walks it, producing per-line findings, complexity/duplication metrics, a maintainability index, and a letter grade. No DB, no network (pure compute over the input string). {} has no source → no_source_provided; empty source → all_files_empty; real source → ok:true with a full scan. Each scan is appended to per-user STATE for later annotate/debt/hotspots/trend (NEVER no_db)."
+}

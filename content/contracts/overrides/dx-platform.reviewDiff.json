@@ -1,0 +1,23 @@
+{
+  "macro_id": "dx-platform.reviewDiff",
+  "domain": "dx-platform",
+  "name": "reviewDiff",
+  "inputs": {
+    "diff": { "type": "string", "maxLength": 200000 },
+    "codebaseId": { "type": "string", "maxLength": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.findings)",
+    "output.ok === false || (typeof output.result.findingCount === 'number' && output.result.findingCount === output.result.findings.length)",
+    "output.ok === false || ['clean','advisory','changes_requested'].includes(output.result.verdict)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "no_diff" } },
+    { "input": { "diff": "   " }, "expect": { "ok": false, "error": "no_diff" } },
+    { "input": { "diff": "--- a/x\n+++ b/x\n@@ -1 +1,2 @@\n const a = 1;\n+const b = 2;" }, "expect": { "ok": true } },
+    { "input": { "diff": "--- a/x\n+++ b/x\n@@ -1 +1,2 @@\n+const token = 'ghp_aaaaaaaaaaaaaaaa';" }, "expect": { "ok": true } }
+  ],
+  "_note": "Parses a unified diff and runs the static detector grid over ADDED lines only (pure compute, no DB, no network). A clean diff → verdict 'clean'; a secret leak → blocking → 'changes_requested'. Empty diff fails-closed (NEVER no_db)."
+}

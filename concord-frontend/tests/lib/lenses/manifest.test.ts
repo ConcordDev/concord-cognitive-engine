@@ -15,6 +15,14 @@ describe('LENS_MANIFESTS', () => {
     expect(LENS_MANIFESTS.length).toBeGreaterThan(0);
   });
 
+  // REST-backed DASHBOARD lenses (ops-telemetry, narrative-walk, lattice) are
+  // exempt from the list/get-macro requirement: they bind to real HTTP routes,
+  // NOT the macro system, so they declare `macros: {}` by design (each entry
+  // carries a header comment explaining the precedent). A dashboard is
+  // identified by an empty macros object.
+  const isRestDashboard = (m: (typeof LENS_MANIFESTS)[number]) =>
+    !m.macros || Object.keys(m.macros).length === 0;
+
   it('every manifest has required fields', () => {
     for (const m of LENS_MANIFESTS) {
       expect(typeof m.domain).toBe('string');
@@ -24,18 +32,38 @@ describe('LENS_MANIFESTS', () => {
       expect(Array.isArray(m.artifacts)).toBe(true);
       expect(m.artifacts.length).toBeGreaterThan(0);
       expect(m.macros).toBeDefined();
-      expect(typeof m.macros.list).toBe('string');
-      expect(typeof m.macros.get).toBe('string');
+      // REST dashboards legitimately have no list/get macro.
+      if (!isRestDashboard(m)) {
+        expect(typeof m.macros.list).toBe('string');
+        expect(typeof m.macros.get).toBe('string');
+      }
       expect(Array.isArray(m.exports)).toBe(true);
       expect(Array.isArray(m.actions)).toBe(true);
       expect(typeof m.category).toBe('string');
     }
   });
 
-  it('every manifest has macros following lens.<domain>.* convention', () => {
+  it('every manifest has list/get macros that are non-empty dotted ids', () => {
+    // The original assertion required the phantom `lens.<domain>.list`
+    // namespace. The per-lens flawless-loop batches (saved/photos/spectate/
+    // wellness/…) deliberately map the generic CRUD verbs onto REAL registered
+    // macros (e.g. `saved.list`, `wellness.metrics-list`) so the lens resolves
+    // via /api/lens/run + runMacro. Assert the canonical shape instead: a
+    // non-empty `<segment>.<segment>` id (the `lens.` prefix is no longer
+    // required, and was never a real registered macro).
+    // Accept BOTH the legacy `lens.<domain>.<verb>` form (lenses not yet
+    // through the flawless loop) AND a real `<domain>.<macro>` registered id
+    // (the canonical form the loop migrates to — e.g. saved.list,
+    // wellness.metrics-list, where `get` may reuse the list macro). The only
+    // thing that is wrong is an empty / non-dotted id.
+    // REST-backed dashboard lenses (macros: {}) are exempt — they have no macro
+    // surface at all and resolve their data over real HTTP routes.
+    const isDottedId = (id: unknown) =>
+      typeof id === 'string' && id.length > 0 && /\./.test(id);
     for (const m of LENS_MANIFESTS) {
-      expect(m.macros.list).toMatch(new RegExp(`^lens\\.${m.domain}\\.list$`));
-      expect(m.macros.get).toMatch(new RegExp(`^lens\\.${m.domain}\\.get$`));
+      if (isRestDashboard(m)) continue;
+      expect(isDottedId(m.macros.list), `${m.domain}.macros.list = ${m.macros.list}`).toBe(true);
+      expect(isDottedId(m.macros.get), `${m.domain}.macros.get = ${m.macros.get}`).toBe(true);
     }
   });
 
@@ -153,17 +181,21 @@ describe('getManifestCount', () => {
 });
 
 describe('getLensesMissingMacro', () => {
-  it('returns empty or small array for list macro (all lenses should have list)', () => {
+  // The only manifest entries without list/get macros are the REST-backed
+  // dashboard lenses, which bind to HTTP routes instead of the macro system.
+  const REST_DASHBOARDS = ['lattice', 'narrative-walk', 'ops-telemetry'];
+
+  it('returns only REST-dashboard lenses for the list macro (others all have list)', () => {
     const missing = getLensesMissingMacro('list');
     expect(Array.isArray(missing)).toBe(true);
-    // All lenses have list macro
-    expect(missing.length).toBe(0);
+    // Every missing entry is a known REST dashboard (no macro surface by design).
+    expect(missing.every((d) => REST_DASHBOARDS.includes(d))).toBe(true);
   });
 
-  it('returns empty or small array for get macro', () => {
+  it('returns only REST-dashboard lenses for the get macro', () => {
     const missing = getLensesMissingMacro('get');
     expect(Array.isArray(missing)).toBe(true);
-    expect(missing.length).toBe(0);
+    expect(missing.every((d) => REST_DASHBOARDS.includes(d))).toBe(true);
   });
 
   it('may return domains missing optional macros like create', () => {

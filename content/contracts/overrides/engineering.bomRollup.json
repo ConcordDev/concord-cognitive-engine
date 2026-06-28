@@ -1,0 +1,25 @@
+{
+  "macro_id": "engineering.bomRollup",
+  "domain": "engineering",
+  "name": "bomRollup",
+  "inputs": {
+    "items": { "type": "array", "required": false },
+    "buildQty": { "type": "number", "required": false },
+    "overheadRate": { "type": "number", "required": false }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || ('message' in output.result) || (Array.isArray(output.result.rows) && typeof output.result.rollup === 'object')",
+    "output.ok === false || !('rollup' in output.result) || (Number.isFinite(output.result.rollup.materialCost) && Number.isFinite(output.result.rollup.overhead) && Number.isFinite(output.result.rollup.totalCost) && Number.isFinite(output.result.rollup.costPerUnit))",
+    "output.ok === false || !('rows' in output.result) || output.result.rows.every(r => Number.isFinite(r.extendedCost) && r.supplierLinks && typeof r.supplierLinks.mcmaster === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "items": [{ "partNumber": "W8X31", "quantity": 4, "unitCost": 142, "supplier": "Ryerson", "leadTimeDays": 14 }], "buildQty": 1, "overheadRate": 0.15 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "items": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "items": [{ "partNumber": "NOCOST" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "BOM cost rollup (BomPanel.tsx). materialCost = Σ(qty × buildQty × unitCost); overhead = materialCost × overheadRate; totalCost = materialCost + overhead; costPerUnit = totalCost / buildQty. Each row carries supplierLinks {mcmaster,digikey,grainger}. criticalPath = top-3 longest leadTimeDays. finiteOr()/intOr() coerce poisoned NaN/Infinity unitCost/qty/buildQty to finite; r2() returns 0 on overflow so no Infinity price is rendered. Reads from artifact.data. Pure compute, no STATE, deterministic."
+}

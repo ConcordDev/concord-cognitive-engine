@@ -1,0 +1,18 @@
+{
+  "macro_id": "announcements.get",
+  "domain": "announcements",
+  "name": "get",
+  "inputs": {
+    "id": { "type": "string", "required": true, "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.announcement && typeof output.announcement.id === 'string')",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "id": "ann_does_not_exist" }, "expect": { "ok": false } }
+  ]
+}

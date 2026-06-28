@@ -201,6 +201,13 @@ export default function EngineeringPage() {
   const [libMaterials, setLibMaterials] = useState<LibMaterial[]>([]);
   const [matCategories, setMatCategories] = useState<string[]>([]);
   const [matFilter, setMatFilter] = useState<string>('all');
+  // Material-library fetch state — drives the Materials tab loading / error /
+  // empty / populated UX. Previously the fetch was fire-and-forget with no
+  // error branch, so a failing materialLibrary macro left the tab stuck on a
+  // perpetual "Loading…" spinner (swallowed-fetch → silent-empty). Now a
+  // failure surfaces role="alert" + a working Retry.
+  const [matLoading, setMatLoading] = useState(true);
+  const [matError, setMatError] = useState<string>('');
 
   // Load cases (saved via engineering.saveLoadCase macro).
   const [loadCases, setLoadCases] = useState<SavedLoadCase[]>([]);
@@ -218,9 +225,12 @@ export default function EngineeringPage() {
   const runAction = useRunArtifact('engineering');
   const createArtifact = useCreateArtifact('engineering');
 
-  // Load the material library + load cases once on mount.
-  useEffect(() => {
-    (async () => {
+  // Load the material library — surfaces loading / error so the Materials tab
+  // never silently shows a perpetual spinner on a failed fetch.
+  const loadMaterials = useCallback(async () => {
+    setMatLoading(true);
+    setMatError('');
+    try {
       const matRes = await lensRun<{ materials: LibMaterial[]; categories: string[] }>(
         'engineering',
         'materialLibrary',
@@ -229,7 +239,20 @@ export default function EngineeringPage() {
       if (matRes.data.ok && matRes.data.result) {
         setLibMaterials(matRes.data.result.materials || []);
         setMatCategories(matRes.data.result.categories || []);
+      } else {
+        setMatError(matRes.data.error || 'Failed to load material library');
       }
+    } catch (e) {
+      setMatError(e instanceof Error ? e.message : 'Failed to load material library');
+    } finally {
+      setMatLoading(false);
+    }
+  }, []);
+
+  // Load the material library + load cases once on mount.
+  useEffect(() => {
+    loadMaterials();
+    (async () => {
       const lcRes = await lensRun<{ loadCases: SavedLoadCase[] }>(
         'engineering',
         'listLoadCases',
@@ -239,7 +262,7 @@ export default function EngineeringPage() {
         setLoadCases(lcRes.data.result.loadCases || []);
       }
     })();
-  }, []);
+  }, [loadMaterials]);
 
   // Save the current loads + supports as a reusable load case.
   const saveLoadCase = useCallback(async () => {
@@ -942,10 +965,39 @@ export default function EngineeringPage() {
               </button>
             ))}
           </div>
-          {libMaterials.length === 0 ? (
-            <div className="panel p-8 text-center text-gray-400 text-sm">
+          {matLoading ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="panel p-8 text-center text-gray-400 text-sm"
+            >
               <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
               Loading material library…
+            </div>
+          ) : matError ? (
+            <div
+              role="alert"
+              className="panel p-8 text-center space-y-3 border border-red-500/30"
+            >
+              <XCircle className="w-8 h-8 text-red-400 mx-auto" />
+              <p className="text-sm text-red-400">{matError}</p>
+              <button
+                onClick={loadMaterials}
+                className="px-4 py-2 bg-neon-cyan/20 text-neon-cyan rounded-lg text-sm hover:bg-neon-cyan/30"
+              >
+                Retry
+              </button>
+            </div>
+          ) : libMaterials.length === 0 ? (
+            <div className="panel p-8 text-center space-y-3">
+              <FlaskConical className="w-8 h-8 text-gray-600 mx-auto" />
+              <p className="text-gray-400 text-sm">No materials in the library yet.</p>
+              <button
+                onClick={loadMaterials}
+                className="px-4 py-2 bg-neon-cyan/20 text-neon-cyan rounded-lg text-sm hover:bg-neon-cyan/30"
+              >
+                Reload library
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

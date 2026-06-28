@@ -1,0 +1,22 @@
+{
+  "macro_id": "ops.escalationCheck",
+  "domain": "ops",
+  "name": "escalationCheck",
+  "inputs": {
+    "severity": { "type": "string", "maxLength": 8 },
+    "minutesOpen": { "type": "number", "min": 0, "max": 100000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.breached === 'boolean')",
+    "output.ok === false || (typeof output.result.thresholdMinutes === 'number' && output.result.thresholdMinutes > 0)",
+    "output.ok === false || (output.result.minutesOpen < output.result.thresholdMinutes) === (output.result.breached === false)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "severity": "sev1", "minutesOpen": -1 }, "expect": { "ok": false, "error": "invalid_minutesOpen" } },
+    { "input": { "severity": "sev1", "minutesOpen": 30 }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute — checks an incident's minutes-open against the per-severity threshold (sev1 5m / sev2 15m / sev3 60m / sev4 240m). No STATE, no actor dependency → {} returns ok:true (NEVER no_db). minutesOpen is a fail-CLOSED numeric guard — a poisoned value (NaN/Infinity/-1/1e308) → invalid_minutesOpen. The final invariant pins the breach decision: breached iff minutesOpen >= thresholdMinutes (sev1@30m over the 5m threshold IS breached)."
+}

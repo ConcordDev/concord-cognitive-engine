@@ -1,0 +1,25 @@
+{
+  "macro_id": "meditation.sleepTimerConfig",
+  "domain": "meditation",
+  "name": "sleepTimerConfig",
+  "inputs": {
+    "sessionId": { "type": "string", "maxLength": 64 },
+    "minutes": { "type": "number", "min": 0, "max": 1000000 },
+    "fadeSeconds": { "type": "number", "min": 0, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.minutes >= 1 && output.result.minutes <= 480)",
+    "output.ok === false || (output.result.fadeSeconds >= 5 && output.result.fadeSeconds <= 300)",
+    "output.ok === false || output.result.totalSeconds === output.result.minutes * 60",
+    "output.ok === false || output.result.fadeStartSeconds >= 0",
+    "output.ok === false || Array.isArray(output.result.fadeCurve)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "minutes": 20, "fadeSeconds": 45 }, "expect": { "ok": true } },
+    { "input": { "sessionId": "ghost-track" }, "expect": { "ok": false, "error": "session not found in library" } }
+  ],
+  "_note": "Computes a fade-out curve for a sleep timer (no DB/actor). minutes clamp into [1,480], fadeSeconds into [5,300]; an explicit but unknown sessionId is rejected. With no sessionId it returns a bare-timer config — ok:true."
+}

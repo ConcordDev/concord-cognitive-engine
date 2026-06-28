@@ -2,34 +2,14 @@
 import { useEffect, useState } from 'react';
 import { useHUDContext, type ExpertiseLevel } from '../HUDContextProvider';
 import { LanguageSelector } from '@/components/common/LanguageSelector';
+import {
+  type HUDSettings,
+  DEFAULT_HUD_SETTINGS as DEFAULT_SETTINGS,
+  HUD_SETTINGS_STORAGE_KEY as STORAGE_KEY,
+  HUD_SETTINGS_CHANGED_EVENT,
+} from '@/lib/concordia/hud-settings';
 
 const LEVELS: ExpertiseLevel[] = ['newcomer', 'standard', 'detailed', 'engineering'];
-
-interface HUDSettings {
-  ambient_calendar: boolean;
-  ambient_refusal: boolean;
-  ambient_pain: boolean;
-  ambient_oxygen: boolean;
-  ambient_health: boolean;
-  ambient_schemes: boolean;
-  ambient_crafts: boolean;
-  context_prompts: boolean;
-  wheel_animations: boolean;
-}
-
-const DEFAULT_SETTINGS: HUDSettings = {
-  ambient_calendar: true,
-  ambient_refusal: true,
-  ambient_pain: true,
-  ambient_oxygen: true,
-  ambient_health: true,
-  ambient_schemes: true,
-  ambient_crafts: true,
-  context_prompts: true,
-  wheel_animations: true,
-};
-
-const STORAGE_KEY = 'concordia:hud-settings';
 
 export function HUDSettingsPanel() {
   const expertise = useHUDContext((s) => s.expertiseLevel);
@@ -49,7 +29,9 @@ export function HUDSettingsPanel() {
     setSettings(next);
     if (typeof window !== 'undefined') {
       try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* quota / disabled */ }
-      window.dispatchEvent(new CustomEvent('concordia:hud-settings-changed', { detail: next }));
+      // Consumed by useHudSettings() → AmbientLayer / ContextPromptLayer gate
+      // their badges on these toggles live.
+      window.dispatchEvent(new CustomEvent(HUD_SETTINGS_CHANGED_EVENT, { detail: next }));
     }
   }
 

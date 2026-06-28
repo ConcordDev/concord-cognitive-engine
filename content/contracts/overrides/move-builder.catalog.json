@@ -1,0 +1,20 @@
+{
+  "macro_id": "move-builder.catalog",
+  "domain": "move-builder",
+  "name": "catalog",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "Array.isArray(output.skillKinds) && output.skillKinds.length > 0",
+    "output.skillKinds.includes('spell') && output.skillKinds.includes('fighting_style')",
+    "Array.isArray(output.elements) && output.elements.length > 0",
+    "output.elements.includes('fire')",
+    "Array.isArray(output.aspects) && output.aspects.length === 5",
+    "output.aspects.includes('power') && output.aspects.includes('control')",
+    "typeof output.defaultBudget === 'number' && output.defaultBudget >= 1"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ]
+}

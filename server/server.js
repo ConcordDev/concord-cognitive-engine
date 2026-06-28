@@ -41,6 +41,7 @@ import express from "express";
 import cors from "cors";
 import crypto from "crypto";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { startSSE } from "./lib/sse.js";
 import fs from "fs";
 import path from "path";
@@ -8643,6 +8644,16 @@ async function tryInitWebSockets(server) {
       // exploit — the rate is already bounded.)
       if (!_checkAttackCooldown(_attackCd, now, data.style || data.actionOverride).allowed) return;
 
+      // Adversarial-hardening: per-user token-bucket cap on combat:attack. The
+      // per-class cooldown above bounds rate per ACTION CLASS; this bounds the
+      // total per-user event rate (burst floods across classes) and refills
+      // smoothly. Exhausted → drop the event (no-op) + a quiet throttle notice.
+      // Never crashes; env-overridable via CONCORD_SOCKET_COMBAT_PER_SEC.
+      if (process.env.CONCORD_SOCKET_RATELIMIT !== "0" && !_combatSocketLimiter.tryConsume(userId, 1, now)) {
+        try { socket.emit("combat:attack:ack", { ok: false, reason: "rate_limited" }); } catch { /* best-effort */ }
+        return;
+      }
+
       // Flow Combat: derive context modifiers up-front so applyAttack can
       // honor them (stamina cost, damage scaling, evade roll) in one place.
       // Falls back to no-op modifiers when the context engine isn't loaded.
@@ -8997,6 +9008,27 @@ async function tryInitWebSockets(server) {
                   });
                 }).catch(() => { /* corpse drop best-effort */ });
               }
+              // Gear DURABILITY: death-tied decay of the dead player's equipped
+              // gear (MMO research — durability is tied to DEATH, not per-hit).
+              // Broken/low items are pushed to the player's client so it can
+              // warn (consumed by world:gear-damaged listener in the world lens).
+              import("./lib/gear-durability.js").then(({ decayEquippedOnDeath }) => {
+                const changes = decayEquippedOnDeath(db, data.targetId);
+                if (Array.isArray(changes) && changes.length) {
+                  const broke = changes.filter((c) => c.broke);
+                  const low   = changes.filter((c) => !c.broken && c.max > 0 && c.current <= Math.floor(c.max * 0.2));
+                  try {
+                    const io = globalThis?.__CONCORD_REALTIME__?.io;
+                    io?.to(`user:${data.targetId}`).emit("world:gear-damaged", {
+                      userId: data.targetId,
+                      cause: "death",
+                      items: changes,
+                      broke,
+                      low,
+                    });
+                  } catch { /* emit best-effort */ }
+                }
+              }).catch(() => { /* durability decay best-effort */ });
             }
           } catch { /* corpse drop best-effort */ }
 
@@ -10888,6 +10920,26 @@ globalThis.__CARTOGRAPHER__ = Object.assign(globalThis.__CARTOGRAPHER__ || {}, {
   MACROS, listDomains, listMacros,
 });
 
+// Orchestrated Invariant Engine — LIVE layer. The macro-assassin gate proves
+// invariants at commit time; this is the runtime counterpart: a cheap universal
+// contract assertion on real macro output (a macro MUST return a non-null
+// object/envelope). A violation records a drift footprint + counter and is
+// surfaced on globalThis.__INVARIANT_RUNTIME__ for the ops-telemetry/drift
+// surface — it NEVER throws and NEVER blocks the tick. Gated: full in non-prod,
+// ~1% sample in prod; off entirely with CONCORD_INVARIANT_RUNTIME=0.
+let _invariantRuntimeViolations = 0;
+function _recordInvariantViolation(domain, name, result) {
+  _invariantRuntimeViolations++;
+  try {
+    structuredLog("warn", "invariant_runtime_violation", {
+      macro: `${domain}.${name}`,
+      gotType: result === null ? "null" : typeof result,
+      total: _invariantRuntimeViolations,
+    });
+  } catch { /* logging is best-effort */ }
+  try { globalThis.__INVARIANT_RUNTIME__ = { violations: _invariantRuntimeViolations }; } catch { /* noop */ }
+}
+
 async function runMacro(domain, name, input, ctx) {
   // Gate A — arg-shape guard (docs/CONTRACT_ENFORCEMENT_STRATEGY.md). The
   // signature is (domain, name, input, ctx); the #1 recurring bug is calling it
@@ -11011,8 +11063,39 @@ async function runMacro(domain, name, input, ctx) {
     // stripped in the lib); the codex reads it without auth.
     lore: new Set(["list", "get", "facets", "spine"]),
     // Wave 6 — creatures in a world are world-visible; the CreatureSystem reads
-    // them without auth (same as resource nodes).
-    creatures: new Set(["for_world", "taxonomy"]),
+    // them without auth (same as resource nodes). `species` is the read-only
+    // taxonomy catalog; roster/lineage/breed are player-scoped and stay gated.
+    creatures: new Set(["for_world", "taxonomy", "species"]),
+    // Detective board — open cases + their evidence are world-public (the
+    // deduction surface is meant to be browsed); deduce/mine are actor-gated.
+    detective: new Set(["list", "get", "evidence"]),
+    // Operator announcements — the broadcast feed is public read; post is admin.
+    announcements: new Set(["list", "get"]),
+    // Garage — the world's vehicle list + a single vehicle are world-visible
+    // (same as creatures); spawn/mine/mount/dismount/move are actor-gated.
+    garage: new Set(["list", "get"]),
+    // Spectate — live world spectacles + open betting markets are world-public
+    // (the Twitch-shape index reads them anonymously). `watch` opens a read-only
+    // spectator session (anonymous watching allowed; viewer_user_id stays null).
+    // bet/my_positions debit a real per-user SPARKS balance, so they stay
+    // actor-gated (NOT listed here).
+    spectate: new Set(["list", "get", "watch"]),
+    // Move builder — compose (preview) + catalog (reference move parts) are pure
+    // reads; list/get self-gate on ctx.actor and return no_user when anonymous.
+    // Key is the literal hyphenated macro-domain string. mint (writes a DTU) is gated.
+    "move-builder": new Set(["compose", "catalog", "list", "get"]),
+    // Photos — only the public world gallery feed is world-visible; mine/get/share
+    // are per-user / owner-gated and intentionally NOT listed.
+    photos: new Set(["world"]),
+    // Society — World Bank open-data reads (anonymous-safe; the handlers require
+    // no auth). The per-user saved-chart macros (wb-save-chart/wb-list-charts/
+    // wb-load-chart) are intentionally NOT listed — they self-scope by actor.
+    society: new Set([
+      "wb-indicator", "wb-country", "wb-compare", "wb-common-indicators",
+      "wb-chart-series", "wb-bubble-frames", "wb-choropleth", "wb-indicator-search",
+      "wb-country-dashboard", "wb-region-rankings", "wb-aggregate-codes",
+      "wb-export-csv", "wb-transform-series",
+    ]),
     // WS-CHEMISTRY — the reaction matrix is a read-only reference (apply/ignite/
     // douse mutate and require an actor, so they're NOT here).
     elements: new Set(["matrix"]),
@@ -11119,7 +11202,7 @@ async function runMacro(domain, name, input, ctx) {
     attention: new Set(["status", "get"]),
     metacognition: new Set(["status", "predictions"]),
     metalearning: new Set(["strategies", "status"]),
-    reasoning: new Set(["chains", "steps", "status"]),
+    reasoning: new Set(["chains", "steps", "status", "traces", "trace"]),
     temporal: new Set(["status", "get"]),
     inference: new Set(["status", "traces", "spans", "threads", "checkpoints", "sandboxes", "costs", "query"]),
     // (The dx domain is registered later in this file with the
@@ -11349,7 +11432,12 @@ async function runMacro(domain, name, input, ctx) {
     goddess: new Set(["recent"]),
     betting: new Set(["list_open"]),
     // Phase 9.3 — voice / music / foresight
-    forecast: new Set(["recent", "compose"]),
+    forecast: new Set(["recent", "compose", "multiDay", "hourly", "regional", "accuracy", "archive"]),
+    // civic_bonds — the public transparency ledger reads (the lens id is the
+    // hyphenated `civic-bonds`; the macro domain is the underscore `civic_bonds`).
+    // Reads only; pledge/vote/fund/etc. stay actor-gated. Gated behind
+    // CONCORD_CIVIC_BONDS — these resolve only when the kill-switch is enabled.
+    civic_bonds: new Set(["list", "get", "spillover", "ledger"]),
     sonic_glyph: new Set(["spell_to_chord"]),
     // Phase 9.4 — economy primitives (auth-gated for write ops; reads here)
     sponsorship: new Set(["list_for_user"]),
@@ -11606,6 +11694,17 @@ async function runMacro(domain, name, input, ctx) {
     };
   }
   try { fireHook(STATE, "macro:afterExecute", { domain, name, result }); } catch (e) { observe(e, "macro_hook_after_execute_main"); }
+
+  // Orchestrated Invariant Engine — live universal-contract assertion on the real
+  // output. Never throws, never blocks; ~1% sampled in prod, full in non-prod.
+  try {
+    if (process.env.CONCORD_INVARIANT_RUNTIME !== "0") {
+      const _sample = process.env.NODE_ENV !== "production" || (_macroStart % 100 === 0);
+      if (_sample && (result === null || result === undefined || typeof result !== "object")) {
+        _recordInvariantViolation(domain, name, result);
+      }
+    }
+  } catch { /* invariant check must never affect the macro path */ }
 
   // DX Platform Phase A1 — per-call billing. Logs every call to
   // macro_call_log; charges the user wallet via FEE ledger entry when
@@ -16054,6 +16153,16 @@ async function llmChat(messagesOrCtx, messagesOrOptions = {}, maybeOptions = {})
 // the registry is intentionally light (functional directives only).
 import { BRAIN_IDENTITY, composeSystemPrompt, TASK_PROMPTS } from "./lib/prompt-registry.js";
 import { makeEscalationBudget } from "./lib/affect-salience.js";
+// Adversarial-hardening: per-user token bucket for HOT raw socket events.
+// Raw socket.io events bypass the HTTP rate-limit middleware entirely; this is
+// the per-user cap on combat:attack so a scripted client can't flood the damage
+// math / broadcast fan-out faster than the bucket refills. Module-scoped so it
+// survives reconnects (keyed by userId).
+import { makeSocketRateLimiter, SOCKET_RATE_DEFAULTS } from "./lib/socket-rate-limit.js";
+const _combatSocketLimiter = makeSocketRateLimiter({
+  ratePerSec: SOCKET_RATE_DEFAULTS.combatPerSec,
+  burst: SOCKET_RATE_DEFAULTS.combatBurst,
+});
 import { noteRejection as _noteAntiCheatRejection, clearUser as _clearAntiCheatUser } from "./lib/anti-cheat-monitor.js";
 import { runChatComputePreflight } from "./lib/chat-compute-preflight.js";
 import { hydrateSession, persistChatTurn } from "./lib/chat-session-store.js";
@@ -16358,6 +16467,14 @@ async function initGhostFleet() {
     register("understanding", "list", (_ctx, input = {}) =>
       ({ ok: true, rows: und.listUnderstandings(db, input) }));
 
+    // engine_list: a NON-COLLIDING alias for the engine-understandings list.
+    // The bare "list" name is shadowed for /api/lens/run by the notes-substrate
+    // LENS_ACTION (server/domains/understanding.js), which the dispatcher prefers,
+    // so the lens's engine-facing Browse tab could never reach this engine list.
+    // The notes tab keeps "list"; the Browse tab calls "engine_list".
+    register("understanding", "engine_list", (_ctx, input = {}) =>
+      ({ ok: true, rows: und.listUnderstandings(db, input) }));
+
     register("understanding", "recompose", async (_ctx, input = {}) => {
       try {
         let dtu = input.dtu;
@@ -16561,7 +16678,13 @@ async function initGhostFleet() {
     // from ./emergent/hypothesis-engine.js. Marked with note so the
     // duplicate-registration warning in register() stays quiet.
     register("hypothesis", "propose", (_ctx, input = {}) => hypo.proposeHypothesis(input.statement, input.domain, input.priority), { note: "ghost_fleet_shadow_ok" });
-    register("hypothesis", "get", (_ctx, input = {}) => hypo.getHypothesis(input.id), { note: "ghost_fleet_shadow_ok" });
+    register("hypothesis", "get", (_ctx, input = {}) => {
+      // Always return an envelope, never raw null — getHypothesis(undefined) and
+      // unknown ids return null, which violates the macro contract (a macro must
+      // return an object). Caught by the invariant engine (V2/V3 on hypothesis.get).
+      const h = hypo.getHypothesis(input.id);
+      return h ? { ok: true, hypothesis: h } : { ok: false, error: "not_found" };
+    }, { note: "ghost_fleet_shadow_ok" });
     register("hypothesis", "list", (_ctx, input = {}) => hypo.listHypotheses(input.status), { note: "ghost_fleet_shadow_ok" });
     register("hypothesis", "add_evidence", (_ctx, input = {}) => hypo.addEvidence(input.hypothesisId, input.side, input.dtuId, input.weight, input.summary));
     register("hypothesis", "add_test", (_ctx, input = {}) => hypo.addTest(input.hypothesisId, input.description));
@@ -21135,7 +21258,24 @@ register("dtu", "create", async (ctx, input) => {
   dtu.cretiHuman = dtu.cretiHuman || renderHumanDTU(dtu);
   dtu.hash = crypto.createHash("sha256").update(title + "\n" + dtu.cretiHuman).digest("hex").slice(0, 16);
 
-  await pipelineCommitDTU(ctx, dtu, { op: 'dtu.create', allowRewrite: true });
+  // PLAYTEST #32 — phantom-success data loss: this result used to be ignored,
+  // so when the pipeline REJECTED the commit (verifier/council/dedup/template
+  // block, or a pipeline error) the macro still returned { ok:true, dtu } even
+  // though the row never landed in STATE.dtus — and an immediate dtu.get then
+  // reported "DTU not found". The headline "create a thought" verb silently lost
+  // data. Now we check the commit result and fail honestly when it didn't persist.
+  const _commit = await pipelineCommitDTU(ctx, dtu, { op: 'dtu.create', allowRewrite: true });
+  if (!_commit || _commit.ok === false) {
+    ctx.log("dtu.create.reject", `DTU not committed: ${title}`, { id: dtu.id, reason: _commit?.error });
+    return {
+      ok: false,
+      error: _commit?.error || "dtu_commit_failed",
+      reason: _commit?.reason || _commit?.error || "dtu_commit_failed",
+      proposalId: _commit?.proposalId,
+      verify: _commit?.verify,
+      council: _commit?.council,
+    };
+  }
   ctx.log("dtu.create", `Created DTU: ${title}`, { id: dtu.id, tier, tags, source, score: gate.score });
 
   // Notify event bus of DTU creation
@@ -24544,7 +24684,7 @@ register("ask", "answer", async (ctx, input) => {
   const all = dtusArray();
   const qTok = simpleTokens(query);
   const scored = all.map(d => {
-    const dTok = simpleTokens(d.title + " " + (d.tags||[]).join(" ") + " " + ((d.cretiHuman || d.creti || d.human?.summary || "")).slice(0, 400));
+    const dTok = simpleTokens(String(d.title || "") + " " + (Array.isArray(d.tags) ? d.tags : []).join(" ") + " " + String(d.cretiHuman || d.creti || d.human?.summary || "").slice(0, 400));
     const score = jaccard(qTok, dTok);
     return { d, score };
   }).sort((a,b)=>b.score-a.score);
@@ -25116,6 +25256,58 @@ registerLoreMacros(register);
 import registerCreatureMacros from "./domains/creatures.js";
 registerCreatureMacros(register);
 
+// Per-lens flawless loop (batch 1) — dedicated macro surfaces for the auction,
+// mail, and achievements lenses. Each delegates to the real lib (auctions.js /
+// player-mail.js / achievement-engine.js); no logic is duplicated. Exposes them
+// on POST /api/lens/run so the generic lens shell / ⌘K / invariant engine reach
+// them through the uniform macro path.
+import registerAuctionMacros from "./domains/auctions.js";
+registerAuctionMacros(register);
+import registerMailMacros from "./domains/mail.js";
+registerMailMacros(register);
+import registerAchievementMacros from "./domains/achievements.js";
+registerAchievementMacros(register);
+
+// Per-lens flawless loop (batch 2) — quests / lfg / training-room macro surfaces,
+// each delegating to the real lib (quest-engine.js / lfg.js / combat-frame-data.js).
+import registerQuestsMacros from "./domains/quests.js";
+registerQuestsMacros(register);
+import registerLfgMacros from "./domains/lfg.js";
+registerLfgMacros(register);
+import registerTrainingRoomMacros from "./domains/training-room.js";
+registerTrainingRoomMacros(register);
+
+// Per-lens flawless loop (batch 3) — housing / courtship / fishing macro surfaces,
+// each delegating to the real lib (player-housing.js / romance-engine.js / fishing.js).
+import registerHousingMacros from "./domains/housing.js";
+registerHousingMacros(register);
+import registerCourtshipMacros from "./domains/courtship.js";
+registerCourtshipMacros(register);
+import registerFishingMacros from "./domains/fishing.js";
+registerFishingMacros(register);
+
+// Per-lens flawless loop batch 4 — detective (Obra-Dinn deduction board) +
+// announcements (operator broadcast feed). Each delegates to its real lib
+// (lib/detective.js, lib/announcements.js); creatures was already registered
+// above. These repoint the lenses' previously-dangling lens.* manifest macros
+// at the real detective.*/announcements.* domains.
+import registerDetectiveMacros from "./domains/detective.js";
+registerDetectiveMacros(register);
+import registerAnnouncementMacros from "./domains/announcements.js";
+registerAnnouncementMacros(register);
+
+// Per-lens flawless loop batch 5 — garage (vehicle garage, delegates to
+// lib/world-vehicles.js), move-builder (move composer over lib/move-descriptor.js
+// + ED budget), and the reasoning TRACE macros (traces/trace/run over the HLR
+// engine — named export; reasoning.create_chain stays registered inline above).
+// literary was already registered (registerLiteraryMacros) so it needs no line.
+import registerGarageMacros from "./domains/garage.js";
+registerGarageMacros(register);
+import registerMoveBuilderMacros from "./domains/move-builder.js";
+registerMoveBuilderMacros(register);
+import { registerReasoningTraceMacros } from "./domains/reasoning.js";
+registerReasoningTraceMacros(register);
+
 // Maintenance — the operator surface for the autonomic nervous system. Reads the
 // Homeostasis ledger + escalation inbox + Repair Memory stats. Operator-scoped.
 import registerRepairMacros from "./domains/repair.js";
@@ -25327,6 +25519,8 @@ registerVoiceTTSMacros(register);
 // list_for_user macros for the world lens to interrogate the substrate.
 import registerLandClaimsMacros from "./domains/land-claims.js";
 registerLandClaimsMacros(register);
+import registerGearMacros from "./domains/gear.js";
+registerGearMacros(register);
 
 // Phase 5d — Magic Glyph Composition. Players compose spells from base-6
 // glyph components. The composed spell is minted as a kind='spell_recipe'
@@ -25507,6 +25701,101 @@ registerLiteraryMacros(register);
 // chains them with LRL grounding into one verifiable research loop (rnd.run).
 import registerRndMacros from "./domains/rnd.js";
 registerRndMacros(register);
+
+// Spectate lens — read-only window onto live world spectacles + the spectator
+// betting surface. Thin delegator over lib/spectator-mode.js (watcher counts),
+// lib/betting-markets.js (parimutuel SPARKS markets, migration 162), and
+// lib/goddess-broadcaster.js (dispatch flavor). list/get are public reads;
+// bet/my_positions are actor-gated. See domains/spectate.js.
+import registerSpectateMacros from "./domains/spectate.js";
+registerSpectateMacros(register);
+
+// Per-lens flawless loop batch 6 — saved (bookmark/collections workspace).
+// saved.js was UNREGISTERED and used the legacy registerLensAction convention
+// (invisible to runMacro) → every saved.* call hit unknown_macro. Rewritten to
+// the canonical register(domain,name,(ctx,input)=>...) convention; this wires it
+// onto the runMacro + /api/lens/run path. Per-user private (no publicReadDomains).
+import registerSavedMacros from "./domains/saved.js";
+registerSavedMacros(register);
+
+// Per-lens flawless loop batch 7 — photos (gallery: list/get/world/share over
+// lib/photo-gallery.js; share mints a kind='photo' DTU). foundry/ledger/codex
+// needed no line (foundry already registered; ledger + lore auto-load). Only the
+// public world feed is a public read; mine/get/share are per-user/owner-gated.
+import registerPhotosMacros from "./domains/photos.js";
+registerPhotosMacros(register);
+
+// Per-lens flawless loop batch 8 — translation + wellness. Both had the
+// saved-class bug: legacy registerLensAction convention (invisible to runMacro)
+// AND never imported here at all → every translation.*/wellness.* call hit
+// unknown_macro. Rewritten to the canonical register(domain,name,(ctx,input)=>...)
+// convention and wired onto the runMacro + /api/lens/run path. forecast +
+// civic-bonds needed no line (forecast inline-registered; civic_bonds already
+// imported). Both are per-user (translation.languages already public; wellness
+// is per-user in-memory) — no new publicReadDomains entry required for these two.
+import registerTranslationMacros from "./domains/translation.js";
+registerTranslationMacros(register);
+import registerWellnessMacros from "./domains/wellness.js";
+registerWellnessMacros(register);
+
+// Per-lens flawless loop batch 9 — cognition + insurance. Both were SAVED-CLASS
+// (legacy registerLensAction convention AND never imported here → fully dead,
+// unknown_macro on every call). insurance.js (1777 LOC) dead-wired BOTH the
+// /lenses/death-insurance pact surface AND the /lenses/insurance workbench — its
+// 65 macros (policy-*/claim-*/pact-*/fnol-*/…, none colliding with the inline
+// insurance.{write_contract,revoke,list_for_user}) are adapted to canonical
+// register via an internal shim. cognition exposes mode-compare/recommend +
+// per-user trace exports + drift alerts. sessions + crisis needed no line.
+import registerCognitionMacros from "./domains/cognition.js";
+registerCognitionMacros(register);
+import registerInsuranceActions from "./domains/insurance.js";
+registerInsuranceActions(register);
+
+// Per-lens flawless loop batch 10 — tools + sandbox + society, all SAVED-CLASS
+// (legacy registerLensAction convention AND never imported → fully dead,
+// unknown_macro on every call). Each rewritten to canonical register via an
+// internal shim (names distinct from any inline same-domain macros: sandbox's
+// catalog/saveLoadout/… don't collide with the inline B2B sandbox.provision/
+// kill/list). ghost-tracker needed no line (maps to the already-registered
+// ghost-hunt domain). tools = esign/research/compile; sandbox = combat-feel
+// loadouts/replays/telemetry; society = World Bank wb-* data explorer.
+import registerToolsActions from "./domains/tools.js";
+registerToolsActions(register);
+import registerSandboxMacros from "./domains/sandbox.js";
+registerSandboxMacros(register);
+import registerSocietyActions from "./domains/society.js";
+registerSocietyActions(register);
+
+// Per-lens flawless loop batch 11 — dx-platform + expedition-journal + mesh, all
+// SAVED-CLASS (legacy registerLensAction convention AND never imported → fully
+// dead, unknown_macro on every call). Each rewritten to canonical register via an
+// internal shim. mesh's 19 domain macros (addNode/listNodes/sendMessage/…) are
+// disjoint from the inline mesh.{status,topology,channels,send,…} substrate reads
+// — no collision (assassin-verified). All per-user (no publicReadDomains entry).
+// (code-quality is intentionally NOT here — it's already wired into MACROS by
+// domains/detectors.js's codeQualityAdapter; a direct import would double-register.)
+import registerDxPlatformActions from "./domains/dx-platform.js";
+registerDxPlatformActions(register);
+import registerExpeditionJournalActions from "./domains/expedition-journal.js";
+registerExpeditionJournalActions(register);
+import registerMeshActions from "./domains/mesh.js";
+registerMeshActions(register);
+
+// Per-lens flawless loop batch 12 — ops + sentinel + system, all SAVED-CLASS
+// (legacy registerLensAction convention AND never imported → fully dead,
+// unknown_macro on every call). Each rewritten to canonical register via an
+// internal shim. system's 14 telemetry macros (alerts/history/logs/metrics/
+// sample/traces/dashboard-*/…) are DISJOINT from the inline system.{analogize,
+// autogen,cartograph,continuity,dream,evolution,status,synthesize} introspection
+// set — no collision (assassin-verified). repair-telemetry needed no line (it's a
+// dashboard over the already-registered repair domain). All per-user (no
+// publicReadDomains entry needed).
+import registerOpsActions from "./domains/ops.js";
+registerOpsActions(register);
+import registerSentinelActions from "./domains/sentinel.js";
+registerSentinelActions(register);
+import registerSystemActions from "./domains/system.js";
+registerSystemActions(register);
 
 // Cognitive Fingerprint (#5) — thinking-style profile from real activity.
 import registerMetacogMacros from "./domains/metacog.js";
@@ -28493,7 +28782,7 @@ register("verify","feasibility", async (ctx, input) => {
   const all = dtusArray();
   const qTok = simpleTokens(query);
   const scored = all.map(d => {
-    const dTok = simpleTokens(d.title + " " + (d.tags||[]).join(" ") + " " + ((d.cretiHuman || d.creti || d.human?.summary || "")).slice(0, 400));
+    const dTok = simpleTokens(String(d.title || "") + " " + (Array.isArray(d.tags) ? d.tags : []).join(" ") + " " + String(d.cretiHuman || d.creti || d.human?.summary || "").slice(0, 400));
     const score = jaccard(qTok, dTok);
     return { d, score };
   }).sort((a,b)=>b.score-a.score);
@@ -28552,7 +28841,7 @@ register("verify","designScore", async (ctx, input) => {
   const all = dtusArray();
   const qTok = simpleTokens(spec);
   const scored = all.map(d => {
-    const dTok = simpleTokens(d.title + " " + (d.tags||[]).join(" ") + " " + ((d.cretiHuman || d.creti || d.human?.summary || "")).slice(0, 400));
+    const dTok = simpleTokens(String(d.title || "") + " " + (Array.isArray(d.tags) ? d.tags : []).join(" ") + " " + String(d.cretiHuman || d.creti || d.human?.summary || "").slice(0, 400));
     const score = jaccard(qTok, dTok);
     return { d, score };
   }).sort((a,b)=>b.score-a.score);
@@ -38866,8 +39155,9 @@ try {
 async function runMcpTool(domain, name, input, ctx) {
   const lensHandler = LENS_ACTIONS.get(`${domain}.${name}`);
   if (lensHandler) {
-    const virtualArtifact = { id: null, domain, type: "domain_action", data: input || {}, meta: {} };
-    return await lensHandler(ctx, virtualArtifact, input || {});
+    const data = _peelRedundantArtifactWrapper(input || {});
+    const virtualArtifact = { id: null, domain, type: "domain_action", data, meta: {} };
+    return await lensHandler(ctx, virtualArtifact, data);
   }
   return await runMacro(domain, name, input || {}, ctx);
 }
@@ -38965,12 +39255,14 @@ app.post("/api/lens/run", async (req, res) => {
     // Accept both macro-style {domain, name, input} and legacy lens-action
     // {domain, action, ...rest}. `name` and `action` are aliases.
     const action = body.action || body.name;
-    const rest = body.input && typeof body.input === "object"
-      ? body.input
-      : (() => {
-          const { domain: _d, action: _a, name: _n, input: _i, ...r } = body;
-          return r;
-        })();
+    const rest = _peelRedundantArtifactWrapper(
+      body.input && typeof body.input === "object"
+        ? body.input
+        : (() => {
+            const { domain: _d, action: _a, name: _n, input: _i, ...r } = body;
+            return r;
+          })()
+    );
     if (!domain || !action) return res.status(400).json({ ok: false, error: "domain and action required" });
     const ctx = makeCtx(req);
     // H1: gate the whole dispatch (lens-action AND macro paths) for anonymous callers
@@ -39005,14 +39297,35 @@ app.post("/api/lens/run", async (req, res) => {
       emitMacroLife("macro:completed", { ok: result?.ok !== false, ms: Date.now() - _lifeStartedAt });
       return res.json({ ok: true, result });
     }
-    // AI-powered catch-all: route unregistered domain actions to the utility
-    // brain (the intentional freeform path). Two hardenings (playtest #3/#25/#27):
-    //  - bound it with a hard timeout so a dead macro can't hang the worker ~96s
-    //    on brain backoff (#27, the slow_request / quality-pipeline hang #T3);
-    //  - on brain failure (e.g. Ollama down, or a never-registered ghost-fleet
-    //    macro #11), return an HONEST `unknown_macro` non-200 instead of a 200
-    //    masking it as a transient "fetch failed" success (#3/#25). When the
-    //    brain genuinely answers, freeform still returns 200 with the output.
+    // No registered macro for this (domain, action).
+    //
+    // HISTORICAL DEFECT (PLAYTEST #3/#11/#25/#27): this path used to route EVERY
+    // unregistered pair to the utility brain and return its answer as
+    // `{ ok:true, source:"utility-brain" }` — masking a typo'd or never-registered
+    // game macro as a real, successful result. That is the documented systemic
+    // root cause behind a cluster of playtest bugs (a dead macro looked like it
+    // "worked"). No legitimate lens caller depends on that masking — UniversalActions
+    // only ever invokes manifest-declared (registered) actions, and `source` there is
+    // a display default, not a dependency. So the honest default is now: FAIL FAST
+    // with `unknown_macro` and DO NOT invoke the brain.
+    //
+    // HTTP 200 + `ok:false` is deliberate: `unknown_macro` is NOT in the axios
+    // RETRY_STATUS_CODES {502,503,504}, so a dead macro degrades to a clean
+    // "unavailable" state without a client retry-storm. The frontend `lensRun`
+    // helper already surfaces `{ ok:false, error }` as a real error to callers.
+    //
+    // The intentional freeform-AI escape hatch is preserved behind an EXPLICIT
+    // opt-in (`input.__ai === true` or top-level `ai:true`) so a caller that
+    // genuinely wants a brain answer (not a macro) can still request one — but a
+    // plain game-macro call can never again be silently answered by the LLM.
+    const _wantsBrainFallback = rest?.__ai === true || body.ai === true;
+    if (!_wantsBrainFallback) {
+      emitMacroLife("macro:completed", { ok: false, ms: Date.now() - _lifeStartedAt, error: "unknown_macro" });
+      return res.status(200).json({ ok: false, error: "unknown_macro", domain, action, detail: "no registered macro for this domain/action" });
+    }
+    // Explicit freeform-AI path (opt-in only): route to the utility brain, bounded
+    // by a hard timeout so a dead/slow brain can't hang the worker ~96s on backoff
+    // (#27, the slow_request / quality-pipeline hang #T3).
     const CATCHALL_TIMEOUT_MS = Number(process.env.CONCORD_LENS_CATCHALL_TIMEOUT_MS) || 20000;
     let aiResult, _catchallTimer;
     try {
@@ -75356,6 +75669,14 @@ structuredLog("info", "phase7_self_improving_init", {
   detail: "Phase 7 macros registered: macro_dag.{validate,describe,run}, narrative.ripple_report, npc.lie_probability, deity.{compose,list,tone_vector}",
 });
 
+// Verified semantic sandwich — NL → parse (structured-output) → deterministic
+// macro DAG → verified format. Wired with runMcpTool as the DAG dispatcher so
+// the pipeline can reach lens-action macros (the math CAS) as well as MACROS,
+// and the live db for the citation-grounding verdict. The parse/format brains
+// are the real defaults inside the lib (injectable in tests).
+import registerSandwichMacros from "./domains/sandwich.js";
+registerSandwichMacros(register, { runMacro: runMcpTool, db: STATE?.db || globalThis._concordDB });
+
 // ── Phase 8.2: ActivityPub inbox + REST endpoint ─────────────────────────────
 register("federation", "inbox_receive", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
@@ -75687,12 +76008,19 @@ register("inheritance", "open_listing", (ctx, input = {}) => {
   if (!userId) return { ok: false, reason: "no_actor" };
   const { dyingNpcId, heirSlotPriceCc = 10 } = input || {};
   if (!dyingNpcId) return { ok: false, reason: "missing_npc" };
+  // Fail CLOSED on a poisoned heir-slot price BEFORE the INSERT — a
+  // finite-but-absurd 1e308 (or Infinity/NaN) would persist into the CC
+  // value column of inheritance_market_listings as a poisoned obligation.
+  const _hp = Number(heirSlotPriceCc);
+  if (!Number.isFinite(_hp) || _hp < 0 || _hp > 1e6) {
+    return { ok: false, reason: "invalid_numeric:heirSlotPriceCc" };
+  }
   try {
     const r = db.prepare(`
       INSERT INTO inheritance_market_listings
         (dying_npc_id, mentor_user_id, heir_slot_price_cc, status)
       VALUES (?, ?, ?, 'open')
-    `).run(dyingNpcId, userId, Number(heirSlotPriceCc));
+    `).run(dyingNpcId, userId, _hp);
     return { ok: true, listingId: r.lastInsertRowid, currency: "CC" };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Mentor opens an heir-slot listing for a dying NPC. Currency: CC." });
@@ -76220,6 +76548,15 @@ register("sponsorship", "create", (ctx, input = {}) => {
   if (!userId) return { ok: false, reason: "no_actor" };
   const { npcId, monthlyCc = 5, dispatchFreqHours = 168 } = input || {};
   if (!npcId || monthlyCc <= 0) return { ok: false, reason: "missing_inputs" };
+  // Fail CLOSED on poisoned numerics BEFORE the INSERT — a finite-but-absurd
+  // monthly_cc (e.g. 1e308) persists as a poisoned CC obligation, and Infinity
+  // coerces to NULL in the INTEGER NOT NULL column. Reject before either.
+  const badNumField = ["monthlyCc", "dispatchFreqHours"].find((k) => {
+    if (input[k] === undefined) return false;
+    const n = Number(input[k]);
+    return !Number.isFinite(n) || n < 0 || n > 1e6;
+  });
+  if (badNumField) return { ok: false, reason: `invalid_numeric:${badNumField}` };
   try {
     const r = db.prepare(`
       INSERT INTO npc_sponsorships (npc_id, sponsor_user_id, monthly_cc, dispatch_freq_hours)

@@ -1,0 +1,470 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "sub_worlds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sub_worlds.analytics",
+      "name": "analytics"
+    },
+    {
+      "_derived": true,
+      "domain": "sub_worlds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sub_worlds.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": false,
+      "domain": "sub_worlds",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sort": "recent"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "kind": "physics_simulator",
+            "query": "lab"
+          }
+        },
+        {
+          "expect": {
+            "error": "bad_numeric_field",
+            "ok": false
+          },
+          "input": {
+            "limit": "NaN"
+          }
+        }
+      ],
+      "inputs": {
+        "kind": {
+          "enum": [
+            "physics_simulator",
+            "research_zone",
+            "concord_substrate"
+          ],
+          "type": "string"
+        },
+        "limit": {
+          "max": 1000,
+          "min": 0,
+          "type": "number"
+        },
+        "query": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "sort": {
+          "enum": [
+            "popular",
+            "recent",
+            "favorites"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.worlds)",
+        "output.ok === false || typeof output.result.total === 'number'",
+        "output.ok === false || output.result.worlds.every(w => w.privacy === 'public' || w.can_edit === true)"
+      ],
+      "macro_id": "sub_worlds.discover",
+      "name": "discover"
+    },
+    {
+      "_derived": true,
+      "domain": "sub_worlds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sub_worlds.editor_add_block",
+      "name": "editor_add_block"
+    },
+    {
+      "_derived": true,
+      "domain": "sub_worlds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sub_worlds.editor_remove_block",
+      "name": "editor_remove_block"
+    },
+    {
+      "_derived": true,
+      "domain": "sub_worlds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sub_worlds.editor_state",
+      "name": "editor_state"
+    },
+    {
+      "_derived": false,
+      "domain": "sub_worlds",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "world not found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "world not found",
+            "ok": false
+          },
+          "input": {
+            "worldId": "does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "favorite": {
+          "type": "boolean"
+        },
+        "worldId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.favorited === 'boolean'",
+        "output.ok === false || (typeof output.result.favorites === 'number' && output.result.favorites >= 0)"
+      ],
+      "macro_id": "sub_worlds.favorite",
+      "name": "favorite"
+    },
+    {
+      "_derived": true,
+      "domain": "sub_worlds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sub_worlds.invite_editor",
+      "name": "invite_editor"
+    },
+    {
+      "_derived": false,
+      "domain": "sub_worlds",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "status": "active"
+          }
+        }
+      ],
+      "inputs": {
+        "status": {
+          "enum": [
+            "active",
+            "paused",
+            "archived"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.worlds)",
+        "output.ok === false || output.result.worlds.every(w => typeof w.world_id === 'string')",
+        "output.ok === false || output.result.worlds.every(w => w.is_owner === true)"
+      ],
+      "macro_id": "sub_worlds.list",
+      "name": "list"
+    },
+    {
+      "_derived": false,
+      "domain": "sub_worlds",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.worlds)",
+        "output.ok === false || output.result.worlds.every(w => typeof w.world_id === 'string')",
+        "output.ok === false || output.result.worlds.every(w => w.status !== 'archived')"
+      ],
+      "macro_id": "sub_worlds.my_favorites",
+      "name": "my_favorites"
+    },
+    {
+      "_derived": true,
+      "domain": "sub_worlds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sub_worlds.remove_editor",
+      "name": "remove_editor"
+    },
+    {
+      "_derived": false,
+      "domain": "sub_worlds",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "world not found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "world not found",
+            "ok": false
+          },
+          "input": {
+            "status": "paused",
+            "worldId": "does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "status": {
+          "enum": [
+            "active",
+            "paused"
+          ],
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.world && ['active','paused'].includes(output.result.world.status))"
+      ],
+      "macro_id": "sub_worlds.set_status",
+      "name": "set_status"
+    },
+    {
+      "_derived": false,
+      "domain": "sub_worlds",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "kind": "physics_simulator",
+            "name": "Gravity Lab"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "kind": "physics_simulator",
+            "name": "Ok"
+          }
+        },
+        {
+          "expect": {
+            "error": "bad_numeric_field",
+            "ok": false
+          },
+          "input": {
+            "capacity": "NaN",
+            "name": "Bad Capacity"
+          }
+        }
+      ],
+      "inputs": {
+        "capacity": {
+          "max": 200,
+          "min": 1,
+          "type": "number"
+        },
+        "description": {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        "forgeAppDtuId": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "physics_simulator",
+            "research_zone",
+            "concord_substrate"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "privacy": {
+          "enum": [
+            "public",
+            "unlisted",
+            "private"
+          ],
+          "type": "string"
+        },
+        "thumbnail": {
+          "maxLength": 600,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.world && typeof output.result.world.world_id === 'string')",
+        "output.ok === false || output.result.world.name.length >= 3",
+        "output.ok === false || (output.result.world.capacity >= 1 && output.result.world.capacity <= 200)",
+        "output.ok === false || ['physics_simulator','research_zone','concord_substrate'].includes(output.result.world.kind)",
+        "output.ok === false || ['public','unlisted','private'].includes(output.result.world.privacy)"
+      ],
+      "macro_id": "sub_worlds.spawn",
+      "name": "spawn"
+    },
+    {
+      "_derived": true,
+      "domain": "sub_worlds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sub_worlds.update_settings",
+      "name": "update_settings"
+    },
+    {
+      "_derived": false,
+      "domain": "sub_worlds",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "world not found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "world not found",
+            "ok": false
+          },
+          "input": {
+            "worldId": "does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "worldId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.travel && output.result.travel.destination_world_id === output.result.travel.destination_world_id)",
+        "output.ok === false || (typeof output.result.visits === 'number' && output.result.visits >= 1)",
+        "output.ok === false || (typeof output.result.unique_visitors === 'number' && output.result.unique_visitors >= 1)"
+      ],
+      "macro_id": "sub_worlds.visit",
+      "name": "visit"
+    }
+  ],
+  "domain": "sub_worlds",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 15
+}

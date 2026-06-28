@@ -1,0 +1,19 @@
+{
+  "macro_id": "personas.stats",
+  "domain": "personas",
+  "name": "stats",
+  "inputs": {
+    "id": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.stats && typeof output.stats === 'object')",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "id": "__no_such_persona__" }, "expect": { "ok": false } }
+  ],
+  "_note": "Live boot reality: the reachable personas.stats is the Z4 thin wrapper (reads input.id; returns { ok, stats:{uses,installs,lastUsedAt,createdAt} }). No persona seeded -> ok:false (never no_db / never throws). The richer stats (rating distribution + isAuthor + chatCount) live in the currently-unwired server/domains/personas.js."
+}

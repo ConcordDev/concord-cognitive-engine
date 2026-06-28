@@ -1,0 +1,38 @@
+{
+  "macro_id": "deity.pilgrimage",
+  "domain": "deity",
+  "name": "pilgrimage",
+  "inputs": {
+    "deityId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 64
+    },
+    "originPeer": {
+      "type": "string",
+      "maxLength": 120
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.deityId !== undefined && output.deityId !== null)",
+    "output.ok === false || (typeof output.newPilgrimCount === 'number' && output.newPilgrimCount >= 1)",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": false,
+        "reason": "missing_deityId"
+      }
+    },
+    {
+      "input": { "deityId": "does-not-exist-9999" },
+      "expect": {
+        "ok": false
+      }
+    }
+  ]
+}

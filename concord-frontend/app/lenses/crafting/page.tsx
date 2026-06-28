@@ -526,6 +526,7 @@ function MineTab({ onChanged }: { onChanged: () => void }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search recipes…"
+            aria-label="Search recipes"
             className="bg-transparent outline-none text-sm flex-1 placeholder:text-white/30"
           />
           {search && (
@@ -546,11 +547,25 @@ function MineTab({ onChanged }: { onChanged: () => void }) {
         </select>
       </div>
 
-      {error && <p className="text-sm text-red-400 mb-3">{error}</p>}
+      {error && (
+        <div role="alert" className="flex items-center justify-between gap-3 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2 mb-3">
+          <span className="text-sm text-red-300 inline-flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5" /> {error}
+          </span>
+          <button
+            onClick={() => { load(); loadFavorites(); }}
+            className="text-xs px-2 py-1 rounded border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-200 inline-flex items-center gap-1"
+          >
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
+        </div>
+      )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-white/60"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
-      ) : filtered.length === 0 ? (
+        <div role="status" aria-live="polite" className="flex items-center gap-2 text-white/60">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+        </div>
+      ) : error ? null : filtered.length === 0 ? (
         <p className="text-white/50 text-sm">
           {mine.length === 0 ? 'No personal recipes yet. Author one to get started.' : 'No matches.'}
         </p>
@@ -800,11 +815,25 @@ function ForgeTab({ onCrafted }: { onCrafted: () => void }) {
         </div>
       )}
 
-      {error && <p className="text-sm text-red-400 my-2">{error}</p>}
+      {error && (
+        <div role="alert" className="flex items-center justify-between gap-3 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2 my-2">
+          <span className="text-sm text-red-300 inline-flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5" /> {error}
+          </span>
+          <button
+            onClick={load}
+            className="text-xs px-2 py-1 rounded border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-200 inline-flex items-center gap-1"
+          >
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
+        </div>
+      )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-white/60 mt-3"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
-      ) : recipes.length === 0 ? (
+        <div role="status" aria-live="polite" className="flex items-center gap-2 text-white/60 mt-3">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+        </div>
+      ) : error ? null : recipes.length === 0 ? (
         <div className="bg-white/5 border border-white/10 rounded-lg p-4 mt-3 text-sm text-white/60">
           <p className="mb-2 inline-flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-amber-400" /> No craftable recipes yet.
@@ -999,6 +1028,7 @@ function BrowseTab({ onPurchased }: { onPurchased: () => void }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search marketplace…"
+            aria-label="Search marketplace"
             className="bg-transparent outline-none text-sm flex-1 placeholder:text-white/30"
           />
           {search && (
@@ -1028,11 +1058,25 @@ function BrowseTab({ onPurchased }: { onPurchased: () => void }) {
         </select>
       </div>
 
-      {error && <p className="text-sm text-red-400 mb-3">{error}</p>}
+      {error && (
+        <div role="alert" className="flex items-center justify-between gap-3 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2 mb-3">
+          <span className="text-sm text-red-300 inline-flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5" /> {error}
+          </span>
+          <button
+            onClick={load}
+            className="text-xs px-2 py-1 rounded border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-200 inline-flex items-center gap-1"
+          >
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
+        </div>
+      )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-white/60"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
-      ) : filtered.length === 0 ? (
+        <div role="status" aria-live="polite" className="flex items-center gap-2 text-white/60">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+        </div>
+      ) : error ? null : filtered.length === 0 ? (
         <p className="text-white/50 text-sm">
           {items.length === 0 ? 'No recipes listed yet.' : 'No matches.'}
         </p>
@@ -1146,10 +1190,24 @@ function SkillsTab({ onChanged }: { onChanged: () => void }) {
         </button>
       </div>
 
-      {error && <p className="text-sm text-red-400 mb-3">{error}</p>}
+      {error && (
+        <div role="alert" className="flex items-center justify-between gap-3 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2 mb-3">
+          <span className="text-sm text-red-300 inline-flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5" /> {error}
+          </span>
+          <button
+            onClick={load}
+            className="text-xs px-2 py-1 rounded border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-200 inline-flex items-center gap-1"
+          >
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
+        </div>
+      )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-white/60"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
+        <div role="status" aria-live="polite" className="flex items-center gap-2 text-white/60">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+        </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div>

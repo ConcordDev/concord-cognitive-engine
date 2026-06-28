@@ -1,0 +1,28 @@
+{
+  "macro_id": "carpentry.cutListOptimize",
+  "domain": "carpentry",
+  "name": "cutListOptimize",
+  "inputs": {
+    "stockLength": { "type": "number", "min": 1, "max": 100000 },
+    "kerf": { "type": "number", "min": 0, "max": 10 },
+    "stockCostPerBoard": { "type": "number", "min": 0, "max": 100000 },
+    "cuts": { "type": "array", "maxLength": 5000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.boardsNeeded === 'number' && Number.isFinite(output.result.boardsNeeded) && output.result.boardsNeeded >= 0)",
+    "output.ok === false || (typeof output.result.wastePct === 'number' && Number.isFinite(output.result.wastePct) && output.result.wastePct >= 0 && output.result.wastePct <= 100)",
+    "output.ok === false || (Number.isFinite(output.result.totalCutLength) && output.result.totalCutLength >= 0)",
+    "output.ok === false || Array.isArray(output.result.layout)",
+    "output.ok === false || output.result.materialCost === null || (typeof output.result.materialCost === 'number' && Number.isFinite(output.result.materialCost))",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "stockLength": 96, "kerf": 0, "cuts": [{ "label": "rail", "length": 48, "quantity": 4 }], "stockCostPerBoard": 10 }, "expect": { "ok": true } },
+    { "input": { "cuts": [] }, "expect": { "ok": false } },
+    { "input": { "stockLength": 96, "cuts": [{ "label": "beam", "length": 120 }] }, "expect": { "ok": false } },
+    { "input": { "stockLength": "x", "kerf": null, "stockCostPerBoard": "y", "cuts": [{ "length": 40, "quantity": 2 }] }, "expect": { "ok": false } }
+  ],
+  "_note": "First-fit-decreasing bin-packing. Sanitises every numeric via cpNum (NaN/Infinity/string → 0); stockLength floors to 1, kerf/cost to >=0. A cut longer than the (sanitised) stock rejects with 'exceeds stock length'. An empty/all-non-positive cut set rejects with 'no valid cuts'. materialCost is null (never $0) when no per-board cost is supplied. No NaN ever leaks into boardsNeeded/wastePct/totalCutLength/layout. Pure deterministic compute, no STATE, no_db never."
+}

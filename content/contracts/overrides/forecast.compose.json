@@ -1,0 +1,22 @@
+{
+  "macro_id": "forecast.compose",
+  "domain": "forecast",
+  "name": "compose",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 120 },
+    "persist": { "type": "boolean" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.forecast && typeof output.forecast === 'object')",
+    "output.ok === false || output.forecast.window_hours === 24",
+    "output.ok === false || Array.isArray(output.forecast.factions)",
+    "output.ok === false || Array.isArray(output.forecast.events)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "worldId": "concordia-hub", "persist": true }, "expect": { "ok": true } }
+  ],
+  "_note": "forecast.compose folds live world state (embodied climate baselines + faction strategy + forward-sim + drift) into a 24h forecast and (default persist:true) writes it to world_forecasts. World-public — with a live migrated DB + the assassin owner actor, {} returns ok:true and a real forecast object (window_hours:24; weather is null on a barren world, never invented). Never no_db."
+}

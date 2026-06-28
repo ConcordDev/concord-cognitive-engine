@@ -1,0 +1,21 @@
+{
+  "macro_id": "game-design.loop-analysis",
+  "domain": "game-design",
+  "name": "loop-analysis",
+  "inputs": {
+    "gameId": { "type": "string", "required": true, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.loops)",
+    "output.ok === false || output.result.loops.every(l => Number.isFinite(l.netDelta))",
+    "output.ok === false || output.result.loops.every(l => typeof l.verdict === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": { "gameId": "anything" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "gameId": "<script>alert(1)</script>" }, "expect": { "ok": true } }
+  ],
+  "_note": "game-design.loop-analysis sums each modelled core loop's step deltas into a finite netDelta + a balance verdict (balanced / rewarding / draining / leaky / stalling). LENS_ACTIONS handler, 3-arg params path, in-memory per-user, read-only. DEGRADE-GRACEFUL: a game with no loops (or an unknown/empty gameId) returns ok:true with loops:[] + a 'Model core loops…' guidance message — never throws, never no_db. step deltas pass through gdNum so a poisoned delta resolves to 0, keeping netDelta finite. No DB / LLM / network. Not driven by the assassin (LENS_ACTIONS, no derived base); pinned by server/tests/game-design-lens-macros.test.js (delta summation + leaky verdict + empty-store guidance)."
+}

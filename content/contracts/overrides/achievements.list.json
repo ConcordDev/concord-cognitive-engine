@@ -1,0 +1,22 @@
+{
+  "macro_id": "achievements.list",
+  "domain": "achievements",
+  "name": "list",
+  "inputs": {
+    "category": { "type": "string", "enum": ["all", "combat", "economy", "exploration", "social", "mastery", "general"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "Array.isArray(output.catalog)",
+    "output.catalog.every(a => typeof a.id === 'string' && a.id.length > 0)",
+    "output.catalog.every(a => ['bronze','silver','gold','legendary'].includes(a.rarity))",
+    "output.catalog.every(a => typeof a.rewardSparks === 'number' && a.rewardSparks >= 0)",
+    "output.catalog.every(a => typeof a.hidden === 'boolean')",
+    "(!input || !input.category || input.category === 'all') || output.catalog.every(a => a.category === input.category)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "category": "combat" }, "expect": { "ok": true } }
+  ]
+}

@@ -3,27 +3,52 @@
 // safety compliance, change order tracking, progress reporting.
 
 export default function registerConstructionActions(registerLensAction) {
+  // Calculator inputs arrive as `artifact.data`. Some callers (the GC bench
+  // panel) post `{ input: { artifact: { data } } }`, which the /api/lens/run
+  // dispatcher unwraps to virtualArtifact.data = { artifact: { data } } — a
+  // double-wrap that silently strands every calculator on its empty default
+  // (the carpentry-sibling dead-calculator class). `calcData(artifact)` peels
+  // exactly one such redundant layer so the calculator reads the real payload
+  // whether the caller single- or double-wrapped.
+  const calcData = (artifact) => {
+    const d = artifact?.data;
+    if (d && typeof d === "object" && d.artifact && typeof d.artifact === "object" && d.artifact.data && typeof d.artifact.data === "object") {
+      return d.artifact.data;
+    }
+    return d || {};
+  };
+  // Fail-CLOSED numeric coercion: parseFloat lets 'Infinity'/'1e999' through as
+  // a non-finite value, which would propagate Infinity/NaN through the cost
+  // roll-ups and TRIR. finNum collapses any non-finite (or absurd-magnitude)
+  // input to a fallback so every downstream total stays FINITE.
+  const finNum = (v, fallback = 0) => {
+    const n = typeof v === "number" ? v : parseFloat(v);
+    return Number.isFinite(n) && Math.abs(n) < 1e15 ? n : fallback;
+  };
+
   registerLensAction("construction", "takeoffEstimate", (ctx, artifact, _params) => {
-    const items = artifact.data?.lineItems || [];
+    const cdata = calcData(artifact);
+    const items = cdata.lineItems || [];
     if (items.length === 0) return { ok: true, result: { message: "Add line items with quantity, unit, and unit cost." } };
     const estimated = items.map(item => {
-      const qty = parseFloat(item.quantity) || 0;
-      const unitCost = parseFloat(item.unitCost) || 0;
-      const wastePercent = parseFloat(item.wastePercent) || 10;
+      const qty = finNum(item.quantity, 0);
+      const unitCost = finNum(item.unitCost, 0);
+      const wastePercent = Number.isFinite(finNum(item.wastePercent, NaN)) ? finNum(item.wastePercent, 10) : 10;
       const adjustedQty = qty * (1 + wastePercent / 100);
       return { description: item.description || item.name, quantity: qty, unit: item.unit || "each", unitCost, wastePercent, adjustedQuantity: Math.ceil(adjustedQty), lineCost: Math.round(adjustedQty * unitCost * 100) / 100 };
     });
     const subtotalMaterials = estimated.reduce((s, e) => s + e.lineCost, 0);
-    const laborPercent = parseFloat(artifact.data?.laborPercent) || 40;
+    const laborPercent = Number.isFinite(finNum(cdata.laborPercent, NaN)) ? finNum(cdata.laborPercent, 40) : 40;
     const laborCost = Math.round(subtotalMaterials * (laborPercent / 100) * 100) / 100;
     const overhead = Math.round((subtotalMaterials + laborCost) * 0.15 * 100) / 100;
     const profit = Math.round((subtotalMaterials + laborCost + overhead) * 0.10 * 100) / 100;
     const total = Math.round((subtotalMaterials + laborCost + overhead + profit) * 100) / 100;
-    return { ok: true, result: { lineItems: estimated, subtotalMaterials: Math.round(subtotalMaterials * 100) / 100, laborCost, overhead, profit, grandTotal: total, costPerSqFt: parseFloat(artifact.data?.squareFootage) > 0 ? Math.round(total / parseFloat(artifact.data.squareFootage) * 100) / 100 : null } };
+    const sqft = finNum(cdata.squareFootage, 0);
+    return { ok: true, result: { lineItems: estimated, subtotalMaterials: Math.round(subtotalMaterials * 100) / 100, laborCost, overhead, profit, grandTotal: total, costPerSqFt: sqft > 0 ? Math.round(total / sqft * 100) / 100 : null } };
   });
 
   registerLensAction("construction", "criticalPath", (ctx, artifact, _params) => {
-    const tasks = artifact.data?.tasks || [];
+    const tasks = calcData(artifact).tasks || [];
     if (tasks.length === 0) return { ok: true, result: { message: "Add tasks with duration and dependencies." } };
     const taskMap = {};
     tasks.forEach(t => { taskMap[t.name || t.id] = { name: t.name || t.id, duration: parseInt(t.duration) || 1, deps: t.dependencies || [], earlyStart: 0, earlyFinish: 0, lateStart: 0, lateFinish: 0, slack: 0 }; });
@@ -47,7 +72,7 @@ export default function registerConstructionActions(registerLensAction) {
   });
 
   registerLensAction("construction", "safetyCompliance", (ctx, artifact, _params) => {
-    const data = artifact.data || {};
+    const data = calcData(artifact);
     const checklistItems = data.safetyChecklist || [];
     const incidents = data.incidents || [];
     const workers = parseInt(data.workerCount) || 1;
@@ -60,11 +85,11 @@ export default function registerConstructionActions(registerLensAction) {
   });
 
   registerLensAction("construction", "progressReport", (ctx, artifact, _params) => {
-    const phases = artifact.data?.phases || [];
+    const phases = calcData(artifact).phases || [];
     if (phases.length === 0) return { ok: true, result: { message: "Add project phases with planned vs actual progress." } };
     const analyzed = phases.map(p => {
-      const planned = parseFloat(p.plannedPercent) || 0;
-      const actual = parseFloat(p.actualPercent) || 0;
+      const planned = finNum(p.plannedPercent, 0);
+      const actual = finNum(p.actualPercent, 0);
       const variance = actual - planned;
       return { phase: p.name, plannedPercent: planned, actualPercent: actual, variance, status: variance >= 0 ? "on-track" : variance >= -10 ? "slightly-behind" : "behind-schedule" };
     });
@@ -601,7 +626,7 @@ export default function registerConstructionActions(registerLensAction) {
   // ── Gantt timeline — draws the CPM result as schedule bars ──
   registerLensAction("construction", "ganttSchedule", (ctx, artifact, params = {}) => {
     try {
-      const tasks = (artifact?.data?.tasks) || params.tasks || [];
+      const tasks = calcData(artifact).tasks || params.tasks || [];
       if (tasks.length === 0) return { ok: true, result: { message: "Add tasks with duration and dependencies.", bars: [] } };
       const taskMap = {};
       tasks.forEach(t => { taskMap[t.name || t.id] = { name: t.name || t.id, duration: parseInt(t.duration) || 1, deps: t.dependencies || [], earlyStart: 0, earlyFinish: 0, lateStart: 0, lateFinish: 0, slack: 0 }; });
@@ -618,7 +643,10 @@ export default function registerConstructionActions(registerLensAction) {
         t.lateStart = t.lateFinish - t.duration;
         t.slack = t.lateStart - t.earlyStart;
       }
-      const start = params.startDate ? new Date(params.startDate) : new Date();
+      // Guard against a malformed startDate (Invalid Date would throw on
+      // .toISOString()); fall back to now so the schedule still renders.
+      let start = params.startDate ? new Date(params.startDate) : new Date();
+      if (Number.isNaN(start.getTime())) start = new Date();
       const dayMs = 86400000;
       const bars = order.map((t, i) => ({
         id: `gt_${i}`, name: t.name, duration: t.duration,

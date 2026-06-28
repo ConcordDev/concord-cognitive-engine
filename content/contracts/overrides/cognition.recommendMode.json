@@ -1,0 +1,25 @@
+{
+  "macro_id": "cognition.recommendMode",
+  "domain": "cognition",
+  "name": "recommendMode",
+  "inputs": {
+    "question": { "type": "string", "maxLength": 2000 },
+    "claim": { "type": "string", "maxLength": 2000 },
+    "topic": { "type": "string", "maxLength": 2000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.recommended === 'string')",
+    "output.ok === false || ['deductive','inductive','abductive','adversarial','analogical','temporal','counterfactual'].includes(output.result.recommended)",
+    "output.ok === false || (typeof output.result.confidence === 'number' && output.result.confidence >= 0 && output.result.confidence <= 1)",
+    "output.ok === false || (Array.isArray(output.result.ranking) && output.result.ranking.length === 7)",
+    "output.ok === false || Array.isArray(output.result.signals)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "question_required" } },
+    { "input": { "question": "What if the premise were false?" }, "expect": { "ok": true } },
+    { "input": { "question": "Why did the market crash?" }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure-compute rule-based classifier over a question's surface form — no LLM, no DB, no seed data. Empty input fails-closed with 'question_required'. Runs identically for the macro-assassin's internal owner actor. The 7-way ranking is always returned; 'recommended' is one of the 7 HLR modes."
+}

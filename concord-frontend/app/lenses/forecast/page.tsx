@@ -56,13 +56,26 @@ export default function ForecastPage() {
 
   const [worldId, setWorldId] = useState('concordia-hub');
   const [forecast, setForecast] = useState<Forecast | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
   const [tab, setTab] = useState<Tab>('now');
 
+  // The forecast.* macros return their payload at the top level
+  // ({ ok, worldId, forecast }); lensRun unwraps the { ok, result } envelope so
+  // r.data.result IS that payload. We surface the four canonical UX states:
+  // loading (role=status), error (role=alert + Retry), empty, populated.
   const refresh = async () => {
+    setLoading(true);
+    setError(null);
     const r = await lensRun<{ ok: boolean; forecast: Forecast | null }>('forecast', 'recent', { worldId });
-    if (r.data?.ok && r.data.result?.ok) setForecast(r.data.result.forecast || null);
-    else setForecast(null);
+    if (r.data?.ok && r.data.result?.ok) {
+      setForecast(r.data.result.forecast || null);
+    } else {
+      setForecast(null);
+      if (r.data?.error) setError(r.data.error);
+    }
+    setLoading(false);
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable inline arrow; worldId is the only legitimate change trigger
@@ -70,8 +83,13 @@ export default function ForecastPage() {
 
   const composeFresh = async () => {
     setComposing(true);
+    setError(null);
     const r = await lensRun<{ ok: boolean; forecast: Forecast | null }>('forecast', 'compose', { worldId, persist: true });
-    if (r.data?.ok && r.data.result?.ok) setForecast(r.data.result.forecast || null);
+    if (r.data?.ok && r.data.result?.ok) {
+      setForecast(r.data.result.forecast || null);
+    } else if (r.data?.error) {
+      setError(r.data.error);
+    }
     setComposing(false);
   };
 
@@ -116,7 +134,21 @@ export default function ForecastPage() {
         </nav>
 
         {tab === 'now' && (
-          !forecast ? (
+          loading ? (
+            <div role="status" aria-live="polite" className="text-center text-zinc-400 italic py-12 border border-zinc-800 rounded-xl">
+              <span className="inline-block h-3 w-3 mr-2 rounded-full bg-indigo-500 animate-pulse" aria-hidden="true" />
+              Loading the latest forecast…
+            </div>
+          ) : error ? (
+            <div role="alert" className="text-center py-12 border border-rose-800/60 bg-rose-950/20 rounded-xl">
+              <p className="text-rose-300 text-sm">Couldn&apos;t load the forecast.</p>
+              <p className="text-[11px] text-rose-400/70 font-mono mt-1 break-all px-4">{error}</p>
+              <button
+                type="button" onClick={() => void refresh()}
+                className="mt-4 bg-rose-800 hover:bg-rose-700 text-white text-xs px-4 py-2 rounded font-medium focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >Retry</button>
+            </div>
+          ) : !forecast ? (
             <div className="text-center text-zinc-400 italic py-12 border border-zinc-800 rounded-xl">
               No forecast yet. Compose one above.
             </div>

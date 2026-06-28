@@ -1,0 +1,24 @@
+{
+  "macro_id": "cooking.nutritionEstimate",
+  "domain": "cooking",
+  "name": "nutritionEstimate",
+  "inputs": {
+    "servings": { "type": "number", "required": false },
+    "ingredients": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.totalCalories === 'number' && Number.isFinite(output.result.totalCalories) && output.result.totalCalories >= 0)",
+    "output.ok === false || (typeof output.result.perServing === 'number' && Number.isFinite(output.result.perServing))",
+    "output.ok === false || (output.result.macros && typeof output.result.macros.protein === 'string' && typeof output.result.macros.fat === 'string' && typeof output.result.macros.carbs === 'string')",
+    "output.ok === false || output.result.servings >= 1"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "servings": 2, "ingredients": [{ "name": "flour", "grams": 200 }, { "name": "butter", "grams": 100 }] }, "expect": { "ok": true } },
+    { "input": { "servings": 0, "ingredients": [{ "name": "moon dust", "grams": 1e308 }] }, "expect": { "ok": true } },
+    { "input": { "ingredients": "not-an-array" }, "expect": { "ok": true } }
+  ],
+  "_note": "cooking.nutritionEstimate sums per-100g nutrient averages over a small ingredient db (flour/sugar/butter/egg/milk/chicken/rice/oil/cheese/potato), scaled by grams, then divides by servings (defaults 1). Unmatched ingredients contribute zero (degrade-graceful). Path-3 LENS_ACTIONS macro; tolerates the double-wrapped { artifact: { data } } client body. Estimates only — never claims authoritative nutrition (usda-search / recipe-nutrition-compute are the real-data paths). No DB/network, never throws. Pinned by server/tests/cooking-lens-macros.test.js."
+}

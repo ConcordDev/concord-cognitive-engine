@@ -1,0 +1,22 @@
+{
+  "macro_id": "calendar.appointment-book",
+  "domain": "calendar",
+  "name": "appointment-book",
+  "inputs": {
+    "scheduleId": { "type": "string", "maxLength": 80 },
+    "slotStart": { "type": "string" },
+    "bookerName": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.booking && typeof output.result.booking.id === 'string')",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "scheduleId": "ghost_999", "slotStart": "2026-06-01T09:00:00", "bookerName": "X" }, "expect": { "ok": false } },
+    { "input": { "scheduleId": "ghost_999", "slotStart": "garbage", "bookerName": "X" }, "expect": { "ok": false } }
+  ],
+  "_note": "calendar.appointment-book is a LENS_ACTIONS (PATH 3) handler that reserves a slot on the caller's per-user appointment schedule. FAIL-CLOSED: a missing/unknown scheduleId rejects ('schedule not found'); a slotStart not matching ^YYYY-MM-DDThh:mm:ss$ rejects ('valid slotStart required'); an empty bookerName rejects; a slot already in schedule.bookings rejects ('slot already booked') — so double-booking is impossible. Cancelling a booking restores availability. Per-user isolation: the schedule is looked up in s.appointmentSchedules.get(aidCal(ctx)), so another user can neither see nor book it. macro-assassin drives runMacro (no LENS_ACTIONS resolution); behavioral suite is the driver. No CC, no network."
+}

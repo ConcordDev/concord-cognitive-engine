@@ -1,0 +1,19 @@
+{
+  "macro_id": "agriculture.identify-pest",
+  "domain": "agriculture",
+  "name": "identify-pest",
+  "inputs": {
+    "crop": { "type": "string", "maxLength": 40 },
+    "observation": { "type": "string", "maxLength": 1000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.candidates)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "crop": "corn", "observation": "black raised tar spot fungal lesions" }, "expect": { "ok": true } },
+    { "input": { "crop": "corn" }, "expect": { "ok": false } }
+  ]
+}

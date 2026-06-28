@@ -1,0 +1,17 @@
+{
+  "macro_id": "sub_worlds.my_favorites",
+  "domain": "sub_worlds",
+  "name": "my_favorites",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.worlds)",
+    "output.ok === false || output.result.worlds.every(w => typeof w.world_id === 'string')",
+    "output.ok === false || output.result.worlds.every(w => w.status !== 'archived')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "sub_worlds.my_favorites lists the calling actor's favorited worlds from in-memory STATE, sorted by popularity desc, excluding archived worlds. A fresh actor has none ⇒ ok:true with an empty array. Live STATE + actor — never no_db."
+}

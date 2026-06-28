@@ -1,0 +1,27 @@
+{
+  "macro_id": "chem.molecular-weight",
+  "domain": "chem",
+  "name": "molecular-weight",
+  "inputs": {
+    "formula": { "type": "string", "required": true, "maxLength": 100 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.molecularWeight)",
+    "output.ok === false || output.result.molecularWeight > 0",
+    "output.ok === false || output.result.units === 'g/mol'",
+    "output.ok === false || Array.isArray(output.result.components)",
+    "output.ok === false || output.result.components.every(function(c){ return Number.isFinite(c.contribution) && Number.isFinite(c.percentMass); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "formula": "H2O" }, "expect": { "ok": true } },
+    { "input": { "formula": "C6H12O6" }, "expect": { "ok": true } },
+    { "input": { "formula": "Ca(OH)2" }, "expect": { "ok": true } },
+    { "input": { "formula": "" }, "expect": { "ok": false } },
+    { "input": { "formula": "Xx2" }, "expect": { "ok": false } },
+    { "input": { "formula": "C99H99" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (registerLensAction). Dispatch key 'chem.molecular-weight'; invoked as handler(ctx, virtualArtifact, input) with virtualArtifact.data===input. Deterministic pure compute from a static PERIODIC_TABLE; molecularWeight is rounded but always finite and > 0 for any successful parse. Unknown elements and empty/over-length formulas fail-CLOSED with a string error. NOT assassin-driven (not in the MACROS map); authored spec pinned by server/tests/chem-lens-macros.test.js + server/tests/chem-domain-parity.test.js."
+}

@@ -8,12 +8,16 @@ import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerOpsActions from "../domains/ops.js";
 
+// ops.js now registers through the canonical 2-arg `register(domain, name,
+// (ctx, input) => ...)` convention (saved-class fix); the legacy
+// `(ctx, artifact, params)` shape is adapted internally by the module's shim.
+// Drive each macro the way runMacro would — a (ctx, input) call.
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
-function call(name, ctx, params = {}) {
+function call(name, ctx, input = {}) {
   const fn = ACTIONS.get(`ops.${name}`);
   assert.ok(fn, `ops.${name} not registered`);
-  return fn(ctx, { id: null, data: {}, meta: {} }, params);
+  return fn(ctx, input);
 }
 
 before(() => { registerOpsActions(register); });

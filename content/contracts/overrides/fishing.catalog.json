@@ -1,0 +1,20 @@
+{
+  "macro_id": "fishing.catalog",
+  "domain": "fishing",
+  "name": "catalog",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 64 },
+    "biome": { "type": "string", "maxLength": 32 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.fish)",
+    "output.ok === false || output.fish.every(f => typeof f.id === 'string' && f.id.length > 0)",
+    "output.ok === false || output.fish.every(f => typeof f.rarity === 'string')",
+    "output.ok === false || output.fish.every(f => typeof f.biome === 'string' || typeof f.subBiome === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": true } }
+  ]
+}

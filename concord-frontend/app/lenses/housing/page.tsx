@@ -44,6 +44,8 @@ interface HouseDetail extends HouseRow {
   rooms: RoomDetail[];
 }
 
+type LoadState = 'idle' | 'loading' | 'ready' | 'error';
+
 export default function HousingLensPage() {
   const [tab, setTab] = useState<'mine' | 'visit'>('mine');
   const [myHouses, setMyHouses] = useState<HouseRow[]>([]);
@@ -52,6 +54,10 @@ export default function HousingLensPage() {
   const [publicHouses, setPublicHouses] = useState<HouseRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
+  const [mineState, setMineState] = useState<LoadState>('idle');
+  const [mineError, setMineError] = useState<string | null>(null);
+  const [publicState, setPublicState] = useState<LoadState>('idle');
+  const [publicError, setPublicError] = useState<string | null>(null);
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
     setFlash({ kind, msg });
@@ -59,19 +65,41 @@ export default function HousingLensPage() {
   }, []);
 
   const refreshMine = useCallback(async () => {
+    setMineState('loading');
+    setMineError(null);
     try {
       const r = await fetch('/api/housing/mine', { credentials: 'include' });
       const j = await r.json();
-      if (j.ok) setMyHouses(j.houses || []);
-    } catch { /* network */ }
+      if (!r.ok || !j.ok) {
+        setMineError(j?.error || j?.reason || `Request failed (${r.status})`);
+        setMineState('error');
+        return;
+      }
+      setMyHouses(j.houses || []);
+      setMineState('ready');
+    } catch (e) {
+      setMineError(e instanceof Error ? e.message : 'Network error');
+      setMineState('error');
+    }
   }, []);
 
   const refreshPublic = useCallback(async (wid: string) => {
+    setPublicState('loading');
+    setPublicError(null);
     try {
       const r = await fetch(`/api/housing/world/${encodeURIComponent(wid)}/public`);
       const j = await r.json();
-      if (j.ok) setPublicHouses(j.houses || []);
-    } catch { /* network */ }
+      if (!r.ok || !j.ok) {
+        setPublicError(j?.error || j?.reason || `Request failed (${r.status})`);
+        setPublicState('error');
+        return;
+      }
+      setPublicHouses(j.houses || []);
+      setPublicState('ready');
+    } catch (e) {
+      setPublicError(e instanceof Error ? e.message : 'Network error');
+      setPublicState('error');
+    }
   }, []);
 
   const loadHouseDetail = useCallback(async (houseId: string) => {
@@ -79,8 +107,11 @@ export default function HousingLensPage() {
       const r = await fetch(`/api/housing/${encodeURIComponent(houseId)}`);
       const j = await r.json();
       if (j.ok) setSelectedHouse(j.house);
-    } catch { /* network */ }
-  }, []);
+      else showFlash('err', j.error || j.reason || 'Could not load house.');
+    } catch (e) {
+      showFlash('err', e instanceof Error ? e.message : 'Network error');
+    }
+  }, [showFlash]);
 
   useEffect(() => { refreshMine(); }, [refreshMine]);
   useEffect(() => { if (tab === 'visit') refreshPublic(worldId); }, [tab, worldId, refreshPublic]);
@@ -190,10 +221,24 @@ export default function HousingLensPage() {
           <section className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-4 px-4 py-5 sm:px-6 lg:grid-cols-3">
             <aside className="rounded-xl border border-emerald-500/20 bg-zinc-950/60 p-3">
               <h2 className="mb-2 text-[11px] uppercase tracking-wider text-emerald-300/60">My houses</h2>
-              {myHouses.length === 0 ? (
-                <p className="py-4 text-center text-[12px] text-slate-500">No houses yet. Claim a land plot, place a building, then claim it as a house.</p>
+              {mineState === 'loading' ? (
+                <div role="status" aria-live="polite" className="space-y-1.5 py-2" data-testid="housing-mine-loading">
+                  <span className="sr-only">Loading your houses…</span>
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="h-6 animate-pulse rounded bg-slate-800/60" aria-hidden="true" />
+                  ))}
+                </div>
+              ) : mineState === 'error' ? (
+                <div role="alert" className="rounded border border-rose-500/30 bg-rose-500/10 p-3 text-[12px] text-rose-200" data-testid="housing-mine-error">
+                  <p className="mb-2">Couldn&apos;t load your houses: {mineError}</p>
+                  <button onClick={refreshMine} className="rounded bg-rose-500/20 px-2 py-1 text-[11px] text-rose-100 hover:bg-rose-500/30">
+                    <RefreshCcw className="mr-1 inline h-3 w-3" />Retry
+                  </button>
+                </div>
+              ) : myHouses.length === 0 ? (
+                <p className="py-4 text-center text-[12px] text-slate-500" data-testid="housing-mine-empty">No houses yet. Claim a land plot, place a building, then claim it as a house.</p>
               ) : (
-                <ul className="space-y-1">
+                <ul className="space-y-1" data-testid="housing-mine-list">
                   {myHouses.map(h => (
                     <li key={h.id}>
                       <button onClick={() => loadHouseDetail(h.id)}
@@ -255,10 +300,24 @@ export default function HousingLensPage() {
                 className="rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-slate-100" />
               <button onClick={() => refreshPublic(worldId)} className="rounded bg-emerald-500/20 px-2 py-1 text-emerald-100">Browse</button>
             </div>
-            {publicHouses.length === 0 ? (
-              <p className="py-8 text-center text-[12px] text-slate-500">No public houses in this world yet.</p>
+            {publicState === 'loading' ? (
+              <div role="status" aria-live="polite" className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="housing-public-loading">
+                <span className="sr-only">Loading public houses…</span>
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-800/60" aria-hidden="true" />
+                ))}
+              </div>
+            ) : publicState === 'error' ? (
+              <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-[12px] text-rose-200" data-testid="housing-public-error">
+                <p className="mb-2">Couldn&apos;t load public houses: {publicError}</p>
+                <button onClick={() => refreshPublic(worldId)} className="rounded bg-rose-500/20 px-2 py-1 text-[11px] text-rose-100 hover:bg-rose-500/30">
+                  <RefreshCcw className="mr-1 inline h-3 w-3" />Retry
+                </button>
+              </div>
+            ) : publicHouses.length === 0 ? (
+              <p className="py-8 text-center text-[12px] text-slate-500" data-testid="housing-public-empty">No public houses in this world yet.</p>
             ) : (
-              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="housing-public-list">
                 {publicHouses.map(h => (
                   <li key={h.id} className="rounded-xl border border-emerald-500/20 bg-zinc-950/60 p-3">
                     <h3 className="font-semibold text-emerald-100">{h.name || 'Unnamed'}</h3>

@@ -1,0 +1,21 @@
+{
+  "macro_id": "worldmodel.capture_snapshot",
+  "domain": "worldmodel",
+  "name": "capture_snapshot",
+  "inputs": {
+    "label": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result.id === 'string' && output.result.id.length > 0",
+    "Number.isInteger(output.result.entityCount) && output.result.entityCount >= 0",
+    "Number.isInteger(output.result.relationCount) && output.result.relationCount >= 0",
+    "typeof output.result.capturedAt === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "label": "checkpoint" }, "expect": { "ok": true } }
+  ],
+  "_note": "worldmodel.capture_snapshot (LENS_ACTIONS handler). Captures a full per-user world-state snapshot (deep-copied entities + relations) and returns its id + counts; capturing an empty model is valid (entityCount/relationCount 0), so a bare {} still returns ok:true — degrade-graceful, never no_db. The label is bounded to 120 chars (str guard) and defaults to a timestamped label. LENS_ACTIONS-served via /api/lens/run's LENS_ACTIONS-first dispatch; the diff/restore round-trip is pinned in server/tests/worldmodel-lens-macros.test.js, not by the MACROS-only assassin."
+}

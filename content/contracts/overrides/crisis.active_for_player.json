@@ -1,0 +1,21 @@
+{
+  "macro_id": "crisis.active_for_player",
+  "domain": "crisis",
+  "name": "active_for_player",
+  "inputs": {
+    "worldId": { "type": "string", "required": true, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.crises)",
+    "output.ok === false || Array.isArray(output.suggestions)",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.reason !== 'no_db'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_world_id" } },
+    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": true } }
+  ],
+  "_note": "Lists active (unresolved) world_crises for a world + the caller's top skills. Live-DB read: missing worldId → ok:false missing_world_id (NEVER no_db, since the assassin harness always supplies a db). A real worldId with no rows → ok:true crises:[]."
+}

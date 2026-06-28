@@ -1,0 +1,20 @@
+{
+  "macro_id": "understanding.engine_list",
+  "domain": "understanding",
+  "name": "engine_list",
+  "inputs": {
+    "subjectId": { "type": "string", "required": false, "maxLength": 200 },
+    "subjectKind": { "type": "string", "required": false, "maxLength": 80 },
+    "limit": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "Array.isArray(output.rows)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "subjectKind": "quest" }, "expect": { "ok": true } }
+  ],
+  "_note": "engine_list (server.js MACROS path) is a NON-COLLIDING alias for the understanding-engine list (und.listUnderstandings → {ok, rows}). It exists because the bare 'understanding.list' name is shadowed for /api/lens/run by the notes-substrate LENS_ACTION (server/domains/understanding.js, returns {result:{notes}}), which the dispatcher prefers — so the lens's engine-facing Browse tab could not reach the engine list under the bare name. The notes tab keeps 'list'; the Browse tab calls 'engine_list'. listUnderstandings has its own try/catch and returns [] on any db error, so the result is always {ok:true, rows:[...]}; with no understandings seeded the assassin sees ok:true + empty rows (never no_db)."
+}

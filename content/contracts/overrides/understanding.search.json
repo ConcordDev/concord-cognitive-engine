@@ -1,0 +1,22 @@
+{
+  "macro_id": "understanding.search",
+  "domain": "understanding",
+  "name": "search",
+  "inputs": {
+    "query": { "type": "string" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result === 'object' && output.result !== null",
+    "Array.isArray(output.result.matches)",
+    "typeof output.result.count === 'number' && output.result.count >= 0",
+    "output.result.count === output.result.matches.length",
+    "output.result.matches.every(m => typeof m.score === 'number' && Number.isFinite(m.score))",
+    "(!input || !input.query || String(input.query).trim() === '') ? output.result.count === 0 : true"
+  ],
+  "fuzz_cases": [
+    { "input": { "query": "" }, "expect": { "ok": true } },
+    { "input": { "query": "energy" }, "expect": { "ok": true } }
+  ]
+}

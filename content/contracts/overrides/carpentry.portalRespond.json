@@ -1,0 +1,23 @@
+{
+  "macro_id": "carpentry.portalRespond",
+  "domain": "carpentry",
+  "name": "portalRespond",
+  "inputs": {
+    "token": { "type": "string", "required": true, "maxLength": 120 },
+    "decision": { "type": "string", "maxLength": 16 },
+    "signedBy": { "type": "string", "maxLength": 160 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.share && ['approved','declined'].includes(output.result.share.status))",
+    "output.ok === false || (output.result.share.clientDecision && ['approved','declined'].includes(output.result.share.clientDecision.decision))",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "token": "nope", "decision": "approved" }, "expect": { "ok": false } },
+    { "input": { "token": "nope", "decision": "maybe" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "STATE-backed public-read response path (no ctx required). An unknown token rejects with 'portal not found or expired'; a decision other than 'approved'/'declined' rejects with the descriptive enum error. On success the share status + clientDecision both flip to the chosen decision. Degrade-graceful: STATE absent → {ok:false, error:'STATE unavailable'}, never throws."
+}

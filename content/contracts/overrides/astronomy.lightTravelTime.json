@@ -1,0 +1,25 @@
+{
+  "macro_id": "astronomy.lightTravelTime",
+  "domain": "astronomy",
+  "name": "lightTravelTime",
+  "inputs": {
+    "distanceLightYears": { "type": "number" },
+    "distanceParsecs": { "type": "number" },
+    "distanceAU": { "type": "number" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || output.result.message !== undefined || Number.isFinite(output.result.distanceLightYears)",
+    "output.ok !== true || output.result.message !== undefined || output.result.distanceKm !== 'Infinity'",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "distanceLightYears": 4.367 }, "expect": { "ok": true } },
+    { "input": { "distanceParsecs": 10 }, "expect": { "ok": true } },
+    { "input": { "distanceLightYears": "1e308" }, "expect": { "ok": false } },
+    { "input": { "distanceLightYears": "Infinity" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "astronomy.lightTravelTime is a pure-compute LENS_ACTIONS handler. It converts a distance (light-years / parsecs / AU) into a lookback time. Fail-CLOSED: a non-finite or overflow-magnitude distance is REJECTED via finiteOr() so the multiplication distance × 9.461e12 km/ly can never produce an Infinity km string. A cosmologically-large-but-finite distance (e.g. 1.38e10 ly) is preserved. An empty input returns a guidance message, not a crash. LENS_ACTIONS-only registration; the lens reaches it via /api/lens/run."
+}

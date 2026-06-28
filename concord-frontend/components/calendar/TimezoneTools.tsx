@@ -145,11 +145,11 @@ function TzConverter() {
 
 function IcalImport() {
   const [icsText, setIcsText] = useState('');
-  const [events, setEvents] = useState<Array<{ uid: string; summary: string; dtstart: string; dtend?: string; location?: string }>>([]);
+  const [events, setEvents] = useState<Array<{ uid: string; summary: string; start: string; end?: string; location?: string }>>([]);
   const [error, setError] = useState<string | null>(null);
 
   const parse = useMutation({
-    mutationFn: async () => callMacro<{ events: Array<{ uid: string; summary: string; dtstart: string; dtend?: string; location?: string }> }>('ical-parse', { ics: icsText }),
+    mutationFn: async () => callMacro<{ events: Array<{ uid: string; summary: string; start: string; end?: string; location?: string }> }>('ical-parse', { ics: icsText }),
     onSuccess: (env) => {
       if (env.ok && env.result) { setEvents(env.result.events); setError(null); }
       else { setEvents([]); setError(env.error || 'parse failed'); }
@@ -176,7 +176,7 @@ function IcalImport() {
           {events.slice(0, 30).map((ev) => (
             <div key={ev.uid} className="rounded border border-zinc-800 bg-zinc-950 p-2 text-xs">
               <div className="font-medium text-white">{ev.summary}</div>
-              <div className="font-mono text-[10px] text-zinc-400">{ev.dtstart}{ev.dtend ? ` → ${ev.dtend}` : ''}{ev.location ? ` · ${ev.location}` : ''}</div>
+              <div className="font-mono text-[10px] text-zinc-400">{ev.start}{ev.end ? ` → ${ev.end}` : ''}{ev.location ? ` · ${ev.location}` : ''}</div>
             </div>
           ))}
         </div>
@@ -187,7 +187,7 @@ function IcalImport() {
 
 function IcalExport() {
   const [title, setTitle] = useState('My Concord export');
-  const [eventsJson, setEventsJson] = useState('[{"summary":"Demo event","dtstart":"2026-06-01T15:00:00Z","dtend":"2026-06-01T16:00:00Z"}]');
+  const [eventsJson, setEventsJson] = useState('[{"summary":"Demo event","start":"2026-06-01T15:00:00Z","end":"2026-06-01T16:00:00Z"}]');
   const [ics, setIcs] = useState<string | null>(null);
 
   const exp = useMutation({

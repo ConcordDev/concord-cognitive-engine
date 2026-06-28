@@ -1,0 +1,20 @@
+{
+  "macro_id": "sub_worlds.visit",
+  "domain": "sub_worlds",
+  "name": "visit",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.travel && output.result.travel.destination_world_id === output.result.travel.destination_world_id)",
+    "output.ok === false || (typeof output.result.visits === 'number' && output.result.visits >= 1)",
+    "output.ok === false || (typeof output.result.unique_visitors === 'number' && output.result.unique_visitors >= 1)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "world not found" } },
+    { "input": { "worldId": "does_not_exist" }, "expect": { "ok": false, "error": "world not found" } }
+  ],
+  "_note": "sub_worlds.visit records a visit (increments visits + unique visitor set) on an existing, non-archived, non-private world and returns the world-travel hand-off contract (travel.destination_world_id). Archived ⇒ ok:false 'world is archived'; private without edit rights ⇒ ok:false 'world is private'; unknown ⇒ ok:false 'world not found'. The assassin drives with no live world, so ok:false is correct (not no_db). Live STATE + actor — never no_db."
+}

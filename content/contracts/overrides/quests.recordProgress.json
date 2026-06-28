@@ -1,0 +1,22 @@
+{
+  "macro_id": "quests.recordProgress",
+  "domain": "quests",
+  "name": "recordProgress",
+  "inputs": {
+    "type": { "type": "string", "required": true, "maxLength": 40 },
+    "target": { "type": "string", "required": true, "maxLength": 120 },
+    "questId": { "type": "string", "maxLength": 80 },
+    "count": { "type": "number", "min": 1, "max": 1000 },
+    "userId": { "type": "string", "maxLength": 80 },
+    "worldId": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "type": "kill" }, "expect": { "ok": false } }
+  ]
+}

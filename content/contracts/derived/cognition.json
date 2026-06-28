@@ -1,0 +1,411 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "cognition",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "claim_or_question_required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "modes_must_differ",
+            "ok": false
+          },
+          "input": {
+            "claim": "Privacy is a precondition for free thought.",
+            "modeA": "deductive",
+            "modeB": "deductive"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_mode",
+            "ok": false
+          },
+          "input": {
+            "claim": "Privacy is a precondition for free thought.",
+            "modeA": "deductive",
+            "modeB": "zzz"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_depth",
+            "ok": false
+          },
+          "input": {
+            "claim": "Privacy is a precondition for free thought.",
+            "depth": -1
+          }
+        }
+      ],
+      "inputs": {
+        "claim": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "depth": {
+          "max": 5,
+          "min": 1,
+          "type": "number"
+        },
+        "modeA": {
+          "enum": [
+            "deductive",
+            "inductive",
+            "abductive",
+            "adversarial",
+            "analogical",
+            "temporal",
+            "counterfactual"
+          ],
+          "type": "string"
+        },
+        "modeB": {
+          "enum": [
+            "deductive",
+            "inductive",
+            "abductive",
+            "adversarial",
+            "analogical",
+            "temporal",
+            "counterfactual"
+          ],
+          "type": "string"
+        },
+        "question": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "topic": {
+          "maxLength": 2000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.prompt === 'string')",
+        "output.ok === false || (output.result.a && typeof output.result.a.mode === 'string')",
+        "output.ok === false || (output.result.b && typeof output.result.b.mode === 'string')",
+        "output.ok === false || typeof output.result.higherConfidence === 'string'"
+      ],
+      "macro_id": "cognition.compareModes",
+      "name": "compareModes"
+    },
+    {
+      "_derived": false,
+      "domain": "cognition",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "export_not_found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "export_not_found",
+            "ok": false
+          },
+          "input": {
+            "exportId": "does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "exportId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.count === 'number' && output.result.count >= 0)"
+      ],
+      "macro_id": "cognition.deleteExport",
+      "name": "deleteExport"
+    },
+    {
+      "_derived": false,
+      "domain": "cognition",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 50,
+            "severity": "critical"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": -1
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 200,
+          "min": 1,
+          "type": "number"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "alert",
+            "critical"
+          ],
+          "type": "string"
+        },
+        "since": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "type": {
+          "maxLength": 60,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.alerts))",
+        "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 0)",
+        "output.ok === false || (output.result.bySeverity && typeof output.result.bySeverity === 'object')",
+        "output.ok === false || Array.isArray(output.result.severities)"
+      ],
+      "macro_id": "cognition.driftAlerts",
+      "name": "driftAlerts"
+    },
+    {
+      "_derived": false,
+      "domain": "cognition",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "trace_required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "title": "My run",
+            "trace": {
+              "input": {
+                "question": "Q"
+              },
+              "mode": "deductive",
+              "traceId": "t1"
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "note": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "trace": {
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.exportId === 'string')",
+        "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 1)",
+        "output.ok === false || (output.result.export && output.result.export.trace === undefined)"
+      ],
+      "macro_id": "cognition.exportTrace",
+      "name": "exportTrace"
+    },
+    {
+      "_derived": false,
+      "domain": "cognition",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "export_not_found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "export_not_found",
+            "ok": false
+          },
+          "input": {
+            "exportId": "does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "exportId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.export && typeof output.result.export.id === 'string')"
+      ],
+      "macro_id": "cognition.getExport",
+      "name": "getExport"
+    },
+    {
+      "_derived": true,
+      "domain": "cognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cognition.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "cognition",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.exports))",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.exports.length)"
+      ],
+      "macro_id": "cognition.listExports",
+      "name": "listExports"
+    },
+    {
+      "_derived": true,
+      "domain": "cognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cognition.recent_mine",
+      "name": "recent_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "cognition",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "question_required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "question": "What if the premise were false?"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "question": "Why did the market crash?"
+          }
+        }
+      ],
+      "inputs": {
+        "claim": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "question": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "topic": {
+          "maxLength": 2000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.recommended === 'string')",
+        "output.ok === false || ['deductive','inductive','abductive','adversarial','analogical','temporal','counterfactual'].includes(output.result.recommended)",
+        "output.ok === false || (typeof output.result.confidence === 'number' && output.result.confidence >= 0 && output.result.confidence <= 1)",
+        "output.ok === false || (Array.isArray(output.result.ranking) && output.result.ranking.length === 7)",
+        "output.ok === false || Array.isArray(output.result.signals)"
+      ],
+      "macro_id": "cognition.recommendMode",
+      "name": "recommendMode"
+    }
+  ],
+  "domain": "cognition",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 9
+}

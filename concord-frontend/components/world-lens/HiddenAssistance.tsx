@@ -1,7 +1,12 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ds } from '@/lib/design-system';
+
+// Persisted set of nudge ids the player has dismissed. HUDSettingsPanel's
+// "Reset dismissed nudges" button dispatches `concordia:nudges-reset` which we
+// consume below to clear this — that event was previously dead (no listener).
+const DISMISSED_NUDGES_KEY = 'concordia:dismissed-nudges';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -284,8 +289,33 @@ export default function HiddenAssistance({
   );
 
   const dismissNudge = useCallback((id: string) => {
-    setDismissedNudges((prev) => new Set(prev).add(id));
+    setDismissedNudges((prev) => {
+      const next = new Set(prev).add(id);
+      try { window.localStorage.setItem(DISMISSED_NUDGES_KEY, JSON.stringify([...next])); } catch { /* quota / disabled */ }
+      return next;
+    });
     setActiveNudge(null);
+  }, []);
+
+  // Seed dismissed-nudges from localStorage on mount + listen for the HUD
+  // settings panel's "Reset dismissed nudges" (concordia:nudges-reset), which
+  // clears both the persisted key and the live set so previously-hidden nudges
+  // can fire again.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(DISMISSED_NUDGES_KEY);
+      if (raw) {
+        const ids = JSON.parse(raw);
+        if (Array.isArray(ids)) setDismissedNudges(new Set(ids.map(String)));
+      }
+    } catch { /* invalid json — keep empty */ }
+    const onReset = () => {
+      try { window.localStorage.removeItem(DISMISSED_NUDGES_KEY); } catch { /* noop */ }
+      setDismissedNudges(new Set());
+    };
+    window.addEventListener('concordia:nudges-reset', onReset);
+    return () => window.removeEventListener('concordia:nudges-reset', onReset);
   }, []);
 
   const dismissSuggestion = useCallback(() => {

@@ -1,0 +1,20 @@
+{
+  "macro_id": "lore.facets",
+  "domain": "lore",
+  "name": "facets",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.facets && typeof output.facets === 'object')",
+    "output.ok === false || Array.isArray(output.facets.worlds)",
+    "output.ok === false || Array.isArray(output.facets.types)",
+    "output.ok === false || Array.isArray(output.facets.eras)",
+    "output.ok === false || typeof output.facets.count === 'number'",
+    "output.ok === false || output.facets.count >= 0"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "lore.facets aggregates the distinct world/type/era values + total count over the file-backed authored canon (lib/authored-lore.js). No inputs, no DB — {} always returns ok:true with the real facet arrays (sorted, de-duplicated) and the true count, never no_db. count equals the listable corpus size that lore.list pages over."
+}

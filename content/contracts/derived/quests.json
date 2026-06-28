@@ -1,0 +1,220 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "quests",
+      "fuzz_cases": [],
+      "inputs": {
+        "userId": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.quests)",
+        "output.ok === false || output.quests.every(q => typeof q.id === 'string' && Array.isArray(q.objectives) && Array.isArray(q.rewards))"
+      ],
+      "macro_id": "quests.active",
+      "name": "active"
+    },
+    {
+      "_derived": true,
+      "domain": "quests",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "quests.addObjectives",
+      "name": "addObjectives"
+    },
+    {
+      "_derived": true,
+      "domain": "quests",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "quests.addRewards",
+      "name": "addRewards"
+    },
+    {
+      "_derived": true,
+      "domain": "quests",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "quests.checkCompletion",
+      "name": "checkCompletion"
+    },
+    {
+      "_derived": false,
+      "domain": "quests",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "questId": "no_such_quest"
+          }
+        }
+      ],
+      "inputs": {
+        "questId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "userId": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string' || typeof output.reason === 'string'",
+        "output.ok === false || Array.isArray(output.rewards)"
+      ],
+      "macro_id": "quests.claimRewards",
+      "name": "claimRewards"
+    },
+    {
+      "_derived": false,
+      "domain": "quests",
+      "fuzz_cases": [],
+      "inputs": {
+        "userId": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.quests)",
+        "output.ok === false || output.quests.every(q => typeof q.id === 'string')",
+        "output.ok === false || output.quests.every(q => Array.isArray(q.objectives))",
+        "output.ok === false || output.quests.every(q => q.objectives.every(o => typeof o.progress === 'number' && o.progress >= 0))",
+        "output.ok === false || output.quests.every(q => q.objectives.every(o => typeof o.target === 'number' && o.progress <= o.target))",
+        "output.ok === false || output.quests.every(q => q.objectives.every(o => typeof o.complete === 'boolean'))"
+      ],
+      "macro_id": "quests.mine",
+      "name": "mine"
+    },
+    {
+      "_derived": true,
+      "domain": "quests",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "quests.progress",
+      "name": "progress"
+    },
+    {
+      "_derived": false,
+      "domain": "quests",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "type": "kill"
+          }
+        }
+      ],
+      "inputs": {
+        "count": {
+          "max": 1000,
+          "min": 1,
+          "type": "number"
+        },
+        "questId": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "target": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        },
+        "type": {
+          "maxLength": 40,
+          "required": true,
+          "type": "string"
+        },
+        "userId": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "quests.recordProgress",
+      "name": "recordProgress"
+    }
+  ],
+  "domain": "quests",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 8
+}

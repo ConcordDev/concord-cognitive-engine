@@ -1,0 +1,22 @@
+{
+  "macro_id": "app-maker.deployPublish",
+  "domain": "app-maker",
+  "name": "deployPublish",
+  "inputs": {
+    "projectId": { "type": "string", "required": true, "maxLength": 80 },
+    "label": { "type": "string", "required": false, "maxLength": 60 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.result.deployment.status === 'live'",
+    "output.ok === false || /^https:\\/\\/[a-z0-9-]+\\.apps\\.concord-os\\.org$/.test(output.result.deployment.url)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "project_not_found" } },
+    { "input": { "projectId": "ghost_999" }, "expect": { "ok": false, "error": "project_not_found" } },
+    { "input": { "projectId": "ghost_999", "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }, "expect": { "ok": false } }
+  ],
+  "_note": "app-maker.deployPublish is a LENS_ACTIONS handler (server/domains/appmaker.js:882), reached only via /api/lens/run on the HYPHENATED key 'app-maker.deployPublish'. It is per-user + STATE-backed: it resolves the caller's own project (findProject(s, actor.userId, projectId)) and a missing/unknown/not-owned projectId returns ok:false error:'project_not_found' — never another user's project, never a throw. On success it snapshots a version and flips deployment.status to 'live' with a deterministic-shape hosted URL (slug-buildId.apps.concord-os.org). The fuzz cases assume an empty STATE (the assassin's default), so every projectId is unknown → project_not_found; a happy-path ok:true requires a pre-created project for this actor, which the behavioral test (server/tests/appmaker-lens-macros.test.js) exercises with a real round-trip. LENS_ACTIONS-only → not driven by the MACROS-based macro-assassin."
+}

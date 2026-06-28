@@ -1,0 +1,26 @@
+{
+  "macro_id": "cooking.scaleRecipe",
+  "domain": "cooking",
+  "name": "scaleRecipe",
+  "inputs": {
+    "name": { "type": "string", "required": false },
+    "servings": { "type": "number", "required": false },
+    "targetServings": { "type": "number", "required": false },
+    "ingredients": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.scaleFactor === 'number' && Number.isFinite(output.result.scaleFactor))",
+    "output.ok === false || (typeof output.result.baseServings === 'number' && output.result.baseServings > 0)",
+    "output.ok === false || Array.isArray(output.result.ingredients)",
+    "output.ok === false || output.result.ingredients.every(i => typeof i.scaled === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "servings": 4, "targetServings": 8, "ingredients": [{ "name": "flour", "quantity": "200", "unit": "g" }] }, "expect": { "ok": true } },
+    { "input": { "servings": 1e308, "targetServings": 2 }, "expect": { "ok": true } },
+    { "input": { "ingredients": "not-an-array" }, "expect": { "ok": true } }
+  ],
+  "_note": "cooking.scaleRecipe is a PURE-COMPUTE recipe scaler: scaleFactor = targetServings/baseServings, each ingredient quantity multiplied by the factor. Path-3 LENS_ACTIONS macro (registerLensAction) — NOT enumerable by the assassin's runMacro walk; the load-bearing proof is server/tests/cooking-lens-macros.test.js. It tolerates the CookingActionPanel double-wrapped { artifact: { data } } body (recipeData() unwraps one extra layer) — a regression that drops the unwrap returns an empty/default scale, which the behavioral test catches. baseServings defaults to 4, targetServings to 8 when absent. No DB, no network, never throws."
+}

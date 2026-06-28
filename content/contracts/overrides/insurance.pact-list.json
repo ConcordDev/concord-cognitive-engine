@@ -1,0 +1,18 @@
+{
+  "macro_id": "insurance.pact-list",
+  "domain": "insurance",
+  "name": "pact-list",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.written))",
+    "output.ok === false || Array.isArray(output.result.beneficiaryOf)",
+    "output.ok === false || typeof output.result.count === 'number'",
+    "output.ok === false || output.result.count === output.result.written.length + output.result.beneficiaryOf.length"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "insurance.pact-list reads the caller's sparks-only inheritance pacts (the /lenses/death-insurance lens) from globalThis._concordSTATE.inheritPacts, split into pacts the user WROTE and pacts they are a BENEFICIARY of. STATE-backed, per-user via ctx.actor.userId — the assassin runs with an internal owner actor, so {} returns ok:true with empty arrays (NEVER no_db). count is the sum of both lists."
+}

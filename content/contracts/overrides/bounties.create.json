@@ -1,0 +1,31 @@
+{
+  "macro_id": "bounties.create",
+  "domain": "bounties",
+  "name": "create",
+  "inputs": {
+    "title": { "type": "string", "required": true, "maxLength": 160 },
+    "description": { "type": "string", "required": true, "maxLength": 6000 },
+    "category": { "type": "string", "enum": ["security", "feature", "bug", "design", "docs", "research", "infra", "other"] },
+    "difficulty": { "type": "string", "enum": ["beginner", "intermediate", "advanced", "expert"] },
+    "tags": { "type": "array" },
+    "rewardCc": { "type": "number", "min": 1, "max": 1000000 },
+    "milestones": { "type": "array" },
+    "deadline": { "type": "string", "maxLength": 40 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.bounty && typeof output.result.bounty.id === 'string')",
+    "output.ok === false || output.result.bounty.status === 'open'",
+    "output.ok === false || (typeof output.result.bounty.rewardCc === 'number' && output.result.bounty.rewardCc >= 1 && output.result.bounty.rewardCc <= 1000000)",
+    "output.ok === false || (typeof output.result.bounty.poolCc === 'number' && output.result.bounty.poolCc === output.result.bounty.rewardCc)",
+    "output.ok === false || output.result.bounty.paidCc === 0"
+  ],
+  "fuzz_cases": [
+    { "input": { "title": "Fix the auth bug", "description": "sessions drop on refresh; needs a patch", "category": "security", "rewardCc": 250 }, "expect": { "ok": true } },
+    { "input": { "title": "short", "description": "long enough description here", "rewardCc": 10 }, "expect": { "ok": false, "error": "title must be at least 6 characters" } },
+    { "input": { "title": "Valid title here", "description": "tiny", "rewardCc": 10 }, "expect": { "ok": false, "error": "description must be at least 12 characters" } },
+    { "input": { "title": "Poisoned reward bounty", "description": "absurd reward must reject", "rewardCc": 1e308 }, "expect": { "ok": false, "error": "invalid numeric field: rewardCc" } }
+  ],
+  "_note": "bounties.create posts a custom bounty into globalThis._concordSTATE.bountiesLens scoped to the caller (the assassin's internal owner actor). title >= 6 chars + description >= 12 chars required. rewardCc is fail-CLOSED via badNumericField BEFORE any state write — a poisoned value (NaN/Infinity/-1/1e308/>1e6) returns ok:false 'invalid numeric field: rewardCc', never a fabricated pool. When milestones[] are supplied the pool is their reward sum and rewardCc is overridden to match; a poisoned milestone reward rejects with 'invalid numeric field: milestones[i].rewardCc'. poolCc always equals rewardCc on a fresh bounty; paidCc starts at 0; status starts 'open'. No real wallet/CC is minted — earnings are an in-memory leaderboard counter only."
+}

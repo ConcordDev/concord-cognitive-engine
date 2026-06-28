@@ -1,0 +1,137 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.intervention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.intervention.check_constraints",
+      "name": "check_constraints"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.intervention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.intervention.check_separation",
+      "name": "check_separation"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.intervention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.intervention.define_optimization",
+      "name": "define_optimization"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.intervention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.intervention.detect_cascade",
+      "name": "detect_cascade"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.intervention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.intervention.detect_fragility",
+      "name": "detect_fragility"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.intervention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.intervention.evaluate_do_no_harm",
+      "name": "evaluate_do_no_harm"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.intervention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.intervention.find_optimal_interventions",
+      "name": "find_optimal_interventions"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.intervention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.intervention.map_leverage_point",
+      "name": "map_leverage_point"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.intervention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.intervention.plan_stable_intervention",
+      "name": "plan_stable_intervention"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.intervention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.intervention.status",
+      "name": "status"
+    }
+  ],
+  "domain": "loaf.intervention",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 10
+}

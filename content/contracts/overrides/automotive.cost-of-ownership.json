@@ -1,0 +1,27 @@
+{
+  "macro_id": "automotive.cost-of-ownership",
+  "domain": "automotive",
+  "name": "cost-of-ownership",
+  "inputs": {
+    "vehicleId": { "type": "string", "required": true, "maxLength": 120 },
+    "purchasePrice": { "type": "number", "min": 0, "max": 100000000 },
+    "salvageValue": { "type": "number", "min": 0, "max": 100000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (Number.isFinite(output.result.depreciation) && output.result.depreciation >= 0)",
+    "output.ok === false || Number.isFinite(output.result.operatingCost)",
+    "output.ok === false || Number.isFinite(output.result.totalCostOfOwnership)",
+    "output.ok === false || (output.result.costPerMile === null || Number.isFinite(output.result.costPerMile))",
+    "output.ok === false || typeof output.result.byCategory === 'object'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "vehicleId": "nope", "purchasePrice": 20000, "salvageValue": 5000 }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "vehicleId": "<script>alert(1)</script>" }, "expect": { "ok": false } },
+    { "input": { "vehicleId": "nope", "purchasePrice": "1e999", "salvageValue": "NaN" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). STATE-backed TCO rollup. Requires a vehicleId that resolves to a vehicle owned by ctx.actor.userId — an unknown id is REJECTED (fail-CLOSED; a fresh assassin ctx owns no vehicles, so every fuzz case here correctly returns ok:false). depreciation = max(0, purchasePrice - salvageValue) only when purchasePrice>0; poisoned '1e999'/'NaN' → Math.max(0, Number||0) → 0, never negative/NaN. operatingCost sums the real expense ledger; byCategory is the per-category breakdown. costPerMile is null (not a fake 0) when no miles tracked. Degrade-graceful when STATE absent. Pinned by server/tests/automotive-lens-macros.test.js."
+}

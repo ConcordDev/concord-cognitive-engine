@@ -1,0 +1,24 @@
+{
+  "macro_id": "system.traces",
+  "domain": "system",
+  "name": "traces",
+  "inputs": {
+    "limit": { "type": "number", "minimum": 1, "maximum": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.spans))",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.spans.length)",
+    "output.ok === false || (typeof output.result.p50 === 'number' && typeof output.result.p95 === 'number' && typeof output.result.p99 === 'number')",
+    "output.ok === false || (typeof output.result.errorRate === 'number' && output.result.errorRate >= 0)",
+    "output.ok === false || Array.isArray(output.result.routes)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 25 }, "expect": { "ok": true } },
+    { "input": { "limit": "NaN" }, "expect": { "ok": false, "error": "invalid_limit" } },
+    { "input": { "limit": 1e308 }, "expect": { "ok": false, "error": "invalid_limit" } }
+  ],
+  "_note": "Reads the request-trace ring buffer (per-user STATE traces + the global HTTP span buffer) and rolls up p50/p95/p99 latency + per-route stats. The assassin's owner actor starts with no traces → ok:true with empty spans[] and zero percentiles (NEVER no_db). A poisoned numeric limit fails CLOSED with invalid_limit."
+}

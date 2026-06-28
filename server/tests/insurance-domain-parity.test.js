@@ -4,10 +4,15 @@ import registerInsuranceActions from "../domains/insurance.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
+// domains/insurance.js now registers through the canonical `register`
+// convention — handlers are invoked as (ctx, input), exactly as runMacro /
+// /api/lens/run dispatch them. (The file's internal shim adapts this back to
+// the legacy (ctx, artifact, params) handler bodies; for these CRUD/STATE
+// macros `params === input`.)
 function call(name, ctx, params = {}) {
   const fn = ACTIONS.get(`insurance.${name}`);
   assert.ok(fn, `insurance.${name} not registered`);
-  return fn(ctx, { id: null, data: {}, meta: {} }, params);
+  return fn(ctx, params);
 }
 
 before(() => { registerInsuranceActions(register); });

@@ -1,0 +1,23 @@
+{
+  "macro_id": "mesh.conversation",
+  "domain": "mesh",
+  "name": "conversation",
+  "inputs": {
+    "with": { "type": "string", "maxLength": 80 },
+    "limit": { "type": "number", "min": 1, "max": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.messages))",
+    "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 0)",
+    "output.ok === false || (typeof output.result.unread === 'number' && output.result.unread >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": -1 }, "expect": { "ok": false, "error": "invalid_limit" } },
+    { "input": { "limit": 1e308 }, "expect": { "ok": false, "error": "invalid_limit" } },
+    { "input": { "with": "node_x", "limit": 50 }, "expect": { "ok": true } }
+  ],
+  "_note": "Reads a per-user message thread (optionally filtered by peer 'with') from STATE keyed by ctx.actor.userId. The assassin's owner actor has no messages → ok:true with an empty messages[] and total 0 (NEVER no_db). limit is a fail-CLOSED numeric guard (poisoned NaN/Infinity/-1/1e308 → invalid_limit, never a clamped ok:true)."
+}

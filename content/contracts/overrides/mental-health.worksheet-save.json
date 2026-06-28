@@ -1,0 +1,25 @@
+{
+  "macro_id": "mental-health.worksheet-save",
+  "domain": "mental-health",
+  "name": "worksheet-save",
+  "inputs": {
+    "templateId": { "type": "string", "required": true, "maxLength": 40 },
+    "responses": { "type": "object", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.worksheet && typeof output.result.worksheet.id === 'string')",
+    "output.ok === false || ['CBT','DBT'].includes(output.result.worksheet.modality)",
+    "output.ok === false || (output.result.worksheet.answered >= 1 && output.result.worksheet.answered <= output.result.worksheet.totalFields)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "templateId": "thought_record", "responses": { "situation": "deadline" } }, "expect": { "ok": true } },
+    { "input": { "templateId": "thought_record", "responses": {} }, "expect": { "ok": false } },
+    { "input": { "templateId": "__no_such_template__", "responses": { "x": "y" } }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "templateId": "dbt_check_facts", "responses": { "emotion": "anxiety" } }, "expect": { "ok": true } }
+  ],
+  "_note": "mental-health.worksheet-save persists a CBT/DBT worksheet (thought_record / cognitive_reframe / dbt_check_facts / dbt_opposite_action) into the per-user in-memory substrate. FAIL-CLOSED: unknown templateId rejects ('unknown worksheet template'); a worksheet with zero filled fields rejects ('at least one field must be filled in'); only known template field keys are persisted, each length-capped to 1000 chars (no unbounded injection sink). The clinical scaffolding (field labels/modality) is authored, evidence-based template metadata — NOT fabricated user content; the user's responses are the only stored data. Pinned by server/tests/mental-health-lens-macros.test.js. Lens-action domain — not assassin-enumerable via runMacro."
+}

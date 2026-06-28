@@ -1,0 +1,24 @@
+{
+  "macro_id": "expedition-journal.entry-add",
+  "domain": "expedition-journal",
+  "name": "entry-add",
+  "inputs": {
+    "worldId": { "type": "string", "enum": ["concordia-hub", "concord-link-frontier", "cyber", "fantasy", "lattice-crucible", "sovereign-ruins"] },
+    "stageId": { "type": "string", "maxLength": 64 },
+    "text": { "type": "string", "maxLength": 4000 },
+    "mood": { "type": "string", "maxLength": 32 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.entry && typeof output.result.entry.id === 'string')",
+    "output.ok === false || typeof output.result.entry.text === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "worldId": "cyber", "stageId": "arrive", "text": "Jacked in." }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "worldId": "cyber", "text": "   " }, "expect": { "ok": false } },
+    { "input": { "worldId": "atlantis", "text": "x" }, "expect": { "ok": false } }
+  ],
+  "_note": "Appends a per-user journal entry (text observation, optional mood) to STATE. Requires a known world + non-empty text; empty input or whitespace-only text fails CLOSED (NEVER no_db). text is truncated to 4000 chars. An unknown stageId for a known world is rejected."
+}

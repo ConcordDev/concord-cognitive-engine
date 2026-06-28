@@ -1,0 +1,17 @@
+{
+  "macro_id": "mesh.overview",
+  "domain": "mesh",
+  "name": "overview",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.nodes === 'number')",
+    "output.ok === false || (output.result.onlineNodes <= output.result.nodes)",
+    "output.ok === false || (typeof output.result.transports === 'number' && output.result.transports >= 1)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Per-user dashboard roll-up (node/message/channel/queue counts) from STATE keyed by ctx.actor.userId. The assassin's owner actor has empty stores → ok:true with zero counts but transports >= 1 (the fixed TRANSPORT_LIST length). NEVER no_db."
+}

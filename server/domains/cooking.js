@@ -12,17 +12,48 @@ import { callVision, callVisionUrl } from "../lib/vision-inference.js";
 const FDC_BASE = "https://api.nal.usda.gov/fdc/v1";
 
 export default function registerCookingActions(registerLensAction) {
+  // The CookingActionPanel client wraps its payload as { artifact: { data } }
+  // and posts it as the lens-run body (no `input` key), so the live dispatch
+  // sets virtualArtifact.data = { artifact: { data } } — one extra layer.
+  // Unwrap that here so the pure-compute calculators see the real recipe data
+  // whether the caller sent it flat (input.data) or double-wrapped.
+  function recipeData(artifact, params) {
+    const d = artifact?.data;
+    if (d && typeof d === "object") {
+      if (d.artifact && typeof d.artifact === "object" && d.artifact.data && typeof d.artifact.data === "object") {
+        return d.artifact.data;
+      }
+      // Flat-but-empty artifact.data: fall back to the 3rd-arg params if it
+      // carries the recipe (e.g. { ingredients } / { servings } at top level).
+      if (!d.ingredients && !d.servings && !d.name && !d.ingredient && params && typeof params === "object") {
+        if (params.artifact && typeof params.artifact === "object" && params.artifact.data && typeof params.artifact.data === "object") {
+          return params.artifact.data;
+        }
+        if (params.ingredients || params.servings || params.name || params.ingredient) return params;
+      }
+      return d;
+    }
+    if (params && typeof params === "object") {
+      if (params.artifact && typeof params.artifact === "object" && params.artifact.data && typeof params.artifact.data === "object") {
+        return params.artifact.data;
+      }
+      return params;
+    }
+    return {};
+  }
+
   registerLensAction("cooking", "scaleRecipe", (ctx, artifact, _params) => {
-    const data = artifact.data || {};
+    const data = recipeData(artifact, _params) || {};
     const baseServings = parseFloat(data.servings || data.baseYield) || 4;
     const targetServings = parseFloat(data.targetServings || _params?.targetServings) || 8;
     const ingredients = data.ingredients || [];
     const factor = targetServings / baseServings;
     const scaled = ingredients.map(i => ({ name: i.name, original: `${i.quantity} ${i.unit || ""}`, scaled: `${Math.round(parseFloat(i.quantity || 0) * factor * 100) / 100} ${i.unit || ""}` }));
-    return { ok: true, result: { recipe: data.name || artifact.title, baseServings, targetServings, scaleFactor: Math.round(factor * 100) / 100, ingredients: scaled } };
+    return { ok: true, result: { recipe: data.name || artifact?.title, baseServings, targetServings, scaleFactor: Math.round(factor * 100) / 100, ingredients: scaled } };
   });
   registerLensAction("cooking", "nutritionEstimate", (ctx, artifact, _params) => {
-    const ingredients = artifact.data?.ingredients || [];
+    const ndata = recipeData(artifact, _params) || {};
+    const ingredients = ndata.ingredients || [];
     // Rough per-100g estimates
     const db = { flour: { cal: 364, protein: 10, carbs: 76, fat: 1 }, sugar: { cal: 387, protein: 0, carbs: 100, fat: 0 }, butter: { cal: 717, protein: 1, carbs: 0, fat: 81 }, egg: { cal: 155, protein: 13, carbs: 1, fat: 11 }, milk: { cal: 42, protein: 3, carbs: 5, fat: 1 }, chicken: { cal: 239, protein: 27, carbs: 0, fat: 14 }, rice: { cal: 130, protein: 3, carbs: 28, fat: 0 }, oil: { cal: 884, protein: 0, carbs: 0, fat: 100 }, cheese: { cal: 402, protein: 25, carbs: 1, fat: 33 }, potato: { cal: 77, protein: 2, carbs: 17, fat: 0 } };
     let totalCal = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
@@ -36,7 +67,7 @@ export default function registerCookingActions(registerLensAction) {
         totalCarbs += db[match].carbs * factor; totalFat += db[match].fat * factor;
       }
     }
-    const servings = parseFloat(artifact.data?.servings) || 1;
+    const servings = parseFloat(ndata.servings) || 1;
     return { ok: true, result: { totalCalories: Math.round(totalCal), perServing: Math.round(totalCal / servings), macros: { protein: `${Math.round(totalProtein)}g`, carbs: `${Math.round(totalCarbs)}g`, fat: `${Math.round(totalFat)}g` }, servings, note: "Estimates based on common ingredient averages" } };
   });
   registerLensAction("cooking", "mealPlan", (ctx, artifact, _params) => {
@@ -48,7 +79,8 @@ export default function registerCookingActions(registerLensAction) {
     return { ok: true, result: { days, weeklyBudget: Math.round(budget * days * 100) / 100, dailyBudget: budget, plan, dietaryNotes: preferences.dietary || "none specified", mealsToFill: days * 3 } };
   });
   registerLensAction("cooking", "substitution", (ctx, artifact, _params) => {
-    const ingredient = (artifact.data?.ingredient || "").toLowerCase();
+    const sdata = recipeData(artifact, _params) || {};
+    const ingredient = (sdata.ingredient || "").toLowerCase();
     const subs = { butter: [{ sub: "Coconut oil", ratio: "1:1" }, { sub: "Applesauce", ratio: "1:0.5", note: "For baking, reduces fat" }], egg: [{ sub: "Flax egg (1 tbsp ground flax + 3 tbsp water)", ratio: "1 egg" }, { sub: "Mashed banana", ratio: "1/4 cup per egg" }], milk: [{ sub: "Oat milk", ratio: "1:1" }, { sub: "Almond milk", ratio: "1:1" }], flour: [{ sub: "Almond flour", ratio: "1:1", note: "Gluten-free, denser" }, { sub: "Oat flour", ratio: "1:1" }], sugar: [{ sub: "Honey", ratio: "1:0.75", note: "Reduce liquid by 2 tbsp" }, { sub: "Maple syrup", ratio: "1:0.75" }], cream: [{ sub: "Coconut cream", ratio: "1:1" }, { sub: "Cashew cream", ratio: "1:1" }] };
     const match = Object.keys(subs).find(k => ingredient.includes(k));
     return { ok: true, result: { ingredient, substitutions: match ? subs[match] : [{ sub: "No common substitutions found", ratio: "N/A" }], found: !!match } };
@@ -323,7 +355,12 @@ export default function registerCookingActions(registerLensAction) {
     const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const r = listCk(s.recipes, aidCk(ctx)).find(x => x.id === String(params.id || ""));
     if (!r) return { ok: false, error: "recipe not found" };
-    const targetServings = Math.max(1, Number(params.targetServings) || r.servings);
+    const reqTarget = Number(params.targetServings);
+    // Fail-CLOSED on poisoned numerics: a non-finite or absurd targetServings
+    // must not mint Infinity/NaN quantities. Clamp to a sane [1, 10000] bound.
+    const targetServings = Number.isFinite(reqTarget) && reqTarget > 0
+      ? Math.min(10000, reqTarget)
+      : r.servings;
     const factor = r.servings > 0 ? targetServings / r.servings : 1;
     const scaled = r.ingredients.map(ing => ({
       name: ing.name,

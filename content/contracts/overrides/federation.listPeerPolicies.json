@@ -1,0 +1,23 @@
+{
+  "macro_id": "federation.listPeerPolicies",
+  "domain": "federation",
+  "name": "listPeerPolicies",
+  "inputs": {
+    "filter": { "type": "string", "enum": ["allow", "block", "pending"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.entries))",
+    "output.ok === false || (output.result.counts && typeof output.result.counts.allow === 'number' && typeof output.result.counts.block === 'number' && typeof output.result.counts.pending === 'number')",
+    "output.ok === false || typeof output.result.total === 'number'",
+    "output.ok === false || output.result.entries.length <= output.result.total",
+    "output.ok === false || output.result.entries.every(e => ['allow','block','pending'].includes(e.policy))",
+    "output.ok === false || !input || !input.filter || output.result.entries.every(e => e.policy === input.filter)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "filter": "block" }, "expect": { "ok": true } }
+  ],
+  "_note": "federation.listPeerPolicies (LENS_ACTIONS, not MACROS) lists the caller's per-user allow/block/pending defederation policies from globalThis._concordSTATE.federation.access keyed by actor.userId. Counts are over the full set; the optional filter narrows entries only. Returns ok:true with empty entries + zeroed counts for an actor with no policies — never no_db (pure in-memory, per-user isolated)."
+}

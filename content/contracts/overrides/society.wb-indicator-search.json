@@ -1,0 +1,20 @@
+{
+  "macro_id": "society.wb-indicator-search",
+  "domain": "society",
+  "name": "wb-indicator-search",
+  "inputs": {
+    "query": { "type": "string", "maxLength": 80 },
+    "limit": { "type": "number", "min": 1, "max": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "query must be at least 2 characters" } },
+    { "input": { "query": "x" }, "expect": { "ok": false, "error": "query must be at least 2 characters" } },
+    { "input": { "query": "<script>alert(1)</script>" }, "expect": { "ok": false, "error": "query contains unsupported characters" } },
+    { "input": { "query": "gdp", "limit": -1 }, "expect": { "ok": false, "error": "invalid limit" } }
+  ],
+  "_note": "Free-text search of the full ~1,400-indicator World Bank catalog. Fuzz_cases land on PRE-NETWORK validation: too-short query, the query character guard (XSS rejected), and the fail-CLOSED numeric guard on 'limit' (poisoned -> ok:false invalid limit, never a clamped ok:true). NEVER no_db (no DB)."
+}

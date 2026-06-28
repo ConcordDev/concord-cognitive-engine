@@ -1,0 +1,24 @@
+{
+  "macro_id": "cognitive-replay.snapshot-create",
+  "domain": "cognitive-replay",
+  "name": "snapshot-create",
+  "inputs": {
+    "sinceDays": { "type": "number", "required": false },
+    "title": { "type": "string", "required": false, "maxLength": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || /^[0-9a-f]{16}$/.test(output.result.shareId)",
+    "output.ok === false || (output.result.snapshot.sinceDays >= 1 && output.result.snapshot.sinceDays <= 365)",
+    "output.ok === false || Number.isFinite(output.result.snapshot.stats.totalTokens)",
+    "output.ok === false || (typeof output.result.snapshot.title === 'string' && output.result.snapshot.title.length <= 120)",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "sinceDays": 1e308 }, "expect": { "ok": false } },
+    { "input": { "sinceDays": 7, "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }, "expect": { "ok": false } },
+    { "input": { "title": "<script>alert(1)</script>" }, "expect": { "ok": false } }
+  ],
+  "_note": "cognitive-replay.snapshot-create captures an immutable, shareable snapshot of the caller's cognitive window from the live corpus on globalThis._concordSTATE.sessions. The assassin's internal owner actor has an EMPTY corpus (no seeded chat sessions), so every fuzz case returns ok:false with error 'no_activity_to_snapshot' — the macro REFUSES to mint a snapshot over zero activity, which is the correct fail-CLOSED behavior under the harness. When real activity exists, shareId is a 16-hex crypto id, sinceDays clamps to [1,365], and title clamps to 120 chars (the XSS probe is stored verbatim as a string, never executed; the frontend renders it as text). Round-trip create→list→get→delete + per-user isolation are pinned behaviorally in server/tests/cognitive-replay-lens-macros.test.js with a seeded corpus."
+}

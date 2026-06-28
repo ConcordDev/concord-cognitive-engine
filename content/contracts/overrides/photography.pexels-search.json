@@ -1,0 +1,20 @@
+{
+  "macro_id": "photography.pexels-search",
+  "domain": "photography",
+  "name": "pexels-search",
+  "inputs": {
+    "query": { "type": "string", "required": false, "maxLength": 200 },
+    "perPage": { "type": "number", "required": false },
+    "orientation": { "type": "string", "required": false, "enum": ["landscape", "portrait", "square"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "query": "" }, "expect": { "ok": false } },
+    { "input": { "query": "   " }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler that makes a real outbound Pexels HTTP call (network). NOT assassin-driven (LENS_ACTIONS only + network-gated). The PexelsBrowser sends FLAT input { query, perPage } (no artifact wrap → handler reads params.query/perPage as the 3rd arg). Validation gates BEFORE the wire: missing PEXELS_API_KEY → {ok:false, error}; empty/whitespace query → {ok:false, error:'query required'}. The test exercises only the pre-network validation gates so the suite never touches the wire. Authored contract pinned by server/tests/photography-lens-macros.test.js."
+}

@@ -1,0 +1,25 @@
+{
+  "macro_id": "understanding.diff",
+  "domain": "understanding",
+  "name": "diff",
+  "inputs": {
+    "id": { "type": "string", "required": true },
+    "from": { "type": "number" },
+    "to": { "type": "number" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isInteger(output.result.fromRevision)",
+    "output.ok === false || Number.isInteger(output.result.toRevision)",
+    "output.ok === false || output.result.fromRevision >= 0",
+    "output.ok === false || output.result.toRevision >= 0",
+    "output.ok === false || Array.isArray(output.result.lines)",
+    "output.ok === false || (typeof output.result.added === 'number' && output.result.added >= 0)",
+    "output.ok === false || (typeof output.result.removed === 'number' && output.result.removed >= 0)",
+    "output.ok === true || (typeof output.error === 'string' && output.error.length > 0)"
+  ],
+  "fuzz_cases": [
+    { "input": { "id": "ghost_id" }, "expect": { "ok": false } }
+  ]
+}

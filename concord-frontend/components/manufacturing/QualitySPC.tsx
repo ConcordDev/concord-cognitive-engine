@@ -4,19 +4,23 @@ import { useEffect, useState } from 'react';
 import { TrendingUp, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 
+// Mirrors the REAL handler contract (server/domains/manufacturing.js#spc-chart).
+// On the empty path the handler returns only { product, samples:[], source,
+// notes } — cpk/ppm/inControl/centerLine are ABSENT, so they are optional here
+// and the render guards on `source === 'wired-feed'`.
 export interface SPCResult {
   product: string;
-  measurement: string;
-  unit: string;
-  upperSpec: number;
-  lowerSpec: number;
-  upperControl: number;
-  lowerControl: number;
-  centerLine: number;
-  samples: Array<{ at: string; value: number; outOfSpec: boolean; outOfControl: boolean }>;
-  cpk: number;
-  ppm: number;
-  inControl: boolean;
+  upperSpec?: number;
+  lowerSpec?: number;
+  upperControl?: number;
+  lowerControl?: number;
+  centerLine?: number;
+  samples: Array<{ at: string; value: number; outOfSpec?: boolean; outOfControl?: boolean; upperSpec?: number; lowerSpec?: number }>;
+  cpk?: number;
+  ppm?: number;
+  inControl?: boolean;
+  source?: string;
+  notes?: string;
 }
 
 export function QualitySPC() {
@@ -46,6 +50,11 @@ export function QualitySPC() {
       </header>
       {loading || !data ? (
         <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+      ) : (data.source !== 'wired-feed' || data.cpk == null || data.samples.length === 0) ? (
+        <div className="px-4 py-6 text-center text-xs text-gray-400">
+          <p>No SPC samples for <span className="text-cyan-300 font-mono">{data.product}</span> yet.</p>
+          {data.notes && <p className="mt-1 text-[10px] text-gray-500">{data.notes}</p>}
+        </div>
       ) : (
         <>
           <div className="p-4 grid grid-cols-4 gap-3 text-center">
@@ -54,7 +63,7 @@ export function QualitySPC() {
               <div className="text-[9px] uppercase text-gray-400">Cpk (≥1.33 capable)</div>
             </div>
             <div className="p-2 bg-white/[0.02] rounded">
-              <div className="text-xl font-bold tabular-nums text-white">{data.ppm.toFixed(0)}</div>
+              <div className="text-xl font-bold tabular-nums text-white">{(data.ppm ?? 0).toFixed(0)}</div>
               <div className="text-[9px] uppercase text-gray-400">PPM defective</div>
             </div>
             <div className="p-2 bg-white/[0.02] rounded">
@@ -67,24 +76,27 @@ export function QualitySPC() {
             </div>
           </div>
           <div className="px-4 pb-4">
-            <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">{data.measurement} ({data.unit}) — spec {data.lowerSpec.toFixed(3)}–{data.upperSpec.toFixed(3)}</div>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">{data.product} — spec {(data.lowerSpec ?? 0).toFixed(3)}–{(data.upperSpec ?? 0).toFixed(3)}</div>
             <svg viewBox="0 0 400 120" className="w-full h-32 bg-[#0a0e17] border border-white/10 rounded">
               {(() => {
                 const margin = 4;
                 const w = 400 - 2 * margin;
                 const h = 120 - 2 * margin;
-                const all = [data.upperSpec, data.lowerSpec, ...data.samples.map(s => s.value)];
+                const upperSpec = data.upperSpec ?? 0, lowerSpec = data.lowerSpec ?? 0;
+                const upperControl = data.upperControl ?? upperSpec, lowerControl = data.lowerControl ?? lowerSpec;
+                const centerLine = data.centerLine ?? (upperSpec + lowerSpec) / 2;
+                const all = [upperSpec, lowerSpec, ...data.samples.map(s => s.value)];
                 const lo = Math.min(...all) * 0.98;
                 const hi = Math.max(...all) * 1.02;
-                const y = (v: number) => margin + h - ((v - lo) / (hi - lo)) * h;
+                const y = (v: number) => margin + h - ((v - lo) / (hi - lo || 1)) * h;
                 const x = (i: number) => margin + (i / Math.max(1, data.samples.length - 1)) * w;
                 return (
                   <>
-                    <line x1={margin} x2={margin + w} y1={y(data.upperSpec)} y2={y(data.upperSpec)} stroke="#f87171" strokeDasharray="2 2" strokeWidth="0.5" />
-                    <line x1={margin} x2={margin + w} y1={y(data.lowerSpec)} y2={y(data.lowerSpec)} stroke="#f87171" strokeDasharray="2 2" strokeWidth="0.5" />
-                    <line x1={margin} x2={margin + w} y1={y(data.upperControl)} y2={y(data.upperControl)} stroke="#fbbf24" strokeDasharray="3 3" strokeWidth="0.5" />
-                    <line x1={margin} x2={margin + w} y1={y(data.lowerControl)} y2={y(data.lowerControl)} stroke="#fbbf24" strokeDasharray="3 3" strokeWidth="0.5" />
-                    <line x1={margin} x2={margin + w} y1={y(data.centerLine)} y2={y(data.centerLine)} stroke="#22d3ee" strokeWidth="0.5" />
+                    <line x1={margin} x2={margin + w} y1={y(upperSpec)} y2={y(upperSpec)} stroke="#f87171" strokeDasharray="2 2" strokeWidth="0.5" />
+                    <line x1={margin} x2={margin + w} y1={y(lowerSpec)} y2={y(lowerSpec)} stroke="#f87171" strokeDasharray="2 2" strokeWidth="0.5" />
+                    <line x1={margin} x2={margin + w} y1={y(upperControl)} y2={y(upperControl)} stroke="#fbbf24" strokeDasharray="3 3" strokeWidth="0.5" />
+                    <line x1={margin} x2={margin + w} y1={y(lowerControl)} y2={y(lowerControl)} stroke="#fbbf24" strokeDasharray="3 3" strokeWidth="0.5" />
+                    <line x1={margin} x2={margin + w} y1={y(centerLine)} y2={y(centerLine)} stroke="#22d3ee" strokeWidth="0.5" />
                     <polyline points={data.samples.map((s, i) => `${x(i)},${y(s.value)}`).join(' ')} stroke="#22d3ee" strokeWidth="0.8" fill="none" />
                     {data.samples.map((s, i) => (
                       <circle key={i} cx={x(i)} cy={y(s.value)} r={1.2} fill={s.outOfSpec ? '#f87171' : s.outOfControl ? '#fbbf24' : '#22d3ee'} />

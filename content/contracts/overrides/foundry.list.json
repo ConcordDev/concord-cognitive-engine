@@ -1,0 +1,17 @@
+{
+  "macro_id": "foundry.list",
+  "domain": "foundry",
+  "name": "list",
+  "inputs": { "limit": { "type": "number", "required": false } },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.worlds)",
+    "output.ok === false || typeof output.count === 'number'",
+    "output.ok === false || output.worlds.length === output.count"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 10 }, "expect": { "ok": true } }
+  ]
+}

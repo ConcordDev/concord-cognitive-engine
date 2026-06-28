@@ -1,0 +1,427 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "tools",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tools.compile",
+      "name": "compile"
+    },
+    {
+      "_derived": false,
+      "domain": "tools",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 5
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": -1
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 1000000000,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.history))",
+        "output.ok === false || typeof output.result.total === 'number'"
+      ],
+      "macro_id": "tools.compile-history",
+      "name": "compile-history"
+    },
+    {
+      "_derived": false,
+      "domain": "tools",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "document": "binds the parties",
+            "parties": [
+              {
+                "name": "Alice"
+              }
+            ],
+            "title": "NDA"
+          }
+        },
+        {
+          "expect": {
+            "error": "title required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "document text required",
+            "ok": false
+          },
+          "input": {
+            "title": "X"
+          }
+        },
+        {
+          "expect": {
+            "error": "at least one party required",
+            "ok": false
+          },
+          "input": {
+            "document": "y",
+            "title": "X"
+          }
+        }
+      ],
+      "inputs": {
+        "document": {
+          "maxLength": 100000,
+          "type": "string"
+        },
+        "parties": {
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.envelope && typeof output.result.envelope.id === 'string')",
+        "output.ok === false || /^[0-9a-f]{64}$/.test(output.result.envelope.documentHash)",
+        "output.ok === false || output.result.envelope.status === 'out_for_signature'",
+        "output.ok === false || Array.isArray(output.result.envelope.parties)"
+      ],
+      "macro_id": "tools.esign-create",
+      "name": "esign-create"
+    },
+    {
+      "_derived": false,
+      "domain": "tools",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "envelope not found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "envelope not found",
+            "ok": false
+          },
+          "input": {
+            "envelopeId": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "envelopeId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.envelope && typeof output.result.envelope.id === 'string')"
+      ],
+      "macro_id": "tools.esign-detail",
+      "name": "esign-detail"
+    },
+    {
+      "_derived": false,
+      "domain": "tools",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "status": "completed"
+          }
+        }
+      ],
+      "inputs": {
+        "status": {
+          "enum": [
+            "out_for_signature",
+            "completed",
+            "voided",
+            "all"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.envelopes))",
+        "output.ok === false || typeof output.result.total === 'number'",
+        "output.ok === false || output.result.total === output.result.envelopes.length"
+      ],
+      "macro_id": "tools.esign-list",
+      "name": "esign-list"
+    },
+    {
+      "_derived": false,
+      "domain": "tools",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "envelope not found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "envelope not found",
+            "ok": false
+          },
+          "input": {
+            "envelopeId": "nope",
+            "partyId": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "envelopeId": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "partyId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.envelope && typeof output.result.completed === 'boolean')"
+      ],
+      "macro_id": "tools.esign-sign",
+      "name": "esign-sign"
+    },
+    {
+      "_derived": true,
+      "domain": "tools",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tools.esign-verify",
+      "name": "esign-verify"
+    },
+    {
+      "_derived": true,
+      "domain": "tools",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tools.esign-verify-token",
+      "name": "esign-verify-token"
+    },
+    {
+      "_derived": true,
+      "domain": "tools",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tools.esign-void",
+      "name": "esign-void"
+    },
+    {
+      "_derived": true,
+      "domain": "tools",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tools.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "tools",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tools.recent_mine",
+      "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "tools",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tools.research",
+      "name": "research"
+    },
+    {
+      "_derived": false,
+      "domain": "tools",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true,
+            "result": {
+              "cleared": true
+            }
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.cleared === true)"
+      ],
+      "macro_id": "tools.research-clear",
+      "name": "research-clear"
+    },
+    {
+      "_derived": false,
+      "domain": "tools",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 10
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": 1e+308
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 1000000000,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.history))",
+        "output.ok === false || typeof output.result.total === 'number'"
+      ],
+      "macro_id": "tools.research-history",
+      "name": "research-history"
+    },
+    {
+      "_derived": true,
+      "domain": "tools",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "tools.web_search",
+      "name": "web_search"
+    }
+  ],
+  "domain": "tools",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 15
+}

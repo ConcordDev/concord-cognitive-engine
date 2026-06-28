@@ -1,0 +1,24 @@
+{
+  "macro_id": "goddess.archive",
+  "domain": "goddess",
+  "name": "archive",
+  "_note": "fromTs/toTs/limit are optional clamped filters (empty match → ok:true, limit clamped to [1,200]) — not fail-closed numerics, so they are not declared as numeric inputs. tone IS validated (unknown → ok:false).",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 128 },
+    "query": { "type": "string", "maxLength": 200 },
+    "tone": { "type": "string", "enum": ["exalted", "warm", "neutral", "cold", "mourning"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.dispatches)",
+    "output.ok === false || typeof output.result.count === 'number'",
+    "output.ok === false || (output.result.toneCounts !== null && typeof output.result.toneCounts === 'object')",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "tone": "ecstatic" }, "expect": { "ok": false } },
+    { "input": { "limit": 1e308 }, "expect": { "ok": true } }
+  ]
+}
