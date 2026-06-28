@@ -67,6 +67,17 @@ export const EXTERNAL_IO_HINT_RE = /^live_/i;
 
 export const SKIP_DOMAINS_DEFAULT = new Set(["oracle", "concordance"]);
 
+// Heavy whole-system introspection macros — not headless-safe to FUZZ for the
+// same timing reason as external_io: they read/parse/serialize a large generated
+// artifact (audit/cartograph/SYSTEMS.json) or walk the whole source tree, ignore
+// their numeric input entirely, and so a V2 adversarial-fuzz vector tests nothing
+// meaningful while flakily exceeding the 8s MACRO_TIMEOUT_MS as the repo grows
+// (a timing artifact, NOT a code defect). They get a STATIC contract only, never
+// an adversarial drive — identical justification to the `live_*` external-IO skip.
+export const HEAVY_FUZZ_SKIP_IDS = new Set([
+  "system.cartograph",
+]);
+
 // Per-(domain,name) fixture overrides — copied from the smoke harness so the
 // few macros that need a non-empty body don't trivially fail.
 export const FIXTURES = {
@@ -101,6 +112,7 @@ export function buildDefaultInput(domain, name) {
  */
 export function shouldSkip(domain, name) {
   if (SKIP_DOMAINS_DEFAULT.has(domain)) return { skip: true, reason: "skip_domain" };
+  if (HEAVY_FUZZ_SKIP_IDS.has(`${domain}.${name}`)) return { skip: true, reason: "heavy_introspection" };
   if (EXTERNAL_IO_HINT_RE.test(name)) return { skip: true, reason: "external_io" };
   if (_skipDestructive && DESTRUCTIVE_HINT_RE.test(name)) return { skip: true, reason: "destructive" };
   if (!_llmEnabled && LLM_HINT_RE.test(name)) return { skip: true, reason: "llm_hint" };
