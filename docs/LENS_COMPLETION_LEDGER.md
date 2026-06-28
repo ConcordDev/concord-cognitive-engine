@@ -436,6 +436,31 @@ The per-lens loop surfaced a systemic bug class AND a process gap; both fixed:
   weighed against the chem-behavior depth test — deferred, flagged.
 41 lenses + the systemic dispatch fix. The loop continues.
 
+### Phase-2 batch 11 DONE (2026-06-28): photography, engineering, manufacturing, pharmacy, welding
+125 server + 24 UX-state tests, run with the IMPROVED component-exact-shape prompt (trace each
+calculator's exact sent-input + rendered-output field names, test that exact shape). It paid off
+massively — the field-mismatch + fail-closed class was rampant in the calculator-family lenses:
+- **welding**: ALL FOUR calculators dead — WelderProcedures rendered tensileLoadKN/effectiveArea/
+  recommendations[].electrode/heatInputJmm/items[].passed while the handler returns safeWorkingLoad/
+  throatSize/recommended{rod}/heatInput/checklist[].status. Entire calculator surface blank in prod;
+  all 4 interfaces+renders aligned + wFinite fail-closed guards. 20 server + 5 vitest + 4 overrides.
+- **pharmacy**: 🔴 dosageCalculator printed 'Infinity mg' (lying dose) — fail-closed; + adverse-events
+  blank card + drugInteractionCheck dead cards aligned. 24 server + 5 vitest + 5 overrides.
+- **manufacturing**: 2 dead calculators (bomCost {bom}→{components}, scheduleOptimize {jobs}→
+  {workOrders}) + a QualitySPC empty-state crash + safetyRate always-0 + 3 NaN leaks. 28 server +
+  4 vitest + 6 overrides.
+- **engineering**: fields aligned; 4 fail-closed gaps incl. a partMesh NON-FINITE Three.js geometry
+  (renderer-corrupting) + toleranceChain '±Infinity' + bomRollup overflow + a swallowed-fetch spinner.
+  35 server + 5 vitest + 6 overrides.
+- **photography**: fields aligned (confirms the dispatch peel); exposureCalc '1/Infinitys' leak + a
+  double 'f/' prefix fixed. 18 server + 5 vitest + 5 overrides.
+Assassin ratchet GREEN (1 flaky system.history-snapshot timeout under post-restart load, clean on
+re-run); 258 WIRED; tsc 0.
+LESSON CONFIRMED: the calculator-family lenses (built from a shared *ActionPanel template) carry
+widespread caller↔receiver FIELD-NAME drift that naive handler-shape tests miss entirely — welding had
+its ENTIRE surface dead. The component-exact-shape audit is mandatory for this family.
+46 lenses now through the non-score gate (batches 1–11). The loop continues.
+
 **NAMED PHASE-2 BACKLOG CLOSED (2026-06-27):** all 6 batches done (24 lenses through the non-score
 gate across batches 1–6). Real defects fixed across the run: 2 CC money bugs (sponsorship.create,
 inheritance value/open_listing) + 1 in-game-currency treasury fail-open (kingdoms) + ~6 numeric

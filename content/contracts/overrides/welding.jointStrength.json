@@ -1,0 +1,31 @@
+{
+  "macro_id": "welding.jointStrength",
+  "domain": "welding",
+  "name": "jointStrength",
+  "inputs": {
+    "weldType": { "type": "string", "maxLength": 40 },
+    "material": { "type": "string", "maxLength": 40 },
+    "thickness": { "type": "number" },
+    "length": { "type": "number" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.throatSize === 'string'",
+    "output.ok === false || typeof output.result.tensileStrength === 'string'",
+    "output.ok === false || typeof output.result.theoreticalCapacity === 'string'",
+    "output.ok === false || typeof output.result.safeWorkingLoad === 'string'",
+    "output.ok === false || output.result.safetyFactor === 1.5",
+    "output.ok === false || ['heavy-duty','structural','medium-duty','light-duty'].includes(output.result.rating)",
+    "output.ok === false || Number.isFinite(parseFloat(output.result.throatSize))",
+    "output.ok === false || Number.isFinite(parseFloat(output.result.safeWorkingLoad))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "weldType": "fillet", "material": "mild-steel", "thickness": 8, "length": 120 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "weldType": "butt", "material": "high-strength", "thickness": 6, "length": 100 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "weldType": "made-up", "material": "unobtanium", "thickness": "Infinity", "length": "NaN" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data (WelderProcedures.callWeld channel: runDomain → {input:{artifact:{data}}} peeled at dispatch). throatSize = thickness × weldFactor (fillet 0.707, butt 1.0, groove 0.9, lap 0.65, plug 0.5); loadCapacity = round(throat × length × tensile×0.6 / 1000); safeWorkingLoad = round(loadCapacity/1.5). Unknown material → 400 MPa, unknown weldType → 0.707. Non-finite thickness/length fall to defaults 6/100 (wFinite guard) — never NaN. Result card renders throatSize/tensileStrength/theoreticalCapacity/safeWorkingLoad/safetyFactor/rating EXACTLY (the prior tensileLoadKN/shearLoadKN/effectiveArea/classification fields were never returned — fixed 2026-06-28)."
+}
