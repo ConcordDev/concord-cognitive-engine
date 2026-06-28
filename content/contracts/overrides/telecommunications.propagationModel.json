@@ -1,0 +1,27 @@
+{
+  "macro_id": "telecommunications.propagationModel",
+  "domain": "telecommunications",
+  "name": "propagationModel",
+  "reads_artifact_data": false,
+  "inputs": {
+    "towers": { "type": "array", "required": false, "maxLength": 5000 },
+    "rxSensitivityDbm": { "type": "number", "required": false },
+    "mobileHeightM": { "type": "number", "required": false },
+    "fadeMarginDb": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (Array.isArray(output.result.cells) && Number.isFinite(output.result.totalCoverageKm2))",
+    "output.ok === false || output.result.cells.every(function(c){ return Number.isFinite(c.eirpDbm) && Number.isFinite(c.linkBudgetDb) && Number.isFinite(c.effectiveRangeKm) && Number.isFinite(c.coverageKm2) && Number.isFinite(c.edgeRsrpDbm); })",
+    "output.ok === false || output.result.cells.every(function(c){ return ['good','fair','weak'].indexOf(c.edgeQuality) >= 0; })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "towers": [{ "name": "P1", "lat": 40.7, "lon": -74, "powerWatts": 40, "gainDbi": 16, "freqMhz": 1800, "heightM": 30, "terrain": "suburban" }] }, "expect": { "ok": true } },
+    { "input": { "towers": [{ "name": "U", "lat": 1, "lon": 1, "terrain": "urban" }] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "towers": [{ "name": "Bad", "lat": 1, "lon": 1, "powerWatts": "1e999", "freqMhz": "NaN" }] }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). RFPlanner PropagationTab sends FLAT params {rxSensitivityDbm,fadeMarginDb,mobileHeightM}; reads per-user saved towers (or params.towers). COST-231 Hata path loss → link budget = EIRP - rxSens - fadeMargin → binary-searched effective range × terrain attenuation. RETURNS cells[{id,name,lat,lon,terrain,freqMhz,eirpDbm,linkBudgetDb,effectiveRangeKm,coverageKm2,edgeRsrpDbm,edgeQuality}] + totalCoverageKm2 — the exact keys the PropResult table renders. Rejects (ok:false) with no towers. POISON: powerWatts/freqMhz/heightM via num() → finite defaults; every cell number stays FINITE. State-backed (towers map). Pinned by server/tests/telecommunications-lens-macros.test.js."
+}
