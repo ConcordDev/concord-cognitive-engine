@@ -10,6 +10,461 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "parenting.activity-history",
+      "name": "activity-history"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.activity-log",
+      "name": "activity-log"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.appointment-add",
+      "name": "appointment-add"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.appointment-delete",
+      "name": "appointment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.appointment-ical",
+      "name": "appointment-ical"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.appointment-list",
+      "name": "appointment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.appointment-update",
+      "name": "appointment-update"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.caregiver-invite",
+      "name": "caregiver-invite"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.caregiver-list",
+      "name": "caregiver-list"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.caregiver-redeem",
+      "name": "caregiver-redeem"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.caregiver-remove",
+      "name": "caregiver-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.child-add",
+      "name": "child-add"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.child-delete",
+      "name": "child-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.child-list",
+      "name": "child-list"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.day-timeline",
+      "name": "day-timeline"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.diaper-history",
+      "name": "diaper-history"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.diaper-log",
+      "name": "diaper-log"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.expert-content",
+      "name": "expert-content"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.feed-history",
+      "name": "feed-history"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.feed-log",
+      "name": "feed-log"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.feed-stats",
+      "name": "feed-stats"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.growth-chart",
+      "name": "growth-chart"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.growth-history",
+      "name": "growth-history"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.growth-log",
+      "name": "growth-log"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.growth-percentile",
+      "name": "growth-percentile"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.growthPercentile",
+      "name": "growthPercentile"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.immunizationTracker",
+      "name": "immunizationTracker"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "parenting.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +478,453 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "parenting.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.medicine-history",
+      "name": "medicine-history"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.medicine-log",
+      "name": "medicine-log"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.milestone-checklist",
+      "name": "milestone-checklist"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.milestone-progress",
+      "name": "milestone-progress"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.milestone-record",
+      "name": "milestone-record"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.milestoneCheck",
+      "name": "milestoneCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.parenting-dashboard",
+      "name": "parenting-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.pump-history",
+      "name": "pump-history"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.pump-log",
+      "name": "pump-log"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "parenting.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.routineOptimizer",
+      "name": "routineOptimizer"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.sleep-history",
+      "name": "sleep-history"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.sleep-log",
+      "name": "sleep-log"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.sleep-schedule",
+      "name": "sleep-schedule"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.sleep-stats",
+      "name": "sleep-stats"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.sleepAnalysis",
+      "name": "sleepAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.sweet-spot",
+      "name": "sweet-spot"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.timer-cancel",
+      "name": "timer-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.timer-list",
+      "name": "timer-list"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.timer-start",
+      "name": "timer-start"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.timer-stop",
+      "name": "timer-stop"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.trends-insights",
+      "name": "trends-insights"
+    },
+    {
+      "_derived": true,
+      "domain": "parenting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "parenting.vote",
+      "name": "vote"
     }
   ],
   "domain": "parenting",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 71
 }

@@ -10,8 +10,281 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "chat.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.assistant-create",
+      "name": "assistant-create"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.assistant-delete",
+      "name": "assistant-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.assistant-update",
+      "name": "assistant-update"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.assistants-list",
+      "name": "assistants-list"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.branch-delete",
+      "name": "branch-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.branch-fork",
+      "name": "branch-fork"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.branches-list",
+      "name": "branches-list"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.canvas-create",
+      "name": "canvas-create"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.canvas-delete",
+      "name": "canvas-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.canvas-get",
+      "name": "canvas-get"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.canvas-list",
+      "name": "canvas-list"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.canvas-revert",
+      "name": "canvas-revert"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.canvas-update",
+      "name": "canvas-update"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.code-history",
+      "name": "code-history"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.code-run",
+      "name": "code-run"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "chat.context",
       "name": "context"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.duplicate",
+      "name": "duplicate"
     },
     {
       "_derived": true,
@@ -114,8 +387,125 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "chat.image-delete",
+      "name": "image-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.image-generate",
+      "name": "image-generate"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.image-history",
+      "name": "image-history"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "chat.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.memory-add",
+      "name": "memory-add"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.memory-delete",
+      "name": "memory-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.memory-list",
+      "name": "memory-list"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.memory-update",
+      "name": "memory-update"
     },
     {
       "_derived": true,
@@ -140,8 +530,216 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "chat.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.participantAnalysis",
+      "name": "participantAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.project-create",
+      "name": "project-create"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.project-delete",
+      "name": "project-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.project-get",
+      "name": "project-get"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.project-update",
+      "name": "project-update"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.projects-list",
+      "name": "projects-list"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.prompt-create",
+      "name": "prompt-create"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.prompt-delete",
+      "name": "prompt-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.prompt-update",
+      "name": "prompt-update"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.prompts-list",
+      "name": "prompts-list"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "chat.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.repost",
+      "name": "repost"
     },
     {
       "_derived": true,
@@ -179,8 +777,203 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "chat.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.scheduled-cancel",
+      "name": "scheduled-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.scheduled-create",
+      "name": "scheduled-create"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.scheduled-list",
+      "name": "scheduled-list"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.share-create",
+      "name": "share-create"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.share-list",
+      "name": "share-list"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.share-revoke",
+      "name": "share-revoke"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.share-view",
+      "name": "share-view"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "chat.summary",
       "name": "summary"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.thread-index",
+      "name": "thread-index"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.threads-search",
+      "name": "threads-search"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.threadSummarize",
+      "name": "threadSummarize"
     },
     {
       "_derived": true,
@@ -207,9 +1000,61 @@
       ],
       "macro_id": "chat.tools",
       "name": "tools"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.topicDetection",
+      "name": "topicDetection"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.voice-get",
+      "name": "voice-get"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.voice-update",
+      "name": "voice-update"
+    },
+    {
+      "_derived": true,
+      "domain": "chat",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chat.vote",
+      "name": "vote"
     }
   ],
   "domain": "chat",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 16
+  "macroCount": 81
 }

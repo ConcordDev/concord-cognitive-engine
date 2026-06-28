@@ -1,6 +1,331 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "world-creator",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "biome": "temperate_forest",
+            "weatherIntensity": 1
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "biome": "volcanic",
+            "weatherIntensity": 1.5
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "biome": "atlantis"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "biome": "desert",
+            "weatherIntensity": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "biome": "desert",
+            "weatherIntensity": "Infinity"
+          }
+        }
+      ],
+      "inputs": {
+        "biome": {
+          "maxLength": 40,
+          "required": true,
+          "type": "string"
+        },
+        "weatherIntensity": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || (Array.isArray(output.result.climateCurve) && output.result.climateCurve.length === 6)",
+        "output.ok !== true || (Number.isFinite(output.result.stormChancePct) && output.result.stormChancePct >= 0 && output.result.stormChancePct <= 95)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "world-creator.biome-preview",
+      "name": "biome-preview"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.biomes",
+      "name": "biomes"
+    },
+    {
+      "_derived": false,
+      "domain": "world-creator",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "query": "frost"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "query": "<script>alert(1)</script>"
+          }
+        }
+      ],
+      "inputs": {
+        "query": {
+          "maxLength": 60,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || Array.isArray(output.result.worlds)",
+        "output.ok !== true || output.result.worlds.length <= 60",
+        "output.ok !== true || output.result.worlds.every(w => typeof w.id === 'string' && typeof w.creatorId === 'string')",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "world-creator.discover",
+      "name": "discover"
+    },
+    {
+      "_derived": false,
+      "domain": "world-creator",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Valid World"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Templated",
+            "template": "forest_realm"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "name": "ab"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Clamp",
+            "rules": {
+              "combatLethality": 1e+308
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Clamp",
+            "rules": {
+              "questDensity": "Infinity"
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "biome": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 500,
+          "required": false,
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        },
+        "template": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || (output.result && output.result.draft && typeof output.result.draft.id === 'string')",
+        "output.ok !== true || (output.result.draft.visibility === 'private')",
+        "output.ok !== true || (typeof output.result.draft.rules === 'object' && Object.values(output.result.draft.rules).every(v => v >= 0.5 && v <= 1.5))",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "world-creator.draft-create",
+      "name": "draft-create"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.draft-delete",
+      "name": "draft-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.draft-get",
+      "name": "draft-get"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.draft-list",
+      "name": "draft-list"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.draft-publish",
+      "name": "draft-publish"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.draft-update",
+      "name": "draft-update"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.faction-add",
+      "name": "faction-add"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.faction-remove",
+      "name": "faction-remove"
+    },
+    {
       "_derived": true,
       "domain": "world-creator",
       "fuzz_cases": [],
@@ -23,11 +348,182 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "world-creator.npc-place",
+      "name": "npc-place"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.npc-remove",
+      "name": "npc-remove"
+    },
+    {
+      "_derived": false,
+      "domain": "world-creator",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "id": "ghost_draft"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || typeof output.result.ready === 'boolean'",
+        "output.ok !== true || (Array.isArray(output.result.issues) && Array.isArray(output.result.warnings))",
+        "output.ok !== true || (output.result.worldPayload && typeof output.result.worldPayload.name === 'string' && typeof output.result.worldPayload.rule_modulators === 'object')",
+        "output.ok !== true || (output.result.ready === false || output.result.issues.length === 0)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "world-creator.playtest-check",
+      "name": "playtest-check"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.prop-move",
+      "name": "prop-move"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.prop-place",
+      "name": "prop-place"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.prop-remove",
+      "name": "prop-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "world-creator.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.spawn-add",
+      "name": "spawn-add"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.spawn-remove",
+      "name": "spawn-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.templates",
+      "name": "templates"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.zone-add",
+      "name": "zone-add"
+    },
+    {
+      "_derived": true,
+      "domain": "world-creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "world-creator.zone-remove",
+      "name": "zone-remove"
     }
   ],
   "domain": "world-creator",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 24
 }

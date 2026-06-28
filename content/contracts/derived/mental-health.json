@@ -10,6 +10,546 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "mental-health.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.breathing-log",
+      "name": "breathing-log"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.breathing-patterns",
+      "name": "breathing-patterns"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.breathing-stats",
+      "name": "breathing-stats"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.cdc-mental-health-stats",
+      "name": "cdc-mental-health-stats"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "mental-health",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "message": "I had a rough day"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "message": "   "
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "message": "I want to die"
+          }
+        }
+      ],
+      "inputs": {
+        "message": {
+          "maxLength": 1200,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.reply === 'string' && output.result.reply.length > 0)",
+        "output.ok === false || typeof output.result.riskFlag === 'boolean'",
+        "output.ok === false || typeof output.result.disclaimer === 'string'",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "mental-health.companion-chat",
+      "name": "companion-chat"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.companion-history",
+      "name": "companion-history"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.companion-reset",
+      "name": "companion-reset"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.copingStrategies",
+      "name": "copingStrategies"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.course-complete-session",
+      "name": "course-complete-session"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.course-create",
+      "name": "course-create"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.course-delete",
+      "name": "course-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.course-detail",
+      "name": "course-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.course-list",
+      "name": "course-list"
+    },
+    {
+      "_derived": false,
+      "domain": "mental-health",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "country": "US"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "country": "uk"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "country": "zz"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "country": "￿; rm -rf"
+          }
+        }
+      ],
+      "inputs": {
+        "country": {
+          "maxLength": 4,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "output.result && typeof output.result.country === 'string'",
+        "typeof output.result.available === 'boolean'",
+        "output.result.available === false || (output.result.hotlines && output.result.hotlines.primary && typeof output.result.hotlines.primary.phone === 'string')",
+        "output.result.available === true || typeof output.result.fallback === 'string'"
+      ],
+      "macro_id": "mental-health.crisis-hotlines",
+      "name": "crisis-hotlines"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": false,
+      "domain": "mental-health",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "minSamples": 3
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "minSamples": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "minSamples": "not-a-number"
+          }
+        }
+      ],
+      "inputs": {
+        "minSamples": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "output.result && typeof output.result.hasData === 'boolean'",
+        "Array.isArray(output.result.correlations)",
+        "output.result.hasData === false || output.result.correlations.every(c => ['lifts','lowers','neutral'].includes(c.effect))",
+        "output.result.hasData === false || output.result.correlations.every(c => typeof c.delta === 'number' && Number.isFinite(c.delta))",
+        "output.result.hasData === false || output.result.correlations.every(c => c.samples >= 1)"
+      ],
+      "macro_id": "mental-health.factor-correlations",
+      "name": "factor-correlations"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.factor-create",
+      "name": "factor-create"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.factor-delete",
+      "name": "factor-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.factor-list",
+      "name": "factor-list"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.generate-insights",
+      "name": "generate-insights"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.goal-set",
+      "name": "goal-set"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.goal-status",
+      "name": "goal-status"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.gratitude-add",
+      "name": "gratitude-add"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.gratitude-list",
+      "name": "gratitude-list"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.journalPrompt",
+      "name": "journalPrompt"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "mental-health.list_mine",
       "name": "list_mine"
     },
@@ -36,11 +576,682 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "mental-health.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.mindfulness-minutes",
+      "name": "mindfulness-minutes"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.mood-calendar",
+      "name": "mood-calendar"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.mood-history",
+      "name": "mood-history"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.mood-insights",
+      "name": "mood-insights"
+    },
+    {
+      "_derived": false,
+      "domain": "mental-health",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "mood": 4,
+            "note": "ok day"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "mood": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "mood": 6
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "mood": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "mood": "5; DROP TABLE"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "date": {
+          "maxLength": 10,
+          "required": false,
+          "type": "string"
+        },
+        "energy": {
+          "required": false,
+          "type": "number"
+        },
+        "label": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        },
+        "mood": {
+          "required": true,
+          "type": "number"
+        },
+        "note": {
+          "maxLength": 500,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.entry && typeof output.result.entry.id === 'string')",
+        "output.ok === false || (output.result.entry.mood >= 1 && output.result.entry.mood <= 5)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "mental-health.mood-log",
+      "name": "mood-log"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.mood-log-tagged",
+      "name": "mood-log-tagged"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.moodTracker",
+      "name": "moodTracker"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "mental-health.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.reminder-delete",
+      "name": "reminder-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.reminder-due",
+      "name": "reminder-due"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.reminder-list",
+      "name": "reminder-list"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.reminder-set",
+      "name": "reminder-set"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.safety-plan-get",
+      "name": "safety-plan-get"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.safety-plan-save",
+      "name": "safety-plan-save"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.safety-plan-template",
+      "name": "safety-plan-template"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.session-history",
+      "name": "session-history"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.session-log",
+      "name": "session-log"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.session-stats",
+      "name": "session-stats"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.sleep-history",
+      "name": "sleep-history"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.sleep-log",
+      "name": "sleep-log"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.therapist-report",
+      "name": "therapist-report"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": false,
+      "domain": "mental-health",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "junk": "'; DROP TABLE moods; --",
+            "n": 1e+308
+          }
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.streak === 'number' && output.result.streak >= 0)",
+        "output.ok === false || (typeof output.result.sessionsThisWeek === 'number' && output.result.sessionsThisWeek >= 0)",
+        "output.ok === false || (output.result.latestMood === null || (output.result.latestMood >= 1 && output.result.latestMood <= 5))",
+        "output.ok === false || (output.result.avgSleepHours === null || typeof output.result.avgSleepHours === 'number')"
+      ],
+      "macro_id": "mental-health.wellness-dashboard",
+      "name": "wellness-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.wellnessScore",
+      "name": "wellnessScore"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.worksheet-delete",
+      "name": "worksheet-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.worksheet-list",
+      "name": "worksheet-list"
+    },
+    {
+      "_derived": false,
+      "domain": "mental-health",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "responses": {
+              "situation": "deadline"
+            },
+            "templateId": "thought_record"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "responses": {},
+            "templateId": "thought_record"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "responses": {
+              "x": "y"
+            },
+            "templateId": "__no_such_template__"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "responses": {
+              "emotion": "anxiety"
+            },
+            "templateId": "dbt_check_facts"
+          }
+        }
+      ],
+      "inputs": {
+        "responses": {
+          "required": false,
+          "type": "object"
+        },
+        "templateId": {
+          "maxLength": 40,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.worksheet && typeof output.result.worksheet.id === 'string')",
+        "output.ok === false || ['CBT','DBT'].includes(output.result.worksheet.modality)",
+        "output.ok === false || (output.result.worksheet.answered >= 1 && output.result.worksheet.answered <= output.result.worksheet.totalFields)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "mental-health.worksheet-save",
+      "name": "worksheet-save"
+    },
+    {
+      "_derived": true,
+      "domain": "mental-health",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mental-health.worksheet-templates",
+      "name": "worksheet-templates"
     }
   ],
   "domain": "mental-health",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 73
 }

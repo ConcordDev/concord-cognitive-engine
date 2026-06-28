@@ -1,0 +1,98 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "profile",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "profile.badges-list",
+      "name": "badges-list"
+    },
+    {
+      "_derived": true,
+      "domain": "profile",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "profile.portfolio-list",
+      "name": "portfolio-list"
+    },
+    {
+      "_derived": true,
+      "domain": "profile",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "profile.profile-get",
+      "name": "profile-get"
+    },
+    {
+      "_derived": true,
+      "domain": "profile",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "profile.profile-update",
+      "name": "profile-update"
+    },
+    {
+      "_derived": true,
+      "domain": "profile",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "profile.reputation-summary",
+      "name": "reputation-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "profile",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "profile.visitor-record",
+      "name": "visitor-record"
+    },
+    {
+      "_derived": true,
+      "domain": "profile",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "profile.visitors-list",
+      "name": "visitors-list"
+    }
+  ],
+  "domain": "profile",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 7
+}

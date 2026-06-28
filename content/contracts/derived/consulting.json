@@ -10,6 +10,562 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "consulting.allocation-create",
+      "name": "allocation-create"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.allocation-delete",
+      "name": "allocation-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": false,
+      "domain": "consulting",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "avgResponseDays": 2,
+            "client": "Acme",
+            "invoicesPaid": 9,
+            "invoicesTotal": 10,
+            "nps": 50
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "avgResponseDays": "1e308",
+            "invoicesPaid": "1e999",
+            "invoicesTotal": "NaN",
+            "nps": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "invoicesPaid": 3,
+            "invoicesTotal": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "nps": -200
+          }
+        }
+      ],
+      "inputs": {
+        "avgResponseDays": {
+          "required": false,
+          "type": "number"
+        },
+        "client": {
+          "maxLength": 200,
+          "required": false,
+          "type": "string"
+        },
+        "invoicesPaid": {
+          "required": false,
+          "type": "number"
+        },
+        "invoicesTotal": {
+          "required": false,
+          "type": "number"
+        },
+        "nps": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.nps)",
+        "output.ok === false || Number.isFinite(output.result.paymentRate)",
+        "output.ok === false || Number.isFinite(output.result.avgResponseDays)",
+        "output.ok === false || Number.isFinite(output.result.healthScore)",
+        "output.ok === false || ['low','medium','high'].indexOf(output.result.risk) >= 0",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "consulting.clientHealth",
+      "name": "clientHealth"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.consultant-create",
+      "name": "consultant-create"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.consultant-delete",
+      "name": "consultant-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.consulting-dashboard",
+      "name": "consulting-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.engagement-create",
+      "name": "engagement-create"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.engagement-delete",
+      "name": "engagement-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.engagement-list",
+      "name": "engagement-list"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.engagement-update",
+      "name": "engagement-update"
+    },
+    {
+      "_derived": false,
+      "domain": "consulting",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "client": "Acme",
+            "deliverables": [
+              {
+                "hours": 10,
+                "name": "Discovery"
+              }
+            ],
+            "hourlyRate": 250
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "deliverables": [
+              {
+                "hours": "Infinity",
+                "name": "X"
+              }
+            ],
+            "hourlyRate": "1e999"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "deliverables": [
+              {
+                "hours": "1e308",
+                "name": "X"
+              }
+            ],
+            "hourlyRate": "1e308"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "deliverables": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "client": {
+          "maxLength": 200,
+          "required": false,
+          "type": "string"
+        },
+        "deliverables": {
+          "required": false,
+          "type": "array"
+        },
+        "hourlyRate": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.hourlyRate)",
+        "output.ok === false || Number.isFinite(output.result.totalHours)",
+        "output.ok === false || Number.isFinite(output.result.subtotal)",
+        "output.ok === false || Number.isFinite(output.result.contingency)",
+        "output.ok === false || Number.isFinite(output.result.grandTotal)",
+        "output.ok === false || Array.isArray(output.result.deliverables)",
+        "output.ok === false || output.result.deliverables.every(function(d){ return Number.isFinite(d.fee) && Number.isFinite(d.hours); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "consulting.engagementScope",
+      "name": "engagementScope"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.expense-create",
+      "name": "expense-create"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.expense-delete",
+      "name": "expense-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.expense-list",
+      "name": "expense-list"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.expense-update",
+      "name": "expense-update"
+    },
+    {
+      "_derived": false,
+      "domain": "consulting",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "engagementId": "missing"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "engagementId": "missing",
+            "taxRate": "1e999"
+          }
+        }
+      ],
+      "inputs": {
+        "dueInDays": {
+          "required": false,
+          "type": "number"
+        },
+        "engagementId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        },
+        "taxRate": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.invoice.subtotal)",
+        "output.ok === false || Number.isFinite(output.result.invoice.tax)",
+        "output.ok === false || Number.isFinite(output.result.invoice.total)",
+        "output.ok === false || (output.result.invoice.taxRate >= 0 && output.result.invoice.taxRate <= 1)",
+        "output.ok === false || Array.isArray(output.result.invoice.lineItems)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "consulting.invoice-create",
+      "name": "invoice-create"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.invoice-delete",
+      "name": "invoice-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.invoice-export",
+      "name": "invoice-export"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.invoice-list",
+      "name": "invoice-list"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.invoice-mark-paid",
+      "name": "invoice-mark-paid"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "consulting.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +579,606 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "consulting.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.portal-delete",
+      "name": "portal-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.portal-list",
+      "name": "portal-list"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.portal-respond",
+      "name": "portal-respond"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.portal-share",
+      "name": "portal-share"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": false,
+      "domain": "consulting",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.totalBilled)",
+        "output.ok === false || Number.isFinite(output.result.totalCost)",
+        "output.ok === false || Number.isFinite(output.result.totalMargin)",
+        "output.ok === false || Number.isFinite(output.result.overallMarginPct)",
+        "output.ok === false || Array.isArray(output.result.rows)",
+        "output.ok === false || output.result.rows.every(function(r){ return Number.isFinite(r.margin) && Number.isFinite(r.marginPct); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "consulting.profitability-report",
+      "name": "profitability-report"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.proposal-create",
+      "name": "proposal-create"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.proposal-delete",
+      "name": "proposal-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.proposal-list",
+      "name": "proposal-list"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.proposal-sign",
+      "name": "proposal-sign"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.proposal-templates",
+      "name": "proposal-templates"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.proposal-update-section",
+      "name": "proposal-update-section"
+    },
+    {
+      "_derived": false,
+      "domain": "consulting",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "executive-summary": "x",
+            "methodology": "y",
+            "timeline": "z"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "executive-summary": "x",
+            "methodology": "y",
+            "pricing": "p",
+            "references": "r",
+            "team": "t",
+            "timeline": "z"
+          }
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.score)",
+        "output.ok === false || (output.result.score >= 0 && output.result.score <= 100)",
+        "output.ok === false || Array.isArray(output.result.sectionsPresent)",
+        "output.ok === false || Array.isArray(output.result.sectionsMissing)",
+        "output.ok === false || typeof output.result.completeness === 'string'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "consulting.proposalScore",
+      "name": "proposalScore"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "consulting.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.retainer-bill",
+      "name": "retainer-bill"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.retainer-create",
+      "name": "retainer-create"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.retainer-delete",
+      "name": "retainer-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.retainer-list",
+      "name": "retainer-list"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.retainer-update",
+      "name": "retainer-update"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.staffing-plan",
+      "name": "staffing-plan"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.time-log",
+      "name": "time-log"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.timer-cancel",
+      "name": "timer-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.timer-start",
+      "name": "timer-start"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.timer-status",
+      "name": "timer-status"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.timer-stop",
+      "name": "timer-stop"
+    },
+    {
+      "_derived": false,
+      "domain": "consulting",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "billableHours": 32,
+            "totalHours": 40
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "billableHours": "1e999",
+            "totalHours": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "billableHours": 5,
+            "totalHours": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "billableHours": "NaN",
+            "totalHours": "1e308"
+          }
+        }
+      ],
+      "inputs": {
+        "billableHours": {
+          "required": false,
+          "type": "number"
+        },
+        "totalHours": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.billableHours)",
+        "output.ok === false || Number.isFinite(output.result.totalHours)",
+        "output.ok === false || Number.isFinite(output.result.utilizationRate)",
+        "output.ok === false || Number.isFinite(output.result.variance)",
+        "output.ok === false || typeof output.result.status === 'string'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "consulting.utilizationRate",
+      "name": "utilizationRate"
+    },
+    {
+      "_derived": true,
+      "domain": "consulting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "consulting.vote",
+      "name": "vote"
     }
   ],
   "domain": "consulting",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 66
 }

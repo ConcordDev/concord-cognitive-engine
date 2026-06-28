@@ -36,8 +36,60 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "metalearning.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "metalearning.best_strategy",
       "name": "best_strategy"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.comment",
+      "name": "comment"
     },
     {
       "_derived": true,
@@ -75,8 +127,294 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "metalearning.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.experimentCreate",
+      "name": "experimentCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.experimentList",
+      "name": "experimentList"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.experimentRecordTrial",
+      "name": "experimentRecordTrial"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.goalCheckIn",
+      "name": "goalCheckIn"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.goalCreate",
+      "name": "goalCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.goalList",
+      "name": "goalList"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.journalAdd",
+      "name": "journalAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.journalList",
+      "name": "journalList"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "metalearning.list_strategies",
       "name": "list_strategies"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.performanceProfile",
+      "name": "performanceProfile"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.planCreate",
+      "name": "planCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.planList",
+      "name": "planList"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.planToggleStep",
+      "name": "planToggleStep"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.progressAnalytics",
+      "name": "progressAnalytics"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.rate",
+      "name": "rate"
     },
     {
       "_derived": true,
@@ -101,11 +439,180 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "metalearning.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.srsAddCard",
+      "name": "srsAddCard"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.srsDeleteCard",
+      "name": "srsDeleteCard"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.srsDue",
+      "name": "srsDue"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.srsReview",
+      "name": "srsReview"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "metalearning.status",
       "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.strategySelection",
+      "name": "strategySelection"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.techniqueLibrary",
+      "name": "techniqueLibrary"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.transferAnalysis",
+      "name": "transferAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "metalearning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metalearning.vote",
+      "name": "vote"
     }
   ],
   "domain": "metalearning",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 8
+  "macroCount": 47
 }

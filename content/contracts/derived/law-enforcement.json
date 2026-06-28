@@ -10,6 +10,503 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "law-enforcement.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.bookingCreate",
+      "name": "bookingCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.bookingList",
+      "name": "bookingList"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.cadCallQueue",
+      "name": "cadCallQueue"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.cadCreateCall",
+      "name": "cadCreateCall"
+    },
+    {
+      "_derived": false,
+      "domain": "law-enforcement",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "callId": "does-not-exist"
+          }
+        }
+      ],
+      "inputs": {
+        "callId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "unitId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string'",
+        "output.ok === false || (output.result.call && typeof output.result.call.id === 'string')",
+        "output.ok === false || (output.result.unit && typeof output.result.unit.callSign === 'string')",
+        "output.ok === false || output.result.call.status === 'dispatched'",
+        "output.ok === false || output.result.etaMinutes === null || Number.isFinite(output.result.etaMinutes)",
+        "output.ok === false || typeof output.result.routed === 'boolean'"
+      ],
+      "macro_id": "law-enforcement.cadDispatchUnit",
+      "name": "cadDispatchUnit"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.cadRegisterUnit",
+      "name": "cadRegisterUnit"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.cadUnitBoard",
+      "name": "cadUnitBoard"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.cadUpdateStatus",
+      "name": "cadUpdateStatus"
+    },
+    {
+      "_derived": false,
+      "domain": "law-enforcement",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "caseId": "C-1",
+                "evidence": [
+                  {},
+                  {}
+                ],
+                "suspects": [
+                  {
+                    "evidenceLinks": [
+                      1,
+                      2
+                    ]
+                  }
+                ],
+                "witnesses": [
+                  {}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "caseId": "C-empty",
+                "evidence": [],
+                "suspects": [],
+                "witnesses": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "evidence": "NaN",
+                "suspects": "oops",
+                "witnesses": "Infinity"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "caseId": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "evidence": {
+          "maxLength": 5000,
+          "type": "array"
+        },
+        "suspects": {
+          "maxLength": 5000,
+          "type": "array"
+        },
+        "witnesses": {
+          "maxLength": 5000,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.caseStrength)",
+        "output.ok === false || (output.result.caseStrength >= 0 && output.result.caseStrength <= 100)",
+        "output.ok === false || Number.isInteger(output.result.evidenceCount)",
+        "output.ok === false || Number.isInteger(output.result.witnessCount)",
+        "output.ok === false || Number.isInteger(output.result.suspectCount)",
+        "output.ok === false || typeof output.result.prosecutable === 'boolean'",
+        "output.ok === false || ['strong-case','developing','insufficient-evidence'].includes(output.result.status)",
+        "output.ok === false || Array.isArray(output.result.nextSteps)"
+      ],
+      "macro_id": "law-enforcement.caseAnalysis",
+      "name": "caseAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.crimeMap",
+      "name": "crimeMap"
+    },
+    {
+      "_derived": false,
+      "domain": "law-enforcement",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "incidents": [
+                  {
+                    "resolved": true,
+                    "type": "theft"
+                  },
+                  {
+                    "type": "theft"
+                  },
+                  {
+                    "status": "closed",
+                    "type": "dui"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "incidents": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "incidents": "NaN"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "incidents": {
+          "maxLength": 100000,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.message === 'string' || Number.isInteger(output.result.totalIncidents)",
+        "output.ok === false || output.result.totalIncidents === undefined || output.result.totalIncidents >= 0",
+        "output.ok === false || output.result.clearanceRate === undefined || (Number.isFinite(output.result.clearanceRate) && output.result.clearanceRate >= 0 && output.result.clearanceRate <= 100)",
+        "output.ok === false || output.result.byType === undefined || Array.isArray(output.result.byType)",
+        "output.ok === false || output.result.mostCommon === undefined || typeof output.result.mostCommon === 'string'"
+      ],
+      "macro_id": "law-enforcement.crimeStats",
+      "name": "crimeStats"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.evidenceChain",
+      "name": "evidenceChain"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.evidenceIntake",
+      "name": "evidenceIntake"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.evidenceList",
+      "name": "evidenceList"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.evidenceTransfer",
+      "name": "evidenceTransfer"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.incidentReport",
+      "name": "incidentReport"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "law-enforcement.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +520,495 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "law-enforcement.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": false,
+      "domain": "law-enforcement",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lat": 37.77,
+            "lon": -122.41,
+            "severity": "high",
+            "type": "auto theft"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lat": 40.7,
+            "lon": -73.9,
+            "type": "robbery"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "lat": "NaN",
+            "lon": -122,
+            "type": "x"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "lat": 999,
+            "lon": 0,
+            "type": "x"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "lat": 37,
+            "lon": "not-a-number",
+            "type": "x"
+          }
+        }
+      ],
+      "inputs": {
+        "address": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "lat": {
+          "max": 90,
+          "min": -90,
+          "required": true,
+          "type": "number"
+        },
+        "lon": {
+          "max": 180,
+          "min": -180,
+          "required": true,
+          "type": "number"
+        },
+        "severity": {
+          "maxLength": 16,
+          "type": "string"
+        },
+        "type": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string'",
+        "output.ok === false || (output.result.incident && typeof output.result.incident.id === 'string')",
+        "output.ok === false || (Number.isFinite(output.result.incident.lat) && output.result.incident.lat >= -90 && output.result.incident.lat <= 90)",
+        "output.ok === false || (Number.isFinite(output.result.incident.lon) && output.result.incident.lon >= -180 && output.result.incident.lon <= 180)",
+        "output.ok === false || ['low','medium','high'].includes(output.result.incident.severity)"
+      ],
+      "macro_id": "law-enforcement.mapAddIncident",
+      "name": "mapAddIncident"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.patrolOptimize",
+      "name": "patrolOptimize"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "law-enforcement.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.reportApprove",
+      "name": "reportApprove"
+    },
+    {
+      "_derived": false,
+      "domain": "law-enforcement",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "narrative": "Suspect took the vehicle.",
+            "offense": "grand theft"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "narrative": "n",
+            "offense": "loitering with no statute match"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "offense": "x"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "narrative": "y"
+          }
+        }
+      ],
+      "inputs": {
+        "caseNumber": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "location": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "narrative": {
+          "maxLength": 20000,
+          "required": true,
+          "type": "string"
+        },
+        "offense": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string'",
+        "output.ok === false || (output.result.report && typeof output.result.report.reportNumber === 'string')",
+        "output.ok === false || output.result.report.status === 'draft'",
+        "output.ok === false || typeof output.result.statuteFound === 'boolean'",
+        "output.ok === false || output.result.report.statute === null || typeof output.result.report.statute.code === 'string'"
+      ],
+      "macro_id": "law-enforcement.reportDraft",
+      "name": "reportDraft"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.reportList",
+      "name": "reportList"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.reportSubmit",
+      "name": "reportSubmit"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.rosterAddOfficer",
+      "name": "rosterAddOfficer"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.rosterBoard",
+      "name": "rosterBoard"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.scheduleShift",
+      "name": "scheduleShift"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.warrantIssue",
+      "name": "warrantIssue"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.warrantList",
+      "name": "warrantList"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.warrantReturn",
+      "name": "warrantReturn"
+    },
+    {
+      "_derived": true,
+      "domain": "law-enforcement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law-enforcement.warrantServiceAttempt",
+      "name": "warrantServiceAttempt"
     }
   ],
   "domain": "law-enforcement",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 51
 }

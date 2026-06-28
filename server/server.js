@@ -39125,6 +39125,14 @@ const LENS_ACTIONS = new Map(); // `${domain}.${action}` → async (ctx, artifac
 // that previously sat ~12k lines earlier and triggered a TDZ ReferenceError
 // at startup. Now assigned at the declaration site.
 globalThis.__concordLensActions = LENS_ACTIONS;
+// Keys of LENS_ACTIONS handlers that forward to an LLM brain (the universal
+// analyze/generate/suggest registrar + the domain-specific manifest registrar).
+// The Orchestrated Invariant Engine harness reads this to mark those handlers
+// STATIC-CONTRACT-ONLY: like the existing llm_hint/external_io skips, they are
+// non-deterministic and fuzzing them just hammers Ollama — so they are never
+// adversarially driven. Deterministic registerLensAction handlers are NOT here.
+const BRAIN_BACKED_LENS_ACTIONS = new Set();
+globalThis.__concordBrainBackedLensActions = BRAIN_BACKED_LENS_ACTIONS;
 function registerLensAction(domain, action, handler) {
   LENS_ACTIONS.set(`${domain}.${action}`, handler);
 }
@@ -39225,6 +39233,25 @@ function _unwrapLensEnvelope(r) {
   if (r && typeof r === "object" && "ok" in r && "result" in r) return r.result;
   return r;
 }
+
+// Test-only faithful dispatcher for the Orchestrated Invariant Engine harness.
+// Mirrors the /api/lens/run dispatch EXACTLY: prefer LENS_ACTIONS (path-3
+// registerLensAction handlers), fall back to MACROS (path-2 register handlers),
+// and return the UNWRAPPED result the lens frontend actually receives. The bare
+// runMacro cannot see LENS_ACTIONS, so the macro-assassin needs this to drive
+// path-3-only handlers (the 23 super-lens domain modules + inline ones) through
+// the same code path production runs. No HTTP/auth — the harness supplies an
+// internal owner ctx. Side-effect-free aside from whatever the handler does.
+async function _dispatchLensRunForTest(domain, name, input, ctx) {
+  const lensHandler = LENS_ACTIONS.get(`${domain}.${name}`);
+  if (lensHandler) {
+    const data = _peelRedundantArtifactWrapper(input || {});
+    const virtualArtifact = { id: null, domain, type: "domain_action", data, meta: {} };
+    return _unwrapLensEnvelope(await lensHandler(ctx, virtualArtifact, data));
+  }
+  return await runMacro(domain, name, input || {}, ctx);
+}
+
 app.post("/api/lens/run", async (req, res) => {
   // ── ConKay honest event spine (Track B / Phase 0) ──────────────────────
   // A macro run is a single request→response, so its work is otherwise
@@ -41424,6 +41451,7 @@ function registerUniversalLensActions() {
     for (const action of UNIVERSAL_ACTIONS) {
       const key = `${domain}.${action}`;
       if (LENS_ACTIONS.has(key)) continue; // respect custom handlers
+      BRAIN_BACKED_LENS_ACTIONS.add(key); // utility-brain backed → static-contract-only
       LENS_ACTIONS.set(key, async (ctx, artifact, params) => {
         const result = await utilityCall(action, domain, {
           artifactTitle: artifact?.title,
@@ -42838,6 +42866,7 @@ function registerDomainSpecificActions() {
       if (LENS_ACTIONS.has(key)) { skipped++; continue; }
 
       const dispatcher = BRAIN_DISPATCHERS[brain] || utilityCall;
+      BRAIN_BACKED_LENS_ACTIONS.add(key); // brain-dispatch → static-contract-only
       LENS_ACTIONS.set(key, async (ctx, artifact, params) => {
         const result = await dispatcher(action, domain, {
           artifactTitle: artifact?.title,
@@ -77182,6 +77211,14 @@ export const __TEST__ = Object.freeze({
   makeInternalCtx,
   makeCtx,
   MACROS,
+  // Orchestrated Invariant Engine — path-3 surface. LENS_ACTIONS holds the
+  // registerLensAction handlers (super-lens domain modules + inline) that the
+  // bare runMacro/MACROS path cannot see; dispatchLensRun drives them through
+  // the exact /api/lens/run dispatch; BRAIN_BACKED_LENS_ACTIONS marks the
+  // LLM-forwarding handlers as static-contract-only (never fuzzed).
+  LENS_ACTIONS,
+  dispatchLensRun: _dispatchLensRunForTest,
+  BRAIN_BACKED_LENS_ACTIONS,
   COUNCIL_GATES,
   ROYALTY_RATES,
   CREATIVE_REGISTRY,

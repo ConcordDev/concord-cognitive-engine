@@ -1,0 +1,488 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.check",
+      "name": "check"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.checkMonitors",
+      "name": "checkMonitors"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.clearHistory",
+      "name": "clearHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.consistencyProof",
+      "name": "consistencyProof"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.constraintSatisfaction",
+      "name": "constraintSatisfaction"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.counterexample",
+      "name": "counterexample"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.invariantCheck",
+      "name": "invariantCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.listMonitors",
+      "name": "listMonitors"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.quantifiedCheck",
+      "name": "quantifiedCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.recordSnapshot",
+      "name": "recordSnapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.registerMonitor",
+      "name": "registerMonitor"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.removeMonitor",
+      "name": "removeMonitor"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.resolveViolation",
+      "name": "resolveViolation"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.setMonitorActive",
+      "name": "setMonitorActive"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.templates",
+      "name": "templates"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.temporalCheck",
+      "name": "temporalCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.violationHistory",
+      "name": "violationHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "invariant.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "invariant",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 37
+}

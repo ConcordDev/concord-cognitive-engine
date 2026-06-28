@@ -10,6 +10,787 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "fitness.activity-comment-delete",
+      "name": "activity-comment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.activity-comments",
+      "name": "activity-comments"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.activity-create",
+      "name": "activity-create"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.activity-delete",
+      "name": "activity-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.activity-detail",
+      "name": "activity-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.activity-heatmap",
+      "name": "activity-heatmap"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.activity-kudos",
+      "name": "activity-kudos"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.activity-list",
+      "name": "activity-list"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.activity-photo-add",
+      "name": "activity-photo-add"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.activity-photo-remove",
+      "name": "activity-photo-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.activity-summary",
+      "name": "activity-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.attendanceReport",
+      "name": "attendanceReport"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.beacon-list",
+      "name": "beacon-list"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.beacon-ping",
+      "name": "beacon-ping"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.beacon-start",
+      "name": "beacon-start"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.beacon-status",
+      "name": "beacon-status"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.beacon-stop",
+      "name": "beacon-stop"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.body-battery",
+      "name": "body-battery"
+    },
+    {
+      "_derived": false,
+      "domain": "fitness",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "age": 30,
+                "height": 180,
+                "sex": "male",
+                "weight": 80
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "age": "NaN",
+                "height": "Infinity",
+                "weight": "1e999"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "height": -180,
+                "weight": -80
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "age": {
+          "required": false,
+          "type": "number"
+        },
+        "height": {
+          "required": false,
+          "type": "number"
+        },
+        "sex": {
+          "required": false,
+          "type": "string"
+        },
+        "weight": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.bmi === null || Number.isFinite(output.result.bmi)",
+        "output.ok === false || output.result.bodyFatPct === null || Number.isFinite(output.result.bodyFatPct)",
+        "output.ok === false || output.result.fatMass === null || Number.isFinite(output.result.fatMass.kg)",
+        "output.ok === false || output.result.leanMass === null || Number.isFinite(output.result.leanMass.kg)"
+      ],
+      "macro_id": "fitness.bodyCompReport",
+      "name": "bodyCompReport"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.calculateProgression",
+      "name": "calculateProgression"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.challenge-create",
+      "name": "challenge-create"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.challenge-join",
+      "name": "challenge-join"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.challenge-list",
+      "name": "challenge-list"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.classUtilization",
+      "name": "classUtilization"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.club-create",
+      "name": "club-create"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.club-join",
+      "name": "club-join"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.club-list",
+      "name": "club-list"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.fitness-dashboard",
+      "name": "fitness-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.fitness-freshness",
+      "name": "fitness-freshness"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.gear-add",
+      "name": "gear-add"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.gear-list",
+      "name": "gear-list"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.gear-retire",
+      "name": "gear-retire"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.generate-program",
+      "name": "generate-program"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.goal-create",
+      "name": "goal-create"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.goal-delete",
+      "name": "goal-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.goal-list",
+      "name": "goal-list"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.gps-record",
+      "name": "gps-record"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.gps-track",
+      "name": "gps-track"
+    },
+    {
+      "_derived": false,
+      "domain": "fitness",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "age": 30,
+            "artifact": {
+              "data": {}
+            },
+            "restingHr": 60
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "age": "Infinity",
+            "maxHr": "NaN",
+            "restingHr": "1e999"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "age": -30,
+            "restingHr": -60
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "age": {
+          "required": false,
+          "type": "number"
+        },
+        "maxHr": {
+          "required": false,
+          "type": "number"
+        },
+        "method": {
+          "required": false,
+          "type": "string"
+        },
+        "restingHr": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || Number.isFinite(output.result.maxHr)",
+        "output.ok === false || Array.isArray(output.result.zones)",
+        "output.ok === false || output.result.zones.every(z => Number.isFinite(z.lowBpm) && Number.isFinite(z.highBpm) && z.highBpm >= z.lowBpm)"
+      ],
+      "macro_id": "fitness.hr-zones",
+      "name": "hr-zones"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.hrv-log",
+      "name": "hrv-log"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.hrv-status",
+      "name": "hrv-status"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "fitness.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +804,699 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "fitness.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.periodization",
+      "name": "periodization"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.personal-records",
+      "name": "personal-records"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.plan-create",
+      "name": "plan-create"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.plan-delete",
+      "name": "plan-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.plan-list",
+      "name": "plan-list"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.plan-reschedule",
+      "name": "plan-reschedule"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.plan-session-move",
+      "name": "plan-session-move"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": false,
+      "domain": "fitness",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "exercises": [
+                  {
+                    "name": "squat",
+                    "reps": 5,
+                    "rpe": 6,
+                    "weight": 100
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "exercises": [
+                  {
+                    "name": "x",
+                    "reps": "Infinity",
+                    "rpe": "NaN",
+                    "weight": "1e999"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "exercises": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "exercises": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.recommendations)",
+        "output.ok === false || output.result.recommendations.every(r => Number.isFinite(r.recommendedWeight) && r.recommendedWeight >= 0)",
+        "output.ok === false || output.result.recommendations.every(r => ['increase_weight','maintain','reduce_weight'].includes(r.recommendation))"
+      ],
+      "macro_id": "fitness.progressionCalc",
+      "name": "progressionCalc"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": false,
+      "domain": "fitness",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "vo2max": 50
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "vo2max": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "vo2max": -50
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "vo2max": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.vo2max)",
+        "output.ok === false || Array.isArray(output.result.predictions)",
+        "output.ok === false || output.result.predictions.every(p => Number.isFinite(p.timeSeconds) && p.timeSeconds > 0 && Number.isFinite(p.paceSecPerKm))"
+      ],
+      "macro_id": "fitness.race-predictor",
+      "name": "race-predictor"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "fitness.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.recovery-history",
+      "name": "recovery-history"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.recruitProfile",
+      "name": "recruitProfile"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.route-create",
+      "name": "route-create"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.route-delete",
+      "name": "route-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.route-list",
+      "name": "route-list"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.segment-create",
+      "name": "segment-create"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.segment-effort",
+      "name": "segment-effort"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.segment-explore",
+      "name": "segment-explore"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.segment-leaderboard",
+      "name": "segment-leaderboard"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.segment-list",
+      "name": "segment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.training-load",
+      "name": "training-load"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.training-readiness",
+      "name": "training-readiness"
+    },
+    {
+      "_derived": false,
+      "domain": "fitness",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "distanceKm": 5,
+            "durationSec": 1500
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "distanceKm": "1e999",
+            "durationSec": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "distanceKm": -5,
+            "durationSec": -100
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "distanceKm": {
+          "required": false,
+          "type": "number"
+        },
+        "durationSec": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.vo2max)",
+        "output.ok === false || output.result.vo2max > 0"
+      ],
+      "macro_id": "fitness.vo2max-estimate",
+      "name": "vo2max-estimate"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.wearable-link",
+      "name": "wearable-link"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.wearable-status",
+      "name": "wearable-status"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.wearable-sync",
+      "name": "wearable-sync"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.workout-list",
+      "name": "workout-list"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.workout-plan-generate",
+      "name": "workout-plan-generate"
+    },
+    {
+      "_derived": true,
+      "domain": "fitness",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fitness.workout-save",
+      "name": "workout-save"
     }
   ],
   "domain": "fitness",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 92
 }

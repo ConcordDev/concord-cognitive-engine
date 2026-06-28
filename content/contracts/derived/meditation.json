@@ -1,6 +1,255 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "meditation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cycles": 4,
+            "pattern": "478"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cycles": 9999,
+            "pattern": "nonsense"
+          }
+        }
+      ],
+      "inputs": {
+        "cycles": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "pattern": {
+          "enum": [
+            "box",
+            "478",
+            "coherent"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || ['box','478','coherent'].includes(output.result.pattern)",
+        "output.ok === false || (output.result.cycles >= 1 && output.result.cycles <= 60)",
+        "output.ok === false || output.result.totalSeconds === output.result.cycleSeconds * output.result.cycles",
+        "output.ok === false || Array.isArray(output.result.phases)"
+      ],
+      "macro_id": "meditation.breathwork",
+      "name": "breathwork"
+    },
+    {
+      "_derived": true,
+      "domain": "meditation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meditation.completeCourseDay",
+      "name": "completeCourseDay"
+    },
+    {
+      "_derived": true,
+      "domain": "meditation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meditation.courseProgress",
+      "name": "courseProgress"
+    },
+    {
+      "_derived": false,
+      "domain": "meditation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.courses)",
+        "output.ok === false || typeof output.result.count === 'number'",
+        "output.ok === false || output.result.courses.length === output.result.count"
+      ],
+      "macro_id": "meditation.courses",
+      "name": "courses"
+    },
+    {
+      "_derived": false,
+      "domain": "meditation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.date === 'string'",
+        "output.ok === false || typeof output.result.prompt === 'string'",
+        "output.ok === false || output.result.prompt.length > 0"
+      ],
+      "macro_id": "meditation.dailyPrompt",
+      "name": "dailyPrompt"
+    },
+    {
+      "_derived": true,
+      "domain": "meditation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meditation.deleteReminder",
+      "name": "deleteReminder"
+    },
+    {
+      "_derived": true,
+      "domain": "meditation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meditation.enrollCourse",
+      "name": "enrollCourse"
+    },
+    {
+      "_derived": false,
+      "domain": "meditation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.sessions)",
+        "output.ok === false || typeof output.result.count === 'number'",
+        "output.ok === false || output.result.sessions.length === output.result.count",
+        "output.ok === false || output.result.sessions.length <= 50"
+      ],
+      "macro_id": "meditation.history",
+      "name": "history"
+    },
+    {
+      "_derived": false,
+      "domain": "meditation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "category": "guided"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "goal": "sleep",
+            "maxMinutes": 30
+          }
+        }
+      ],
+      "inputs": {
+        "category": {
+          "enum": [
+            "guided",
+            "breathwork",
+            "sleep_story",
+            "soundscape",
+            "sos"
+          ],
+          "type": "string"
+        },
+        "goal": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "maxMinutes": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.sessions)",
+        "output.ok === false || typeof output.result.count === 'number'",
+        "output.ok === false || output.result.sessions.length === output.result.count",
+        "output.ok === false || Array.isArray(output.result.categories)"
+      ],
+      "macro_id": "meditation.library",
+      "name": "library"
+    },
+    {
       "_derived": true,
       "domain": "meditation",
       "fuzz_cases": [],
@@ -14,6 +263,126 @@
       "name": "list_mine"
     },
     {
+      "_derived": false,
+      "domain": "meditation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.totalSessions === 'number'",
+        "output.ok === false || output.result.totalSessions >= 0",
+        "output.ok === false || typeof output.result.totalMinutes === 'number'",
+        "output.ok === false || output.result.totalMinutes >= 0",
+        "output.ok === false || typeof output.result.currentStreak === 'number'",
+        "output.ok === false || typeof output.result.byCategory === 'object'"
+      ],
+      "macro_id": "meditation.meditation-dashboard",
+      "name": "meditation-dashboard"
+    },
+    {
+      "_derived": false,
+      "domain": "meditation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.badges)",
+        "output.ok === false || typeof output.result.unlockedCount === 'number'",
+        "output.ok === false || typeof output.result.totalCount === 'number'",
+        "output.ok === false || output.result.unlockedCount <= output.result.totalCount",
+        "output.ok === false || output.result.badges.length === output.result.totalCount"
+      ],
+      "macro_id": "meditation.milestones",
+      "name": "milestones"
+    },
+    {
+      "_derived": true,
+      "domain": "meditation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meditation.mood-checkin",
+      "name": "mood-checkin"
+    },
+    {
+      "_derived": false,
+      "domain": "meditation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.moods)",
+        "output.ok === false || typeof output.result.count === 'number'",
+        "output.ok === false || output.result.moods.length <= 30",
+        "output.ok === false || output.result.averageMood === null || (output.result.averageMood >= 1 && output.result.averageMood <= 5)"
+      ],
+      "macro_id": "meditation.mood-history",
+      "name": "mood-history"
+    },
+    {
+      "_derived": true,
+      "domain": "meditation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meditation.pickTrack",
+      "name": "pickTrack"
+    },
+    {
+      "_derived": true,
+      "domain": "meditation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meditation.play",
+      "name": "play"
+    },
+    {
       "_derived": true,
       "domain": "meditation",
       "fuzz_cases": [],
@@ -25,9 +394,231 @@
       ],
       "macro_id": "meditation.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "meditation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "hour": 23
+          }
+        }
+      ],
+      "inputs": {
+        "hour": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.goal === 'string'",
+        "output.ok === false || typeof output.result.reason === 'string'",
+        "output.ok === false || Array.isArray(output.result.recommendations)",
+        "output.ok === false || output.result.recommendations.length <= 4",
+        "output.ok === false || typeof output.result.basedOn === 'object'"
+      ],
+      "macro_id": "meditation.recommendations",
+      "name": "recommendations"
+    },
+    {
+      "_derived": false,
+      "domain": "meditation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.reminders)",
+        "output.ok === false || typeof output.result.count === 'number'",
+        "output.ok === false || output.result.reminders.length === output.result.count",
+        "output.ok === false || typeof output.result.dueToday === 'number'",
+        "output.ok === false || output.result.nextFire === null || typeof output.result.nextFire.iso === 'string'"
+      ],
+      "macro_id": "meditation.reminders",
+      "name": "reminders"
+    },
+    {
+      "_derived": true,
+      "domain": "meditation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meditation.sessionLog",
+      "name": "sessionLog"
+    },
+    {
+      "_derived": true,
+      "domain": "meditation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meditation.setReminder",
+      "name": "setReminder"
+    },
+    {
+      "_derived": false,
+      "domain": "meditation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "fadeSeconds": 45,
+            "minutes": 20
+          }
+        },
+        {
+          "expect": {
+            "error": "session not found in library",
+            "ok": false
+          },
+          "input": {
+            "sessionId": "ghost-track"
+          }
+        }
+      ],
+      "inputs": {
+        "fadeSeconds": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "minutes": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "sessionId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.minutes >= 1 && output.result.minutes <= 480)",
+        "output.ok === false || (output.result.fadeSeconds >= 5 && output.result.fadeSeconds <= 300)",
+        "output.ok === false || output.result.totalSeconds === output.result.minutes * 60",
+        "output.ok === false || output.result.fadeStartSeconds >= 0",
+        "output.ok === false || Array.isArray(output.result.fadeCurve)"
+      ],
+      "macro_id": "meditation.sleepTimerConfig",
+      "name": "sleepTimerConfig"
+    },
+    {
+      "_derived": true,
+      "domain": "meditation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meditation.soundscapeConfig",
+      "name": "soundscapeConfig"
+    },
+    {
+      "_derived": false,
+      "domain": "meditation",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.currentStreak === 'number'",
+        "output.ok === false || output.result.currentStreak >= 0",
+        "output.ok === false || typeof output.result.totalSessions === 'number'",
+        "output.ok === false || output.result.totalSessions >= 0",
+        "output.ok === false || typeof output.result.totalMinutes === 'number'",
+        "output.ok === false || output.result.totalMinutes >= 0",
+        "output.ok === false || typeof output.result.practicedToday === 'boolean'"
+      ],
+      "macro_id": "meditation.streak",
+      "name": "streak"
+    },
+    {
+      "_derived": true,
+      "domain": "meditation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meditation.streakSummary",
+      "name": "streakSummary"
+    },
+    {
+      "_derived": true,
+      "domain": "meditation",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meditation.toggleReminder",
+      "name": "toggleReminder"
     }
   ],
   "domain": "meditation",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 26
 }

@@ -10,8 +10,294 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "markets.alert-cancel",
+      "name": "alert-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.alert-create",
+      "name": "alert-create"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.alerts-list",
+      "name": "alerts-list"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.depth-of-book",
+      "name": "depth-of-book"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.forex-quotes",
+      "name": "forex-quotes"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.futures-board",
+      "name": "futures-board"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.leaderboard",
+      "name": "leaderboard"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "markets.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.market-create",
+      "name": "market-create"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.market-get",
+      "name": "market-get"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.market-history",
+      "name": "market-history"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.market-list",
+      "name": "market-list"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.market-odds",
+      "name": "market-odds"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.market-resolution",
+      "name": "market-resolution"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.market-resolve",
+      "name": "market-resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.my-positions",
+      "name": "my-positions"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.options-chain",
+      "name": "options-chain"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.order-book",
+      "name": "order-book"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.order-cancel",
+      "name": "order-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.order-place",
+      "name": "order-place"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.position-cashout",
+      "name": "position-cashout"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.position-open",
+      "name": "position-open"
+    },
+    {
+      "_derived": true,
+      "domain": "markets",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "markets.quote-history",
+      "name": "quote-history"
     },
     {
       "_derived": true,
@@ -29,5 +315,5 @@
   ],
   "domain": "markets",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 24
 }

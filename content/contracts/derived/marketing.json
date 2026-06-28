@@ -10,6 +10,902 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "marketing.abtest-create",
+      "name": "abtest-create"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.abtest-delete",
+      "name": "abtest-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.abtest-list",
+      "name": "abtest-list"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.abtest-record",
+      "name": "abtest-record"
+    },
+    {
+      "_derived": false,
+      "domain": "marketing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "variants": [
+                  {
+                    "conversions": 50,
+                    "name": "A",
+                    "visitors": 1000
+                  },
+                  {
+                    "conversions": 84,
+                    "name": "B",
+                    "visitors": 1200
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "variants": [
+                  {
+                    "conversions": 5,
+                    "name": "Only one",
+                    "visitors": 100
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "variants": [
+                  {
+                    "conversions": "abc",
+                    "name": "A",
+                    "visitors": "Infinity"
+                  },
+                  {
+                    "conversions": 50,
+                    "name": "B",
+                    "visitors": 1000
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "variants": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.message === 'string' || Array.isArray(output.result.variants)",
+        "output.ok === false || !output.result.variants || output.result.variants.every(function(v){ return Number.isFinite(v.conversionRate) && Number.isFinite(v.visitors) && Number.isFinite(v.conversions); })",
+        "output.ok === false || output.result.lift === undefined || Number.isFinite(output.result.lift)",
+        "output.ok === false || output.result.totalVisitors === undefined || Number.isFinite(output.result.totalVisitors)",
+        "output.ok === false || output.result.statisticallySignificant === undefined || typeof output.result.statisticallySignificant === 'boolean'"
+      ],
+      "macro_id": "marketing.abTestAnalysis",
+      "name": "abTestAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.attribution-report",
+      "name": "attribution-report"
+    },
+    {
+      "_derived": false,
+      "domain": "marketing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "users": [
+                  {
+                    "segment": "vip",
+                    "spend": 500
+                  },
+                  {
+                    "segment": "vip",
+                    "spend": 300
+                  },
+                  {
+                    "segment": "free",
+                    "spend": 0
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "users": [
+                  {
+                    "ltv": 1200,
+                    "tier": "gold"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "users": [
+                  {
+                    "segment": "vip",
+                    "spend": "Infinity"
+                  },
+                  {
+                    "segment": "vip",
+                    "spend": "abc"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "users": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.message === 'string' || Array.isArray(output.result.segments)",
+        "output.ok === false || !output.result.segments || Number.isFinite(output.result.totalUsers)",
+        "output.ok === false || !output.result.segments || output.result.segments.every(function(s){ return Number.isFinite(s.users) && Number.isFinite(s.totalSpend) && Number.isFinite(s.avgSpend) && Number.isFinite(s.share); })",
+        "output.ok === false || output.result.pareto === undefined || typeof output.result.pareto === 'string'"
+      ],
+      "macro_id": "marketing.audienceSegment",
+      "name": "audienceSegment"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.budget-pacing",
+      "name": "budget-pacing"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.campaign-calendar",
+      "name": "campaign-calendar"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.campaign-create",
+      "name": "campaign-create"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.campaign-delete",
+      "name": "campaign-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.campaign-detail",
+      "name": "campaign-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.campaign-kpis",
+      "name": "campaign-kpis"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.campaign-list",
+      "name": "campaign-list"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.campaign-update",
+      "name": "campaign-update"
+    },
+    {
+      "_derived": false,
+      "domain": "marketing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "conversions": 50,
+                "leads": 200,
+                "name": "Spring",
+                "revenue": 3000,
+                "spend": 1000
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "name": "Loss",
+                "revenue": 1000,
+                "spend": 5000
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "conversions": "1e999",
+                "leads": "NaN",
+                "name": "x",
+                "revenue": "Infinity",
+                "spend": "abc"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "conversions": {
+          "type": "number"
+        },
+        "leads": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "revenue": {
+          "type": "number"
+        },
+        "spend": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.roi)",
+        "output.ok === false || Number.isFinite(output.result.spend)",
+        "output.ok === false || Number.isFinite(output.result.revenue)",
+        "output.ok === false || Number.isFinite(output.result.costPerLead)",
+        "output.ok === false || Number.isFinite(output.result.costPerAcquisition)",
+        "output.ok === false || Number.isFinite(output.result.conversionRate)",
+        "output.ok === false || typeof output.result.profitable === 'boolean'",
+        "output.ok === false || ['exceptional','strong','positive','negative'].includes(output.result.grade)"
+      ],
+      "macro_id": "marketing.campaignROI",
+      "name": "campaignROI"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.channel-performance",
+      "name": "channel-performance"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.contact-delete",
+      "name": "contact-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.contact-list",
+      "name": "contact-list"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.contact-sync",
+      "name": "contact-sync"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.contact-upsert",
+      "name": "contact-upsert"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.content-add",
+      "name": "content-add"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.content-delete",
+      "name": "content-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.content-list",
+      "name": "content-list"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.content-update-status",
+      "name": "content-update-status"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.email-create",
+      "name": "email-create"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.email-delete",
+      "name": "email-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.email-list",
+      "name": "email-list"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.email-send",
+      "name": "email-send"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.email-update",
+      "name": "email-update"
+    },
+    {
+      "_derived": false,
+      "domain": "marketing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "stages": [
+                  {
+                    "count": 1000,
+                    "name": "Visit"
+                  },
+                  {
+                    "count": 300,
+                    "name": "Cart"
+                  },
+                  {
+                    "count": 60,
+                    "name": "Buy"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "stages": [
+                  {
+                    "count": 500,
+                    "name": "Only one"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "stages": [
+                  {
+                    "count": "Infinity",
+                    "name": "A"
+                  },
+                  {
+                    "count": "abc",
+                    "name": "B"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "stages": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.message === 'string' || Array.isArray(output.result.stages)",
+        "output.ok === false || !output.result.stages || output.result.stages.every(function(s){ return Number.isFinite(s.visitors) && Number.isFinite(s.dropoff) && s.dropoff >= 0 && s.dropoff <= 100 && Number.isFinite(s.convFromTop); })",
+        "output.ok === false || output.result.overallConversion === undefined || Number.isFinite(output.result.overallConversion)",
+        "output.ok === false || output.result.leakageRate === undefined || Number.isFinite(output.result.leakageRate)"
+      ],
+      "macro_id": "marketing.funnelOptimize",
+      "name": "funnelOptimize"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.lead-add",
+      "name": "lead-add"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.lead-delete",
+      "name": "lead-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.lead-list",
+      "name": "lead-list"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.lead-score",
+      "name": "lead-score"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.lead-update-stage",
+      "name": "lead-update-stage"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "marketing.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +919,544 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "marketing.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.marketing-dashboard",
+      "name": "marketing-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.metric-history",
+      "name": "metric-history"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.metric-log",
+      "name": "metric-log"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.page-create",
+      "name": "page-create"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.page-delete",
+      "name": "page-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.page-list",
+      "name": "page-list"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.page-submissions",
+      "name": "page-submissions"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.page-submit",
+      "name": "page-submit"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.page-update",
+      "name": "page-update"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "marketing.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.scoring-model-apply",
+      "name": "scoring-model-apply"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.scoring-model-delete",
+      "name": "scoring-model-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.scoring-model-list",
+      "name": "scoring-model-list"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.scoring-model-save",
+      "name": "scoring-model-save"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.segment-create",
+      "name": "segment-create"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.segment-list",
+      "name": "segment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.seo-audit",
+      "name": "seo-audit"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.seo-audit-delete",
+      "name": "seo-audit-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.seo-audit-list",
+      "name": "seo-audit-list"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.social-delete",
+      "name": "social-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.social-list",
+      "name": "social-list"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.social-publish",
+      "name": "social-publish"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.social-schedule",
+      "name": "social-schedule"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.workflow-create",
+      "name": "workflow-create"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.workflow-delete",
+      "name": "workflow-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.workflow-enroll",
+      "name": "workflow-enroll"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.workflow-list",
+      "name": "workflow-list"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.workflow-runs",
+      "name": "workflow-runs"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.workflow-update",
+      "name": "workflow-update"
     }
   ],
   "domain": "marketing",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 86
 }

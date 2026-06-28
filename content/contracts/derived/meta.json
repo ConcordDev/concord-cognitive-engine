@@ -1,0 +1,501 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.actionAnalytics",
+      "name": "actionAnalytics"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.alertRaise",
+      "name": "alertRaise"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.alertResolve",
+      "name": "alertResolve"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.alertSurface",
+      "name": "alertSurface"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.classify",
+      "name": "classify"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.dependencyGraph",
+      "name": "dependencyGraph"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.deployRecord",
+      "name": "deployRecord"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.deployTimeline",
+      "name": "deployTimeline"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.healthRollup",
+      "name": "healthRollup"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.macroExplorer",
+      "name": "macroExplorer"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.metricRecord",
+      "name": "metricRecord"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.metricsDashboard",
+      "name": "metricsDashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.qualityMetrics",
+      "name": "qualityMetrics"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.serviceCatalog",
+      "name": "serviceCatalog"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.serviceRegister",
+      "name": "serviceRegister"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.serviceRemove",
+      "name": "serviceRemove"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.serviceUpdate",
+      "name": "serviceUpdate"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.systemReflection",
+      "name": "systemReflection"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "meta",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "meta.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "meta",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 38
+}

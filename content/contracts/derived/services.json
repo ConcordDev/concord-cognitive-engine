@@ -1,0 +1,1091 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.bookingGridCancel",
+      "name": "bookingGridCancel"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.bookingGridCreate",
+      "name": "bookingGridCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.bookingGridList",
+      "name": "bookingGridList"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.bookingGridMove",
+      "name": "bookingGridMove"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.clientHistory",
+      "name": "clientHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.clientProfileList",
+      "name": "clientProfileList"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.clientProfileUpsert",
+      "name": "clientProfileUpsert"
+    },
+    {
+      "_derived": false,
+      "domain": "services",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "clients": [
+                  {
+                    "lastVisit": "2020-01-01",
+                    "name": "Mia",
+                    "totalRevenue": 800,
+                    "visits": 4
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "clients": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "clients": [
+                  {
+                    "lastVisit": "2020-01-01",
+                    "name": "Mia",
+                    "totalRevenue": "1e999",
+                    "visits": 4
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "clients": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.totalClients)",
+        "output.ok === false || Number.isFinite(output.result.repeatRate)",
+        "output.ok === false || Number.isFinite(output.result.averageLifetimeValue)",
+        "output.ok === false || Number.isFinite(output.result.totalRevenue)",
+        "output.ok === false || Number.isFinite(output.result.atRiskCount)",
+        "output.ok === false || Array.isArray(output.result.atRiskClients)",
+        "output.ok === false || output.result.atRiskClients.every(function(c){return ['high','medium'].indexOf(c.churnRisk) >= 0 && Number.isFinite(c.lifetimeValue);})",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "services.clientRetentionReport",
+      "name": "clientRetentionReport"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "services",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "sales": [
+                  {
+                    "amount": 10000,
+                    "salesperson": "Ray"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "sales": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "sales": [
+                  {
+                    "amount": "1e999",
+                    "salesperson": "Ray"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "sales": {
+          "required": false,
+          "type": "array"
+        },
+        "tiers": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.totalSales)",
+        "output.ok === false || Number.isFinite(output.result.totalCommission)",
+        "output.ok === false || Number.isFinite(output.result.effectiveRate)",
+        "output.ok === false || Array.isArray(output.result.lineItems)",
+        "output.ok === false || Array.isArray(output.result.bySalesperson)",
+        "output.ok === false || output.result.lineItems.every(function(l){return Number.isFinite(l.amount) && Number.isFinite(l.commission);})",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "services.commissionCalc",
+      "name": "commissionCalc"
+    },
+    {
+      "_derived": false,
+      "domain": "services",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "appointments": [
+                  {
+                    "date": "2026-06-28",
+                    "price": 120,
+                    "provider": "Ana",
+                    "status": "completed"
+                  }
+                ],
+                "date": "2026-06-28"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "appointments": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "appointments": [
+                  {
+                    "date": "2026-06-28",
+                    "price": "Infinity",
+                    "provider": "Ana",
+                    "status": "completed"
+                  }
+                ],
+                "date": "2026-06-28"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "appointments": {
+          "required": false,
+          "type": "array"
+        },
+        "date": {
+          "required": false,
+          "type": "string"
+        },
+        "productsSold": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.date === 'string'",
+        "output.ok === false || Number.isFinite(output.result.totalAppointments)",
+        "output.ok === false || Number.isFinite(output.result.completedCount)",
+        "output.ok === false || Number.isFinite(output.result.serviceRevenue)",
+        "output.ok === false || Number.isFinite(output.result.productRevenue)",
+        "output.ok === false || Number.isFinite(output.result.totalRevenue)",
+        "output.ok === false || Array.isArray(output.result.byProvider)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "services.dailyCloseReport",
+      "name": "dailyCloseReport"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.inventoryCheck",
+      "name": "inventoryCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.paymentCapture",
+      "name": "paymentCapture"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.paymentList",
+      "name": "paymentList"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.paymentRefund",
+      "name": "paymentRefund"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.recurringSeries",
+      "name": "recurringSeries"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.reminderDispatch",
+      "name": "reminderDispatch"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.reminderGenerate",
+      "name": "reminderGenerate"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.reminderList",
+      "name": "reminderList"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.reminderSchedule",
+      "name": "reminderSchedule"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": false,
+      "domain": "services",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "appointments": [
+                  {
+                    "price": 120,
+                    "provider": "Ana",
+                    "status": "completed"
+                  }
+                ],
+                "period": 3650
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "appointments": [],
+                "period": 30
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "appointments": [
+                  {
+                    "price": "1e999",
+                    "provider": "Ana",
+                    "status": "completed"
+                  }
+                ],
+                "period": 3650
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "appointments": {
+          "required": false,
+          "type": "array"
+        },
+        "period": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.period)",
+        "output.ok === false || Array.isArray(output.result.summary)",
+        "output.ok === false || Number.isFinite(output.result.totalRevenue)",
+        "output.ok === false || output.result.summary.every(function(s){return typeof s.provider === 'string' && Number.isFinite(s.appointments) && Number.isFinite(s.revenue);})",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "services.revenueByProvider",
+      "name": "revenueByProvider"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.save",
+      "name": "save"
+    },
+    {
+      "_derived": false,
+      "domain": "services",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "appointments": [
+                  {
+                    "client": "A",
+                    "endTime": "2026-06-28T10:30:00Z",
+                    "serviceType": "Cut",
+                    "time": "2026-06-28T10:00:00Z"
+                  },
+                  {
+                    "client": "B",
+                    "serviceType": "Color",
+                    "time": "2026-06-28T11:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "appointments": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "appointments": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.optimizedOrder)",
+        "output.ok === false || Number.isFinite(output.result.totalGapMinutes)",
+        "output.ok === false || Array.isArray(output.result.gaps)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "services.scheduleOptimize",
+      "name": "scheduleOptimize"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.selfBookConfirm",
+      "name": "selfBookConfirm"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.selfBookSlots",
+      "name": "selfBookSlots"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.shiftCreate",
+      "name": "shiftCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.shiftList",
+      "name": "shiftList"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.shiftUpdate",
+      "name": "shiftUpdate"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.staffAvailability",
+      "name": "staffAvailability"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.status",
+      "name": "status"
+    },
+    {
+      "_derived": false,
+      "domain": "services",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "supplies": [
+                  {
+                    "currentStock": 2,
+                    "name": "Dye",
+                    "reorderPoint": 5,
+                    "supplier": "Acme"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "materials": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "materials": {
+          "required": false,
+          "type": "array"
+        },
+        "supplies": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.lowStock)",
+        "output.ok === false || Number.isFinite(output.result.count)",
+        "output.ok === false || Number.isFinite(output.result.totalItems)",
+        "output.ok === false || typeof output.result.needsOrder === 'boolean'",
+        "output.ok === false || output.result.lowStock.every(function(s){return Number.isFinite(s.currentStock) && Number.isFinite(s.reorderPoint);})",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "services.supplyCheck",
+      "name": "supplyCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.waitlistAdd",
+      "name": "waitlistAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.waitlistList",
+      "name": "waitlistList"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.waitlistPromote",
+      "name": "waitlistPromote"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.waitlistRemove",
+      "name": "waitlistRemove"
+    }
+  ],
+  "domain": "services",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 52
+}

@@ -10,6 +10,266 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "geology.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.collection-add",
+      "name": "collection-add"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.collection-list",
+      "name": "collection-list"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.collection-remove",
+      "name": "collection-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.collection-toggle",
+      "name": "collection-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.field-dashboard",
+      "name": "field-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.fieldtrip-add-stop",
+      "name": "fieldtrip-add-stop"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.fieldtrip-create",
+      "name": "fieldtrip-create"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.fieldtrip-delete",
+      "name": "fieldtrip-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.fieldtrip-list",
+      "name": "fieldtrip-list"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.fieldtrip-reorder-stops",
+      "name": "fieldtrip-reorder-stops"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.fieldtrip-update-stop",
+      "name": "fieldtrip-update-stop"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.geologic-map",
+      "name": "geologic-map"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "geology.list_mine",
       "name": "list_mine"
     },
@@ -62,11 +322,855 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "geology.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.measurement-delete",
+      "name": "measurement-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.measurement-list",
+      "name": "measurement-list"
+    },
+    {
+      "_derived": false,
+      "domain": "geology",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dip": 45,
+            "planeKind": "bedding",
+            "strike": 30
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dip": 5,
+            "strike": 370
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "strike": 30
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "dip": 120,
+            "strike": 30
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "dip": 45,
+            "strike": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "dip": 45,
+            "strike": "1e999"
+          }
+        }
+      ],
+      "inputs": {
+        "dip": {
+          "required": true,
+          "type": "number"
+        },
+        "lat": {
+          "required": false,
+          "type": "number"
+        },
+        "locationName": {
+          "required": false,
+          "type": "string"
+        },
+        "lon": {
+          "required": false,
+          "type": "number"
+        },
+        "notes": {
+          "required": false,
+          "type": "string"
+        },
+        "planeKind": {
+          "required": false,
+          "type": "string"
+        },
+        "strike": {
+          "required": true,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.measurement === 'object'",
+        "output.ok === false || (Number.isFinite(output.result.measurement.strike) && output.result.measurement.strike >= 0 && output.result.measurement.strike < 360)",
+        "output.ok === false || (Number.isFinite(output.result.measurement.dip) && output.result.measurement.dip >= 0 && output.result.measurement.dip <= 90)",
+        "output.ok === false || (Number.isFinite(output.result.measurement.dipDirection) && output.result.measurement.dipDirection >= 0 && output.result.measurement.dipDirection < 360)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "geology.measurement-record",
+      "name": "measurement-record"
+    },
+    {
+      "_derived": false,
+      "domain": "geology",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "cleavage": "none",
+                "color": "clear",
+                "hardness": 7,
+                "name": "Quartz",
+                "specificGravity": 2.65,
+                "streak": "white"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "hardness": 3,
+                "name": "Unknown"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "hardness": "Infinity",
+                "specificGravity": "1e999"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "hardness": -5
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "cleavage": {
+          "required": false,
+          "type": "string"
+        },
+        "color": {
+          "required": false,
+          "type": "string"
+        },
+        "fracture": {
+          "required": false,
+          "type": "string"
+        },
+        "hardness": {
+          "required": false,
+          "type": "number"
+        },
+        "name": {
+          "required": false,
+          "type": "string"
+        },
+        "specificGravity": {
+          "required": false,
+          "type": "number"
+        },
+        "streak": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (Number.isFinite(output.result.identificationConfidence) && output.result.identificationConfidence >= 0 && output.result.identificationConfidence <= 100)",
+        "output.ok === false || (Number.isFinite(output.result.properties.hardness) && output.result.properties.hardness >= 0 && output.result.properties.hardness <= 10)",
+        "output.ok === false || (Number.isFinite(output.result.properties.specific_gravity) && output.result.properties.specific_gravity >= 0)",
+        "output.ok === false || ['silicate-likely','carbonate-or-sulfate','clay-or-evaporite'].includes(output.result.classification)"
+      ],
+      "macro_id": "geology.mineralId",
+      "name": "mineralId"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.observation-delete",
+      "name": "observation-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.observation-list",
+      "name": "observation-list"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.observation-log",
+      "name": "observation-log"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.observation-update",
+      "name": "observation-update"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.photo-attach",
+      "name": "photo-attach"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.photo-delete",
+      "name": "photo-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.photo-list",
+      "name": "photo-list"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "geology.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.recent-earthquakes",
+      "name": "recent-earthquakes"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.rock-units-here",
+      "name": "rock-units-here"
+    },
+    {
+      "_derived": false,
+      "domain": "geology",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "mohsHardness": 7,
+                "name": "Gneiss",
+                "texture": "foliated"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "mohsHardness": 6,
+                "texture": "vesicular"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "mohsHardness": "Infinity"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "mohsHardness": "1e999"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "color": {
+          "required": false,
+          "type": "string"
+        },
+        "luster": {
+          "required": false,
+          "type": "string"
+        },
+        "mohsHardness": {
+          "required": false,
+          "type": "number"
+        },
+        "name": {
+          "required": false,
+          "type": "string"
+        },
+        "texture": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || ['igneous','sedimentary','metamorphic','unclassified'].includes(output.result.rockType)",
+        "output.ok === false || (Number.isFinite(output.result.mohsHardness) && output.result.mohsHardness >= 0 && output.result.mohsHardness <= 10)",
+        "output.ok === false || ['highly-durable','moderate','soft'].includes(output.result.durability)",
+        "output.ok === false || Array.isArray(output.result.commonUses)"
+      ],
+      "macro_id": "geology.rockClassify",
+      "name": "rockClassify"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.save",
+      "name": "save"
+    },
+    {
+      "_derived": false,
+      "domain": "geology",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "latitude": 37.77,
+                "longitude": -122.42,
+                "soilType": "soft-soil"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "latitude": 5,
+                "longitude": 5,
+                "soilType": "rock"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "latitude": "Infinity",
+                "longitude": "NaN"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "latitude": "1e999",
+                "longitude": -1e+308
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "buildingCode": {
+          "required": false,
+          "type": "string"
+        },
+        "latitude": {
+          "required": false,
+          "type": "number"
+        },
+        "longitude": {
+          "required": false,
+          "type": "number"
+        },
+        "soilType": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (Number.isFinite(output.result.location.lat) && output.result.location.lat >= -90 && output.result.location.lat <= 90)",
+        "output.ok === false || (Number.isFinite(output.result.location.lon) && output.result.location.lon >= -180 && output.result.location.lon <= 180)",
+        "output.ok === false || (Number.isFinite(output.result.amplificationFactor) && output.result.amplificationFactor > 0)",
+        "output.ok === false || (Number.isFinite(output.result.adjustedRisk) && output.result.adjustedRisk >= 0 && output.result.adjustedRisk <= 100)",
+        "output.ok === false || ['high','moderate','low'].includes(output.result.riskLevel)",
+        "output.ok === false || Array.isArray(output.result.recommendations)"
+      ],
+      "macro_id": "geology.seismicRisk",
+      "name": "seismicRisk"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.status",
+      "name": "status"
+    },
+    {
+      "_derived": false,
+      "domain": "geology",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "layers": [
+                  {
+                    "name": "Topsoil",
+                    "thickness": 2
+                  },
+                  {
+                    "name": "Sandstone",
+                    "thickness": 8
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "layers": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "layers": [
+                  {
+                    "name": "A",
+                    "thickness": "Infinity"
+                  },
+                  {
+                    "name": "B",
+                    "thickness": "1e999"
+                  },
+                  {
+                    "name": "C",
+                    "thickness": -5
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "layers": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalThickness)",
+        "output.ok === false || output.result.message !== undefined || (Array.isArray(output.result.layers) && output.result.layers.every(l => Number.isFinite(l.thickness) && l.thickness >= 0 && Number.isFinite(l.depthTop) && Number.isFinite(l.depthBottom) && l.depthBottom >= l.depthTop))",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.layerCount)"
+      ],
+      "macro_id": "geology.stratigraphicColumn",
+      "name": "stratigraphicColumn"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.usgs-seismic-hazard",
+      "name": "usgs-seismic-hazard"
+    },
+    {
+      "_derived": true,
+      "domain": "geology",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "geology.vote",
+      "name": "vote"
     }
   ],
   "domain": "geology",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 5
+  "macroCount": 55
 }

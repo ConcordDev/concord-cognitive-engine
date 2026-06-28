@@ -10,8 +10,242 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "hypothesis.abTest",
+      "name": "abTest"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.analysisHistory",
+      "name": "analysisHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.anova",
+      "name": "anova"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.apaReport",
+      "name": "apaReport"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.assumptionCheck",
+      "name": "assumptionCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.bayesianInference",
+      "name": "bayesianInference"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.chiSquare",
+      "name": "chiSquare"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.correlation",
+      "name": "correlation"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.datasetDelete",
+      "name": "datasetDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.datasetGet",
+      "name": "datasetGet"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.datasetImport",
+      "name": "datasetImport"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.datasetList",
+      "name": "datasetList"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "hypothesis.design_experiment",
       "name": "design_experiment"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.duplicate",
+      "name": "duplicate"
     },
     {
       "_derived": true,
@@ -49,6 +283,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "hypothesis.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "hypothesis.list",
       "name": "list"
     },
@@ -75,8 +322,125 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "hypothesis.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.multipleComparison",
+      "name": "multipleComparison"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.powerAnalysis",
+      "name": "powerAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.preregister",
+      "name": "preregister"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "hypothesis.propose",
       "name": "propose"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.rate",
+      "name": "rate"
     },
     {
       "_derived": true,
@@ -114,11 +478,180 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "hypothesis.recordOutcome",
+      "name": "recordOutcome"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.registryDelete",
+      "name": "registryDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.registryList",
+      "name": "registryList"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.regression",
+      "name": "regression"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.runTestOnDataset",
+      "name": "runTestOnDataset"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "hypothesis.status",
       "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.tTest",
+      "name": "tTest"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hypothesis.zTest",
+      "name": "zTest"
     }
   ],
   "domain": "hypothesis",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 9
+  "macroCount": 50
 }

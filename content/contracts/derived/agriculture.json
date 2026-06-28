@@ -10,11 +10,1372 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "agriculture.analyze",
+      "name": "analyze"
+    },
+    {
+      "_derived": false,
+      "domain": "agriculture",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.recommendations))",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "agriculture.analyze-soil",
+      "name": "analyze-soil"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.cost-entries-list",
+      "name": "cost-entries-list"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.cost-entry-add",
+      "name": "cost-entry-add"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.cost-entry-delete",
+      "name": "cost-entry-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.dashboard-summary",
+      "name": "dashboard-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.equipment-add",
+      "name": "equipment-add"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.equipment-delete",
+      "name": "equipment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.equipment-list",
+      "name": "equipment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.equipment-update-telemetry",
+      "name": "equipment-update-telemetry"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.equipmentDue",
+      "name": "equipmentDue"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": false,
+      "domain": "agriculture",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acreage": 40,
+            "lat": 41.5,
+            "lng": -93.5,
+            "name": "North 40"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "acreage": 0,
+            "lat": 0,
+            "lng": 0,
+            "name": "X"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "acreage": 10,
+            "lat": 95,
+            "lng": 0,
+            "name": "X"
+          }
+        }
+      ],
+      "inputs": {
+        "acreage": {
+          "min": 1,
+          "required": true,
+          "type": "number"
+        },
+        "lat": {
+          "min": -90,
+          "required": true,
+          "type": "number"
+        },
+        "lng": {
+          "min": -180,
+          "required": true,
+          "type": "number"
+        },
+        "name": {
+          "maxLength": 60,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.field && typeof output.result.field.id === 'string')",
+        "output.ok === false || (Number.isFinite(output.result.field.acreage) && output.result.field.acreage > 0)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "agriculture.field-create",
+      "name": "field-create"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.field-delete",
+      "name": "field-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.field-list",
+      "name": "field-list"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.field-update",
+      "name": "field-update"
+    },
+    {
+      "_derived": false,
+      "domain": "agriculture",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "capacityBushels": 1000,
+            "crop": "corn",
+            "name": "Bin 1"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "capacityBushels": 0,
+            "name": "Bad"
+          }
+        }
+      ],
+      "inputs": {
+        "capacityBushels": {
+          "min": 1,
+          "required": true,
+          "type": "number"
+        },
+        "name": {
+          "maxLength": 60,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.bin && output.result.bin.capacityBushels > 0)",
+        "output.ok === false || output.result.bin.currentBushels === 0",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "agriculture.grain-bins-create",
+      "name": "grain-bins-create"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.grain-bins-list",
+      "name": "grain-bins-list"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.grain-bins-load",
+      "name": "grain-bins-load"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.grain-bins-unload",
+      "name": "grain-bins-unload"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.harvest-log",
+      "name": "harvest-log"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.harvest-passes",
+      "name": "harvest-passes"
+    },
+    {
+      "_derived": false,
+      "domain": "agriculture",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "crop": "corn",
+            "observation": "black raised tar spot fungal lesions"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "crop": "corn"
+          }
+        }
+      ],
+      "inputs": {
+        "crop": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "observation": {
+          "maxLength": 1000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.candidates)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "agriculture.identify-pest",
+      "name": "identify-pest"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.imagery-attach",
+      "name": "imagery-attach"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.imagery-list",
+      "name": "imagery-list"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "agriculture.live_gbif",
       "name": "live_gbif"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.nitrogen-apply",
+      "name": "nitrogen-apply"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.nitrogen-plan-create",
+      "name": "nitrogen-plan-create"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.nitrogen-plans",
+      "name": "nitrogen-plans"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": false,
+      "domain": "agriculture",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "soilType": "loam"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "region": "midwest",
+            "soilType": "clay"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "region": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "soilType": {
+          "maxLength": 24,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "typeof output.result.recommended === 'string' && output.result.recommended.length > 0",
+        "output.result.plantingWindow && typeof output.result.plantingWindow.start === 'string'",
+        "Array.isArray(output.result.candidates)"
+      ],
+      "macro_id": "agriculture.plan-crop",
+      "name": "plan-crop"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.planting-log",
+      "name": "planting-log"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.planting-passes",
+      "name": "planting-passes"
+    },
+    {
+      "_derived": false,
+      "domain": "agriculture",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acreage": 10,
+            "crop": "corn",
+            "soilType": "loam"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "acreage": 5,
+            "crop": "soybeans",
+            "soilType": "clay"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "crop": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "soilType": {
+          "maxLength": 24,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "typeof output.result.estimatedYieldPerAcre === 'number' && Number.isFinite(output.result.estimatedYieldPerAcre)",
+        "typeof output.result.totalYield === 'number' && !Number.isNaN(output.result.totalYield)",
+        "output.result.estimatedYieldPerAcre >= 0"
+      ],
+      "macro_id": "agriculture.predict-yield",
+      "name": "predict-yield"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.prescriptions-approve",
+      "name": "prescriptions-approve"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.prescriptions-create",
+      "name": "prescriptions-create"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.prescriptions-delete",
+      "name": "prescriptions-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.prescriptions-list",
+      "name": "prescriptions-list"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.profit-analysis",
+      "name": "profit-analysis"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.rotationPlan",
+      "name": "rotationPlan"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.satellite-ndvi-delete",
+      "name": "satellite-ndvi-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.satellite-ndvi-fetch",
+      "name": "satellite-ndvi-fetch"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.satellite-ndvi-list",
+      "name": "satellite-ndvi-list"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.scout-add",
+      "name": "scout-add"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.scout-delete",
+      "name": "scout-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.scout-list",
+      "name": "scout-list"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.soil-grid-generate",
+      "name": "soil-grid-generate"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.soil-grid-import-results",
+      "name": "soil-grid-import-results"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.soil-grids-list",
+      "name": "soil-grids-list"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.spray-window-advisor",
+      "name": "spray-window-advisor"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.tank-mix-create",
+      "name": "tank-mix-create"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.tank-mixes-list",
+      "name": "tank-mixes-list"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.telemetry-import",
+      "name": "telemetry-import"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.telemetry-syncs-list",
+      "name": "telemetry-syncs-list"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.track-season",
+      "name": "track-season"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.trial-compare",
+      "name": "trial-compare"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.trial-entries-list",
+      "name": "trial-entries-list"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.trial-entry-add",
+      "name": "trial-entry-add"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.trial-entry-delete",
+      "name": "trial-entry-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.waterSchedule",
+      "name": "waterSchedule"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.weather-for-field",
+      "name": "weather-for-field"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.work-orders-complete",
+      "name": "work-orders-complete"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.work-orders-create",
+      "name": "work-orders-create"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.work-orders-list",
+      "name": "work-orders-list"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.yield-map-build",
+      "name": "yield-map-build"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.yield-maps-list",
+      "name": "yield-maps-list"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.yieldAnalysis",
+      "name": "yieldAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.zones-create",
+      "name": "zones-create"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.zones-delete",
+      "name": "zones-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "agriculture",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agriculture.zones-list",
+      "name": "zones-list"
     }
   ],
   "domain": "agriculture",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 1
+  "macroCount": 89
 }

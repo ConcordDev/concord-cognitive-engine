@@ -36,6 +36,97 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "inference.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.backwardChain",
+      "name": "backwardChain"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "inference.forward_chain",
       "name": "forward_chain"
     },
@@ -49,8 +140,294 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "inference.forwardChain",
+      "name": "forwardChain"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.kb-add",
+      "name": "kb-add"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.kb-check",
+      "name": "kb-check"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.kb-clear",
+      "name": "kb-clear"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.kb-explain",
+      "name": "kb-explain"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.kb-forward",
+      "name": "kb-forward"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.kb-list",
+      "name": "kb-list"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.kb-query",
+      "name": "kb-query"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.kb-remove",
+      "name": "kb-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.kb-seed-sample",
+      "name": "kb-seed-sample"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.kb-trace",
+      "name": "kb-trace"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "inference.query",
       "name": "query"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.star",
+      "name": "star"
     },
     {
       "_derived": true,
@@ -77,9 +454,48 @@
       ],
       "macro_id": "inference.syllogism",
       "name": "syllogism"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.unify",
+      "name": "unify"
+    },
+    {
+      "_derived": true,
+      "domain": "inference",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inference.vote",
+      "name": "vote"
     }
   ],
   "domain": "inference",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 6
+  "macroCount": 38
 }

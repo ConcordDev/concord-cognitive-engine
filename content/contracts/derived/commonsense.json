@@ -14,6 +14,578 @@
       "name": "add_fact"
     },
     {
+      "_derived": false,
+      "domain": "commonsense",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "source": {
+                  "entities": []
+                },
+                "target": {
+                  "entities": []
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "source": {
+                  "domain": "solar system",
+                  "entities": [
+                    {
+                      "name": "sun",
+                      "type": "object"
+                    },
+                    {
+                      "name": "planet",
+                      "type": "object"
+                    }
+                  ],
+                  "relations": [
+                    {
+                      "from": "sun",
+                      "to": "planet",
+                      "type": "attracts"
+                    },
+                    {
+                      "from": "sun",
+                      "to": "planet",
+                      "type": "heavier"
+                    }
+                  ]
+                },
+                "target": {
+                  "domain": "atom",
+                  "entities": [
+                    {
+                      "name": "nucleus",
+                      "type": "object"
+                    },
+                    {
+                      "name": "electron",
+                      "type": "object"
+                    }
+                  ],
+                  "relations": [
+                    {
+                      "from": "nucleus",
+                      "to": "electron",
+                      "type": "attracts"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "source": {
+                  "domain": "heart",
+                  "entities": [
+                    {
+                      "name": "heart",
+                      "type": "entity"
+                    }
+                  ]
+                },
+                "target": {
+                  "domain": "pump",
+                  "entities": [
+                    {
+                      "name": "pump",
+                      "type": "entity"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "source": "nope",
+                "target": "nope"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "source": {
+          "required": false,
+          "type": "object"
+        },
+        "target": {
+          "required": false,
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.sourceDomain === 'string'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.targetDomain === 'string'",
+        "output.ok === false || output.result.message !== undefined || (Array.isArray(output.result.entityMapping) && output.result.entityMapping.every(function(m){ return Number.isFinite(m.similarity); }))",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.systematicityScore)",
+        "output.ok === false || output.result.message !== undefined || (output.result.systematicityScore >= 0 && output.result.systematicityScore <= 100)",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.candidateInferences)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "commonsense.analogyMapping",
+      "name": "analogyMapping"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.conceptnet-edges",
+      "name": "conceptnet-edges"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.conceptnet-relatedness",
+      "name": "conceptnet-relatedness"
+    },
+    {
+      "_derived": false,
+      "domain": "commonsense",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "subject": "dog",
+            "useConceptNet": false
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "minConfidence": 0.5,
+            "subject": "dog",
+            "useConceptNet": false
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "subject": "",
+            "useConceptNet": false
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "minConfidence": "1e999",
+            "subject": "cat",
+            "useConceptNet": false
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "minConfidence": -1,
+            "subject": "cat",
+            "useConceptNet": false
+          }
+        }
+      ],
+      "inputs": {
+        "minConfidence": {
+          "max": 1,
+          "min": 0,
+          "required": false,
+          "type": "number"
+        },
+        "relation": {
+          "maxLength": 64,
+          "required": false,
+          "type": "string"
+        },
+        "subject": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        },
+        "useConceptNet": {
+          "required": false,
+          "type": "boolean"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.subject === 'string'",
+        "output.ok === false || Array.isArray(output.result.matches)",
+        "output.ok === false || output.result.matches.every(function(m){ return Number.isFinite(m.confidence) && m.confidence >= 0 && m.confidence <= 1; })",
+        "output.ok === false || (Number.isFinite(output.result.count) && Number.isFinite(output.result.localCount) && Number.isFinite(output.result.conceptNetCount))",
+        "output.ok === false || (Number.isFinite(output.result.minConfidence) && output.result.minConfidence >= 0 && output.result.minConfidence <= 1)",
+        "output.ok === false || typeof output.result.interpretation === 'string'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "commonsense.confidenceQuery",
+      "name": "confidenceQuery"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.contradictionScan",
+      "name": "contradictionScan"
+    },
+    {
+      "_derived": false,
+      "domain": "commonsense",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "classes": [
+                  {
+                    "defaults": {
+                      "canFly": false,
+                      "legs": 4
+                    },
+                    "name": "animal"
+                  },
+                  {
+                    "defaults": {
+                      "canFly": true,
+                      "legs": 2
+                    },
+                    "name": "bird",
+                    "parent": "animal"
+                  },
+                  {
+                    "name": "penguin",
+                    "overrides": {
+                      "canFly": false
+                    },
+                    "parent": "bird"
+                  }
+                ],
+                "instance": {
+                  "class": "penguin"
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "classes": [
+                  {
+                    "defaults": {},
+                    "name": "vehicle"
+                  },
+                  {
+                    "defaults": {
+                      "wheels": 4
+                    },
+                    "name": "car",
+                    "parent": "vehicle"
+                  },
+                  {
+                    "defaults": {
+                      "wheels": 2
+                    },
+                    "name": "motorcycle",
+                    "parent": "vehicle"
+                  }
+                ],
+                "instance": {
+                  "class": "car"
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "classes": [
+                  {
+                    "defaults": {},
+                    "name": "a",
+                    "parent": "b"
+                  },
+                  {
+                    "defaults": {},
+                    "name": "b",
+                    "parent": "a"
+                  }
+                ],
+                "instance": {
+                  "class": "a"
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "classes": "nope"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "classes": {
+          "required": false,
+          "type": "array"
+        },
+        "instance": {
+          "required": false,
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.instanceClass === 'string'",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.inheritanceChain)",
+        "output.ok === false || output.result.message !== undefined || (output.result.resolvedProperties && typeof output.result.resolvedProperties === 'object')",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalProperties)",
+        "output.ok === false || output.result.message !== undefined || (output.result.conflicts && Number.isFinite(output.result.conflicts.inheritanceOverrides) && Number.isFinite(output.result.conflicts.siblingConflicts))",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.warnings)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "commonsense.defaultReasoning",
+      "name": "defaultReasoning"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.extractFacts",
+      "name": "extractFacts"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.factAdd",
+      "name": "factAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.factDelete",
+      "name": "factDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.factList",
+      "name": "factList"
+    },
+    {
       "_derived": true,
       "domain": "commonsense",
       "fuzz_cases": [],
@@ -25,6 +597,114 @@
       ],
       "macro_id": "commonsense.get_assumptions",
       "name": "get_assumptions"
+    },
+    {
+      "_derived": false,
+      "domain": "commonsense",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "maxHops": 3,
+            "minConfidence": 0.3
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "maxHops": "1e999",
+            "minConfidence": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "maxHops": -1,
+            "minConfidence": -1
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "relation": "is_a"
+          }
+        }
+      ],
+      "inputs": {
+        "maxHops": {
+          "max": 5,
+          "min": 1,
+          "required": false,
+          "type": "number"
+        },
+        "minConfidence": {
+          "max": 1,
+          "min": 0,
+          "required": false,
+          "type": "number"
+        },
+        "relation": {
+          "maxLength": 64,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.inferences)",
+        "output.ok === false || Number.isFinite(output.result.count)",
+        "output.ok === false || Number.isFinite(output.result.baseFactCount)",
+        "output.ok === false || (Number.isFinite(output.result.maxHops) && output.result.maxHops >= 1 && output.result.maxHops <= 5)",
+        "output.ok === false || (Number.isFinite(output.result.minConfidence) && output.result.minConfidence >= 0 && output.result.minConfidence <= 1)",
+        "output.ok === false || output.result.inferences.every(function(i){ return Number.isFinite(i.confidence) && Array.isArray(i.derivation); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "commonsense.inferChain",
+      "name": "inferChain"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.knowledgeGraph",
+      "name": "knowledgeGraph"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.like",
+      "name": "like"
     },
     {
       "_derived": true,
@@ -62,6 +742,214 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "commonsense.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": false,
+      "domain": "commonsense",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "statement": {
+                  "text": "The cat sat on the warm mat."
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "statement": {
+                  "text": "The dead man spoke clearly to the crowd."
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "statement": {
+                  "events": [
+                    {
+                      "action": "arrive",
+                      "time": "2026-01-02T10:00:00Z"
+                    },
+                    {
+                      "action": "depart",
+                      "time": "2026-01-01T10:00:00Z"
+                    }
+                  ],
+                  "text": "trip"
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "statement": {
+                  "events": [
+                    {
+                      "action": "a",
+                      "time": "Infinity"
+                    },
+                    {
+                      "action": "b",
+                      "time": "NaN"
+                    }
+                  ],
+                  "text": "x"
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "statement": "nope"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "constraints": {
+          "required": false,
+          "type": "array"
+        },
+        "statement": {
+          "required": false,
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.plausibilityScore)",
+        "output.ok === false || (output.result.plausibilityScore >= 0 && output.result.plausibilityScore <= 100)",
+        "output.ok === false || typeof output.result.plausibilityLabel === 'string'",
+        "output.ok === false || (output.result.violations && Number.isFinite(output.result.violations.count) && Array.isArray(output.result.violations.items))",
+        "output.ok === false || Number.isFinite(output.result.constraintsSatisfied)",
+        "output.ok === false || Number.isFinite(output.result.eventsAnalyzed)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "commonsense.plausibilityCheck",
+      "name": "plausibilityCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.provenanceChain",
+      "name": "provenanceChain"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "commonsense.query",
       "name": "query"
     },
@@ -75,8 +963,86 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "commonsense.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "commonsense.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.relationTaxonomy",
+      "name": "relationTaxonomy"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.star",
+      "name": "star"
     },
     {
       "_derived": true,
@@ -103,9 +1069,35 @@
       ],
       "macro_id": "commonsense.surface_assumptions",
       "name": "surface_assumptions"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "commonsense",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "commonsense.vote",
+      "name": "vote"
     }
   ],
   "domain": "commonsense",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 8
+  "macroCount": 42
 }

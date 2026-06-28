@@ -10,6 +10,84 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "psyops.alert_detail",
+      "name": "alert_detail"
+    },
+    {
+      "_derived": true,
+      "domain": "psyops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "psyops.alert_triage",
+      "name": "alert_triage"
+    },
+    {
+      "_derived": true,
+      "domain": "psyops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "psyops.alerts_list",
+      "name": "alerts_list"
+    },
+    {
+      "_derived": true,
+      "domain": "psyops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "psyops.incident_close",
+      "name": "incident_close"
+    },
+    {
+      "_derived": true,
+      "domain": "psyops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "psyops.incident_create",
+      "name": "incident_create"
+    },
+    {
+      "_derived": true,
+      "domain": "psyops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "psyops.incident_list",
+      "name": "incident_list"
+    },
+    {
+      "_derived": true,
+      "domain": "psyops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "psyops.list_alerts",
       "name": "list_alerts"
     },
@@ -36,8 +114,73 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "psyops.notification_ack",
+      "name": "notification_ack"
+    },
+    {
+      "_derived": true,
+      "domain": "psyops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "psyops.notifications_list",
+      "name": "notifications_list"
+    },
+    {
+      "_derived": true,
+      "domain": "psyops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "psyops.quarantine",
       "name": "quarantine"
+    },
+    {
+      "_derived": true,
+      "domain": "psyops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "psyops.quarantine_entity",
+      "name": "quarantine_entity"
+    },
+    {
+      "_derived": true,
+      "domain": "psyops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "psyops.quarantine_log",
+      "name": "quarantine_log"
+    },
+    {
+      "_derived": true,
+      "domain": "psyops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "psyops.quarantine_release",
+      "name": "quarantine_release"
     },
     {
       "_derived": true,
@@ -62,11 +205,50 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "psyops.rules_list",
+      "name": "rules_list"
+    },
+    {
+      "_derived": true,
+      "domain": "psyops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "psyops.rules_update",
+      "name": "rules_update"
+    },
+    {
+      "_derived": true,
+      "domain": "psyops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "psyops.scan_signal",
+      "name": "scan_signal"
+    },
+    {
+      "_derived": true,
+      "domain": "psyops",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "psyops.scan_skill_divergence",
       "name": "scan_skill_divergence"
     }
   ],
   "domain": "psyops",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 5
+  "macroCount": 19
 }

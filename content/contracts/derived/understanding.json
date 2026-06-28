@@ -10,8 +10,279 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "understanding.backlinks",
+      "name": "backlinks"
+    },
+    {
+      "_derived": false,
+      "domain": "understanding",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "body": "Recall over time.",
+            "tags": [
+              "memory"
+            ],
+            "title": "Spaced repetition"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "title": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "title": "   "
+          }
+        }
+      ],
+      "inputs": {
+        "body": {
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title": {
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.note.id === 'string' && output.result.note.id.length > 0)",
+        "output.ok === false || (typeof output.result.note.title === 'string' && output.result.note.title.length > 0)",
+        "output.ok === false || Array.isArray(output.result.note.tags)",
+        "output.ok === false || output.result.note.tags.length <= 32",
+        "output.ok === false || output.result.note.revisionCount === 1",
+        "output.ok === true || (typeof output.error === 'string' && output.error.length > 0)"
+      ],
+      "macro_id": "understanding.create",
+      "name": "create"
+    },
+    {
+      "_derived": false,
+      "domain": "understanding",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "id": "ghost_id"
+          }
+        }
+      ],
+      "inputs": {
+        "from": {
+          "type": "number"
+        },
+        "id": {
+          "required": true,
+          "type": "string"
+        },
+        "to": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isInteger(output.result.fromRevision)",
+        "output.ok === false || Number.isInteger(output.result.toRevision)",
+        "output.ok === false || output.result.fromRevision >= 0",
+        "output.ok === false || output.result.toRevision >= 0",
+        "output.ok === false || Array.isArray(output.result.lines)",
+        "output.ok === false || (typeof output.result.added === 'number' && output.result.added >= 0)",
+        "output.ok === false || (typeof output.result.removed === 'number' && output.result.removed >= 0)",
+        "output.ok === true || (typeof output.error === 'string' && output.error.length > 0)"
+      ],
+      "macro_id": "understanding.diff",
+      "name": "diff"
+    },
+    {
+      "_derived": true,
+      "domain": "understanding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "understanding.edit",
+      "name": "edit"
+    },
+    {
+      "_derived": true,
+      "domain": "understanding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "understanding.export",
+      "name": "export"
+    },
+    {
+      "_derived": true,
+      "domain": "understanding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "understanding.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "understanding",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "typeof output.result === 'object' && output.result !== null",
+        "Array.isArray(output.result.nodes)",
+        "Array.isArray(output.result.edges)",
+        "Array.isArray(output.result.orphans)",
+        "output.result.nodeCount === output.result.nodes.length",
+        "output.result.edgeCount === output.result.edges.length",
+        "output.result.orphanCount === output.result.orphans.length",
+        "output.result.nodes.every(n => typeof n.degree === 'number' && n.degree >= 0)",
+        "output.result.edges.every(e => e.kind === 'manual' || e.kind === 'wiki')"
+      ],
+      "macro_id": "understanding.graph",
+      "name": "graph"
+    },
+    {
+      "_derived": true,
+      "domain": "understanding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "understanding.link",
+      "name": "link"
+    },
+    {
+      "_derived": false,
+      "domain": "understanding",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "tag": "study"
+          }
+        }
+      ],
+      "inputs": {
+        "tag": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "typeof output.result === 'object' && output.result !== null",
+        "Array.isArray(output.result.notes)",
+        "typeof output.result.count === 'number' && output.result.count >= 0",
+        "output.result.count === output.result.notes.length",
+        "output.result.notes.every(n => typeof n.id === 'string' && n.id.length > 0)",
+        "output.result.notes.every(n => Array.isArray(n.tags))",
+        "output.result.notes.every(n => typeof n.wordCount === 'number' && n.wordCount >= 0)"
+      ],
+      "macro_id": "understanding.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "understanding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "understanding.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "understanding",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "typeof output.result === 'object' && output.result !== null",
+        "typeof output.result.noteCount === 'number' && output.result.noteCount >= 0",
+        "typeof output.result.manualLinkCount === 'number' && output.result.manualLinkCount >= 0",
+        "typeof output.result.wikiLinkCount === 'number' && output.result.wikiLinkCount >= 0",
+        "typeof output.result.tagCount === 'number' && output.result.tagCount >= 0"
+      ],
+      "macro_id": "understanding.overview",
+      "name": "overview"
     },
     {
       "_derived": true,
@@ -25,9 +296,90 @@
       ],
       "macro_id": "understanding.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "understanding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "understanding.remove",
+      "name": "remove"
+    },
+    {
+      "_derived": false,
+      "domain": "understanding",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "query": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "query": "energy"
+          }
+        }
+      ],
+      "inputs": {
+        "query": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "typeof output.result === 'object' && output.result !== null",
+        "Array.isArray(output.result.matches)",
+        "typeof output.result.count === 'number' && output.result.count >= 0",
+        "output.result.count === output.result.matches.length",
+        "output.result.matches.every(m => typeof m.score === 'number' && Number.isFinite(m.score))",
+        "(!input || !input.query || String(input.query).trim() === '') ? output.result.count === 0 : true"
+      ],
+      "macro_id": "understanding.search",
+      "name": "search"
+    },
+    {
+      "_derived": true,
+      "domain": "understanding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "understanding.tags",
+      "name": "tags"
+    },
+    {
+      "_derived": true,
+      "domain": "understanding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "understanding.unlink",
+      "name": "unlink"
     }
   ],
   "domain": "understanding",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 16
 }

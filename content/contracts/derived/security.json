@@ -1,0 +1,1130 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "security",
+      "fuzz_cases": [
+        {
+          "expect": {},
+          "input": {}
+        },
+        {
+          "expect": {},
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.postureScore)",
+        "output.ok === false || (output.result.postureScore >= 0 && output.result.postureScore <= 100)",
+        "output.ok === false || typeof output.result.rating === 'string'",
+        "output.ok === false || Number.isFinite(output.result.assetCount)",
+        "output.ok === false || Number.isFinite(output.result.openCritical)",
+        "output.ok === false || Array.isArray(output.result.recommendations)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "security.accessAudit",
+      "name": "accessAudit"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.asset-add",
+      "name": "asset-add"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.asset-delete",
+      "name": "asset-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.asset-list",
+      "name": "asset-list"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.badge-audit",
+      "name": "badge-audit"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.badge-event-add",
+      "name": "badge-event-add"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.camera-add",
+      "name": "camera-add"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.camera-delete",
+      "name": "camera-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.camera-list",
+      "name": "camera-list"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.camera-update",
+      "name": "camera-update"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.cve-asset-match",
+      "name": "cve-asset-match"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.event-correlate",
+      "name": "event-correlate"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.event-ingest",
+      "name": "event-ingest"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.event-list",
+      "name": "event-list"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.evidenceChain",
+      "name": "evidenceChain"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.incident-advance",
+      "name": "incident-advance"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.incident-attach-playbook",
+      "name": "incident-attach-playbook"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.incident-list",
+      "name": "incident-list"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.incident-open",
+      "name": "incident-open"
+    },
+    {
+      "_derived": false,
+      "domain": "security",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "impact": "critical",
+                "severity": "P1",
+                "type": "breach"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "impact": "low",
+                "severity": "P5"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "impact": "critical",
+                "severity": "Infinity"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "impact": {
+          "maxLength": 16,
+          "required": false,
+          "type": "string"
+        },
+        "severity": {
+          "maxLength": 16,
+          "required": false,
+          "type": "string"
+        },
+        "type": {
+          "maxLength": 64,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.escalationScore)",
+        "output.ok === false || typeof output.result.escalationLevel === 'string'",
+        "output.ok === false || ['critical','high','medium','low'].indexOf(output.result.escalationLevel) >= 0",
+        "output.ok === false || typeof output.result.requiredResponseTime === 'string'",
+        "output.ok === false || Array.isArray(output.result.notifications)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "security.incidentEscalate",
+      "name": "incidentEscalate"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.incidentTrend",
+      "name": "incidentTrend"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.patrolCoverage",
+      "name": "patrolCoverage"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.playbook-list",
+      "name": "playbook-list"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.rule-add",
+      "name": "rule-add"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.rule-delete",
+      "name": "rule-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.rule-evaluate",
+      "name": "rule-evaluate"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.rule-list",
+      "name": "rule-list"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.rule-toggle",
+      "name": "rule-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.security-dashboard",
+      "name": "security-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.threat-enrich",
+      "name": "threat-enrich"
+    },
+    {
+      "_derived": false,
+      "domain": "security",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "threats": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "threats": [
+                  {
+                    "controls": [
+                      {
+                        "status": "active"
+                      },
+                      {
+                        "status": "inactive"
+                      }
+                    ],
+                    "impact": 5,
+                    "name": "Ransomware",
+                    "probability": 4,
+                    "vulnerabilities": [
+                      "a",
+                      "b"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "threats": [
+                  {
+                    "impact": "1e999",
+                    "name": "poison",
+                    "probability": "Infinity"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "threats": [
+                  {
+                    "impact": "NaN",
+                    "name": "nan",
+                    "probability": "abc"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "threats": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.assessments)",
+        "output.ok === false || Number.isFinite(output.result.overallRiskScore)",
+        "output.ok === false || Number.isFinite(output.result.threatsAssessed)",
+        "output.ok === false || output.result.assessments.every(function(a){ return Number.isFinite(a.probability) && Number.isFinite(a.impact) && Number.isFinite(a.riskScore) && Number.isFinite(a.residualRisk) && Number.isFinite(a.controlEffectiveness) && Array.isArray(a.mitigations); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "security.threatAssessment",
+      "name": "threatAssessment"
+    },
+    {
+      "_derived": false,
+      "domain": "security",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "threats": [
+                  {
+                    "name": "x",
+                    "probability": 5,
+                    "severity": 4
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "threats": [
+                  {
+                    "name": "poison",
+                    "probability": "1e999",
+                    "severity": "Infinity"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "threats": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "threats": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.matrix)",
+        "output.ok === false || Number.isFinite(output.result.totalThreats)",
+        "output.ok === false || Number.isFinite(output.result.criticalCount)",
+        "output.ok === false || output.result.matrix.every(function(m){ return Number.isFinite(m.severity) && Number.isFinite(m.likelihood) && Number.isFinite(m.riskScore) && ['critical','high','medium','low'].indexOf(m.riskLevel) >= 0; })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "security.threatMatrix",
+      "name": "threatMatrix"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.vuln-add",
+      "name": "vuln-add"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.vuln-delete",
+      "name": "vuln-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.vuln-list",
+      "name": "vuln-list"
+    },
+    {
+      "_derived": true,
+      "domain": "security",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "security.vuln-update",
+      "name": "vuln-update"
+    },
+    {
+      "_derived": false,
+      "domain": "security",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "systems": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "systems": [
+                  {
+                    "configurations": {
+                      "defaultCredentials": true,
+                      "encryption": false,
+                      "firewall": false,
+                      "mfa": false
+                    },
+                    "name": "web-01"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "systems": [
+                  {
+                    "configurations": {
+                      "defaultCredentials": false,
+                      "encryption": true,
+                      "firewall": true,
+                      "mfa": true
+                    },
+                    "name": "bastion"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "systems": [
+                  {
+                    "accounts": [
+                      {
+                        "name": "svc",
+                        "passwordAge": 200
+                      }
+                    ],
+                    "name": "junk",
+                    "openPorts": [
+                      23,
+                      445
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "systems": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.findings)",
+        "output.ok === false || Number.isFinite(output.result.totalFindings)",
+        "output.ok === false || (typeof output.result.bySeverity === 'object' && output.result.bySeverity !== null)",
+        "output.ok === false || Object.values(output.result.bySeverity).every(function(n){ return Number.isFinite(n) && n > 0; })",
+        "output.ok === false || output.result.findings.every(function(f){ return typeof f.system === 'string' && typeof f.severity === 'string' && typeof f.detail === 'string'; })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "security.vulnerabilityScan",
+      "name": "vulnerabilityScan"
+    }
+  ],
+  "domain": "security",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 58
+}

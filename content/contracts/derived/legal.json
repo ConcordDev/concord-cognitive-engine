@@ -10,8 +10,1287 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "legal.ai-court-doc-to-calendar",
+      "name": "ai-court-doc-to-calendar"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.ai-matter-update",
+      "name": "ai-matter-update"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.budget-report",
+      "name": "budget-report"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.budget-set",
+      "name": "budget-set"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.calendar-create",
+      "name": "calendar-create"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.calendar-list",
+      "name": "calendar-list"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.case-add",
+      "name": "case-add"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.case-list",
+      "name": "case-list"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.caseSummary",
+      "name": "caseSummary"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "legal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "requirements": [
+                  {
+                    "deadline": "2099-01-30",
+                    "name": "CLE credits",
+                    "status": "compliant"
+                  },
+                  {
+                    "deadline": "2000-01-01",
+                    "name": "Trust recon",
+                    "status": "pending"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "requirements": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "requirements": [
+                  {
+                    "name": "x",
+                    "status": "compliant"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "requirements": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.score)",
+        "output.ok === false || (output.result.score >= 0 && output.result.score <= 100)",
+        "output.ok === false || Number.isFinite(output.result.passed)",
+        "output.ok === false || Number.isFinite(output.result.failed)",
+        "output.ok === false || output.result.passed + output.result.failed === output.result.totalRequirements",
+        "output.ok === false || ['excellent','good','fair','poor'].includes(output.result.rating)",
+        "output.ok === false || Array.isArray(output.result.findings)",
+        "output.ok === false || Array.isArray(output.result.checklist)"
+      ],
+      "macro_id": "legal.complianceAudit",
+      "name": "complianceAudit"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.complianceScore",
+      "name": "complianceScore"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.conflict-search",
+      "name": "conflict-search"
+    },
+    {
+      "_derived": false,
+      "domain": "legal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "checkAgainst": [
+                  "Acme Co"
+                ],
+                "client": "Acme Co",
+                "parties": [
+                  "Acme Co"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "checkAgainst": [
+                  "Globex"
+                ],
+                "client": "Acme Co",
+                "parties": [
+                  "Acme Co"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "client": "Acme Co",
+                "parties": [
+                  "Acme Co"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "checkAgainst": {
+          "type": "array"
+        },
+        "client": {
+          "type": "string"
+        },
+        "opposingParty": {
+          "type": "string"
+        },
+        "parties": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.conflicts)",
+        "output.ok === false || typeof output.result.hasConflict === 'boolean'",
+        "output.ok === false || output.result.hasConflict === (output.result.conflicts.length > 0)",
+        "output.ok === false || typeof output.result.checkedAt === 'string'"
+      ],
+      "macro_id": "legal.conflictCheck",
+      "name": "conflictCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.contacts-create",
+      "name": "contacts-create"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.contacts-delete",
+      "name": "contacts-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.contacts-list",
+      "name": "contacts-list"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.contacts-update",
+      "name": "contacts-update"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.contract-analyze",
+      "name": "contract-analyze"
+    },
+    {
+      "_derived": false,
+      "domain": "legal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "expiryDate": "2099-01-10",
+                "renewalType": "manual",
+                "title": "MSA"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "expiryDate": "2099-02-20",
+                "renewalType": "auto"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "expiryDate": "Infinity",
+                "renewalType": "manual"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "expiryDate": {
+          "type": "string"
+        },
+        "renewalType": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.result.status === 'no_expiry' || Number.isFinite(output.result.daysUntilExpiry)",
+        "output.ok === false || output.result.status === 'no_expiry' || ['critical','high','medium','low'].includes(output.result.urgency)",
+        "output.ok === false || output.result.status === 'no_expiry' || typeof output.result.autoRenewal === 'boolean'",
+        "output.ok === false || output.result.status === 'no_expiry' || typeof output.result.actionRequired === 'boolean'"
+      ],
+      "macro_id": "legal.contractRenewal",
+      "name": "contractRenewal"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.court-rules-deadline",
+      "name": "court-rules-deadline"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.dashboard-summary",
+      "name": "dashboard-summary"
+    },
+    {
+      "_derived": false,
+      "domain": "legal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "filingDate": "2099-01-01",
+                "jurisdiction": "federal"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "filingDate": "2099-01-01",
+                "jurisdiction": "state"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "filingDate": "Infinity"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "filingDate": {
+          "type": "string"
+        },
+        "jurisdiction": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.error === 'string' || Array.isArray(output.result.deadlines)",
+        "output.ok === false || typeof output.result.error === 'string' || output.result.deadlines.every(d => Number.isFinite(d.daysFromFiling))",
+        "output.ok === false || typeof output.result.error === 'string' || output.result.deadlines.every(d => Number.isFinite(d.daysRemaining))",
+        "output.ok === false || typeof output.result.error === 'string' || output.result.deadlines.every(d => ['past','urgent','upcoming','future'].includes(d.status))"
+      ],
+      "macro_id": "legal.deadlineCalculator",
+      "name": "deadlineCalculator"
+    },
+    {
+      "_derived": false,
+      "domain": "legal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "daysAhead": 36500,
+                "items": [
+                  {
+                    "deadline": "2099-01-10",
+                    "name": "Answer due",
+                    "severity": "high"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "daysAhead": 30,
+                "items": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "daysAhead": 36500,
+                "items": [
+                  {
+                    "deadline": "Infinity",
+                    "name": "bad",
+                    "severity": "high"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "daysAhead": {
+          "type": "number"
+        },
+        "items": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.upcoming)",
+        "output.ok === false || Number.isFinite(output.result.count)",
+        "output.ok === false || output.result.count === output.result.upcoming.length",
+        "output.ok === false || output.result.upcoming.every(u => Number.isFinite(u.daysUntil))"
+      ],
+      "macro_id": "legal.deadlineCheck",
+      "name": "deadlineCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.doc-generate",
+      "name": "doc-generate"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.doc-templates-create",
+      "name": "doc-templates-create"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.doc-templates-list",
+      "name": "doc-templates-list"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.documents-list",
+      "name": "documents-list"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.esign-envelope-create",
+      "name": "esign-envelope-create"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.esign-envelope-sign",
+      "name": "esign-envelope-sign"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.esign-envelopes-list",
+      "name": "esign-envelopes-list"
+    },
+    {
+      "_derived": false,
+      "domain": "legal",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "client": "Acme",
+                "expenses": [
+                  {
+                    "amount": 50,
+                    "description": "Filing fee"
+                  }
+                ],
+                "timeEntries": [
+                  {
+                    "description": "Drafting",
+                    "hours": 2,
+                    "rate": 300
+                  }
+                ]
+              }
+            },
+            "taxRate": 0.1
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "expenses": [
+                  {
+                    "amount": "Infinity",
+                    "description": "y"
+                  }
+                ],
+                "timeEntries": [
+                  {
+                    "description": "x",
+                    "hours": "Infinity",
+                    "rate": "1e999"
+                  }
+                ]
+              },
+              "taxRate": "Infinity"
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "timeEntries": [
+                  {
+                    "hours": "NaN",
+                    "rate": "abc"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "expenses": {
+          "type": "array"
+        },
+        "taxRate": {
+          "type": "number"
+        },
+        "timeEntries": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.laborSubtotal)",
+        "output.ok === false || Number.isFinite(output.result.expenseSubtotal)",
+        "output.ok === false || Number.isFinite(output.result.subtotal)",
+        "output.ok === false || Number.isFinite(output.result.taxAmount)",
+        "output.ok === false || Number.isFinite(output.result.total)",
+        "output.ok === false || Number.isFinite(output.result.totalHours)",
+        "output.ok === false || output.result.total >= 0"
+      ],
+      "macro_id": "legal.generateInvoice",
+      "name": "generateInvoice"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.intake-convert",
+      "name": "intake-convert"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.intake-forms-create",
+      "name": "intake-forms-create"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.intake-forms-delete",
+      "name": "intake-forms-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.intake-forms-list",
+      "name": "intake-forms-list"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.intake-submissions-list",
+      "name": "intake-submissions-list"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.intake-submit",
+      "name": "intake-submit"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.invoices-from-time",
+      "name": "invoices-from-time"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.invoices-list",
+      "name": "invoices-list"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.invoices-mark-paid",
+      "name": "invoices-mark-paid"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.legal-question",
+      "name": "legal-question"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "legal.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.matters-close",
+      "name": "matters-close"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.matters-create",
+      "name": "matters-create"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.matters-detail",
+      "name": "matters-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.matters-list",
+      "name": "matters-list"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.matters-update",
+      "name": "matters-update"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.payment-portal-summary",
+      "name": "payment-portal-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.payment-record",
+      "name": "payment-record"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.payments-list",
+      "name": "payments-list"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.realization-rollup",
+      "name": "realization-rollup"
     },
     {
       "_derived": true,
@@ -36,11 +1315,258 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "legal.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "legal.sign",
       "name": "sign"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.time-entries-create",
+      "name": "time-entries-create"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.time-entries-delete",
+      "name": "time-entries-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.time-entries-list",
+      "name": "time-entries-list"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.timer-list",
+      "name": "timer-list"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.timer-start",
+      "name": "timer-start"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.timer-stop",
+      "name": "timer-stop"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.trust-account-create",
+      "name": "trust-account-create"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.trust-accounts-list",
+      "name": "trust-accounts-list"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.trust-balance",
+      "name": "trust-balance"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.trust-deposit",
+      "name": "trust-deposit"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.trust-disburse",
+      "name": "trust-disburse"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.trust-reconcile",
+      "name": "trust-reconcile"
+    },
+    {
+      "_derived": true,
+      "domain": "legal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "legal.vote",
+      "name": "vote"
     }
   ],
   "domain": "legal",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 85
 }

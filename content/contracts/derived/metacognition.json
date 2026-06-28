@@ -10,6 +10,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "metacognition.accuracyHistory",
+      "name": "accuracyHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "metacognition.adapt_strategy",
       "name": "adapt_strategy"
     },
@@ -49,8 +62,60 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "metacognition.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "metacognition.assess",
       "name": "assess"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.biasChecklist",
+      "name": "biasChecklist"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.biasDetection",
+      "name": "biasDetection"
     },
     {
       "_derived": true,
@@ -75,8 +140,86 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "metacognition.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "metacognition.calibration",
       "name": "calibration"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.calibrationReport",
+      "name": "calibrationReport"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.confidenceCalibration",
+      "name": "confidenceCalibration"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.duplicate",
+      "name": "duplicate"
     },
     {
       "_derived": true,
@@ -114,8 +257,216 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "metacognition.journalDelete",
+      "name": "journalDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.journalList",
+      "name": "journalList"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.journalLog",
+      "name": "journalLog"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.journalResolve",
+      "name": "journalResolve"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.learningCurve",
+      "name": "learningCurve"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "metacognition.predict",
       "name": "predict"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.reflectionList",
+      "name": "reflectionList"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.reflectionPrompts",
+      "name": "reflectionPrompts"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.reflectionSave",
+      "name": "reflectionSave"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.repost",
+      "name": "repost"
     },
     {
       "_derived": true,
@@ -140,6 +491,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "metacognition.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "metacognition.select_strategy",
       "name": "select_strategy"
     },
@@ -153,11 +517,89 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "metacognition.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "metacognition.status",
       "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.strategyLibrary",
+      "name": "strategyLibrary"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.streakStatus",
+      "name": "streakStatus"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.vote",
+      "name": "vote"
     }
   ],
   "domain": "metacognition",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 12
+  "macroCount": 46
 }

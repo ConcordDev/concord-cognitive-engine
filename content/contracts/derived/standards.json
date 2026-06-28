@@ -1,0 +1,72 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "standards",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "standards.compliance-check",
+      "name": "compliance-check"
+    },
+    {
+      "_derived": true,
+      "domain": "standards",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "standards.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "standards",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "standards.saved-list",
+      "name": "saved-list"
+    },
+    {
+      "_derived": true,
+      "domain": "standards",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "standards.standard-get",
+      "name": "standard-get"
+    },
+    {
+      "_derived": true,
+      "domain": "standards",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "standards.standards-list",
+      "name": "standards-list"
+    }
+  ],
+  "domain": "standards",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 5
+}

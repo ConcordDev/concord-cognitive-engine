@@ -10,8 +10,112 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "grounding.aggregateEvidence",
+      "name": "aggregateEvidence"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "grounding.approve_action",
       "name": "approve_action"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.auditTrail",
+      "name": "auditTrail"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.claimDecomposition",
+      "name": "claimDecomposition"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.confidenceRating",
+      "name": "confidenceRating"
     },
     {
       "_derived": true,
@@ -36,8 +140,73 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "grounding.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.factCheck",
+      "name": "factCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.factCheckCard",
+      "name": "factCheckCard"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "grounding.ground_dtu",
       "name": "ground_dtu"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.like",
+      "name": "like"
     },
     {
       "_derived": true,
@@ -62,8 +231,47 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "grounding.linkRebuttal",
+      "name": "linkRebuttal"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "grounding.list_sensors",
       "name": "list_sensors"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.move",
+      "name": "move"
     },
     {
       "_derived": true,
@@ -88,8 +296,73 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "grounding.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "grounding.propose_action",
       "name": "propose_action"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.rebuttalsFor",
+      "name": "rebuttalsFor"
     },
     {
       "_derived": true,
@@ -127,6 +400,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "grounding.recordCheck",
+      "name": "recordCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "grounding.register_sensor",
       "name": "register_sensor"
     },
@@ -140,11 +426,128 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "grounding.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.sourceBias",
+      "name": "sourceBias"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.sourceCredibility",
+      "name": "sourceCredibility"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "grounding.status",
       "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.trendingClaims",
+      "name": "trendingClaims"
+    },
+    {
+      "_derived": true,
+      "domain": "grounding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "grounding.vote",
+      "name": "vote"
     }
   ],
   "domain": "grounding",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 11
+  "macroCount": 42
 }

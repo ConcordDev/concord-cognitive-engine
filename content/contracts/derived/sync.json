@@ -10,11 +10,206 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "sync.available_scopes",
+      "name": "available_scopes"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "sync.force",
       "name": "force"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sync.heartbeat",
+      "name": "heartbeat"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sync.list_conflicts",
+      "name": "list_conflicts"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sync.list_devices",
+      "name": "list_devices"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sync.register_device",
+      "name": "register_device"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sync.report_conflict",
+      "name": "report_conflict"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sync.resolve_conflict",
+      "name": "resolve_conflict"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sync.revoke_device",
+      "name": "revoke_device"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sync.set_auto_sync",
+      "name": "set_auto_sync"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sync.set_quota",
+      "name": "set_quota"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sync.set_scopes",
+      "name": "set_scopes"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sync.sync_history",
+      "name": "sync_history"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sync.sync_now",
+      "name": "sync_now"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sync.sync_status",
+      "name": "sync_status"
+    },
+    {
+      "_derived": true,
+      "domain": "sync",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sync.syncthing_releases",
+      "name": "syncthing_releases"
     }
   ],
   "domain": "sync",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 1
+  "macroCount": 16
 }

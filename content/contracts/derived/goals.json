@@ -36,6 +36,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "goals.alignmentTree",
+      "name": "alignmentTree"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "goals.approve",
       "name": "approve"
     },
@@ -49,8 +62,73 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "goals.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "goals.auto_propose",
       "name": "auto_propose"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.checkin",
+      "name": "checkin"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.comment",
+      "name": "comment"
     },
     {
       "_derived": true,
@@ -88,6 +166,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "goals.dependencies",
+      "name": "dependencies"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "goals.evaluate",
       "name": "evaluate"
     },
@@ -103,6 +220,32 @@
       ],
       "macro_id": "goals.get",
       "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.goalDecomposition",
+      "name": "goalDecomposition"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.like",
+      "name": "like"
     },
     {
       "_derived": true,
@@ -140,8 +283,99 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "goals.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.okrScoring",
+      "name": "okrScoring"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "goals.progress",
       "name": "progress"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.progressChart",
+      "name": "progressChart"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.progressForecast",
+      "name": "progressForecast"
     },
     {
       "_derived": true,
@@ -166,6 +400,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "goals.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "goals.recent_mine",
       "name": "recent_mine"
     },
@@ -179,11 +439,128 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "goals.reminder",
+      "name": "reminder"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "goals.status",
       "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.teamGoal",
+      "name": "teamGoal"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.templates",
+      "name": "templates"
+    },
+    {
+      "_derived": true,
+      "domain": "goals",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "goals.vote",
+      "name": "vote"
     }
   ],
   "domain": "goals",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 14
+  "macroCount": 43
 }

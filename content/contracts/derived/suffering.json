@@ -1,0 +1,553 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.evidence-add",
+      "name": "evidence-add"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.evidence-remove",
+      "name": "evidence-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.export-report",
+      "name": "export-report"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.intervention-delete",
+      "name": "intervention-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.intervention-list",
+      "name": "intervention-list"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.intervention-track",
+      "name": "intervention-track"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.intervention-update",
+      "name": "intervention-update"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.interventionDesign",
+      "name": "interventionDesign"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.pain-create",
+      "name": "pain-create"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.pain-delete",
+      "name": "pain-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.pain-list",
+      "name": "pain-list"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.pain-update",
+      "name": "pain-update"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.painPointMapping",
+      "name": "painPointMapping"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.priority-matrix",
+      "name": "priority-matrix"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.root-cause-tree",
+      "name": "root-cause-tree"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.rootCause",
+      "name": "rootCause"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.snapshot-record",
+      "name": "snapshot-record"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.theme-autocluster",
+      "name": "theme-autocluster"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.theme-create",
+      "name": "theme-create"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.theme-delete",
+      "name": "theme-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.theme-list",
+      "name": "theme-list"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.trend-view",
+      "name": "trend-view"
+    },
+    {
+      "_derived": true,
+      "domain": "suffering",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "suffering.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "suffering",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 42
+}

@@ -10,6 +10,554 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "welding.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.calendar",
+      "name": "calendar"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.cert-add",
+      "name": "cert-add"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.cert-renew",
+      "name": "cert-renew"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.cert-status",
+      "name": "cert-status"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.code-search",
+      "name": "code-search"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.estimate-create",
+      "name": "estimate-create"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.estimate-list",
+      "name": "estimate-list"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.estimate-send",
+      "name": "estimate-send"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.estimate-to-job",
+      "name": "estimate-to-job"
+    },
+    {
+      "_derived": false,
+      "domain": "welding",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "amperage": 200,
+                "efficiency": 0.85,
+                "travelSpeed": 4,
+                "voltage": 28
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "amperage": 250,
+                "efficiency": 0.9,
+                "travelSpeed": 2,
+                "voltage": 30
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "amperage": "NaN",
+                "efficiency": "Infinity",
+                "travelSpeed": 0,
+                "voltage": "abc"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "amperage": {
+          "type": "number"
+        },
+        "efficiency": {
+          "type": "number"
+        },
+        "travelSpeed": {
+          "type": "number"
+        },
+        "voltage": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.heatInput === 'string'",
+        "output.ok === false || Number.isFinite(output.result.heatInputJoules)",
+        "output.ok === false || typeof output.result.maxInterpassTemp === 'string'",
+        "output.ok === false || ['low','moderate','high'].includes(output.result.distortionRisk)",
+        "output.ok === false || Array.isArray(output.result.recommendations)",
+        "output.ok === false || Number.isFinite(parseFloat(output.result.heatInput))"
+      ],
+      "macro_id": "welding.heatInput",
+      "name": "heatInput"
+    },
+    {
+      "_derived": false,
+      "domain": "welding",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "code": "AWS D1.1",
+                "inspections": [
+                  {
+                    "item": "Visual inspection — surface cracks",
+                    "passed": true
+                  }
+                ],
+                "weldType": "butt"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "code": "ASME IX",
+                "weldType": "fillet"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "inspections": "not-an-array",
+                "weldType": "butt"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "code": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "inspections": {
+          "type": "array"
+        },
+        "weldType": {
+          "maxLength": 40,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.checklist)",
+        "output.ok === false || output.result.checklist.length === output.result.totalItems",
+        "output.ok === false || Number.isFinite(output.result.passed)",
+        "output.ok === false || Number.isFinite(output.result.failed)",
+        "output.ok === false || Number.isFinite(output.result.pending)",
+        "output.ok === false || (output.result.passRate >= 0 && output.result.passRate <= 100)",
+        "output.ok === false || typeof output.result.verdict === 'string'",
+        "output.ok === false || output.result.checklist.every(c => ['pass','fail','pending'].includes(c.status))"
+      ],
+      "macro_id": "welding.inspectionChecklist",
+      "name": "inspectionChecklist"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.invoice-from-job",
+      "name": "invoice-from-job"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.invoice-list",
+      "name": "invoice-list"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.invoice-payment",
+      "name": "invoice-payment"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.job-schedule",
+      "name": "job-schedule"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.job-update",
+      "name": "job-update"
+    },
+    {
+      "_derived": false,
+      "domain": "welding",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "length": 120,
+                "material": "mild-steel",
+                "thickness": 8,
+                "weldType": "fillet"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "length": 100,
+                "material": "high-strength",
+                "thickness": 6,
+                "weldType": "butt"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "length": "NaN",
+                "material": "unobtanium",
+                "thickness": "Infinity",
+                "weldType": "made-up"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "length": {
+          "type": "number"
+        },
+        "material": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "thickness": {
+          "type": "number"
+        },
+        "weldType": {
+          "maxLength": 40,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.throatSize === 'string'",
+        "output.ok === false || typeof output.result.tensileStrength === 'string'",
+        "output.ok === false || typeof output.result.theoreticalCapacity === 'string'",
+        "output.ok === false || typeof output.result.safeWorkingLoad === 'string'",
+        "output.ok === false || output.result.safetyFactor === 1.5",
+        "output.ok === false || ['heavy-duty','structural','medium-duty','light-duty'].includes(output.result.rating)",
+        "output.ok === false || Number.isFinite(parseFloat(output.result.throatSize))",
+        "output.ok === false || Number.isFinite(parseFloat(output.result.safeWorkingLoad))"
+      ],
+      "macro_id": "welding.jointStrength",
+      "name": "jointStrength"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "welding.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +571,402 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "welding.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.ops-summary",
+      "name": "ops-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.photo-attach",
+      "name": "photo-attach"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.photo-list",
+      "name": "photo-list"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.photo-remove",
+      "name": "photo-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.portal-approve",
+      "name": "portal-approve"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.portal-pay",
+      "name": "portal-pay"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.portal-view",
+      "name": "portal-view"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "welding.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": false,
+      "domain": "welding",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "baseMetal": "stainless-steel",
+                "jointType": "fillet",
+                "position": "vertical-up",
+                "thickness": 4
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "baseMetal": "aluminum",
+                "position": "flat",
+                "thickness": 10
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "baseMetal": "made-up",
+                "position": "overhead",
+                "thickness": "NaN"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "baseMetal": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "jointType": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "position": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "thickness": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.recommended && typeof output.result.recommended.rod === 'string')",
+        "output.ok === false || typeof output.result.recommended.process === 'string'",
+        "output.ok === false || typeof output.result.recommended.diameter === 'string'",
+        "output.ok === false || typeof output.result.recommended.amperageRange === 'string'",
+        "output.ok === false || Array.isArray(output.result.alternatives)",
+        "output.ok === false || Array.isArray(output.result.tips)",
+        "output.ok === false || Number.isFinite(parseFloat(output.result.recommended.diameter))"
+      ],
+      "macro_id": "welding.rodSelection",
+      "name": "rodSelection"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.wps-approve",
+      "name": "wps-approve"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.wps-create",
+      "name": "wps-create"
+    },
+    {
+      "_derived": true,
+      "domain": "welding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "welding.wps-list",
+      "name": "wps-list"
     }
   ],
   "domain": "welding",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 50
 }

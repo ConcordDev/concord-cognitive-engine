@@ -10,8 +10,8 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "astronomy.list_mine",
-      "name": "list_mine"
+      "macro_id": "astronomy.apod",
+      "name": "apod"
     },
     {
       "_derived": true,
@@ -23,8 +23,8 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "astronomy.live_apod",
-      "name": "live_apod"
+      "macro_id": "astronomy.ar-resolve",
+      "name": "ar-resolve"
     },
     {
       "_derived": true,
@@ -35,6 +35,530 @@
         "output !== null && output !== undefined",
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.astro-dashboard",
+      "name": "astro-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.catalog-import",
+      "name": "catalog-import"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.catalog-list",
+      "name": "catalog-list"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.celestialPosition",
+      "name": "celestialPosition"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.constellations",
+      "name": "constellations"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": false,
+      "domain": "astronomy",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "days": 3,
+            "latitude": 40.7,
+            "longitude": -74,
+            "startDate": "2026-06-21"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "latitude": 40,
+            "longitude": -74,
+            "startDate": "notadate"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "startDate": "2026-06-21"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "days": 99999,
+            "latitude": 91,
+            "longitude": 200,
+            "startDate": "2026-06-21"
+          }
+        }
+      ],
+      "inputs": {
+        "days": {
+          "type": "number"
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "startDate": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || (Array.isArray(output.result.calendar) && output.result.calendar.length === output.result.count)",
+        "output.ok !== true || output.result.calendar.every(d => typeof d.date === 'string' && d.moonIllumination >= 0 && d.moonIllumination <= 1)",
+        "output.ok !== true || output.result.days <= 60",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "astronomy.ephemeris-calendar",
+      "name": "ephemeris-calendar"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.equipment-add",
+      "name": "equipment-add"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.equipment-delete",
+      "name": "equipment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.equipment-list",
+      "name": "equipment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.event-add",
+      "name": "event-add"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.event-delete",
+      "name": "event-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.event-list",
+      "name": "event-list"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.goto-clear",
+      "name": "goto-clear"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.goto-command",
+      "name": "goto-command"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.goto-command-update",
+      "name": "goto-command-update"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.goto-mount-get",
+      "name": "goto-mount-get"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.goto-mount-set",
+      "name": "goto-mount-set"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.goto-queue",
+      "name": "goto-queue"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.iss-current-location",
+      "name": "iss-current-location"
+    },
+    {
+      "_derived": false,
+      "domain": "astronomy",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "distanceLightYears": 4.367
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "distanceParsecs": 10
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "distanceLightYears": "1e308"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "distanceLightYears": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "distanceAU": {
+          "type": "number"
+        },
+        "distanceLightYears": {
+          "type": "number"
+        },
+        "distanceParsecs": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || output.result.message !== undefined || Number.isFinite(output.result.distanceLightYears)",
+        "output.ok !== true || output.result.message !== undefined || output.result.distanceKm !== 'Infinity'",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "astronomy.lightTravelTime",
+      "name": "lightTravelTime"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "astronomy",
+      "fuzz_cases": [
+        {
+          "expect": {},
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "date": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "astronomy.live_apod",
+      "name": "live_apod"
+    },
+    {
+      "_derived": false,
+      "domain": "astronomy",
+      "fuzz_cases": [
+        {
+          "expect": {},
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
       ],
       "macro_id": "astronomy.live_iss",
       "name": "live_iss"
@@ -101,11 +625,551 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "astronomy.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.near-earth-objects",
+      "name": "near-earth-objects"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.observation-delete",
+      "name": "observation-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.observation-list",
+      "name": "observation-list"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.observation-log",
+      "name": "observation-log"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.observing-forecast",
+      "name": "observing-forecast"
+    },
+    {
+      "_derived": false,
+      "domain": "astronomy",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "centralMass": 1,
+            "eccentricity": 0.0167,
+            "semiMajorAxis": 1
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "centralMass": 0,
+            "eccentricity": 1,
+            "semiMajorAxis": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "centralMass": 1,
+            "eccentricity": 0.5,
+            "semiMajorAxis": "1e308"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "centralMass": 1,
+            "eccentricity": "NaN",
+            "semiMajorAxis": 1
+          }
+        }
+      ],
+      "inputs": {
+        "centralMass": {
+          "type": "number"
+        },
+        "eccentricity": {
+          "type": "number"
+        },
+        "semiMajorAxis": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || Number.isFinite(output.result.periodYears)",
+        "output.ok !== true || Number.isFinite(output.result.perihelionAU)",
+        "output.ok !== true || Number.isFinite(output.result.aphelionAU)",
+        "output.ok !== true || output.result.eccentricity <= 0.999999",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "astronomy.orbitalMechanics",
+      "name": "orbitalMechanics"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.planObservation",
+      "name": "planObservation"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "astronomy.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.session-create",
+      "name": "session-create"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.session-detail",
+      "name": "session-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.session-list",
+      "name": "session-list"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.share",
+      "name": "share"
+    },
+    {
+      "_derived": false,
+      "domain": "astronomy",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "latitude": 40.7,
+            "longitude": -74,
+            "when": "2026-06-21T22:00:00Z"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "latitude": 1e+308,
+            "longitude": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "latitude": "abc",
+            "longitude": "def"
+          }
+        }
+      ],
+      "inputs": {
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "when": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || (output.result.observer.latitude >= -90 && output.result.observer.latitude <= 90)",
+        "output.ok !== true || (output.result.observer.longitude >= -180 && output.result.observer.longitude <= 180)",
+        "output.ok !== true || (output.result.siderealTimeDeg >= 0 && output.result.siderealTimeDeg < 360)",
+        "output.ok !== true || output.result.stars.every(s => Number.isFinite(s.altitude) && Number.isFinite(s.azimuth))",
+        "output.ok !== true || (output.result.moon.illumination >= 0 && output.result.moon.illumination <= 1)",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "astronomy.sky-chart",
+      "name": "sky-chart"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.target-add",
+      "name": "target-add"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.target-delete",
+      "name": "target-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.target-detail",
+      "name": "target-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.target-list",
+      "name": "target-list"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.target-update",
+      "name": "target-update"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.whats-up",
+      "name": "whats-up"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.wishlist-add",
+      "name": "wishlist-add"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.wishlist-list",
+      "name": "wishlist-list"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.wishlist-remove",
+      "name": "wishlist-remove"
     }
   ],
   "domain": "astronomy",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 8
+  "macroCount": 71
 }

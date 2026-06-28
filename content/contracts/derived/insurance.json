@@ -36,6 +36,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "insurance.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "insurance.asset-add",
       "name": "asset-add"
     },
@@ -51,6 +64,19 @@
       ],
       "macro_id": "insurance.asset-list",
       "name": "asset-list"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.assign",
+      "name": "assign"
     },
     {
       "_derived": true,
@@ -114,6 +140,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "insurance.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "insurance.carrier-add",
       "name": "carrier-add"
     },
@@ -144,14 +183,66 @@
       "name": "carrier-list"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "insurance",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "line required (auto, home, life…)",
+            "ok": false
+          },
+          "input": {
+            "basePremium": 1000
+          }
+        },
+        {
+          "expect": {
+            "error": "basePremium must be > 0 — your underwriting estimate",
+            "ok": false
+          },
+          "input": {
+            "basePremium": 0,
+            "line": "auto"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_basePremium",
+            "ok": false
+          },
+          "input": {
+            "basePremium": 1e+308,
+            "line": "auto"
+          }
+        }
+      ],
+      "inputs": {
+        "basePremium": {
+          "max": 1000000000,
+          "min": 0,
+          "type": "number"
+        },
+        "line": {
+          "maxLength": 30,
+          "type": "string"
+        },
+        "riskFactor": {
+          "max": 1000000000,
+          "min": 0,
+          "type": "number"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.quotes)",
+        "output.ok === false || Number.isFinite(output.result.cheapest)",
+        "output.ok === false || Number.isFinite(output.result.spread)",
+        "output.ok === false || output.result.spread >= 0",
+        "output.ok === false || output.result.quotes.every(q => Number.isFinite(q.annualPremium) && Number.isFinite(q.commission) && Number.isFinite(q.fitScore))"
       ],
       "macro_id": "insurance.carrier-rate",
       "name": "carrier-rate"
@@ -296,6 +387,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "insurance.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "insurance.commissionSummary",
       "name": "commissionSummary"
     },
@@ -326,6 +430,66 @@
       "name": "coverage-summary"
     },
     {
+      "_derived": false,
+      "domain": "insurance",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "claims": [],
+            "policies": [
+              {
+                "type": "auto"
+              },
+              {
+                "type": "home"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "claims": [],
+            "policies": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "claims": {
+          "type": "array"
+        },
+        "policies": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.gaps))",
+        "output.ok === false || Number.isFinite(output.result.gapCount)",
+        "output.ok === false || output.result.gapCount === output.result.gaps.length",
+        "output.ok === false || Number.isFinite(output.result.totalPolicies)",
+        "output.ok === false || Array.isArray(output.result.coveredTypes)",
+        "output.ok === false || Array.isArray(output.result.expiringSoon)"
+      ],
+      "macro_id": "insurance.coverageGap",
+      "name": "coverageGap"
+    },
+    {
       "_derived": true,
       "domain": "insurance",
       "fuzz_cases": [],
@@ -335,8 +499,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "insurance.coverageGap",
-      "name": "coverageGap"
+      "macro_id": "insurance.coverageGapCheck",
+      "name": "coverageGapCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.duplicate",
+      "name": "duplicate"
     },
     {
       "_derived": true,
@@ -452,6 +642,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "insurance.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "insurance.list_for_user",
       "name": "list_for_user"
     },
@@ -478,8 +681,91 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "insurance.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": false,
+      "domain": "insurance",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "claims": [
+              {
+                "amount": 800,
+                "status": "paid"
+              },
+              {
+                "amount": 400,
+                "status": "closed"
+              }
+            ],
+            "policies": [
+              {
+                "premium": 1000
+              },
+              {
+                "premium": 1000
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "claims": [],
+            "policies": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "claims": {
+          "type": "array"
+        },
+        "policies": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.lossRatio)",
+        "output.ok === false || output.result.lossRatio >= 0",
+        "output.ok === false || Number.isFinite(output.result.premiumsCollected)",
+        "output.ok === false || Number.isFinite(output.result.claimsPaid)",
+        "output.ok === false || Number.isFinite(output.result.claimFrequency)",
+        "output.ok === false || Number.isFinite(output.result.averageSeverity)",
+        "output.ok === false || ['profitable','acceptable','marginal','unprofitable'].includes(output.result.assessment)"
+      ],
       "macro_id": "insurance.lossRatioReport",
       "name": "lossRatioReport"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.move",
+      "name": "move"
     },
     {
       "_derived": false,
@@ -557,14 +843,42 @@
       "name": "pact-notifications"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "insurance",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "pact not found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "pact not found",
+            "ok": false
+          },
+          "input": {
+            "pactId": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "pactId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.pactId === 'string'",
+        "output.ok === false || Number.isFinite(output.result.premiumPaidSparks)",
+        "output.ok === false || output.result.premiumPaidSparks >= 0",
+        "output.ok === false || output.result.installments >= 1"
       ],
       "macro_id": "insurance.pact-pay-premium",
       "name": "pact-pay-premium"
@@ -647,20 +961,69 @@
         "typeof output.ok === 'boolean'",
         "output.ok === false || (output.result && output.result.payout && typeof output.result.payout.id === 'string')",
         "output.ok === false || Array.isArray(output.result.payout.splits)",
-        "output.ok === false || typeof output.result.payout.totalSparks === 'number'"
+        "output.ok === false || typeof output.result.payout.totalSparks === 'number'",
+        "output.ok === false || Number.isFinite(output.result.payout.totalSparks)",
+        "output.ok === false || output.result.payout.splits.every(s => Number.isFinite(s.sparks) && s.sparks >= 0)",
+        "output.ok === false || output.result.payout.splits.reduce((a, s) => a + s.sparks, 0) === output.result.payout.totalSparks"
       ],
       "macro_id": "insurance.pact-record-payout",
       "name": "pact-record-payout"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "insurance",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "pact not found",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "pact not found",
+            "ok": false
+          },
+          "input": {
+            "durationDays": 14,
+            "pactId": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "durationDays": 1e+308,
+            "pactId": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "autoRenew": {
+          "type": "boolean"
+        },
+        "durationDays": {
+          "max": 1000000000,
+          "min": 1,
+          "type": "number"
+        },
+        "pactId": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.pact && typeof output.result.pact.id === 'string')",
+        "output.ok === false || output.result.pact.status === 'active'",
+        "output.ok === false || Number.isFinite(output.result.pact.expiresAt)",
+        "output.ok === false || output.result.pact.renewCount >= 1"
       ],
       "macro_id": "insurance.pact-renew",
       "name": "pact-renew"
@@ -823,6 +1186,19 @@
       ],
       "macro_id": "insurance.payment-log",
       "name": "payment-log"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.pin",
+      "name": "pin"
     },
     {
       "_derived": false,
@@ -1034,6 +1410,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "insurance.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "insurance.producer-leaderboard",
       "name": "producer-leaderboard"
     },
@@ -1047,8 +1436,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "insurance.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "insurance.quotes-compare",
       "name": "quotes-compare"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.rate",
+      "name": "rate"
     },
     {
       "_derived": true,
@@ -1142,14 +1557,56 @@
       "name": "renewal-pipeline-list"
     },
     {
-      "_derived": true,
+      "_derived": false,
       "domain": "insurance",
-      "fuzz_cases": [],
-      "inputs": {},
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "policies": [
+              {
+                "expiryDate": "2999-01-01",
+                "policyNumber": "P1",
+                "premium": 500
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "policies": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "policies": {
+          "type": "array"
+        }
+      },
       "invariants": [
         "output !== null && output !== undefined",
         "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.urgentCount)",
+        "output.ok === false || Number.isFinite(output.result.premiumAtRisk)",
+        "output.ok === false || output.result.premiumAtRisk >= 0",
+        "output.ok === false || Number.isFinite(output.result.totalUpcomingRenewals)",
+        "output.ok === false || Array.isArray(output.result.within30Days)",
+        "output.ok === false || Array.isArray(output.result.within60Days)",
+        "output.ok === false || output.result.urgentCount === output.result.within30Days.length"
       ],
       "macro_id": "insurance.renewalAlert",
       "name": "renewalAlert"
@@ -1177,8 +1634,8 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "insurance.revoke",
-      "name": "revoke"
+      "macro_id": "insurance.repost",
+      "name": "repost"
     },
     {
       "_derived": true,
@@ -1190,8 +1647,117 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "insurance.revoke",
+      "name": "revoke"
+    },
+    {
+      "_derived": false,
+      "domain": "insurance",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "impact": 5,
+            "probability": 4,
+            "risk": "Cyber breach"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "impact": 2,
+            "probability": 1,
+            "risk": "Minor"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_probability",
+            "ok": false
+          },
+          "input": {
+            "impact": 5,
+            "probability": 1e+308,
+            "risk": "x"
+          }
+        }
+      ],
+      "inputs": {
+        "impact": {
+          "max": 1000000000,
+          "min": 0,
+          "type": "number"
+        },
+        "mitigations": {
+          "type": "array"
+        },
+        "probability": {
+          "max": 1000000000,
+          "min": 0,
+          "type": "number"
+        },
+        "risk": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.risk === 'string' && output.result.risk.length > 0)",
+        "output.ok === false || Number.isFinite(output.result.rawScore)",
+        "output.ok === false || Number.isFinite(output.result.normalizedScore)",
+        "output.ok === false || Number.isFinite(output.result.mitigatedScore)",
+        "output.ok === false || ['low','medium','high','critical'].includes(output.result.level)"
+      ],
       "macro_id": "insurance.riskScore",
       "name": "riskScore"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.star",
+      "name": "star"
     },
     {
       "_derived": true,
@@ -1242,11 +1808,50 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "insurance.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "insurance.write_contract",
       "name": "write_contract"
     }
   ],
   "domain": "insurance",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 76
+  "macroCount": 97
 }

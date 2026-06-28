@@ -10,8 +10,112 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "admin.alertEvaluate",
+      "name": "alertEvaluate"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.alertRuleDelete",
+      "name": "alertRuleDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.alertRuleUpsert",
+      "name": "alertRuleUpsert"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.auditLog",
+      "name": "auditLog"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "admin.backup",
       "name": "backup"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.comment",
+      "name": "comment"
     },
     {
       "_derived": true,
@@ -36,6 +140,136 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "admin.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.featureFlagList",
+      "name": "featureFlagList"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.featureFlagSet",
+      "name": "featureFlagSet"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.incidentList",
+      "name": "incidentList"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.incidentOpen",
+      "name": "incidentOpen"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.incidentUpdate",
+      "name": "incidentUpdate"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.logAppend",
+      "name": "logAppend"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "admin.logs",
       "name": "logs"
     },
@@ -49,11 +283,284 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "admin.logSearch",
+      "name": "logSearch"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.metricHistory",
+      "name": "metricHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "admin.metrics",
       "name": "metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.permissionMatrix",
+      "name": "permissionMatrix"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.recordMetric",
+      "name": "recordMetric"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.systemHealth",
+      "name": "systemHealth"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.tenantAction",
+      "name": "tenantAction"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.tenantList",
+      "name": "tenantList"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.traceList",
+      "name": "traceList"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.traceRecord",
+      "name": "traceRecord"
+    },
+    {
+      "_derived": true,
+      "domain": "admin",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "admin.vote",
+      "name": "vote"
     }
   ],
   "domain": "admin",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 4
+  "macroCount": 43
 }

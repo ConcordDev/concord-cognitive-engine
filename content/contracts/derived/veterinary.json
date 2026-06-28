@@ -10,6 +10,305 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "veterinary.appointment-book",
+      "name": "appointment-book"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.appointment-cancel",
+      "name": "appointment-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.appointment-list",
+      "name": "appointment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.appointment-status",
+      "name": "appointment-status"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.costEstimate",
+      "name": "costEstimate"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.inventory-add",
+      "name": "inventory-add"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.inventory-adjust",
+      "name": "inventory-adjust"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.inventory-delete",
+      "name": "inventory-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.inventory-list",
+      "name": "inventory-list"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.invoice-create",
+      "name": "invoice-create"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.invoice-list",
+      "name": "invoice-list"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.invoice-pay",
+      "name": "invoice-pay"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.lab-attach",
+      "name": "lab-attach"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.lab-delete",
+      "name": "lab-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.lab-list",
+      "name": "lab-list"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "veterinary.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +322,388 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "veterinary.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.owner-portal",
+      "name": "owner-portal"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.patient-add",
+      "name": "patient-add"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.patient-delete",
+      "name": "patient-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.patient-list",
+      "name": "patient-list"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.prescription-add",
+      "name": "prescription-add"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.prescription-list",
+      "name": "prescription-list"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.prescription-refill",
+      "name": "prescription-refill"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "veterinary.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.soap-chart",
+      "name": "soap-chart"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.soap-list",
+      "name": "soap-list"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.triageAssess",
+      "name": "triageAssess"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.vaccine-record",
+      "name": "vaccine-record"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.vaccine-reminders",
+      "name": "vaccine-reminders"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.vaccineSchedule",
+      "name": "vaccineSchedule"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.vet-dashboard",
+      "name": "vet-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.visit-log",
+      "name": "visit-log"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "veterinary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "veterinary.weightCheck",
+      "name": "weightCheck"
     }
   ],
   "domain": "veterinary",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 54
 }

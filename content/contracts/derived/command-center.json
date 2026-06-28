@@ -1,0 +1,579 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.acknowledgeAlert",
+      "name": "acknowledgeAlert"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.correlateVitals",
+      "name": "correlateVitals"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.createAlertRule",
+      "name": "createAlertRule"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.deleteAlertRule",
+      "name": "deleteAlertRule"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.deleteDashboard",
+      "name": "deleteDashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.deleteRunbook",
+      "name": "deleteRunbook"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.escalationEngine",
+      "name": "escalationEngine"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.healthRollup",
+      "name": "healthRollup"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.incidentCorrelation",
+      "name": "incidentCorrelation"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.listAlertRules",
+      "name": "listAlertRules"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.listDashboards",
+      "name": "listDashboards"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.listIncidents",
+      "name": "listIncidents"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.listRunbooks",
+      "name": "listRunbooks"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.muteAlertRule",
+      "name": "muteAlertRule"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.openIncident",
+      "name": "openIncident"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.recordVital",
+      "name": "recordVital"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.runRunbook",
+      "name": "runRunbook"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.saveDashboard",
+      "name": "saveDashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.saveRunbook",
+      "name": "saveRunbook"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.situationReport",
+      "name": "situationReport"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.updateIncident",
+      "name": "updateIncident"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.vitalHistory",
+      "name": "vitalHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.vitalMetrics",
+      "name": "vitalMetrics"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.writePostmortem",
+      "name": "writePostmortem"
+    }
+  ],
+  "domain": "command-center",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 44
+}

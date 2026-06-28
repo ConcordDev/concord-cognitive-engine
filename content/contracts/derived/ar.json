@@ -1,0 +1,449 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.animationTimeline",
+      "name": "animationTimeline"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.behaviorValidate",
+      "name": "behaviorValidate"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.imageTargetCompile",
+      "name": "imageTargetCompile"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.imageTargetList",
+      "name": "imageTargetList"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.markerDetection",
+      "name": "markerDetection"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.publishScene",
+      "name": "publishScene"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.render",
+      "name": "render"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.sceneDelete",
+      "name": "sceneDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.sceneGet",
+      "name": "sceneGet"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.sceneGraph",
+      "name": "sceneGraph"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.sceneList",
+      "name": "sceneList"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.sceneSave",
+      "name": "sceneSave"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.spatialMapping",
+      "name": "spatialMapping"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.webxrPreview",
+      "name": "webxrPreview"
+    }
+  ],
+  "domain": "ar",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 34
+}

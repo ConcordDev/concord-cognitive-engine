@@ -1,0 +1,1060 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.automation-add",
+      "name": "automation-add"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.automation-delete",
+      "name": "automation-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.automation-list",
+      "name": "automation-list"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.board-create",
+      "name": "board-create"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.board-dashboard",
+      "name": "board-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.board-delete",
+      "name": "board-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.board-detail",
+      "name": "board-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.board-list",
+      "name": "board-list"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": false,
+      "domain": "board",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "remainingPoints": 50,
+            "sprints": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "remainingPoints": 60,
+            "sprints": [
+              {
+                "completedPoints": 10,
+                "id": "s1"
+              },
+              {
+                "completedPoints": 20,
+                "id": "s2"
+              },
+              {
+                "completedPoints": 15,
+                "id": "s3"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "remainingPoints": "1e999",
+            "sprints": [
+              {
+                "completedPoints": 10
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "remainingPoints": 30,
+            "sprints": [
+              {
+                "completedPoints": "1e999"
+              },
+              {
+                "completedPoints": "Infinity"
+              },
+              {
+                "completedPoints": 15
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "remainingPoints": 5,
+            "simulations": null,
+            "sprints": [
+              {
+                "completedPoints": 10
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "remainingPoints": 10,
+            "sprints": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "remainingPoints": {
+          "required": false,
+          "type": "number"
+        },
+        "simulations": {
+          "required": false,
+          "type": "number"
+        },
+        "sprintLengthDays": {
+          "required": false,
+          "type": "number"
+        },
+        "sprints": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.remainingPoints) && Number.isFinite(output.result.simulations) && Number.isFinite(output.result.velocityStats.mean))",
+        "output.ok === false || output.result.message !== undefined || (output.result.forecast && Number.isFinite(output.result.forecast.deterministicSprints) && typeof output.result.forecast.mostLikelyDate === 'string')",
+        "output.ok === false || output.result.message !== undefined || output.result.burndownProjection.every(function(s){ return Number.isFinite(s.projectedRemaining); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "board.burndownForecast",
+      "name": "burndownForecast"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.card-attachment-add",
+      "name": "card-attachment-add"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.card-attachment-delete",
+      "name": "card-attachment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.card-calendar",
+      "name": "card-calendar"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.card-checklist-toggle",
+      "name": "card-checklist-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.card-comment-add",
+      "name": "card-comment-add"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.card-comment-delete",
+      "name": "card-comment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.card-create",
+      "name": "card-create"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.card-delete",
+      "name": "card-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.card-detail",
+      "name": "card-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.card-move",
+      "name": "card-move"
+    },
+    {
+      "_derived": false,
+      "domain": "board",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "boardId": "nope",
+            "cardId": "nope",
+            "toColumnId": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "boardId": "x",
+            "cardId": "y",
+            "position": "1e999",
+            "toColumnId": "z"
+          }
+        }
+      ],
+      "inputs": {
+        "boardId": {
+          "required": true,
+          "type": "string"
+        },
+        "cardId": {
+          "required": true,
+          "type": "string"
+        },
+        "position": {
+          "required": false,
+          "type": "number"
+        },
+        "toColumnId": {
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result === 'object' && typeof output.result.cardId === 'string' && typeof output.result.columnId === 'string' && Array.isArray(output.result.automationsApplied))",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "board.card-move-auto",
+      "name": "card-move-auto"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.card-set-cover",
+      "name": "card-set-cover"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.card-set-field",
+      "name": "card-set-field"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.card-update",
+      "name": "card-update"
+    },
+    {
+      "_derived": false,
+      "domain": "board",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cards": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cards": [
+              {
+                "businessValue": 10,
+                "effort": 2,
+                "id": "c1",
+                "riskReduction": 8,
+                "timeCriticality": 9,
+                "title": "Hi"
+              },
+              {
+                "businessValue": 3,
+                "effort": 8,
+                "id": "c2",
+                "riskReduction": 2,
+                "timeCriticality": 2,
+                "title": "Lo"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cards": [
+              {
+                "businessValue": "1e999",
+                "deadline": "not-a-date",
+                "effort": "0",
+                "id": "x",
+                "riskReduction": "Infinity",
+                "timeCriticality": "NaN",
+                "title": "X"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cards": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "cards": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.rankedCards)",
+        "output.ok === false || output.result.message !== undefined || output.result.rankedCards.every(function(c){ return Number.isFinite(c.wsjfScore) && Number.isFinite(c.normalizedScore) && Number.isFinite(c.costOfDelay) && Number.isFinite(c.rank) && (c.daysUntilDeadline === null || Number.isFinite(c.daysUntilDeadline)); })",
+        "output.ok === false || output.result.message !== undefined || (output.result.tiers && Array.isArray(output.result.tiers.critical))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "board.cardPrioritization",
+      "name": "cardPrioritization"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.collaborator-add",
+      "name": "collaborator-add"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.collaborator-list",
+      "name": "collaborator-list"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.collaborator-remove",
+      "name": "collaborator-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.column-add",
+      "name": "column-add"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.column-delete",
+      "name": "column-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.custom-field-add",
+      "name": "custom-field-add"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.custom-field-delete",
+      "name": "custom-field-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.custom-field-list",
+      "name": "custom-field-list"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.label-create",
+      "name": "label-create"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.label-delete",
+      "name": "label-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.label-list",
+      "name": "label-list"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "board",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "board.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": false,
+      "domain": "board",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cards": [],
+            "columns": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cards": [
+              {
+                "column": "Done",
+                "completedAt": "2026-06-06T00:00:00Z",
+                "createdAt": "2026-06-01T00:00:00Z",
+                "id": "c1",
+                "title": "A"
+              }
+            ],
+            "columns": [
+              {
+                "name": "Done"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cards": [
+              {
+                "column": "Done",
+                "completedAt": "also-bad",
+                "createdAt": "bad",
+                "id": "c",
+                "title": "X"
+              }
+            ],
+            "columns": [
+              {
+                "name": "Done"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cards": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "cards": {
+          "required": false,
+          "type": "array"
+        },
+        "columns": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalCards)",
+        "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.cycleTime.mean) && Number.isFinite(output.result.leadTime.mean) && Number.isFinite(output.result.throughput.weeklyAvg) && Number.isFinite(output.result.wip.total))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "board.workflowAnalysis",
+      "name": "workflowAnalysis"
+    }
+  ],
+  "domain": "board",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 56
+}

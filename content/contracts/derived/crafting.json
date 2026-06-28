@@ -10,8 +10,331 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "crafting.counts",
+      "name": "counts"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.craftable_now",
+      "name": "craftable_now"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.discovery_combine",
+      "name": "discovery_combine"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.discovery_list",
+      "name": "discovery_list"
+    },
+    {
+      "_derived": false,
+      "domain": "crafting",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "output.result && Array.isArray(output.result.favorites)",
+        "typeof output.result.count === 'number' && output.result.count >= 0",
+        "output.result.count === output.result.favorites.length",
+        "output.result.favorites.every(f => typeof f.recipeId === 'string' && f.recipeId.length > 0)",
+        "output.result.favorites.every(f => typeof f.favoritedAt === 'string')"
+      ],
+      "macro_id": "crafting.favorite_list",
+      "name": "favorite_list"
+    },
+    {
+      "_derived": false,
+      "domain": "crafting",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "recipeId": "dtu_iron_sword",
+            "recipeName": "Iron Sword",
+            "recipeType": "blueprint"
+          }
+        },
+        {
+          "expect": {
+            "error": "recipeId required",
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "recipeId": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "recipeName": {
+          "maxLength": 400,
+          "type": "string"
+        },
+        "recipeType": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.favorited === 'boolean')",
+        "output.ok === false || typeof output.result.recipeId === 'string'",
+        "output.ok === false || (typeof output.result.count === 'number' && output.result.count >= 0)"
+      ],
+      "macro_id": "crafting.favorite_toggle",
+      "name": "favorite_toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.forge_preflight",
+      "name": "forge_preflight"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.gather_plan",
+      "name": "gather_plan"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.grid_delete",
+      "name": "grid_delete"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.grid_list",
+      "name": "grid_list"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.grid_save",
+      "name": "grid_save"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.history_clear",
+      "name": "history_clear"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.history_list",
+      "name": "history_list"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "crafting.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.marketplace_browse",
+      "name": "marketplace_browse"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.quality_roll",
+      "name": "quality_roll"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.quality_tiers",
+      "name": "quality_tiers"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.queue_add",
+      "name": "queue_add"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.queue_craft_all",
+      "name": "queue_craft_all"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.queue_list",
+      "name": "queue_list"
+    },
+    {
+      "_derived": true,
+      "domain": "crafting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "crafting.queue_remove",
+      "name": "queue_remove"
     },
     {
       "_derived": true,
@@ -29,5 +352,5 @@
   ],
   "domain": "crafting",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 23
 }

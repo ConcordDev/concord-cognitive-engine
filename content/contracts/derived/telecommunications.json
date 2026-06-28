@@ -1,0 +1,1001 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.capacityProjection",
+      "name": "capacityProjection"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "telecommunications",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "arpu": 50,
+                "infrastructureCost": 600000,
+                "monthlyOpsCost": 50000,
+                "subscribers": 10000
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "arpu": 50,
+                "infrastructureCost": 6000000,
+                "monthlyOpsCost": 100000,
+                "subscribers": 1000
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "arpu": 40,
+            "infrastructureCost": 1200000,
+            "monthlyOpsCost": 30000,
+            "subscribers": 5000
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "arpu": "Infinity",
+                "infrastructureCost": "1e999",
+                "monthlyOpsCost": "NaN",
+                "subscribers": "0"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "arpu": {
+          "required": false,
+          "type": "number"
+        },
+        "infrastructureCost": {
+          "required": false,
+          "type": "number"
+        },
+        "monthlyOpsCost": {
+          "required": false,
+          "type": "number"
+        },
+        "subscribers": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.subscribers)",
+        "output.ok === false || Number.isFinite(output.result.arpu)",
+        "output.ok === false || Number.isFinite(output.result.costPerSubscriber)",
+        "output.ok === false || Number.isFinite(output.result.margin)",
+        "output.ok === false || Number.isFinite(output.result.marginPercent)",
+        "output.ok === false || typeof output.result.profitable === 'boolean'",
+        "output.ok === false || typeof output.result.breakeven === 'string'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "telecommunications.costPerLine",
+      "name": "costPerLine"
+    },
+    {
+      "_derived": false,
+      "domain": "telecommunications",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "towers": [
+                  {
+                    "lat": 40.7,
+                    "lon": -74,
+                    "name": "A",
+                    "rangeKm": 5,
+                    "status": "active",
+                    "technology": "5G"
+                  },
+                  {
+                    "lat": 40.8,
+                    "lon": -74.1,
+                    "name": "B",
+                    "rangeKm": 10,
+                    "status": "planned",
+                    "technology": "4G"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "towers": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "towers": [
+                  {
+                    "name": "Bad",
+                    "rangeKm": "1e999"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "towers": {
+          "maxLength": 5000,
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (typeof output.result.message === 'string') || (Number.isFinite(output.result.towers) && Number.isFinite(output.result.activeTowers) && Number.isFinite(output.result.totalCoverageKm2) && Array.isArray(output.result.technologies))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "telecommunications.coverageMap",
+      "name": "coverageMap"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.driveTestImport",
+      "name": "driveTestImport"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.driveTestList",
+      "name": "driveTestList"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.driveTestValidate",
+      "name": "driveTestValidate"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.interferenceAnalysis",
+      "name": "interferenceAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.move",
+      "name": "move"
+    },
+    {
+      "_derived": false,
+      "domain": "telecommunications",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "activeUsers": 1000,
+                "bandwidthGbps": 10,
+                "utilizationPercent": 60
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "activeUsers": 500,
+            "bandwidthGbps": 5,
+            "utilizationPercent": 90
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "activeUsers": 1000,
+                "bandwidthGbps": "1e999",
+                "utilizationPercent": "NaN"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "activeUsers": 1,
+                "bandwidthGbps": 0,
+                "utilizationPercent": 100
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "activeUsers": {
+          "required": false,
+          "type": "number"
+        },
+        "bandwidthGbps": {
+          "required": false,
+          "type": "number"
+        },
+        "utilizationPercent": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.totalBandwidth === 'string'",
+        "output.ok === false || typeof output.result.utilization === 'string'",
+        "output.ok === false || Number.isFinite(output.result.activeUsers)",
+        "output.ok === false || (typeof output.result.availablePerUser === 'string' && Number.isFinite(parseFloat(output.result.availablePerUser)))",
+        "output.ok === false || typeof output.result.headroom === 'string'",
+        "output.ok === false || ['normal','high','critical'].indexOf(output.result.status) >= 0",
+        "output.ok === false || typeof output.result.upgrade === 'string'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "telecommunications.networkCapacity",
+      "name": "networkCapacity"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.outageList",
+      "name": "outageList"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.outageReport",
+      "name": "outageReport"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.outageResolve",
+      "name": "outageResolve"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": false,
+      "domain": "telecommunications",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "towers": [
+              {
+                "freqMhz": 1800,
+                "gainDbi": 16,
+                "heightM": 30,
+                "lat": 40.7,
+                "lon": -74,
+                "name": "P1",
+                "powerWatts": 40,
+                "terrain": "suburban"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "towers": [
+              {
+                "lat": 1,
+                "lon": 1,
+                "name": "U",
+                "terrain": "urban"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "towers": [
+              {
+                "freqMhz": "NaN",
+                "lat": 1,
+                "lon": 1,
+                "name": "Bad",
+                "powerWatts": "1e999"
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "fadeMarginDb": {
+          "required": false,
+          "type": "number"
+        },
+        "mobileHeightM": {
+          "required": false,
+          "type": "number"
+        },
+        "rxSensitivityDbm": {
+          "required": false,
+          "type": "number"
+        },
+        "towers": {
+          "maxLength": 5000,
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Array.isArray(output.result.cells) && Number.isFinite(output.result.totalCoverageKm2))",
+        "output.ok === false || output.result.cells.every(function(c){ return Number.isFinite(c.eirpDbm) && Number.isFinite(c.linkBudgetDb) && Number.isFinite(c.effectiveRangeKm) && Number.isFinite(c.coverageKm2) && Number.isFinite(c.edgeRsrpDbm); })",
+        "output.ok === false || output.result.cells.every(function(c){ return ['good','fair','weak'].indexOf(c.edgeQuality) >= 0; })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "telecommunications.propagationModel",
+      "name": "propagationModel"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.share",
+      "name": "share"
+    },
+    {
+      "_derived": false,
+      "domain": "telecommunications",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "bitErrorRate": 0.000001,
+                "jitterMs": 5,
+                "latencyMs": 30,
+                "snrDb": 20
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "bitErrorRate": 0.001,
+            "jitterMs": 10,
+            "latencyMs": 150,
+            "snrDb": 8
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "bitErrorRate": 0.000001,
+                "jitterMs": "NaN",
+                "latencyMs": "1e999",
+                "snrDb": 20
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "bitErrorRate": {
+          "required": false,
+          "type": "number"
+        },
+        "jitterMs": {
+          "required": false,
+          "type": "number"
+        },
+        "latencyMs": {
+          "required": false,
+          "type": "number"
+        },
+        "snrDb": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.snr === 'string'",
+        "output.ok === false || Number.isFinite(output.result.bitErrorRate)",
+        "output.ok === false || Number.isFinite(output.result.latencyMs)",
+        "output.ok === false || Number.isFinite(output.result.jitterMs)",
+        "output.ok === false || (Number.isFinite(output.result.mosScore) && output.result.mosScore >= 1 && output.result.mosScore <= 5)",
+        "output.ok === false || ['excellent','good','fair','poor'].indexOf(output.result.voiceQuality) >= 0",
+        "output.ok === false || typeof output.result.videoCapable === 'boolean'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "telecommunications.signalQuality",
+      "name": "signalQuality"
+    },
+    {
+      "_derived": false,
+      "domain": "telecommunications",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "slaTargetPercent": 99.9,
+            "windowDays": 30
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "slaTargetPercent": "NaN",
+            "windowDays": "1e999"
+          }
+        }
+      ],
+      "inputs": {
+        "slaTargetPercent": {
+          "required": false,
+          "type": "number"
+        },
+        "windowDays": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Number.isFinite(output.result.availabilityPercent) && output.result.availabilityPercent <= 100)",
+        "output.ok === false || Number.isFinite(output.result.downtimeHours)",
+        "output.ok === false || Number.isFinite(output.result.incidents)",
+        "output.ok === false || Number.isFinite(output.result.openIncidents)",
+        "output.ok === false || (output.result.mttrHours === null || Number.isFinite(output.result.mttrHours))",
+        "output.ok === false || typeof output.result.slaMet === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.bySeverity)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "telecommunications.slaReport",
+      "name": "slaReport"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.spectrumAllocate",
+      "name": "spectrumAllocate"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.spectrumDelete",
+      "name": "spectrumDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.spectrumList",
+      "name": "spectrumList"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.spectrumPlan",
+      "name": "spectrumPlan"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.topology",
+      "name": "topology"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.towerDelete",
+      "name": "towerDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.towerList",
+      "name": "towerList"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.towerSave",
+      "name": "towerSave"
+    },
+    {
+      "_derived": true,
+      "domain": "telecommunications",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "telecommunications.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "telecommunications",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 42
+}

@@ -1,0 +1,150 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "cobuild",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cobuild.annotation-add",
+      "name": "annotation-add"
+    },
+    {
+      "_derived": true,
+      "domain": "cobuild",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cobuild.annotation-resolve",
+      "name": "annotation-resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "cobuild",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cobuild.annotations-list",
+      "name": "annotations-list"
+    },
+    {
+      "_derived": true,
+      "domain": "cobuild",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cobuild.cobuild-summary",
+      "name": "cobuild-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "cobuild",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cobuild.session-create",
+      "name": "session-create"
+    },
+    {
+      "_derived": true,
+      "domain": "cobuild",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cobuild.session-join",
+      "name": "session-join"
+    },
+    {
+      "_derived": true,
+      "domain": "cobuild",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cobuild.session-leave",
+      "name": "session-leave"
+    },
+    {
+      "_derived": true,
+      "domain": "cobuild",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cobuild.session-list",
+      "name": "session-list"
+    },
+    {
+      "_derived": true,
+      "domain": "cobuild",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cobuild.task-create",
+      "name": "task-create"
+    },
+    {
+      "_derived": true,
+      "domain": "cobuild",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cobuild.task-list",
+      "name": "task-list"
+    },
+    {
+      "_derived": true,
+      "domain": "cobuild",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cobuild.task-update-status",
+      "name": "task-update-status"
+    }
+  ],
+  "domain": "cobuild",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 11
+}

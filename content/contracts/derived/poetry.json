@@ -10,6 +10,214 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "poetry.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.chapbook-export",
+      "name": "chapbook-export"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.discovery-themes",
+      "name": "discovery-themes"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.favorite-add",
+      "name": "favorite-add"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.favorite-list",
+      "name": "favorite-list"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.favorite-remove",
+      "name": "favorite-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.form-check",
+      "name": "form-check"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.form-rules",
+      "name": "form-rules"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.formGuide",
+      "name": "formGuide"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "poetry.list_mine",
       "name": "list_mine"
     },
@@ -49,11 +257,518 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "poetry.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.meterAnalysis",
+      "name": "meterAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.poem-analyze",
+      "name": "poem-analyze"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.poem-create",
+      "name": "poem-create"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.poem-delete",
+      "name": "poem-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.poem-detail",
+      "name": "poem-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.poem-list",
+      "name": "poem-list"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.poem-of-the-day",
+      "name": "poem-of-the-day"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.poem-update",
+      "name": "poem-update"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.poetry-dashboard",
+      "name": "poetry-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.poetrydb-authors",
+      "name": "poetrydb-authors"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.poetrydb-search",
+      "name": "poetrydb-search"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.reading-history",
+      "name": "reading-history"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.reading-log",
+      "name": "reading-log"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "poetry.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.recording-delete",
+      "name": "recording-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.recording-get",
+      "name": "recording-get"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.recording-list",
+      "name": "recording-list"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.recording-save",
+      "name": "recording-save"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.rhymeScheme",
+      "name": "rhymeScheme"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.themed-collection",
+      "name": "themed-collection"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.word-suggest",
+      "name": "word-suggest"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.wordFrequency",
+      "name": "wordFrequency"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.workshop-critique",
+      "name": "workshop-critique"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.workshop-detail",
+      "name": "workshop-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.workshop-list",
+      "name": "workshop-list"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.workshop-share",
+      "name": "workshop-share"
+    },
+    {
+      "_derived": true,
+      "domain": "poetry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "poetry.workshop-unshare",
+      "name": "workshop-unshare"
     }
   ],
   "domain": "poetry",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 4
+  "macroCount": 59
 }

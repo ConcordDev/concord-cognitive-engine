@@ -340,9 +340,9 @@ function fingerprint(v) {
 
 async function main() {
   const t0 = Date.now();
-  const { runMacro, makeInternalCtx, MACROS } = await bootEngine();
+  const { runMacro, makeInternalCtx, MACROS, lensActions, dispatchLensRun, brainBacked } = await bootEngine();
   const contracts = loadContracts();
-  const allMacros = enumerateMacros(MACROS);
+  const allMacros = enumerateMacros(MACROS, lensActions, brainBacked);
 
   let driven = 0;
   let skipped = 0;
@@ -368,13 +368,16 @@ async function main() {
       continue;
     }
     driven++;
+    // Drive path-3 handlers through the LENS_ACTIONS-preferring dispatcher (the
+    // exact /api/lens/run path); path-2 stays on bare runMacro.
+    const driveFn = macro.path === 3 ? dispatchLensRun : runMacro;
     // Each vector is fully guarded inside safeRun; an unexpected throw at THIS
     // level (e.g. a synchronous explosion in contract handling) is caught here
     // and flagged as a hard crash — the real-bug signal the task asks for.
     try {
-      await runV1(runMacro, makeInternalCtx, contract);
-      await runV2(runMacro, makeInternalCtx, contract);
-      await runV3(runMacro, makeInternalCtx, contract);
+      await runV1(driveFn, makeInternalCtx, contract);
+      await runV2(driveFn, makeInternalCtx, contract);
+      await runV3(driveFn, makeInternalCtx, contract);
     } catch (err) {
       const msg = `${macro.macroId} HARD-CRASHED runner: ${err?.stack || err?.message || err}`;
       hardCrashes.push(msg);

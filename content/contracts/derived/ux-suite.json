@@ -1,0 +1,150 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "ux-suite",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ux-suite.a11y-check",
+      "name": "a11y-check"
+    },
+    {
+      "_derived": true,
+      "domain": "ux-suite",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ux-suite.catalog",
+      "name": "catalog"
+    },
+    {
+      "_derived": true,
+      "domain": "ux-suite",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ux-suite.favourite-toggle",
+      "name": "favourite-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "ux-suite",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ux-suite.favourites-list",
+      "name": "favourites-list"
+    },
+    {
+      "_derived": true,
+      "domain": "ux-suite",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ux-suite.preview",
+      "name": "preview"
+    },
+    {
+      "_derived": true,
+      "domain": "ux-suite",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ux-suite.props-schema",
+      "name": "props-schema"
+    },
+    {
+      "_derived": true,
+      "domain": "ux-suite",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ux-suite.reset-props",
+      "name": "reset-props"
+    },
+    {
+      "_derived": true,
+      "domain": "ux-suite",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ux-suite.save-props",
+      "name": "save-props"
+    },
+    {
+      "_derived": true,
+      "domain": "ux-suite",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ux-suite.search",
+      "name": "search"
+    },
+    {
+      "_derived": true,
+      "domain": "ux-suite",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ux-suite.usage-snippet",
+      "name": "usage-snippet"
+    },
+    {
+      "_derived": true,
+      "domain": "ux-suite",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ux-suite.variant-gallery",
+      "name": "variant-gallery"
+    }
+  ],
+  "domain": "ux-suite",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 11
+}

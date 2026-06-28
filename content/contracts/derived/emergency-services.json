@@ -10,6 +10,392 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "emergency-services.active-alerts",
+      "name": "active-alerts"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.dispatch-unit",
+      "name": "dispatch-unit"
+    },
+    {
+      "_derived": false,
+      "domain": "emergency-services",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "incidents": [
+                  {
+                    "priority": 1,
+                    "type": "medical"
+                  }
+                ],
+                "units": [
+                  {
+                    "distanceKm": 2,
+                    "name": "Medic 1",
+                    "status": "available"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "incidents": [],
+                "units": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "incidents": [
+                  {
+                    "priority": 2,
+                    "type": "fire"
+                  }
+                ],
+                "units": [
+                  {
+                    "distanceKm": "1e999",
+                    "name": "Ghost",
+                    "status": "available"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "incidents": {
+          "required": false,
+          "type": "array"
+        },
+        "units": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.totalUnits) && Number.isFinite(output.result.available) && Number.isFinite(output.result.activeIncidents))",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.coverageGap === 'boolean'",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.assignments)",
+        "output.ok === false || output.result.message !== undefined || output.result.assignments.every(function(a){ return typeof a.eta === 'string' && a.eta.indexOf('Infinity') === -1; })"
+      ],
+      "macro_id": "emergency-services.dispatchOptimize",
+      "name": "dispatchOptimize"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.ems-dashboard",
+      "name": "ems-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.incident-create",
+      "name": "incident-create"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.incident-create-geo",
+      "name": "incident-create-geo"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.incident-list",
+      "name": "incident-list"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.incident-status",
+      "name": "incident-status"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.incident-timeline",
+      "name": "incident-timeline"
+    },
+    {
+      "_derived": false,
+      "domain": "emergency-services",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "incidents": [
+                  {
+                    "responseMinutes": 8,
+                    "timestamp": "2026-06-28T05:00:00.000Z",
+                    "type": "medical"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "incidents": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "incidents": [
+                  {
+                    "responseMinutes": "1e999",
+                    "timestamp": "2026-06-28T05:00:00.000Z",
+                    "type": "fire"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "incidents": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.total24h)",
+        "output.ok === false || Number.isFinite(output.result.totalAllTime)",
+        "output.ok === false || Number.isFinite(output.result.avgResponseMinutes)",
+        "output.ok === false || typeof output.result.mostCommon === 'string'",
+        "output.ok === false || typeof output.result.trend === 'string'",
+        "output.ok === false || (output.result.byType && typeof output.result.byType === 'object')"
+      ],
+      "macro_id": "emergency-services.incidentLog",
+      "name": "incidentLog"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "emergency-services.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +409,461 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "emergency-services.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.map-state",
+      "name": "map-state"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.nearest-unit",
+      "name": "nearest-unit"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.readiness-rollup",
+      "name": "readiness-rollup"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "emergency-services.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": false,
+      "domain": "emergency-services",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "resources": {
+                  "personnel": 40,
+                  "personnelOnDuty": 35,
+                  "suppliesPercent": 80,
+                  "vehicles": 10,
+                  "vehiclesReady": 9
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "resources": {}
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "resources": {
+                  "personnel": 4,
+                  "personnelOnDuty": 4,
+                  "suppliesPercent": "1e999",
+                  "vehicles": 4,
+                  "vehiclesReady": 4
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "resources": {
+          "required": false,
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Number.isFinite(output.result.vehicleReadiness) && output.result.vehicleReadiness >= 0 && output.result.vehicleReadiness <= 100)",
+        "output.ok === false || (Number.isFinite(output.result.personnelReadiness) && output.result.personnelReadiness >= 0)",
+        "output.ok === false || (Number.isFinite(output.result.suppliesLevel) && output.result.suppliesLevel >= 0 && output.result.suppliesLevel <= 100)",
+        "output.ok === false || (Number.isFinite(output.result.overallReadiness) && output.result.overallReadiness >= 0 && output.result.overallReadiness <= 100)",
+        "output.ok === false || typeof output.result.status === 'string'",
+        "output.ok === false || Array.isArray(output.result.shortages)"
+      ],
+      "macro_id": "emergency-services.resourceReadiness",
+      "name": "resourceReadiness"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.triage-queue",
+      "name": "triage-queue"
+    },
+    {
+      "_derived": false,
+      "domain": "emergency-services",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "severity": 4,
+                "vitals": {
+                  "breathing": true,
+                  "conscious": true,
+                  "pulse": 88
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "severity": 5,
+                "vitals": {
+                  "breathing": false
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "severity": 3
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "severity": "Infinity",
+                "vitals": {
+                  "pulse": "1e999"
+                }
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "severity": {
+          "required": false,
+          "type": "number"
+        },
+        "vitals": {
+          "required": false,
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Number.isFinite(output.result.triageLevel) && output.result.triageLevel >= 1)",
+        "output.ok === false || typeof output.result.triageColor === 'string'",
+        "output.ok === false || typeof output.result.responseTime === 'string'",
+        "output.ok === false || Array.isArray(output.result.actions)",
+        "output.ok === false || Number.isFinite(output.result.pulse)",
+        "output.ok === false || Number.isFinite(output.result.reportedSeverity)"
+      ],
+      "macro_id": "emergency-services.triageAssess",
+      "name": "triageAssess"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.unit-add",
+      "name": "unit-add"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.unit-list",
+      "name": "unit-list"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.unit-position",
+      "name": "unit-position"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.unit-status-advance",
+      "name": "unit-status-advance"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.vote",
+      "name": "vote"
     }
   ],
   "domain": "emergency-services",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 43
 }

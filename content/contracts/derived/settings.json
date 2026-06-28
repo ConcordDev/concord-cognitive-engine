@@ -10,6 +10,123 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "settings.accountOverview",
+      "name": "accountOverview"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.applied",
+      "name": "applied"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.applySnapshot",
+      "name": "applySnapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.captureSnapshot",
+      "name": "captureSnapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.changePassword",
+      "name": "changePassword"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.connectAccount",
+      "name": "connectAccount"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.connectedAccounts",
+      "name": "connectedAccounts"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.deleteSnapshot",
+      "name": "deleteSnapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.disconnectAccount",
+      "name": "disconnectAccount"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "settings.get",
       "name": "get"
     },
@@ -23,11 +140,167 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "settings.keybindings",
+      "name": "keybindings"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.listSnapshots",
+      "name": "listSnapshots"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.rebindKey",
+      "name": "rebindKey"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.reset",
+      "name": "reset"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.resetKeybinding",
+      "name": "resetKeybinding"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.revokeOtherSessions",
+      "name": "revokeOtherSessions"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.revokeSession",
+      "name": "revokeSession"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.search",
+      "name": "search"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.sessions",
+      "name": "sessions"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "settings.set",
       "name": "set"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.setMany",
+      "name": "setMany"
+    },
+    {
+      "_derived": true,
+      "domain": "settings",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "settings.setTwoFactor",
+      "name": "setTwoFactor"
     }
   ],
   "domain": "settings",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 23
 }

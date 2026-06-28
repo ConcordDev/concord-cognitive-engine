@@ -10,6 +10,71 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "atlas.ai-trip-plan",
+      "name": "ai-trip-plan"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.atlas-dashboard-summary",
+      "name": "atlas-dashboard-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "atlas.change",
       "name": "change"
     },
@@ -23,8 +88,308 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "atlas.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "atlas.coverage",
       "name": "coverage"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.directions",
+      "name": "directions"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.directions-multimodal",
+      "name": "directions-multimodal"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": false,
+      "domain": "atlas",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "points": [
+              {
+                "lat": 40.71,
+                "lon": -74,
+                "name": "A"
+              },
+              {
+                "lat": 34.05,
+                "lon": -118.24,
+                "name": "B"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "points": [
+              {
+                "lat": 40.71,
+                "lng": -74,
+                "name": "A"
+              },
+              {
+                "lat": 34.05,
+                "lng": -118.24,
+                "name": "B"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "points": [
+              {
+                "lat": "Infinity",
+                "lon": "1e308",
+                "name": "X"
+              },
+              {
+                "lat": 1,
+                "lon": 2,
+                "name": "Y"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "points": [
+              {
+                "lat": 1,
+                "lon": 2,
+                "name": "A"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "points": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || output.result.message !== undefined || Array.isArray(output.result.matrix)",
+        "output.ok !== true || output.result.message !== undefined || Array.isArray(output.result.pairs)",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "atlas.distanceMatrix",
+      "name": "distanceMatrix"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": false,
+      "domain": "atlas",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "places": [
+              {
+                "name": "London"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "places": [
+              {
+                "lat": 10,
+                "lon": 20,
+                "name": "Custom"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "origin": {
+          "type": "object"
+        },
+        "places": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || output.result.message !== undefined || Array.isArray(output.result.resolved)",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "atlas.geocode",
+      "name": "geocode"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.lists-add-place",
+      "name": "lists-add-place"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.lists-create",
+      "name": "lists-create"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.lists-delete",
+      "name": "lists-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.lists-list",
+      "name": "lists-list"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.lists-remove-place",
+      "name": "lists-remove-place"
     },
     {
       "_derived": true,
@@ -62,6 +427,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "atlas.live-traffic-eta",
+      "name": "live-traffic-eta"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "atlas.material",
       "name": "material"
     },
@@ -88,8 +479,629 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "atlas.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.nav-start",
+      "name": "nav-start"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.nav-status",
+      "name": "nav-status"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.nav-stop",
+      "name": "nav-stop"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.nav-update",
+      "name": "nav-update"
+    },
+    {
+      "_derived": false,
+      "domain": "atlas",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "query": "   "
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "required": false,
+          "type": "number"
+        },
+        "query": {
+          "maxLength": 200,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "atlas.nominatim-geocode",
+      "name": "nominatim-geocode"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.nominatim-reverse",
+      "name": "nominatim-reverse"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.offline-areas-create",
+      "name": "offline-areas-create"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.offline-areas-delete",
+      "name": "offline-areas-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.offline-areas-list",
+      "name": "offline-areas-list"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.offline-areas-update-status",
+      "name": "offline-areas-update-status"
+    },
+    {
+      "_derived": false,
+      "domain": "atlas",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "east": 5,
+            "north": 5,
+            "south": 10,
+            "west": 0
+          }
+        }
+      ],
+      "inputs": {
+        "amenity": {
+          "required": false,
+          "type": "string"
+        },
+        "east": {
+          "type": "number"
+        },
+        "north": {
+          "type": "number"
+        },
+        "south": {
+          "type": "number"
+        },
+        "west": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "atlas.overpass-poi",
+      "name": "overpass-poi"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.place-details",
+      "name": "place-details"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.places-delete",
+      "name": "places-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.places-list",
+      "name": "places-list"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.places-save",
+      "name": "places-save"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.places-update",
+      "name": "places-update"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "atlas.query",
       "name": "query"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.recent-searches-clear",
+      "name": "recent-searches-clear"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.recent-searches-list",
+      "name": "recent-searches-list"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.recent-searches-record",
+      "name": "recent-searches-record"
+    },
+    {
+      "_derived": false,
+      "domain": "atlas",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "regions": [
+              {
+                "area": 500,
+                "gdp": 50000000000,
+                "name": "A",
+                "population": 1000000
+              },
+              {
+                "area": 1500,
+                "gdp": 60000000000,
+                "name": "B",
+                "population": 3000000
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "regions": [
+              {
+                "name": "Bad",
+                "population": "Infinity"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "regions": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || output.result.message !== undefined || typeof output.result.totals === 'object'",
+        "output.ok !== true || output.result.message !== undefined || (output.result.distribution.populationGini >= 0 && output.result.distribution.populationGini <= 1)",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "atlas.regionStats",
+      "name": "regionStats"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.route-stops",
+      "name": "route-stops"
+    },
+    {
+      "_derived": false,
+      "domain": "atlas",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "waypoints": [
+              {
+                "lat": 40.71,
+                "lon": -74,
+                "name": "A"
+              },
+              {
+                "lat": 34.05,
+                "lon": -118.24,
+                "name": "B"
+              },
+              {
+                "lat": 41.88,
+                "lon": -87.63,
+                "name": "C"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "waypoints": [
+              {
+                "lat": "abc",
+                "lon": 0,
+                "name": "X"
+              },
+              {
+                "lat": 1,
+                "lon": 2,
+                "name": "Y"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "waypoints": [
+              {
+                "lat": 1,
+                "lon": 2,
+                "name": "A"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "startIndex": {
+          "type": "number"
+        },
+        "waypoints": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok !== true || output.result.message !== undefined || Array.isArray(output.result.route)",
+        "output.ok !== true || output.result.message !== undefined || Array.isArray(output.result.legs)",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "atlas.routeOptimize",
+      "name": "routeOptimize"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.street-imagery",
+      "name": "street-imagery"
     },
     {
       "_derived": true,
@@ -114,6 +1126,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "atlas.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "atlas.tile",
       "name": "tile"
     },
@@ -127,11 +1152,115 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "atlas.transit-directions",
+      "name": "transit-directions"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.trips-add-stop",
+      "name": "trips-add-stop"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.trips-create",
+      "name": "trips-create"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.trips-delete",
+      "name": "trips-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.trips-list",
+      "name": "trips-list"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.trips-remove-stop",
+      "name": "trips-remove-stop"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.trips-reorder-stops",
+      "name": "trips-reorder-stops"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "atlas.volume",
       "name": "volume"
+    },
+    {
+      "_derived": true,
+      "domain": "atlas",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "atlas.vote",
+      "name": "vote"
     }
   ],
   "domain": "atlas",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 10
+  "macroCount": 72
 }

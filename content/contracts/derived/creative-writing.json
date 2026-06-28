@@ -10,6 +10,318 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "creative-writing.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.chapter-add",
+      "name": "chapter-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.chapter-delete",
+      "name": "chapter-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.chapter-reorder",
+      "name": "chapter-reorder"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.chapter-update",
+      "name": "chapter-update"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.character-add",
+      "name": "character-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.character-delete",
+      "name": "character-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.character-list",
+      "name": "character-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.character-relate",
+      "name": "character-relate"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.character-relationships",
+      "name": "character-relationships"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.character-unrelate",
+      "name": "character-unrelate"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.character-update",
+      "name": "character-update"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.characterProfile",
+      "name": "characterProfile"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.compile",
+      "name": "compile"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.compile-export",
+      "name": "compile-export"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.corkboard",
+      "name": "corkboard"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.dialogueCheck",
+      "name": "dialogueCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.goal-projection",
+      "name": "goal-projection"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "creative-writing.list_mine",
       "name": "list_mine"
     },
@@ -36,11 +348,687 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "creative-writing.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.manuscript-stats",
+      "name": "manuscript-stats"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.manuscriptAnalysis",
+      "name": "manuscriptAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.note-create",
+      "name": "note-create"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.note-delete",
+      "name": "note-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.note-link-scene",
+      "name": "note-link-scene"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.note-list",
+      "name": "note-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.note-update",
+      "name": "note-update"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.plot-grid",
+      "name": "plot-grid"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.plotStructure",
+      "name": "plotStructure"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.project-create",
+      "name": "project-create"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.project-dashboard",
+      "name": "project-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.project-delete",
+      "name": "project-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.project-get",
+      "name": "project-get"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.project-list",
+      "name": "project-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.project-update",
+      "name": "project-update"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "creative-writing.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.scene-add",
+      "name": "scene-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.scene-comment-add",
+      "name": "scene-comment-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.scene-comment-delete",
+      "name": "scene-comment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.scene-comment-list",
+      "name": "scene-comment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.scene-delete",
+      "name": "scene-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.scene-move",
+      "name": "scene-move"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.scene-reorder",
+      "name": "scene-reorder"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.scene-set-order",
+      "name": "scene-set-order"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.scene-set-target",
+      "name": "scene-set-target"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.scene-thread-tag",
+      "name": "scene-thread-tag"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.scene-update",
+      "name": "scene-update"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.scene-write",
+      "name": "scene-write"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.session-log",
+      "name": "session-log"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.setting-bible",
+      "name": "setting-bible"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.snapshot-delete",
+      "name": "snapshot-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.snapshot-diff",
+      "name": "snapshot-diff"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.snapshot-list",
+      "name": "snapshot-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.snapshot-restore",
+      "name": "snapshot-restore"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.snapshot-take",
+      "name": "snapshot-take"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.target-progress",
+      "name": "target-progress"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.thread-create",
+      "name": "thread-create"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.thread-delete",
+      "name": "thread-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.thread-list",
+      "name": "thread-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "creative-writing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creative-writing.writing-stats",
+      "name": "writing-stats"
     }
   ],
   "domain": "creative-writing",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 79
 }

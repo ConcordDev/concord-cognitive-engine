@@ -1,6 +1,329 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "linguistics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": "Beautiful happily running development creates wonderful organization.",
+            "type": "morphosyntactic"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "type": "morphosyntactic"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "text": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": 99
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": "Infinity"
+          }
+        }
+      ],
+      "inputs": {
+        "text": {
+          "required": false,
+          "type": "string"
+        },
+        "type": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.content === 'string'",
+        "output.ok === false || Number.isFinite(output.result.readabilityGrade)",
+        "output.ok === false || Number.isFinite(output.result.lexicalDiversity)",
+        "output.ok === false || typeof output.result.wordClasses === 'object'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "linguistics.analyze",
+      "name": "analyze"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.datamuse-words",
+      "name": "datamuse-words"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.deck-create",
+      "name": "deck-create"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.deck-delete",
+      "name": "deck-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.deck-import",
+      "name": "deck-import"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.deck-list",
+      "name": "deck-list"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.dictionary-lookup",
+      "name": "dictionary-lookup"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.etymology",
+      "name": "etymology"
+    },
+    {
+      "_derived": false,
+      "domain": "linguistics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": "the cat the cat the dog runs fast and the cat sleeps"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": 12345
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": "Infinity NaN"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": {
+              "a": 1
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "text": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalWords)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.uniqueWords)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.hapaxLegomena)",
+        "output.ok === false || output.result.message !== undefined || (Array.isArray(output.result.topContentWords) && output.result.topContentWords.every(function(w){ return typeof w.word === 'string' && Number.isFinite(w.count) && Number.isFinite(w.frequency); }))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "linguistics.frequencyAnalysis",
+      "name": "frequencyAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.like",
+      "name": "like"
+    },
+    {
       "_derived": true,
       "domain": "linguistics",
       "fuzz_cases": [],
@@ -75,11 +398,581 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "linguistics.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": false,
+      "domain": "linguistics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "word": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "word": "unhappiness"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "word": "cat"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "word": 4242
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "word": {
+              "n": 1
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "word": {
+          "maxLength": 120,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.prefix === 'string'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.root === 'string'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.suffix === 'string'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.morphemeCount)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.wordClass === 'string'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "linguistics.morphologyBreakdown",
+      "name": "morphologyBreakdown"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.progress-set-goal",
+      "name": "progress-set-goal"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.progress-stats",
+      "name": "progress-stats"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.pronounce",
+      "name": "pronounce"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.quiz-generate",
+      "name": "quiz-generate"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.quiz-grade",
+      "name": "quiz-grade"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "linguistics.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.save",
+      "name": "save"
+    },
+    {
+      "_derived": false,
+      "domain": "linguistics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": "This is a great wonderful amazing day"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": "This terrible awful horrible dreadful experience"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": "The cat sat on the mat"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": 9999
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": {
+              "x": 1
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "text": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || ['positive','negative','neutral'].indexOf(output.result.sentiment) >= 0",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.score)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.positiveWords)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.negativeWords)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.confidence === 'string'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "linguistics.sentimentAnalysis",
+      "name": "sentimentAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": false,
+      "domain": "linguistics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": "The quick brown fox jumps over the lazy dog. It was a sunny day."
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "content": "Hello world. Goodbye world."
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": 12345
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "text": {
+              "a": 1
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "content": {
+          "required": false,
+          "type": "string"
+        },
+        "text": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.wordCount)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.sentenceCount)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.vocabularySize)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.lexicalDiversity)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.readabilityGrade)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.readingLevel === 'string'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "linguistics.textAnalysis",
+      "name": "textAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.vocab-add",
+      "name": "vocab-add"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.vocab-dashboard",
+      "name": "vocab-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.vocab-delete",
+      "name": "vocab-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.vocab-list",
+      "name": "vocab-list"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.vocab-review",
+      "name": "vocab-review"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.vocab-review-due",
+      "name": "vocab-review-due"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.vocab-update",
+      "name": "vocab-update"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "linguistics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "linguistics.word-context",
+      "name": "word-context"
     }
   ],
   "domain": "linguistics",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 6
+  "macroCount": 51
 }

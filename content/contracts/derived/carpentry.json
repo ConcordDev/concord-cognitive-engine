@@ -10,6 +10,515 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "carpentry.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": false,
+      "domain": "carpentry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "pieces": [
+                  {
+                    "length": 96,
+                    "pricePerBF": 5,
+                    "quantity": 2,
+                    "thickness": 1,
+                    "width": 6
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "pieces": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "pieces": [
+                  {
+                    "length": "oops",
+                    "quantity": "two",
+                    "thickness": "x",
+                    "width": null
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "pieces": {
+          "maxLength": 5000,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.totalBoardFeet === undefined || (Number.isFinite(output.result.totalBoardFeet) && output.result.totalBoardFeet >= 0)",
+        "output.ok === false || output.result.pieces === undefined || Array.isArray(output.result.pieces)",
+        "output.ok === false || output.result.totalWithWaste === undefined || Number.isFinite(output.result.totalWithWaste)"
+      ],
+      "macro_id": "carpentry.boardFootCalc",
+      "name": "boardFootCalc"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.crewAdd",
+      "name": "crewAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.crewList",
+      "name": "crewList"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.crewRemove",
+      "name": "crewRemove"
+    },
+    {
+      "_derived": false,
+      "domain": "carpentry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "cuts": [
+              {
+                "label": "rail",
+                "length": 48,
+                "quantity": 4
+              }
+            ],
+            "kerf": 0,
+            "stockCostPerBoard": 10,
+            "stockLength": 96
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "cuts": []
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "cuts": [
+              {
+                "label": "beam",
+                "length": 120
+              }
+            ],
+            "stockLength": 96
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "cuts": [
+              {
+                "length": 40,
+                "quantity": 2
+              }
+            ],
+            "kerf": null,
+            "stockCostPerBoard": "y",
+            "stockLength": "x"
+          }
+        }
+      ],
+      "inputs": {
+        "cuts": {
+          "maxLength": 5000,
+          "type": "array"
+        },
+        "kerf": {
+          "max": 10,
+          "min": 0,
+          "type": "number"
+        },
+        "stockCostPerBoard": {
+          "max": 100000,
+          "min": 0,
+          "type": "number"
+        },
+        "stockLength": {
+          "max": 100000,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.boardsNeeded === 'number' && Number.isFinite(output.result.boardsNeeded) && output.result.boardsNeeded >= 0)",
+        "output.ok === false || (typeof output.result.wastePct === 'number' && Number.isFinite(output.result.wastePct) && output.result.wastePct >= 0 && output.result.wastePct <= 100)",
+        "output.ok === false || (Number.isFinite(output.result.totalCutLength) && output.result.totalCutLength >= 0)",
+        "output.ok === false || Array.isArray(output.result.layout)",
+        "output.ok === false || output.result.materialCost === null || (typeof output.result.materialCost === 'number' && Number.isFinite(output.result.materialCost))",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "carpentry.cutListOptimize",
+      "name": "cutListOptimize"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": false,
+      "domain": "carpentry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "amount": 1000,
+            "client": "Acme",
+            "depositPct": 25,
+            "estimateId": "est1",
+            "taxPct": 10
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "amount": 0,
+            "estimateId": "x"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "amount": 10
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "amount": "not-money",
+            "estimateId": "x"
+          }
+        }
+      ],
+      "inputs": {
+        "amount": {
+          "max": 100000000,
+          "min": 0.01,
+          "type": "number"
+        },
+        "client": {
+          "maxLength": 160,
+          "type": "string"
+        },
+        "depositPct": {
+          "max": 100,
+          "min": 0,
+          "type": "number"
+        },
+        "estimateId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        },
+        "taxPct": {
+          "max": 25,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.invoice && typeof output.result.invoice.invoiceNumber === 'string')",
+        "output.ok === false || (Number.isFinite(output.result.invoice.total) && output.result.invoice.total >= output.result.invoice.subtotal)",
+        "output.ok === false || (Number.isFinite(output.result.invoice.tax) && output.result.invoice.tax >= 0)",
+        "output.ok === false || output.result.invoice.status === 'issued'",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "carpentry.estimateToInvoice",
+      "name": "estimateToInvoice"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.finishRecommendation",
+      "name": "finishRecommendation"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.invoiceList",
+      "name": "invoiceList"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.invoiceMarkPaid",
+      "name": "invoiceMarkPaid"
+    },
+    {
+      "_derived": false,
+      "domain": "carpentry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "glued": true,
+                "jointType": "dovetail",
+                "species": "oak"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "glued": false,
+                "jointType": "butt",
+                "species": "pine"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "jointType": "made-up",
+                "species": "unobtanium"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "glued": {
+          "type": "boolean"
+        },
+        "jointType": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "species": {
+          "maxLength": 40,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Number.isFinite(output.result.baseStrength) && output.result.baseStrength > 0)",
+        "output.ok === false || (Number.isFinite(output.result.effectiveStrength) && output.result.effectiveStrength >= 0)",
+        "output.ok === false || ['excellent','good','moderate','weak'].includes(output.result.rating)",
+        "output.ok === false || (output.result.glueBonus === 'none' || output.result.glueBonus === '+20')"
+      ],
+      "macro_id": "carpentry.jointStrength",
+      "name": "jointStrength"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "carpentry.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +532,585 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "carpentry.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": false,
+      "domain": "carpentry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "items": [
+              {
+                "name": "2x6",
+                "quantity": 10,
+                "unitCost": 8
+              }
+            ],
+            "laborHours": 4,
+            "laborRate": 50,
+            "marginPct": 0,
+            "overheadPct": 0,
+            "projectName": "Deck",
+            "wastePct": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "items": []
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "items": [
+              {
+                "quantity": 0,
+                "unitCost": 5
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "items": [
+              {
+                "name": "x",
+                "quantity": 10,
+                "unitCost": "abc"
+              }
+            ],
+            "laborHours": -4,
+            "laborRate": "x",
+            "marginPct": -99,
+            "wastePct": null
+          }
+        }
+      ],
+      "inputs": {
+        "items": {
+          "maxLength": 5000,
+          "type": "array"
+        },
+        "laborHours": {
+          "max": 100000,
+          "min": 0,
+          "type": "number"
+        },
+        "laborRate": {
+          "max": 100000,
+          "min": 0,
+          "type": "number"
+        },
+        "marginPct": {
+          "max": 80,
+          "min": 0,
+          "type": "number"
+        },
+        "overheadPct": {
+          "max": 60,
+          "min": 0,
+          "type": "number"
+        },
+        "projectName": {
+          "maxLength": 160,
+          "type": "string"
+        },
+        "wastePct": {
+          "max": 50,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Number.isFinite(output.result.materialSubtotal) && output.result.materialSubtotal >= 0)",
+        "output.ok === false || (Number.isFinite(output.result.laborCost) && output.result.laborCost >= 0)",
+        "output.ok === false || (Number.isFinite(output.result.total) && output.result.total >= 0)",
+        "output.ok === false || Array.isArray(output.result.items)",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "carpentry.materialTakeoff",
+      "name": "materialTakeoff"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.photoLogAdd",
+      "name": "photoLogAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.photoLogDelete",
+      "name": "photoLogDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.photoLogList",
+      "name": "photoLogList"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.portalCreate",
+      "name": "portalCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.portalList",
+      "name": "portalList"
+    },
+    {
+      "_derived": false,
+      "domain": "carpentry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "decision": "approved",
+            "token": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "decision": "maybe",
+            "token": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "decision": {
+          "maxLength": 16,
+          "type": "string"
+        },
+        "signedBy": {
+          "maxLength": 160,
+          "type": "string"
+        },
+        "token": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.share && ['approved','declined'].includes(output.result.share.status))",
+        "output.ok === false || (output.result.share.clientDecision && ['approved','declined'].includes(output.result.share.clientDecision.decision))",
+        "output.ok === true || typeof output.error === 'string'"
+      ],
+      "macro_id": "carpentry.portalRespond",
+      "name": "portalRespond"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.portalUpdateProgress",
+      "name": "portalUpdateProgress"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.portalView",
+      "name": "portalView"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "carpentry.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.scheduleAdd",
+      "name": "scheduleAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.scheduleDelete",
+      "name": "scheduleDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.scheduleList",
+      "name": "scheduleList"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.scheduleUpdate",
+      "name": "scheduleUpdate"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.signEstimate",
+      "name": "signEstimate"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.timeEntryAdd",
+      "name": "timeEntryAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.timeEntryDelete",
+      "name": "timeEntryDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.timeEntryList",
+      "name": "timeEntryList"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.timerStart",
+      "name": "timerStart"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.timerStop",
+      "name": "timerStop"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "carpentry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "carpentry.woodSelection",
+      "name": "woodSelection"
     }
   ],
   "domain": "carpentry",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 52
 }

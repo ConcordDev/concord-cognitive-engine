@@ -1,0 +1,410 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.alerts",
+      "name": "alerts"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.bulkRemediate",
+      "name": "bulkRemediate"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.compare",
+      "name": "compare"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.responseTimeline",
+      "name": "responseTimeline"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.rootCause",
+      "name": "rootCause"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.scoreRules-get",
+      "name": "scoreRules-get"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.scoreRules-set",
+      "name": "scoreRules-set"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.severityAssessment",
+      "name": "severityAssessment"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.stakeholderImpact",
+      "name": "stakeholderImpact"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.trend-history",
+      "name": "trend-history"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.trend-snapshot",
+      "name": "trend-snapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "cri",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cri.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "cri",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 31
+}

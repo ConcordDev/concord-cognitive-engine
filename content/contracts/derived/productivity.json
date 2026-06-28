@@ -10,6 +10,253 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "productivity.calendar-export-ics",
+      "name": "calendar-export-ics"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.calendar-import-ics",
+      "name": "calendar-import-ics"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.calendar-view",
+      "name": "calendar-view"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.dailySummary",
+      "name": "dailySummary"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.eisenhower-matrix",
+      "name": "eisenhower-matrix"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.filter-delete",
+      "name": "filter-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.filter-list",
+      "name": "filter-list"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.filter-run",
+      "name": "filter-run"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.filter-save",
+      "name": "filter-save"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.focus-log",
+      "name": "focus-log"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.focus-stats",
+      "name": "focus-stats"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.focusBlock",
+      "name": "focusBlock"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.habit-checkin",
+      "name": "habit-checkin"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.habit-create",
+      "name": "habit-create"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.habit-delete",
+      "name": "habit-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.habit-list",
+      "name": "habit-list"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.karma",
+      "name": "karma"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.label-create",
+      "name": "label-create"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.label-list",
+      "name": "label-list"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "productivity.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +270,414 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "productivity.productivity-dashboard",
+      "name": "productivity-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.productivity-stats",
+      "name": "productivity-stats"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.project-collaborators",
+      "name": "project-collaborators"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.project-create",
+      "name": "project-create"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.project-delete",
+      "name": "project-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.project-detail",
+      "name": "project-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.project-list",
+      "name": "project-list"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.project-share",
+      "name": "project-share"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.project-unshare",
+      "name": "project-unshare"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.projectFilter",
+      "name": "projectFilter"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "productivity.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.reminder-add",
+      "name": "reminder-add"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.reminder-delete",
+      "name": "reminder-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.reminder-list",
+      "name": "reminder-list"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.reminders-due",
+      "name": "reminders-due"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.subtask-add",
+      "name": "subtask-add"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.subtask-toggle",
+      "name": "subtask-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.subtask-update",
+      "name": "subtask-update"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.task-add",
+      "name": "task-add"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.task-assign",
+      "name": "task-assign"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.task-comment-add",
+      "name": "task-comment-add"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.task-comments",
+      "name": "task-comments"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.task-complete",
+      "name": "task-complete"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.task-delete",
+      "name": "task-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.task-detail",
+      "name": "task-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.task-list",
+      "name": "task-list"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.task-parse",
+      "name": "task-parse"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.task-quick-add",
+      "name": "task-quick-add"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.task-update",
+      "name": "task-update"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.taskCreate",
+      "name": "taskCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.today-view",
+      "name": "today-view"
+    },
+    {
+      "_derived": true,
+      "domain": "productivity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "productivity.upcoming-view",
+      "name": "upcoming-view"
     }
   ],
   "domain": "productivity",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 52
 }

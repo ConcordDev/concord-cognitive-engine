@@ -1,6 +1,287 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "root",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "a": 12,
+            "b": 10,
+            "op": "and"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "a": 17,
+            "b": 6,
+            "op": "mod"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "a": 5,
+            "b": 0,
+            "op": "mod"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "a": 1,
+            "b": 1,
+            "op": "nand"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "a": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "b": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "op": {
+          "enum": [
+            "and",
+            "or",
+            "xor",
+            "shl",
+            "shr",
+            "mod",
+            "not"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.decimal === 'number')",
+        "output.ok === false || typeof output.result.glyph === 'string'",
+        "output.ok === false || typeof output.result.base6 === 'string'",
+        "output.ok === false || ['and','or','xor','shl','shr','mod','not'].includes(output.result.op)"
+      ],
+      "macro_id": "root.bitwise",
+      "name": "bitwise"
+    },
+    {
+      "_derived": false,
+      "domain": "root",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "computation not found",
+            "ok": false
+          },
+          "input": {
+            "id": "rc_does_not_exist"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 0)"
+      ],
+      "macro_id": "root.deleteComputation",
+      "name": "deleteComputation"
+    },
+    {
+      "_derived": false,
+      "domain": "root",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "share not found",
+            "ok": false
+          },
+          "input": {
+            "shareId": "share_does_not_exist"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "shareId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.snapshot && typeof output.result.snapshot.shareId === 'string')"
+      ],
+      "macro_id": "root.getShare",
+      "name": "getShare"
+    },
+    {
+      "_derived": false,
+      "domain": "root",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "terms": "Pivot Refusal"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "terms": "1, 0"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "terms": "Banana"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "terms": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.tokens)",
+        "output.ok === false || typeof output.result.glyphString === 'string'",
+        "output.ok === false || Array.isArray(output.result.names)"
+      ],
+      "macro_id": "root.glyphLookup",
+      "name": "glyphLookup"
+    },
+    {
+      "_derived": false,
+      "domain": "root",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "kind": "operation",
+            "limit": 10
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": -1
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": "abc"
+          }
+        }
+      ],
+      "inputs": {
+        "kind": {
+          "enum": [
+            "operation",
+            "expression",
+            "bitwise"
+          ],
+          "type": "string"
+        },
+        "limit": {
+          "max": 200,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.computations)",
+        "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 0)",
+        "output.ok === false || output.result.computations.length <= output.result.total"
+      ],
+      "macro_id": "root.history",
+      "name": "history"
+    },
+    {
       "_derived": true,
       "domain": "root",
       "fuzz_cases": [],
@@ -25,9 +306,265 @@
       ],
       "macro_id": "root.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "root",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "computation not found",
+            "ok": false
+          },
+          "input": {
+            "id": "rc_does_not_exist"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.computation && typeof output.result.computation.id === 'string')"
+      ],
+      "macro_id": "root.reload",
+      "name": "reload"
+    },
+    {
+      "_derived": false,
+      "domain": "root",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "a": 4,
+            "b": 7,
+            "kind": "operation",
+            "op": "+"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "expression": "2 + 2",
+            "kind": "expression"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "a": 1,
+            "b": 2,
+            "kind": "operation",
+            "op": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "expression": "",
+            "kind": "expression"
+          }
+        }
+      ],
+      "inputs": {
+        "a": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "b": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "expression": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "operation",
+            "expression",
+            "bitwise"
+          ],
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "op": {
+          "maxLength": 8,
+          "type": "string"
+        },
+        "resultDecimal": {
+          "max": 1000000000,
+          "min": -1000000000,
+          "type": "number"
+        },
+        "resultGlyph": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.computation && typeof output.result.computation.id === 'string')",
+        "output.ok === false || typeof output.result.total === 'number'",
+        "output.ok === false || ['operation','expression','bitwise'].includes(output.result.computation.kind)"
+      ],
+      "macro_id": "root.save",
+      "name": "save"
+    },
+    {
+      "_derived": false,
+      "domain": "root",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "a": 5,
+            "b": 6,
+            "kind": "operation",
+            "op": "×",
+            "resultDecimal": 30
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "expression": "2 + 2",
+            "kind": "expression"
+          }
+        },
+        {
+          "expect": {
+            "error": "operand a is required",
+            "ok": false
+          },
+          "input": {
+            "kind": "operation",
+            "op": "+"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "expression": "",
+            "kind": "expression"
+          }
+        }
+      ],
+      "inputs": {
+        "a": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "b": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "expression": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "operation",
+            "expression",
+            "bitwise"
+          ],
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "op": {
+          "maxLength": 8,
+          "type": "string"
+        },
+        "resultDecimal": {
+          "max": 1000000000,
+          "min": -1000000000,
+          "type": "number"
+        },
+        "resultGlyph": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.shareId === 'string')",
+        "output.ok === false || /^\\/lenses\\/root\\?share=/.test(output.result.link)",
+        "output.ok === false || (output.result.snapshot && typeof output.result.snapshot.sharedBy === 'string')"
+      ],
+      "macro_id": "root.share",
+      "name": "share"
+    },
+    {
+      "_derived": false,
+      "domain": "root",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.lessons)",
+        "output.ok === false || (typeof output.result.lessonCount === 'number' && output.result.lessonCount >= 5)",
+        "output.ok === false || output.result.lessons.every(l => typeof l.id === 'string' && Array.isArray(l.examples))"
+      ],
+      "macro_id": "root.tutorial",
+      "name": "tutorial"
     }
   ],
   "domain": "root",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 11
 }

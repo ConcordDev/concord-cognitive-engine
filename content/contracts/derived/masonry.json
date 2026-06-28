@@ -10,6 +10,301 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "masonry.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.change-order-create",
+      "name": "change-order-create"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.change-order-list",
+      "name": "change-order-list"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.change-order-sign",
+      "name": "change-order-sign"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.code-for-check",
+      "name": "code-for-check"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.code-search",
+      "name": "code-search"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.invoice-create",
+      "name": "invoice-create"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.invoice-delete",
+      "name": "invoice-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.invoice-list",
+      "name": "invoice-list"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.invoice-record-payment",
+      "name": "invoice-record-payment"
+    },
+    {
+      "_derived": false,
+      "domain": "masonry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "items": [
+                  {
+                    "hours": 10,
+                    "materialCost": 200,
+                    "name": "Pour",
+                    "rate": 55
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "items": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "items": "not-an-array"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "items": [
+                  null,
+                  "junk",
+                  {
+                    "hours": "Infinity",
+                    "materialCost": "abc",
+                    "name": "X",
+                    "rate": "NaN"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "items": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (Array.isArray(output.result.items) ? typeof output.result.grandTotal === 'number' : typeof output.result.message === 'string')",
+        "output.ok === false || !Array.isArray(output.result.items) || Number.isFinite(output.result.grandTotal)",
+        "output.ok === false || !Array.isArray(output.result.items) || output.result.items.every(function(i){ return Number.isFinite(i.laborCost) && Number.isFinite(i.totalCost); })"
+      ],
+      "macro_id": "masonry.jobCosting",
+      "name": "jobCosting"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "masonry.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +318,632 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "masonry.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": false,
+      "domain": "masonry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "material": "brick",
+                "squareFootage": 200
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "material": "block",
+                "squareFootage": 100
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "material": "unobtanium",
+                "squareFootage": "Infinity"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "material": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "squareFootage": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.unitsNeeded === 'number'",
+        "output.ok === false || typeof output.result.mortarBags80lb === 'number'",
+        "output.ok === false || typeof output.result.materialCost === 'number'",
+        "output.ok === false || typeof output.result.totalMaterialCost === 'number'",
+        "output.ok === false || typeof output.result.laborEstimate === 'number'",
+        "output.ok === false || typeof output.result.grandTotal === 'number'",
+        "output.ok === false || typeof output.result.recommendation === 'string'",
+        "output.ok === false || Number.isFinite(output.result.unitsNeeded)",
+        "output.ok === false || Number.isFinite(output.result.grandTotal)",
+        "output.ok === false || output.result.units === undefined",
+        "output.ok === false || output.result.mortarBags === undefined"
+      ],
+      "macro_id": "masonry.materialEstimate",
+      "name": "materialEstimate"
+    },
+    {
+      "_derived": false,
+      "domain": "masonry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "application": "structural"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "application": "repoint"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "application": "not-a-real-mode"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "application": {
+          "maxLength": 40,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.type === 'string'",
+        "output.ok === false || typeof output.result.ratio === 'string'",
+        "output.ok === false || typeof output.result.strength === 'string'",
+        "output.ok === false || typeof output.result.use === 'string'",
+        "output.ok === false || typeof output.result.waterRatio === 'string'",
+        "output.ok === false || typeof output.result.cureTime === 'string'",
+        "output.ok === false || typeof output.result.temperature === 'string'"
+      ],
+      "macro_id": "masonry.mortarMix",
+      "name": "mortarMix"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.photo-add",
+      "name": "photo-add"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.photo-delete",
+      "name": "photo-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.photo-list",
+      "name": "photo-list"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.pricebook-delete",
+      "name": "pricebook-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.pricebook-list",
+      "name": "pricebook-list"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.pricebook-save",
+      "name": "pricebook-save"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.proposal-create",
+      "name": "proposal-create"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.proposal-list",
+      "name": "proposal-list"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.proposal-render",
+      "name": "proposal-render"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.proposal-update-status",
+      "name": "proposal-update-status"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "masonry.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.schedule-add",
+      "name": "schedule-add"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.schedule-delete",
+      "name": "schedule-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.schedule-list",
+      "name": "schedule-list"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.takeoff-delete",
+      "name": "takeoff-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.takeoff-list",
+      "name": "takeoff-list"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.takeoff-save",
+      "name": "takeoff-save"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": false,
+      "domain": "masonry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "heightFeet": 8,
+                "reinforced": true,
+                "thicknessInches": 8
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "heightFeet": 30,
+                "reinforced": false,
+                "thicknessInches": 6
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "heightFeet": "Infinity",
+                "thicknessInches": 0
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "heightFeet": {
+          "type": "number"
+        },
+        "loadBearing": {
+          "type": "boolean"
+        },
+        "reinforced": {
+          "type": "boolean"
+        },
+        "thicknessInches": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.slendernessRatio === 'number'",
+        "output.ok === false || typeof output.result.maxAllowedRatio === 'number'",
+        "output.ok === false || typeof output.result.passesSlenderness === 'boolean'",
+        "output.ok === false || typeof output.result.recommendation === 'string'",
+        "output.ok === false || Number.isFinite(output.result.slendernessRatio)",
+        "output.ok === false || (output.result.reinforced ? output.result.maxAllowedRatio === 25 : output.result.maxAllowedRatio === 20)"
+      ],
+      "macro_id": "masonry.wallStrength",
+      "name": "wallStrength"
     }
   ],
   "domain": "masonry",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 51
 }

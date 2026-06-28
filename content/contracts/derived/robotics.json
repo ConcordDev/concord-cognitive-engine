@@ -10,11 +10,993 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "robotics.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": false,
+      "domain": "robotics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "batteryCapacityWh": 100,
+                "computeDrawW": 10,
+                "motorDrawW": 20,
+                "sensorDrawW": 5
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "batteryCapacityWh": 10,
+                "computeDrawW": 10,
+                "motorDrawW": 80,
+                "sensorDrawW": 10
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "batteryCapacityWh": "NaN",
+                "computeDrawW": null,
+                "motorDrawW": "Infinity",
+                "sensorDrawW": "x"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "batteryCapacityWh": {
+          "type": "string"
+        },
+        "computeDrawW": {
+          "type": "string"
+        },
+        "motorDrawW": {
+          "type": "string"
+        },
+        "sensorDrawW": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || typeof output.result.batteryCapacity === 'string'",
+        "output.ok === false || typeof output.result.totalPowerDraw === 'string'",
+        "output.ok === false || Number.isFinite(parseFloat(output.result.totalPowerDraw))",
+        "output.ok === false || typeof output.result.estimatedRuntime === 'string'",
+        "output.ok === false || Number.isFinite(parseFloat(output.result.estimatedRuntime))",
+        "output.ok === false || typeof output.result.safeRuntime === 'string'",
+        "output.ok === false || typeof output.result.recommendation === 'string'",
+        "output.ok === false || typeof output.result.breakdown === 'object'"
+      ],
+      "macro_id": "robotics.batteryLife",
+      "name": "batteryLife"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.fleetList",
+      "name": "fleetList"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.fleetRegister",
+      "name": "fleetRegister"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.fleetRemove",
+      "name": "fleetRemove"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.fleetUpdate",
+      "name": "fleetUpdate"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.forwardKinematics",
+      "name": "forwardKinematics"
+    },
+    {
+      "_derived": false,
+      "domain": "robotics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "goalX": 9,
+            "goalY": 9,
+            "height": 10,
+            "startX": 0,
+            "startY": 0,
+            "width": 10
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "goalX": 4,
+            "goalY": 4,
+            "height": 5,
+            "obstacles": [
+              {
+                "x": 2,
+                "y": 2
+              }
+            ],
+            "startX": 0,
+            "startY": 0,
+            "width": 5
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "height": 5,
+            "obstacles": [
+              {
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "startX": 0,
+            "startY": 0,
+            "width": 5
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "goalX": 999,
+            "goalY": 999,
+            "height": "Infinity",
+            "startX": -1,
+            "startY": "x",
+            "width": "NaN"
+          }
+        }
+      ],
+      "inputs": {
+        "goalX": {
+          "type": "string"
+        },
+        "goalY": {
+          "type": "string"
+        },
+        "height": {
+          "type": "string"
+        },
+        "obstacles": {
+          "type": "array"
+        },
+        "startX": {
+          "type": "string"
+        },
+        "startY": {
+          "type": "string"
+        },
+        "width": {
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || typeof output.result.found === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.path)",
+        "output.ok === false || Number.isFinite(output.result.length)",
+        "output.ok === false || output.result.cost === null || Number.isFinite(output.result.cost)",
+        "output.ok === false || Number.isFinite(output.result.expansions)",
+        "output.ok === false || Number.isFinite(output.result.obstacleCount)",
+        "output.ok === false || typeof output.result.algorithm === 'string'"
+      ],
+      "macro_id": "robotics.gridPlan",
+      "name": "gridPlan"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.inverseKinematics",
+      "name": "inverseKinematics"
+    },
+    {
+      "_derived": false,
+      "domain": "robotics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "joints": [
+                  {
+                    "angle": 30,
+                    "length": 120,
+                    "type": "revolute"
+                  },
+                  {
+                    "angle": -20,
+                    "length": 100,
+                    "type": "prismatic"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "joints": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "joints": [
+                  {
+                    "angle": "NaN",
+                    "length": "Infinity"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "joints": "not-an-array"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "joints": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.degreesOfFreedom)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.maxReach === 'string'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(parseFloat(output.result.maxReach))",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.workspace === 'string'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.type === 'string'",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.joints)"
+      ],
+      "macro_id": "robotics.kinematicsCalc",
+      "name": "kinematicsCalc"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "robotics.live_arxiv",
       "name": "live_arxiv"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.missionAdvance",
+      "name": "missionAdvance"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.missionCreate",
+      "name": "missionCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.missionList",
+      "name": "missionList"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.missionRemove",
+      "name": "missionRemove"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.move",
+      "name": "move"
+    },
+    {
+      "_derived": false,
+      "domain": "robotics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "waypoints": [
+                  {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                  },
+                  {
+                    "x": 3,
+                    "y": 4,
+                    "z": 0
+                  },
+                  {
+                    "x": 3,
+                    "y": 4,
+                    "z": 12
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "waypoints": [
+                  {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "waypoints": [
+                  {
+                    "x": 0,
+                    "y": 0
+                  },
+                  {
+                    "x": "Infinity",
+                    "y": "NaN",
+                    "z": null
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "waypoints": 5
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "waypoints": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.waypoints)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalDistance)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.estimatedTime === 'string'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.collisionCheck === 'string'",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.segments)"
+      ],
+      "macro_id": "robotics.pathPlan",
+      "name": "pathPlan"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.sensorClear",
+      "name": "sensorClear"
+    },
+    {
+      "_derived": false,
+      "domain": "robotics",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "sensors": [
+                  {
+                    "confidence": 0.9,
+                    "name": "gps",
+                    "value": 10,
+                    "weight": 2
+                  },
+                  {
+                    "confidence": 0.5,
+                    "name": "imu",
+                    "value": 20,
+                    "weight": 1
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "sensors": [
+                  {
+                    "type": "lidar",
+                    "value": 5
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "sensors": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "sensors": [
+                  {
+                    "confidence": "NaN",
+                    "name": "x",
+                    "value": "Infinity",
+                    "weight": "Infinity"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "sensors": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.sensorCount)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.fusedValue)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.fusedConfidence)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.method === 'string'",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.sensors)"
+      ],
+      "macro_id": "robotics.sensorFusion",
+      "name": "sensorFusion"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.sensorLog",
+      "name": "sensorLog"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.sensorPlayback",
+      "name": "sensorPlayback"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.telemetry",
+      "name": "telemetry"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.teleop",
+      "name": "teleop"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.vote",
+      "name": "vote"
     }
   ],
   "domain": "robotics",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 1
+  "macroCount": 41
 }

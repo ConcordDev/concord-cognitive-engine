@@ -10,6 +10,448 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "nonprofit.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.campaign-create",
+      "name": "campaign-create"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.campaign-delete",
+      "name": "campaign-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.campaign-list",
+      "name": "campaign-list"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.campaign-update",
+      "name": "campaign-update"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.campaignProgress",
+      "name": "campaignProgress"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.comm-compose",
+      "name": "comm-compose"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.comm-log",
+      "name": "comm-log"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.comm-send",
+      "name": "comm-send"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.donation-log",
+      "name": "donation-log"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.donation-page-create",
+      "name": "donation-page-create"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.donation-page-delete",
+      "name": "donation-page-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.donation-page-give",
+      "name": "donation-page-give"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.donation-page-list",
+      "name": "donation-page-list"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.donation-page-update",
+      "name": "donation-page-update"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.donor-create",
+      "name": "donor-create"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.donor-delete",
+      "name": "donor-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.donor-gift-log",
+      "name": "donor-gift-log"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.donor-list",
+      "name": "donor-list"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.donor-segment",
+      "name": "donor-segment"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.donor-update",
+      "name": "donor-update"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.donorRetention",
+      "name": "donorRetention"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.event-create",
+      "name": "event-create"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.event-delete",
+      "name": "event-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.event-list",
+      "name": "event-list"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.grant-deadline-check",
+      "name": "grant-deadline-check"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.grantReporting",
+      "name": "grantReporting"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.impact-report",
+      "name": "impact-report"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "nonprofit.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +465,466 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "nonprofit.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.lookup-org-by-ein",
+      "name": "lookup-org-by-ein"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.nonprofit-dashboard",
+      "name": "nonprofit-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.p2p-donate",
+      "name": "p2p-donate"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.p2p-leaderboard",
+      "name": "p2p-leaderboard"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.p2p-team-create",
+      "name": "p2p-team-create"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.pledge-cancel",
+      "name": "pledge-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.pledge-charge",
+      "name": "pledge-charge"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.pledge-create",
+      "name": "pledge-create"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.pledge-list",
+      "name": "pledge-list"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.pledge-update",
+      "name": "pledge-update"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.receipt-annual",
+      "name": "receipt-annual"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.receipt-generate",
+      "name": "receipt-generate"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "nonprofit.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.search-orgs",
+      "name": "search-orgs"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.send-acknowledgment",
+      "name": "send-acknowledgment"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.shift-log-hours",
+      "name": "shift-log-hours"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.shift-schedule",
+      "name": "shift-schedule"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.thankyou-run",
+      "name": "thankyou-run"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.view-giving-history",
+      "name": "view-giving-history"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.volunteer-delete",
+      "name": "volunteer-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.volunteer-list",
+      "name": "volunteer-list"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.volunteer-signup",
+      "name": "volunteer-signup"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.volunteerMatch",
+      "name": "volunteerMatch"
+    },
+    {
+      "_derived": true,
+      "domain": "nonprofit",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "nonprofit.vote",
+      "name": "vote"
     }
   ],
   "domain": "nonprofit",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 71
 }

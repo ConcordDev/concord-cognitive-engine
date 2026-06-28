@@ -1,0 +1,631 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.apiHealthCheck",
+      "name": "apiHealthCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.compatibilityCheck",
+      "name": "compatibilityCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.connectApp",
+      "name": "connectApp"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.connectionList",
+      "name": "connectionList"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.connectorCatalog",
+      "name": "connectorCatalog"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.dataFlowMapping",
+      "name": "dataFlowMapping"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.disconnectApp",
+      "name": "disconnectApp"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.dueSchedules",
+      "name": "dueSchedules"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.evalCondition",
+      "name": "evalCondition"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.formatterOps",
+      "name": "formatterOps"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.previewFieldMap",
+      "name": "previewFieldMap"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.retryRun",
+      "name": "retryRun"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.run",
+      "name": "run"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.runCodeStep",
+      "name": "runCodeStep"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.runFormatter",
+      "name": "runFormatter"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.runHistory",
+      "name": "runHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.scheduleClear",
+      "name": "scheduleClear"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.scheduleSet",
+      "name": "scheduleSet"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.verifyWebhookSignature",
+      "name": "verifyWebhookSignature"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.webhookActivate",
+      "name": "webhookActivate"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.webhookDeliveries",
+      "name": "webhookDeliveries"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.webhookRetry",
+      "name": "webhookRetry"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.webhookTest",
+      "name": "webhookTest"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.zapDelete",
+      "name": "zapDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.zapList",
+      "name": "zapList"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.zapRun",
+      "name": "zapRun"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.zapSave",
+      "name": "zapSave"
+    },
+    {
+      "_derived": true,
+      "domain": "integrations",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "integrations.zapToggle",
+      "name": "zapToggle"
+    }
+  ],
+  "domain": "integrations",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 48
+}

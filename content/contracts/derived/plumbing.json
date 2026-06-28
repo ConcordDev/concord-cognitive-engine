@@ -10,6 +10,371 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "plumbing.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.dispatchAssign",
+      "name": "dispatchAssign"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.dispatchBoard",
+      "name": "dispatchBoard"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.dispatchUpdate",
+      "name": "dispatchUpdate"
+    },
+    {
+      "_derived": false,
+      "domain": "plumbing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "lengthFeet": 10,
+                "pipeSizeInches": 2
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "lengthFeet": 20,
+                "pipeSizeInches": 4
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "lengthFeet": "Infinity",
+                "pipeSizeInches": "abc"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "lengthFeet": {
+          "type": "number"
+        },
+        "pipeSizeInches": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.pipeSize === 'string'",
+        "output.ok === false || typeof output.result.length === 'string'",
+        "output.ok === false || typeof output.result.slopePerFoot === 'string'",
+        "output.ok === false || typeof output.result.totalDrop === 'string'",
+        "output.ok === false || typeof output.result.ipcCode === 'string'",
+        "output.ok === false || typeof output.result.tip === 'string'",
+        "output.ok === false || Number.isFinite(parseFloat(output.result.totalDrop))",
+        "output.ok === false || Number.isFinite(parseFloat(output.result.slopePerFoot))"
+      ],
+      "macro_id": "plumbing.drainSlope",
+      "name": "drainSlope"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": false,
+      "domain": "plumbing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "fixtures": [
+                  {
+                    "count": 2,
+                    "type": "toilet"
+                  },
+                  {
+                    "count": 2,
+                    "type": "lavatory"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "fixtures": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "fixtures": "not-an-array"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "fixtures": [
+                  {
+                    "count": "abc",
+                    "type": "toilet"
+                  },
+                  null,
+                  "junk",
+                  {
+                    "count": "Infinity",
+                    "type": "shower"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "fixtures": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.message === 'string' || Number.isFinite(output.result.totalWSFU)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.fixtures)",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.meterSize === 'string'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.supplyLine === 'string'",
+        "output.ok === false || output.result.message !== undefined || typeof output.result.note === 'string'"
+      ],
+      "macro_id": "plumbing.fixtureCount",
+      "name": "fixtureCount"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.invoiceFromQuote",
+      "name": "invoiceFromQuote"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.invoiceList",
+      "name": "invoiceList"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.invoiceRecordPayment",
+      "name": "invoiceRecordPayment"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.jobComplete",
+      "name": "jobComplete"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "plumbing.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +388,583 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "plumbing.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.notifyLog",
+      "name": "notifyLog"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.notifySend",
+      "name": "notifySend"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.opsSummary",
+      "name": "opsSummary"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.partList",
+      "name": "partList"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.partStock",
+      "name": "partStock"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": false,
+      "domain": "plumbing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "flowGPM": 10,
+                "material": "copper",
+                "velocityFPS": 5
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "flowGPM": 20,
+                "velocityFPS": 10
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "flowGPM": "abc",
+                "velocityFPS": "Infinity"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "flowGPM": {
+          "type": "number"
+        },
+        "material": {
+          "maxLength": 40,
+          "type": "string"
+        },
+        "velocityFPS": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.flowRate === 'string'",
+        "output.ok === false || typeof output.result.velocity === 'string'",
+        "output.ok === false || typeof output.result.calculatedDiameter === 'string'",
+        "output.ok === false || typeof output.result.recommendedSize === 'string'",
+        "output.ok === false || typeof output.result.material === 'string'",
+        "output.ok === false || typeof output.result.note === 'string'",
+        "output.ok === false || Number.isFinite(parseFloat(output.result.calculatedDiameter))",
+        "output.ok === false || Number.isFinite(parseFloat(output.result.recommendedSize))"
+      ],
+      "macro_id": "plumbing.pipeSize",
+      "name": "pipeSize"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.planCreate",
+      "name": "planCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.planList",
+      "name": "planList"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.planLogVisit",
+      "name": "planLogVisit"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.priceBookList",
+      "name": "priceBookList"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.priceItemAdd",
+      "name": "priceItemAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.priceItemRemove",
+      "name": "priceItemRemove"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.priceItemUpdate",
+      "name": "priceItemUpdate"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "plumbing.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.techAdd",
+      "name": "techAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.techList",
+      "name": "techList"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.techRemove",
+      "name": "techRemove"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": false,
+      "domain": "plumbing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "household": 4,
+                "simultaneousFixtures": 2
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "household": 6,
+                "simultaneousFixtures": 3
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "household": "x",
+                "simultaneousFixtures": "NaN",
+                "tempRiseF": "Infinity"
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "household": {
+          "type": "number"
+        },
+        "simultaneousFixtures": {
+          "type": "number"
+        },
+        "tempRiseF": {
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.household)",
+        "output.ok === false || Number.isFinite(output.result.peakDemandGPM)",
+        "output.ok === false || typeof output.result.tankRecommendation === 'string'",
+        "output.ok === false || typeof output.result.tanklessRecommendation === 'string'",
+        "output.ok === false || Number.isFinite(output.result.firstHourRating)",
+        "output.ok === false || typeof output.result.recommendation === 'string'",
+        "output.ok === false || Number.isFinite(parseFloat(output.result.tanklessRecommendation))",
+        "output.ok === false || Number.isFinite(parseFloat(output.result.tankRecommendation))"
+      ],
+      "macro_id": "plumbing.waterHeaterSize",
+      "name": "waterHeaterSize"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.workflowGet",
+      "name": "workflowGet"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.workflowStart",
+      "name": "workflowStart"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.workflowUpdate",
+      "name": "workflowUpdate"
     }
   ],
   "domain": "plumbing",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 51
 }

@@ -10,8 +10,443 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "chem.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.balance-reaction",
+      "name": "balance-reaction"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.balanceReaction",
+      "name": "balanceReaction"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.calc-dilution",
+      "name": "calc-dilution"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.calc-gas-law",
+      "name": "calc-gas-law"
+    },
+    {
+      "_derived": false,
+      "domain": "chem",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "liters": 1,
+            "moles": 0.5
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "molarity": 0.5,
+            "moles": 2
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "liters": 2,
+            "molarity": 0.25
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "moles": 1
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "liters": 1,
+            "molarity": 1,
+            "moles": 1
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "liters": 0,
+            "moles": 5
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "liters": 2,
+            "moles": "1e999"
+          }
+        }
+      ],
+      "inputs": {
+        "liters": {
+          "required": false,
+          "type": "number"
+        },
+        "molarity": {
+          "required": false,
+          "type": "number"
+        },
+        "moles": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.moles)",
+        "output.ok === false || Number.isFinite(output.result.liters)",
+        "output.ok === false || Number.isFinite(output.result.molarity)",
+        "output.ok === false || output.result.formula === 'M = mol / L'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "chem.calc-molarity",
+      "name": "calc-molarity"
+    },
+    {
+      "_derived": false,
+      "domain": "chem",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "concentration": 0.001,
+            "kind": "acid"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "concentration": 0.01,
+            "kind": "base"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "concentration": 1e-7,
+            "kind": "h_plus"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "concentration": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "concentration": -1
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "concentration": "1e999"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "concentration": 0.1,
+            "kind": "bogus"
+          }
+        }
+      ],
+      "inputs": {
+        "concentration": {
+          "required": true,
+          "type": "number"
+        },
+        "kind": {
+          "maxLength": 16,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.pH)",
+        "output.ok === false || Number.isFinite(output.result.pOH)",
+        "output.ok === false || Math.abs((output.result.pH + output.result.pOH) - 14) < 0.01",
+        "output.ok === false || ['acidic','basic','neutral'].indexOf(output.result.classification) !== -1",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "chem.calc-ph",
+      "name": "calc-ph"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.check-interactions",
+      "name": "check-interactions"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.conformer-3d",
+      "name": "conformer-3d"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.delete-structure",
+      "name": "delete-structure"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.enthalpyCalc",
+      "name": "enthalpyCalc"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.explore-element",
+      "name": "explore-element"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.generate-safety",
+      "name": "generate-safety"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.gibbsEnergy",
+      "name": "gibbsEnergy"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "chem.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.list-structures",
+      "name": "list-structures"
     },
     {
       "_derived": true,
@@ -49,11 +484,617 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "chem.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": false,
+      "domain": "chem",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "formula": "H2O"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "formula": "C6H12O6"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "formula": "Ca(OH)2"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "formula": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "formula": "Xx2"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "formula": "C99H99"
+          }
+        }
+      ],
+      "inputs": {
+        "formula": {
+          "maxLength": 100,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.molecularWeight)",
+        "output.ok === false || output.result.molecularWeight > 0",
+        "output.ok === false || output.result.units === 'g/mol'",
+        "output.ok === false || Array.isArray(output.result.components)",
+        "output.ok === false || output.result.components.every(function(c){ return Number.isFinite(c.contribution) && Number.isFinite(c.percentMass); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "chem.molecular-weight",
+      "name": "molecular-weight"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.molecularAnalysis",
+      "name": "molecularAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.notebook-add",
+      "name": "notebook-add"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.notebook-delete",
+      "name": "notebook-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.notebook-list",
+      "name": "notebook-list"
+    },
+    {
+      "_derived": false,
+      "domain": "chem",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "smiles": "CCO"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "smiles": "c1ccccc1"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "smiles": "CC(=O)O"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "smiles": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "smiles": "C[NaCl"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "smiles": "C1CCCCC"
+          }
+        }
+      ],
+      "inputs": {
+        "smiles": {
+          "maxLength": 400,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.formula === 'string'",
+        "output.ok === false || Number.isInteger(output.result.heavyAtomCount)",
+        "output.ok === false || Number.isInteger(output.result.ringCount)",
+        "output.ok === false || output.result.molecularWeight === null || Number.isFinite(output.result.molecularWeight)",
+        "output.ok === false || Array.isArray(output.result.atoms)",
+        "output.ok === false || Array.isArray(output.result.bonds)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "chem.parse-smiles",
+      "name": "parse-smiles"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.periodic-table",
+      "name": "periodic-table"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.profile-molecule",
+      "name": "profile-molecule"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.react",
+      "name": "react"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.reaction-mechanism",
+      "name": "reaction-mechanism"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "chem.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.resolve-structure",
+      "name": "resolve-structure"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.save-structure",
+      "name": "save-structure"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.solutionChemistry",
+      "name": "solutionChemistry"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.spectroscopy-reference",
+      "name": "spectroscopy-reference"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.status",
+      "name": "status"
+    },
+    {
+      "_derived": false,
+      "domain": "chem",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "amounts": {
+              "H2": {
+                "grams": 4
+              },
+              "O2": {
+                "grams": 40
+              }
+            },
+            "equation": "2H2 + O2 -> 2H2O"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "actualYield": {
+              "compound": "H2O",
+              "moles": 1.5
+            },
+            "amounts": {
+              "H2": {
+                "moles": 2
+              },
+              "O2": {
+                "moles": 2
+              }
+            },
+            "equation": "2H2 + O2 -> 2H2O"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "amounts": {
+              "H2": {
+                "grams": 4
+              }
+            },
+            "equation": "2H2 + O2 2H2O"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "equation": "2H2 + O2 -> 2H2O"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "equation": ""
+          }
+        }
+      ],
+      "inputs": {
+        "actualYield": {
+          "required": false,
+          "type": "object"
+        },
+        "amounts": {
+          "required": false,
+          "type": "object"
+        },
+        "equation": {
+          "maxLength": 256,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.limitingReagent === 'string'",
+        "output.ok === false || Number.isFinite(output.result.reactionExtent)",
+        "output.ok === false || Array.isArray(output.result.products)",
+        "output.ok === false || output.result.products.every(function(p){ return p.gramsProduced == null || Number.isFinite(p.gramsProduced); })",
+        "output.ok === false || output.result.products.every(function(p){ return p.molesProduced == null || Number.isFinite(p.molesProduced); })",
+        "output.ok === false || output.result.percentYield == null || Number.isFinite(output.result.percentYield.percent)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "chem.stoichiometry",
+      "name": "stoichiometry"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.structure-layout",
+      "name": "structure-layout"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.thermodynamics",
+      "name": "thermodynamics"
+    },
+    {
+      "_derived": true,
+      "domain": "chem",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "chem.vote",
+      "name": "vote"
     }
   ],
   "domain": "chem",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 4
+  "macroCount": 55
 }

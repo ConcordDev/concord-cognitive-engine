@@ -1,0 +1,566 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.audience-demographic-log",
+      "name": "audience-demographic-log"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.audience-demographics",
+      "name": "audience-demographics"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.audience-history",
+      "name": "audience-history"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.audience-log",
+      "name": "audience-log"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.audience-summary",
+      "name": "audience-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.comment-add",
+      "name": "comment-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.comment-delete",
+      "name": "comment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.comment-list",
+      "name": "comment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.comment-update",
+      "name": "comment-update"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.content-add",
+      "name": "content-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.content-advance",
+      "name": "content-advance"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.content-calendar",
+      "name": "content-calendar"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.content-delete",
+      "name": "content-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.content-list",
+      "name": "content-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.content-performance",
+      "name": "content-performance"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.content-track",
+      "name": "content-track"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.content-update",
+      "name": "content-update"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.creator-dashboard",
+      "name": "creator-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.creator-goal-set",
+      "name": "creator-goal-set"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.creator-goal-status",
+      "name": "creator-goal-status"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.dashboard",
+      "name": "dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.membership-summary",
+      "name": "membership-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.membership-tier-add",
+      "name": "membership-tier-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.membership-tier-delete",
+      "name": "membership-tier-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.membership-tier-list",
+      "name": "membership-tier-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.payout-history",
+      "name": "payout-history"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.payout-record",
+      "name": "payout-record"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.payout-update-status",
+      "name": "payout-update-status"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.platform-add",
+      "name": "platform-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.platform-delete",
+      "name": "platform-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.platform-list",
+      "name": "platform-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.publish-queue-add",
+      "name": "publish-queue-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.publish-queue-cancel",
+      "name": "publish-queue-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.publish-queue-list",
+      "name": "publish-queue-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.publish-queue-run-due",
+      "name": "publish-queue-run-due"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.revenue-add",
+      "name": "revenue-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.revenue-list",
+      "name": "revenue-list"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.revenue-summary",
+      "name": "revenue-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.revenue-timeseries",
+      "name": "revenue-timeseries"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.royalty-summary",
+      "name": "royalty-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.subscription-add",
+      "name": "subscription-add"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.subscription-cancel",
+      "name": "subscription-cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "creator",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creator.subscription-list",
+      "name": "subscription-list"
+    }
+  ],
+  "domain": "creator",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 43
+}

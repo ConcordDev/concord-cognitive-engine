@@ -1,6 +1,889 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "art",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "query": "   "
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "required": false,
+          "type": "number"
+        },
+        "query": {
+          "maxLength": 200,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "art.aic-search",
+      "name": "aic-search"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.art-dashboard",
+      "name": "art-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.art-prompt",
+      "name": "art-prompt"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.artwork-create",
+      "name": "artwork-create"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.artwork-delete",
+      "name": "artwork-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.artwork-flip",
+      "name": "artwork-flip"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.artwork-get",
+      "name": "artwork-get"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.artwork-list",
+      "name": "artwork-list"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.artwork-rename",
+      "name": "artwork-rename"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.artwork-resize",
+      "name": "artwork-resize"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.artwork-save-thumbnail",
+      "name": "artwork-save-thumbnail"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.brush-preset-delete",
+      "name": "brush-preset-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.brush-preset-save",
+      "name": "brush-preset-save"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.brush-presets",
+      "name": "brush-presets"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.color-mix",
+      "name": "color-mix"
+    },
+    {
+      "_derived": false,
+      "domain": "art",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "palette": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "palette": [
+              "#ff0000",
+              "#00ffff",
+              "#ff1a00"
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "palette": [
+              {
+                "hex": "#3498db"
+              },
+              {
+                "hex": "#db7734"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "palette": [
+              "#zzzzzz",
+              "#00ff00"
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "palette": [
+              "#ff0000",
+              "1e999"
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "palette": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.harmonyScore)",
+        "output.ok === false || output.result.message !== undefined || (output.result.harmonyScore >= 0 && output.result.harmonyScore <= 100)",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.dominantHue)",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.harmonies)",
+        "output.ok === false || output.result.message !== undefined || ['warm','cool','balanced'].includes(output.result.temperature)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "art.colorHarmony",
+      "name": "colorHarmony"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "art",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "elements": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "canvas": {
+              "height": 1080,
+              "width": 1920
+            },
+            "elements": [
+              {
+                "height": 200,
+                "weight": 2,
+                "width": 200,
+                "x": 640,
+                "y": 360
+              },
+              {
+                "height": 150,
+                "width": 150,
+                "x": 1280,
+                "y": 720
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "canvas": {
+              "height": 1080,
+              "width": 1920
+            },
+            "elements": [
+              {
+                "height": 10,
+                "width": 10,
+                "x": "Infinity",
+                "y": 0
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "canvas": {
+              "height": 1080,
+              "width": 1920
+            },
+            "elements": [
+              {
+                "height": 10,
+                "width": "1e999",
+                "x": 1,
+                "y": 1
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "canvas": {
+              "height": 1080,
+              "width": "NaN"
+            },
+            "elements": [
+              {
+                "height": 10,
+                "width": 10,
+                "x": 1,
+                "y": 1
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "canvas": {
+          "required": false,
+          "type": "object"
+        },
+        "elements": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overall)",
+        "output.ok === false || output.result.message !== undefined || (output.result.overall >= 0 && output.result.overall <= 100)",
+        "output.ok === false || output.result.message !== undefined || ['excellent','good','fair','needs_work'].includes(output.result.rating)",
+        "output.ok === false || output.result.message !== undefined || ['ruleOfThirds','goldenRatio','balance','whitespace','visualFlow'].every(function(k){ return Number.isFinite(output.result.scores[k]); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "art.compositionScore",
+      "name": "compositionScore"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.dynamics-get",
+      "name": "dynamics-get"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.dynamics-set",
+      "name": "dynamics-set"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.element-delete",
+      "name": "element-delete"
+    },
+    {
+      "_derived": false,
+      "domain": "art",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "baseColor": "#3498db",
+            "count": 5,
+            "harmony": "complementary"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "baseColor": "#ff0000"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "baseColor": "#3498db",
+            "count": "1e999",
+            "harmony": "analogous"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "baseColor": "not-a-color",
+            "count": 4
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "baseColor": "#zzz",
+            "count": 3
+          }
+        }
+      ],
+      "inputs": {
+        "baseColor": {
+          "maxLength": 7,
+          "required": false,
+          "type": "string"
+        },
+        "count": {
+          "required": false,
+          "type": "number"
+        },
+        "harmony": {
+          "maxLength": 32,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || Array.isArray(output.result.palette)",
+        "output.ok === false || output.result.palette.length >= 2",
+        "output.ok === false || output.result.palette.length <= 24",
+        "output.ok === false || output.result.palette.every(function(c){ return /^#[0-9a-f]{6}$/i.test(c.hex); })",
+        "output.ok === false || typeof output.result.harmony === 'string'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "art.generatePalette",
+      "name": "generatePalette"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.gradient-commit",
+      "name": "gradient-commit"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.guides-get",
+      "name": "guides-get"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.guides-set",
+      "name": "guides-set"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.layer-add",
+      "name": "layer-add"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.layer-adjust-color",
+      "name": "layer-adjust-color"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.layer-apply-filter",
+      "name": "layer-apply-filter"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.layer-clear",
+      "name": "layer-clear"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.layer-clear-filters",
+      "name": "layer-clear-filters"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.layer-delete",
+      "name": "layer-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.layer-duplicate",
+      "name": "layer-duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.layer-flip",
+      "name": "layer-flip"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.layer-merge-down",
+      "name": "layer-merge-down"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.layer-reorder",
+      "name": "layer-reorder"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.layer-rotate",
+      "name": "layer-rotate"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.layer-rotate90",
+      "name": "layer-rotate90"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.layer-transform",
+      "name": "layer-transform"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.layer-update",
+      "name": "layer-update"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.like",
+      "name": "like"
+    },
+    {
       "_derived": true,
       "domain": "art",
       "fuzz_cases": [],
@@ -36,11 +919,665 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "art.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.met-object",
+      "name": "met-object"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.met-search",
+      "name": "met-search"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.palette-create",
+      "name": "palette-create"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.palette-delete",
+      "name": "palette-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.palette-harmony",
+      "name": "palette-harmony"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.palette-list",
+      "name": "palette-list"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.pattern-fill-commit",
+      "name": "pattern-fill-commit"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.pattern-kinds",
+      "name": "pattern-kinds"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.publish-as-texture",
+      "name": "publish-as-texture"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.published-texture-coverage",
+      "name": "published-texture-coverage"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "art.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.reference-add",
+      "name": "reference-add"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.reference-board-create",
+      "name": "reference-board-create"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.reference-board-delete",
+      "name": "reference-board-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.reference-board-list",
+      "name": "reference-board-list"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.reference-remove",
+      "name": "reference-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.selection-clear",
+      "name": "selection-clear"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.selection-feather",
+      "name": "selection-feather"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.selection-lasso",
+      "name": "selection-lasso"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.selection-magic-wand",
+      "name": "selection-magic-wand"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.stroke-batch",
+      "name": "stroke-batch"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.stroke-commit",
+      "name": "stroke-commit"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.stroke-commit-pressure",
+      "name": "stroke-commit-pressure"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.stroke-redo",
+      "name": "stroke-redo"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.stroke-undo",
+      "name": "stroke-undo"
+    },
+    {
+      "_derived": false,
+      "domain": "art",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "attributes": {}
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "attributes": {
+              "abstraction": 40,
+              "brushwork": 80,
+              "colorSaturation": 70,
+              "contrast": 40,
+              "detail": 30,
+              "lineWeight": 20,
+              "perspective": 40,
+              "texture": 70
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "attributes": {
+              "brushwork": "Infinity",
+              "colorSaturation": "NaN",
+              "contrast": "1e999"
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "attributes": {
+              "detail": -5,
+              "texture": 999
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "attributes": {
+          "required": false,
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (output.result.topMatch && typeof output.result.topMatch.style === 'string')",
+        "output.ok === false || Number.isFinite(output.result.topMatch.similarity)",
+        "output.ok === false || Array.isArray(output.result.allMatches)",
+        "output.ok === false || output.result.allMatches.every(function(m){ return Number.isFinite(m.similarity); })",
+        "output.ok === false || ['high','moderate','low'].includes(output.result.confidence)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "art.styleClassify",
+      "name": "styleClassify"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.symmetry-mirror-stroke",
+      "name": "symmetry-mirror-stroke"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.timelapse-clear",
+      "name": "timelapse-clear"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.timelapse-frame",
+      "name": "timelapse-frame"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.timelapse-get",
+      "name": "timelapse-get"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.timelapse-start",
+      "name": "timelapse-start"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.timelapse-stop",
+      "name": "timelapse-stop"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.vision",
+      "name": "vision"
+    },
+    {
+      "_derived": true,
+      "domain": "art",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "art.vote",
+      "name": "vote"
     }
   ],
   "domain": "art",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 93
 }

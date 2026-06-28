@@ -1,0 +1,59 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "presence",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "presence.active-list",
+      "name": "active-list"
+    },
+    {
+      "_derived": true,
+      "domain": "presence",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "presence.clear-stale",
+      "name": "clear-stale"
+    },
+    {
+      "_derived": true,
+      "domain": "presence",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "presence.heartbeat",
+      "name": "heartbeat"
+    },
+    {
+      "_derived": true,
+      "domain": "presence",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "presence.presence-stats",
+      "name": "presence-stats"
+    }
+  ],
+  "domain": "presence",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 4
+}

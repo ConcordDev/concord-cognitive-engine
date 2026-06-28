@@ -1,0 +1,397 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.amdahlProjection",
+      "name": "amdahlProjection"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.blameAttribution",
+      "name": "blameAttribution"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.clearLockTrace",
+      "name": "clearLockTrace"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.contentionAnalysis",
+      "name": "contentionAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.deadlockDetect",
+      "name": "deadlockDetect"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.fairnessScore",
+      "name": "fairnessScore"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.holdTimeline",
+      "name": "holdTimeline"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.hotspotRanking",
+      "name": "hotspotRanking"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.orderingAnalysis",
+      "name": "orderingAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.recordLockEvent",
+      "name": "recordLockEvent"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "lock",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "lock.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "lock",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 30
+}

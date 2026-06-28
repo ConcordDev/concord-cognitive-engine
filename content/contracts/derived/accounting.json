@@ -10,6 +10,1353 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "accounting.aging-ap",
+      "name": "aging-ap"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.aging-ar",
+      "name": "aging-ar"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.ai-categorize-txn",
+      "name": "ai-categorize-txn"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.ai-suggest-vendor",
+      "name": "ai-suggest-vendor"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.audit-log-list",
+      "name": "audit-log-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.audit-trail",
+      "name": "audit-trail"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.balance-sheet-compute",
+      "name": "balance-sheet-compute"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bank-feeds-bulk-accept",
+      "name": "bank-feeds-bulk-accept"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bank-feeds-bulk-suggest",
+      "name": "bank-feeds-bulk-suggest"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bank-feeds-categorize",
+      "name": "bank-feeds-categorize"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bank-feeds-import",
+      "name": "bank-feeds-import"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bank-feeds-institutions-list",
+      "name": "bank-feeds-institutions-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bank-feeds-link-institution",
+      "name": "bank-feeds-link-institution"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bank-feeds-list",
+      "name": "bank-feeds-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bank-feeds-sync",
+      "name": "bank-feeds-sync"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bank-feeds-uncategorize",
+      "name": "bank-feeds-uncategorize"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bank-feeds-unlink-institution",
+      "name": "bank-feeds-unlink-institution"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bills-create",
+      "name": "bills-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bills-delete",
+      "name": "bills-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bills-list",
+      "name": "bills-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bills-pay",
+      "name": "bills-pay"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.budget-create",
+      "name": "budget-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.budget-delete",
+      "name": "budget-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.budget-list",
+      "name": "budget-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.budget-set-line",
+      "name": "budget-set-line"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.budget-vs-actual",
+      "name": "budget-vs-actual"
+    },
+    {
+      "_derived": false,
+      "domain": "accounting",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "budget": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "budget": [
+              {
+                "actual": 1200,
+                "category": "Marketing",
+                "planned": 1000
+              },
+              {
+                "actual": 400,
+                "category": "Travel",
+                "planned": 500
+              }
+            ],
+            "period": "Q1"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "budget": [
+              {
+                "actual": "1e999",
+                "category": "X",
+                "planned": "Infinity"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "budget": [
+              {
+                "actual": "NaN",
+                "category": "Y",
+                "planned": 0
+              }
+            ]
+          }
+        },
+        {
+          "expect": {},
+          "input": {
+            "budget": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "budget": {
+          "required": false,
+          "type": "array"
+        },
+        "period": {
+          "maxLength": 64,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.totalPlanned)",
+        "output.ok === false || Number.isFinite(output.result.totalActual)",
+        "output.ok === false || Number.isFinite(output.result.totalVariance)",
+        "output.ok === false || Number.isFinite(output.result.totalVariancePct)",
+        "output.ok === false || Array.isArray(output.result.lineItems)",
+        "output.ok === false || output.result.lineItems.every(function(l){ return Number.isFinite(l.variance) && Number.isFinite(l.variancePct); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "accounting.budgetVariance",
+      "name": "budgetVariance"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.cashflow-compute",
+      "name": "cashflow-compute"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.category-rules-create",
+      "name": "category-rules-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.category-rules-delete",
+      "name": "category-rules-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.category-rules-list",
+      "name": "category-rules-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.coa-archive",
+      "name": "coa-archive"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.coa-create",
+      "name": "coa-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.coa-list",
+      "name": "coa-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.coa-update",
+      "name": "coa-update"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.currency-list",
+      "name": "currency-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.currency-refresh-rates",
+      "name": "currency-refresh-rates"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.currency-set-base",
+      "name": "currency-set-base"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.customers-create",
+      "name": "customers-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.customers-delete",
+      "name": "customers-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.customers-list",
+      "name": "customers-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.customers-update",
+      "name": "customers-update"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.dashboard-summary",
+      "name": "dashboard-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.dimension-create",
+      "name": "dimension-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.dimension-delete",
+      "name": "dimension-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.dimension-list",
+      "name": "dimension-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.efile-1099-fire",
+      "name": "efile-1099-fire"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.efile-w2-export",
+      "name": "efile-w2-export"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.employee-create",
+      "name": "employee-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.employee-delete",
+      "name": "employee-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.employee-list",
+      "name": "employee-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.employee-update",
+      "name": "employee-update"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.estimates-convert",
+      "name": "estimates-convert"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.estimates-create",
+      "name": "estimates-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.estimates-list",
+      "name": "estimates-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.expenses-create",
+      "name": "expenses-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.expenses-list",
+      "name": "expenses-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.financial-ratios",
+      "name": "financial-ratios"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.fx-revaluation",
+      "name": "fx-revaluation"
+    },
+    {
+      "_derived": false,
+      "domain": "accounting",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "client": {
+              "name": "Acme"
+            },
+            "lineItems": [
+              {
+                "description": "Widget",
+                "quantity": 3,
+                "taxRate": 0.1,
+                "unitPrice": 10
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "client": {
+              "name": "Empty"
+            },
+            "lineItems": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "client": {
+              "name": "Poison"
+            },
+            "lineItems": [
+              {
+                "description": "X",
+                "quantity": "1e999",
+                "unitPrice": "Infinity"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lineItems": [
+              {
+                "description": "Y",
+                "quantity": "NaN",
+                "taxRate": "Infinity",
+                "unitPrice": 5
+              }
+            ]
+          }
+        },
+        {
+          "expect": {},
+          "input": {
+            "lineItems": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "client": {
+          "required": false,
+          "type": "object"
+        },
+        "dueDays": {
+          "max": 3650,
+          "min": 0,
+          "required": false,
+          "type": "number"
+        },
+        "lineItems": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.subtotal)",
+        "output.ok === false || Number.isFinite(output.result.totalTax)",
+        "output.ok === false || Number.isFinite(output.result.grandTotal)",
+        "output.ok === false || Array.isArray(output.result.lineItems)",
+        "output.ok === false || output.result.lineItems.every(function(l){ return Number.isFinite(l.subtotal) && Number.isFinite(l.total); })",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "accounting.generate-invoice",
+      "name": "generate-invoice"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.generate-statements",
+      "name": "generate-statements"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.inventory-low-stock",
+      "name": "inventory-low-stock"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.invoice-create",
+      "name": "invoice-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.invoice-create-payment-link",
+      "name": "invoice-create-payment-link"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.invoice-list",
+      "name": "invoice-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.invoice-mark-paid",
+      "name": "invoice-mark-paid"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.invoice-webhook-mark-paid",
+      "name": "invoice-webhook-mark-paid"
+    },
+    {
+      "_derived": false,
+      "domain": "accounting",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "invoices": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "asOfDate": "2026-02-01",
+            "invoices": [
+              {
+                "amount": 100,
+                "customer": "X",
+                "dueDate": "2026-02-10",
+                "invoiceId": "A"
+              },
+              {
+                "amount": 200,
+                "customer": "Y",
+                "dueDate": "2026-01-20",
+                "invoiceId": "B"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "asOfDate": "2026-02-01",
+            "invoices": [
+              {
+                "amount": "1e999",
+                "dueDate": "2026-01-20",
+                "invoiceId": "C"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "invoices": [
+              {
+                "amount": "Infinity",
+                "dueDate": "2026-01-20",
+                "invoiceId": "D"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {},
+          "input": {
+            "invoices": "x"
+          }
+        }
+      ],
+      "inputs": {
+        "asOfDate": {
+          "maxLength": 32,
+          "required": false,
+          "type": "string"
+        },
+        "invoices": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.totalOutstanding)",
+        "output.ok === false || Number.isFinite(output.result.totalOverdue)",
+        "output.ok === false || Number.isFinite(output.result.avgDaysOutstanding)",
+        "output.ok === false || (typeof output.result.buckets === 'object' && Number.isFinite(output.result.buckets.current.total))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "accounting.invoiceAging",
+      "name": "invoiceAging"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.item-adjust-stock",
+      "name": "item-adjust-stock"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.item-create",
+      "name": "item-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.item-delete",
+      "name": "item-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.item-list",
+      "name": "item-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.item-update",
+      "name": "item-update"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.je-post",
+      "name": "je-post"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.je-tag-dimension",
+      "name": "je-tag-dimension"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.ledger-list",
+      "name": "ledger-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "accounting.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +1370,922 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "accounting.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.payroll-ach-batch",
+      "name": "payroll-ach-batch"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.payroll-summary",
+      "name": "payroll-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.payroll-tax-efile",
+      "name": "payroll-tax-efile"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.payrun-create",
+      "name": "payrun-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.payrun-detail",
+      "name": "payrun-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.payrun-list",
+      "name": "payrun-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.pl-compute",
+      "name": "pl-compute"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.po-create",
+      "name": "po-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.po-delete",
+      "name": "po-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.po-list",
+      "name": "po-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.po-receive",
+      "name": "po-receive"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": false,
+      "domain": "accounting",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "accounts": [
+              {
+                "accountNumber": "4000",
+                "entries": [
+                  {
+                    "credit": 1000,
+                    "date": "2026-03-01",
+                    "debit": 0
+                  }
+                ],
+                "name": "Sales",
+                "type": "revenue"
+              },
+              {
+                "accountNumber": "5000",
+                "entries": [
+                  {
+                    "credit": 0,
+                    "date": "2026-03-02",
+                    "debit": 400
+                  }
+                ],
+                "type": "cogs"
+              }
+            ],
+            "endDate": "2026-12-31",
+            "startDate": "2026-01-01"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "accounts": [
+              {
+                "accountNumber": "6000",
+                "entries": [
+                  {
+                    "credit": 0,
+                    "date": "2026-03-03",
+                    "debit": 200
+                  }
+                ],
+                "type": "expense"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "accounts": [
+              {
+                "accountNumber": "4000",
+                "entries": [
+                  {
+                    "credit": "1e999",
+                    "date": "2026-03-01",
+                    "debit": 0
+                  }
+                ],
+                "type": "revenue"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "accounts": [
+              {
+                "accountNumber": "4000",
+                "entries": [
+                  {
+                    "credit": "Infinity",
+                    "date": "2026-03-01",
+                    "debit": "NaN"
+                  }
+                ],
+                "type": "revenue"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {},
+          "input": {
+            "accounts": "boom"
+          }
+        }
+      ],
+      "inputs": {
+        "accounts": {
+          "required": false,
+          "type": "array"
+        },
+        "endDate": {
+          "maxLength": 32,
+          "required": false,
+          "type": "string"
+        },
+        "startDate": {
+          "maxLength": 32,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.revenue.total)",
+        "output.ok === false || Number.isFinite(output.result.costOfGoodsSold.total)",
+        "output.ok === false || Number.isFinite(output.result.grossProfit)",
+        "output.ok === false || Number.isFinite(output.result.netIncome)",
+        "output.ok === false || Number.isFinite(output.result.grossMarginPct)",
+        "output.ok === false || Number.isFinite(output.result.netMarginPct)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "accounting.profitLoss",
+      "name": "profitLoss"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.receipt-ocr",
+      "name": "receipt-ocr"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.receipt-ocr-to-expense",
+      "name": "receipt-ocr-to-expense"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "accounting.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.reconcile",
+      "name": "reconcile"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.recurring-bills-create",
+      "name": "recurring-bills-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.recurring-bills-delete",
+      "name": "recurring-bills-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.recurring-bills-list",
+      "name": "recurring-bills-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.recurring-bills-run-due",
+      "name": "recurring-bills-run-due"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.recurring-bills-toggle",
+      "name": "recurring-bills-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.recurring-invoices-create",
+      "name": "recurring-invoices-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.recurring-invoices-list",
+      "name": "recurring-invoices-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.recurring-invoices-run-due",
+      "name": "recurring-invoices-run-due"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.recurring-invoices-toggle",
+      "name": "recurring-invoices-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.rentRoll",
+      "name": "rentRoll"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.runway-forecast",
+      "name": "runway-forecast"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.segment-pl",
+      "name": "segment-pl"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.summary-1099",
+      "name": "summary-1099"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.tax-code-create",
+      "name": "tax-code-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.tax-code-delete",
+      "name": "tax-code-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.tax-code-list",
+      "name": "tax-code-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.tax-liability",
+      "name": "tax-liability"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.tax-payment-record",
+      "name": "tax-payment-record"
+    },
+    {
+      "_derived": false,
+      "domain": "accounting",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "accounts": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "accounts": [
+              {
+                "accountNumber": "1000",
+                "entries": [
+                  {
+                    "credit": 0,
+                    "date": "2026-01-01",
+                    "debit": 1000
+                  },
+                  {
+                    "credit": 1000,
+                    "date": "2026-01-02",
+                    "debit": 0
+                  }
+                ],
+                "name": "Cash",
+                "type": "asset"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "accounts": [
+              {
+                "accountNumber": "1000",
+                "entries": [
+                  {
+                    "credit": 0,
+                    "date": "2026-01-01",
+                    "debit": "Infinity"
+                  }
+                ],
+                "type": "asset"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "accounts": [
+              {
+                "accountNumber": "1000",
+                "entries": [
+                  {
+                    "credit": "NaN",
+                    "date": "2026-01-01",
+                    "debit": "1e999"
+                  }
+                ],
+                "type": "asset"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {},
+          "input": {
+            "accounts": "not-an-array"
+          }
+        }
+      ],
+      "inputs": {
+        "accounts": {
+          "required": false,
+          "type": "array"
+        },
+        "asOfDate": {
+          "maxLength": 32,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.totalDebits === 'number' && Number.isFinite(output.result.totalDebits))",
+        "output.ok === false || (typeof output.result.totalCredits === 'number' && Number.isFinite(output.result.totalCredits))",
+        "output.ok === false || Number.isFinite(output.result.difference)",
+        "output.ok === false || typeof output.result.isBalanced === 'boolean'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "accounting.trialBalance",
+      "name": "trialBalance"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.validate-ledger",
+      "name": "validate-ledger"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.vendors-create",
+      "name": "vendors-create"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.vendors-delete",
+      "name": "vendors-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.vendors-list",
+      "name": "vendors-list"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.vendors-update",
+      "name": "vendors-update"
+    },
+    {
+      "_derived": true,
+      "domain": "accounting",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "accounting.vote",
+      "name": "vote"
     }
   ],
   "domain": "accounting",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 137
 }

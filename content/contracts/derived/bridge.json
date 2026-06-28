@@ -1,0 +1,553 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.alertEvaluate",
+      "name": "alertEvaluate"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.alertRuleList",
+      "name": "alertRuleList"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.alertRuleRemove",
+      "name": "alertRuleRemove"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.alertRuleUpsert",
+      "name": "alertRuleUpsert"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.connectionHealth",
+      "name": "connectionHealth"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.dataMapping",
+      "name": "dataMapping"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.flowList",
+      "name": "flowList"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.flowReplay",
+      "name": "flowReplay"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.mappingList",
+      "name": "mappingList"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.mappingPreview",
+      "name": "mappingPreview"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.mappingRemove",
+      "name": "mappingRemove"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.mappingUpsert",
+      "name": "mappingUpsert"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.peerList",
+      "name": "peerList"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.peerRegister",
+      "name": "peerRegister"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.peerRemove",
+      "name": "peerRemove"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.recordFlow",
+      "name": "recordFlow"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.scheduleList",
+      "name": "scheduleList"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.scheduleSet",
+      "name": "scheduleSet"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.syncStatus",
+      "name": "syncStatus"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.syncTopology",
+      "name": "syncTopology"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.throughputAnalysis",
+      "name": "throughputAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.throughputHistory",
+      "name": "throughputHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "bridge",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "bridge.vote",
+      "name": "vote"
+    }
+  ],
+  "domain": "bridge",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 42
+}

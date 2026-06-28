@@ -1,6 +1,193 @@
 {
   "contracts": [
     {
+      "_derived": false,
+      "domain": "inheritance",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "category": "property",
+            "label": "Manor of Asbir",
+            "valueCc": 500
+          }
+        },
+        {
+          "expect": {
+            "error": "missing_label",
+            "ok": false
+          },
+          "input": {
+            "category": "property",
+            "valueCc": 50
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid numeric field: valueCc",
+            "ok": false
+          },
+          "input": {
+            "label": "Poisoned estate",
+            "valueCc": 1e+308
+          }
+        }
+      ],
+      "inputs": {
+        "category": {
+          "enum": [
+            "property",
+            "recipe",
+            "currency",
+            "artifact",
+            "other"
+          ],
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        },
+        "location": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "notes": {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        "valueCc": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.asset && typeof output.result.asset.id === 'string')",
+        "output.ok === false || (typeof output.result.asset.valueCc === 'number' && Number.isFinite(output.result.asset.valueCc) && output.result.asset.valueCc >= 0 && output.result.asset.valueCc <= 1000000)",
+        "output.ok === false || Array.isArray(output.result.assets)"
+      ],
+      "macro_id": "inheritance.add_asset",
+      "name": "add_asset"
+    },
+    {
+      "_derived": false,
+      "domain": "inheritance",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Asbir",
+            "relationship": "child",
+            "sharePct": 40
+          }
+        },
+        {
+          "expect": {
+            "error": "missing_name",
+            "ok": false
+          },
+          "input": {
+            "relationship": "child",
+            "sharePct": 40
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Greedy heir",
+            "sharePct": 9999
+          }
+        }
+      ],
+      "inputs": {
+        "contingent": {
+          "type": "boolean"
+        },
+        "contingentOn": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        },
+        "relationship": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "sharePct": {
+          "max": 100,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.beneficiary && typeof output.result.beneficiary.id === 'string')",
+        "output.ok === false || (typeof output.result.beneficiary.sharePct === 'number' && Number.isFinite(output.result.beneficiary.sharePct) && output.result.beneficiary.sharePct >= 0 && output.result.beneficiary.sharePct <= 100)",
+        "output.ok === false || Array.isArray(output.result.beneficiaries)"
+      ],
+      "macro_id": "inheritance.add_beneficiary",
+      "name": "add_beneficiary"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.amend_lock",
+      "name": "amend_lock"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.assign_executor",
+      "name": "assign_executor"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.author_will",
+      "name": "author_will"
+    },
+    {
       "_derived": true,
       "domain": "inheritance",
       "fuzz_cases": [],
@@ -12,6 +199,97 @@
       ],
       "macro_id": "inheritance.claim_slot",
       "name": "claim_slot"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.estate_overview",
+      "name": "estate_overview"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.get_will_version",
+      "name": "get_will_version"
+    },
+    {
+      "_derived": false,
+      "domain": "inheritance",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.assets)",
+        "output.ok === false || (typeof output.result.totalValueCc === 'number' && Number.isFinite(output.result.totalValueCc) && output.result.totalValueCc >= 0)",
+        "output.ok === false || output.result.totalValueCc === output.result.assets.reduce((s, a) => s + (Number(a.valueCc) || 0), 0)",
+        "output.ok === false || (output.result.byCategory && typeof output.result.byCategory === 'object')"
+      ],
+      "macro_id": "inheritance.list_assets",
+      "name": "list_assets"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.list_beneficiaries",
+      "name": "list_beneficiaries"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.list_executors",
+      "name": "list_executors"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.list_locks",
+      "name": "list_locks"
     },
     {
       "_derived": true,
@@ -36,6 +314,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "inheritance.list_notices",
+      "name": "list_notices"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "inheritance.list_open",
       "name": "list_open"
     },
@@ -48,6 +339,84 @@
         "output !== null && output !== undefined",
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.list_will_versions",
+      "name": "list_will_versions"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.notify_heir",
+      "name": "notify_heir"
+    },
+    {
+      "_derived": false,
+      "domain": "inheritance",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "dyingNpcId": "npc_arden",
+            "heirSlotPriceCc": 10
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_npc"
+          },
+          "input": {
+            "heirSlotPriceCc": 10
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "dyingNpcId": "npc_arden",
+            "heirSlotPriceCc": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "dyingNpcId": "npc_arden",
+            "heirSlotPriceCc": -5
+          }
+        }
+      ],
+      "inputs": {
+        "dyingNpcId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        },
+        "heirSlotPriceCc": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.currency === 'CC'",
+        "output.ok === false || (output.listingId !== undefined && output.listingId !== null)",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
       ],
       "macro_id": "inheritance.open_listing",
       "name": "open_listing"
@@ -62,11 +431,189 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "inheritance.probate_timeline",
+      "name": "probate_timeline"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "inheritance.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.remove_asset",
+      "name": "remove_asset"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.remove_beneficiary",
+      "name": "remove_beneficiary"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.remove_executor",
+      "name": "remove_executor"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.respond_executor_consent",
+      "name": "respond_executor_consent"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.respond_notice",
+      "name": "respond_notice"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.restore_will_version",
+      "name": "restore_will_version"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.revoke_lock",
+      "name": "revoke_lock"
+    },
+    {
+      "_derived": false,
+      "domain": "inheritance",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "npcName": "Old Seam",
+            "priceCc": 120
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "npcName": "Free slot",
+            "priceCc": 0
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid numeric field: priceCc",
+            "ok": false
+          },
+          "input": {
+            "npcName": "Poisoned escrow",
+            "priceCc": 1e+308
+          }
+        }
+      ],
+      "inputs": {
+        "listingId": {
+          "type": "number"
+        },
+        "npcName": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "priceCc": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.lock && typeof output.result.lock.id === 'string')",
+        "output.ok === false || output.result.lock.status === 'locked'",
+        "output.ok === false || (typeof output.result.lock.priceCc === 'number' && Number.isFinite(output.result.lock.priceCc) && output.result.lock.priceCc >= 0 && output.result.lock.priceCc <= 1000000)",
+        "output.ok === false || Array.isArray(output.result.locks)"
+      ],
+      "macro_id": "inheritance.track_lock",
+      "name": "track_lock"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.update_beneficiary",
+      "name": "update_beneficiary"
     }
   ],
   "domain": "inheritance",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 5
+  "macroCount": 29
 }

@@ -10,6 +10,1101 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "game-design.animation-create",
+      "name": "animation-create"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.animation-delete",
+      "name": "animation-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.animation-frame-add",
+      "name": "animation-frame-add"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.animation-frame-delete",
+      "name": "animation-frame-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.animation-frame-reorder",
+      "name": "animation-frame-reorder"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.animation-frame-update",
+      "name": "animation-frame-update"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.animation-list",
+      "name": "animation-list"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.animation-update",
+      "name": "animation-update"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.asset-delete",
+      "name": "asset-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.asset-import",
+      "name": "asset-import"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.asset-list",
+      "name": "asset-list"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.asset-update",
+      "name": "asset-update"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.autotile-rule-add",
+      "name": "autotile-rule-add"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.autotile-rule-delete",
+      "name": "autotile-rule-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.autotile-rule-list",
+      "name": "autotile-rule-list"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.balance-report",
+      "name": "balance-report"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.behavior-create",
+      "name": "behavior-create"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.behavior-delete",
+      "name": "behavior-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.behavior-list",
+      "name": "behavior-list"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.behavior-rule-add",
+      "name": "behavior-rule-add"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.behavior-rule-delete",
+      "name": "behavior-rule-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.behavior-rule-update",
+      "name": "behavior-rule-update"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.behavior-update",
+      "name": "behavior-update"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.collab-close",
+      "name": "collab-close"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.collab-join",
+      "name": "collab-join"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.collab-open",
+      "name": "collab-open"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.collab-poll",
+      "name": "collab-poll"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.collab-push-op",
+      "name": "collab-push-op"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.entity-add",
+      "name": "entity-add"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.entity-delete",
+      "name": "entity-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.entity-field-delete",
+      "name": "entity-field-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.entity-field-set",
+      "name": "entity-field-set"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.entity-update",
+      "name": "entity-update"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.enum-create",
+      "name": "enum-create"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.enum-delete",
+      "name": "enum-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.enum-list",
+      "name": "enum-list"
+    },
+    {
+      "_derived": false,
+      "domain": "game-design",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "genre": "platformer",
+            "title": "Skybound"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "title": "   "
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "title": "<script>alert(1)</script>"
+          }
+        }
+      ],
+      "inputs": {
+        "genre": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        },
+        "platform": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 160,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.game === 'object' && typeof output.result.game.id === 'string')",
+        "output.ok === false || output.result.game.title.length <= 160",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "game-design.game-create",
+      "name": "game-create"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.game-dashboard",
+      "name": "game-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.game-delete",
+      "name": "game-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.game-export",
+      "name": "game-export"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.game-get",
+      "name": "game-get"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.game-list",
+      "name": "game-list"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.game-update",
+      "name": "game-update"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.gdd-add",
+      "name": "gdd-add"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.gdd-delete",
+      "name": "gdd-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.gdd-reorder",
+      "name": "gdd-reorder"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.gdd-update",
+      "name": "gdd-update"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-autotile",
+      "name": "level-autotile"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-collision-get",
+      "name": "level-collision-get"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-collision-set",
+      "name": "level-collision-set"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-create",
+      "name": "level-create"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-delete",
+      "name": "level-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-duplicate",
+      "name": "level-duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-export",
+      "name": "level-export"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-fill-layer",
+      "name": "level-fill-layer"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-get",
+      "name": "level-get"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-layer-add",
+      "name": "level-layer-add"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-layer-delete",
+      "name": "level-layer-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-layer-duplicate",
+      "name": "level-layer-duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-layer-reorder",
+      "name": "level-layer-reorder"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-layer-update",
+      "name": "level-layer-update"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-list",
+      "name": "level-list"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-object-add",
+      "name": "level-object-add"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-object-delete",
+      "name": "level-object-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-object-update",
+      "name": "level-object-update"
+    },
+    {
+      "_derived": false,
+      "domain": "game-design",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "index": 0,
+            "layerId": "ghost",
+            "levelId": "ghost",
+            "tile": "grass"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "index": 1e+308,
+            "layerId": "ghost",
+            "levelId": "ghost",
+            "tile": "grass"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "index": {
+          "required": true,
+          "type": "number"
+        },
+        "layerId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "levelId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "tile": {
+          "maxLength": 80,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.index === 'number'",
+        "output.ok === false || output.result.tile === null || typeof output.result.tile === 'string' || typeof output.result.tile === 'number'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "game-design.level-paint",
+      "name": "level-paint"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-paint-batch",
+      "name": "level-paint-batch"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-resize",
+      "name": "level-resize"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.level-update",
+      "name": "level-update"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "game-design.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +1118,715 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "game-design.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": false,
+      "domain": "game-design",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "gameId": "anything"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "gameId": "<script>alert(1)</script>"
+          }
+        }
+      ],
+      "inputs": {
+        "gameId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.loops)",
+        "output.ok === false || output.result.loops.every(l => Number.isFinite(l.netDelta))",
+        "output.ok === false || output.result.loops.every(l => typeof l.verdict === 'string')"
+      ],
+      "macro_id": "game-design.loop-analysis",
+      "name": "loop-analysis"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.loop-create",
+      "name": "loop-create"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.loop-delete",
+      "name": "loop-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.loop-list",
+      "name": "loop-list"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.loop-step-add",
+      "name": "loop-step-add"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.loop-step-delete",
+      "name": "loop-step-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.mechanic-add",
+      "name": "mechanic-add"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.mechanic-delete",
+      "name": "mechanic-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.mechanic-update",
+      "name": "mechanic-update"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.mechanicsAnalysis",
+      "name": "mechanicsAnalysis"
+    },
+    {
+      "_derived": false,
+      "domain": "game-design",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "expectedDAU": 12000,
+            "model": "subscription"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "model": "premium"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "conversionRate": 1e+308,
+            "expectedDAU": 1e+308,
+            "model": "free-to-play"
+          }
+        }
+      ],
+      "inputs": {
+        "conversionRate": {
+          "required": false,
+          "type": "number"
+        },
+        "expectedDAU": {
+          "required": false,
+          "type": "number"
+        },
+        "model": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.model === 'string'",
+        "output.ok === false || Number.isFinite(output.result.projectedMonthlyRevenue)",
+        "output.ok === false || output.result.projectedAnnualRevenue === output.result.projectedMonthlyRevenue * 12",
+        "output.ok === false || Array.isArray(output.result.ethicalConsiderations)"
+      ],
+      "macro_id": "game-design.monetizationModel",
+      "name": "monetizationModel"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.move",
+      "name": "move"
+    },
+    {
+      "_derived": false,
+      "domain": "game-design",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "gameId": "anything"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "gameId": "<script>"
+          }
+        }
+      ],
+      "inputs": {
+        "gameId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.totalNodes === 'number'",
+        "output.ok === false || output.result.totalNodes === 0 || (Array.isArray(output.result.unreachable) && Array.isArray(output.result.orphans))",
+        "output.ok === false || output.result.totalNodes === 0 || Number.isFinite(output.result.maxDepth)"
+      ],
+      "macro_id": "game-design.narrative-graph",
+      "name": "narrative-graph"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.narrative-link-add",
+      "name": "narrative-link-add"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.narrative-link-delete",
+      "name": "narrative-link-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.narrative-node-create",
+      "name": "narrative-node-create"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.narrative-node-delete",
+      "name": "narrative-node-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.narrative-node-list",
+      "name": "narrative-node-list"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.narrative-node-update",
+      "name": "narrative-node-update"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.narrativeBranch",
+      "name": "narrativeBranch"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.playerFlow",
+      "name": "playerFlow"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.playtest-clear",
+      "name": "playtest-clear"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.playtest-list",
+      "name": "playtest-list"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.playtest-record",
+      "name": "playtest-record"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.playtest-report",
+      "name": "playtest-report"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "game-design.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": false,
+      "domain": "game-design",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "levelId": "ghost"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "levelId": "<script>"
+          }
+        }
+      ],
+      "inputs": {
+        "levelId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.scene === 'object'",
+        "output.ok === false || (typeof output.result.scene.cols === 'number' && Number.isFinite(output.result.scene.cols))",
+        "output.ok === false || (typeof output.result.scene.spawn.x === 'number' && Number.isFinite(output.result.scene.spawn.x))",
+        "output.ok === false || (Array.isArray(output.result.scene.collision.solid) && typeof output.result.scene.collision.solidCount === 'number')",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "game-design.runtime-compile",
+      "name": "runtime-compile"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.tile-create",
+      "name": "tile-create"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.tile-delete",
+      "name": "tile-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.tile-list",
+      "name": "tile-list"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.tile-palette",
+      "name": "tile-palette"
+    },
+    {
+      "_derived": true,
+      "domain": "game-design",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "game-design.vote",
+      "name": "vote"
     }
   ],
   "domain": "game-design",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 120
 }

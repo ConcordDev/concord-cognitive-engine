@@ -10,8 +10,619 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "council.action-carry-forward",
+      "name": "action-carry-forward"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.action-create",
+      "name": "action-create"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.action-delete",
+      "name": "action-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.action-list",
+      "name": "action-list"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.action-update",
+      "name": "action-update"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.agenda-add",
+      "name": "agenda-add"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.agenda-remove",
+      "name": "agenda-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.agenda-reorder",
+      "name": "agenda-reorder"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.agenda-update",
+      "name": "agenda-update"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.attendee-add",
+      "name": "attendee-add"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.attendee-check-in",
+      "name": "attendee-check-in"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.attendee-remove",
+      "name": "attendee-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.attendee-rsvp",
+      "name": "attendee-rsvp"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.audit",
+      "name": "audit"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "council",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "issue": "Budget dispute",
+            "parties": [
+              {
+                "name": "Eng",
+                "priority": "high"
+              },
+              {
+                "name": "Sales",
+                "priority": "high"
+              },
+              {
+                "name": "Ops",
+                "priority": "low"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "issue": "Roadmap",
+            "parties": [
+              {
+                "name": "A",
+                "priority": "low"
+              },
+              {
+                "name": "B",
+                "priority": "medium"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "issue": null,
+            "parties": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "description": {
+          "maxLength": 4000,
+          "required": false,
+          "type": "string"
+        },
+        "issue": {
+          "maxLength": 4000,
+          "required": false,
+          "type": "string"
+        },
+        "parties": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || Array.isArray(output.result.parties)",
+        "output.ok === false || ['shared-urgency','divergent-priorities'].includes(output.result.commonGround)",
+        "output.ok === false || typeof output.result.suggestedApproach === 'string'",
+        "output.ok === false || (Array.isArray(output.result.steps) && output.result.steps.length === 5)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "council.conflictResolution",
+      "name": "conflictResolution"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "council.credibility",
       "name": "credibility"
+    },
+    {
+      "_derived": false,
+      "domain": "council",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "outcome": "passed",
+            "summary": "Hybrid approved",
+            "tags": [
+              "hr",
+              "policy"
+            ],
+            "title": "Adopt remote-work policy",
+            "votesAgainst": 2,
+            "votesFor": 7
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "title": "X",
+            "votesAgainst": -5,
+            "votesFor": null
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "tags": "nope",
+            "title": "Y"
+          }
+        }
+      ],
+      "inputs": {
+        "decidedAt": {
+          "maxLength": 64,
+          "required": false,
+          "type": "string"
+        },
+        "outcome": {
+          "maxLength": 32,
+          "required": false,
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 4000,
+          "required": false,
+          "type": "string"
+        },
+        "tags": {
+          "required": false,
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 256,
+          "required": true,
+          "type": "string"
+        },
+        "votesAgainst": {
+          "required": false,
+          "type": "number"
+        },
+        "votesFor": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result.decision === 'object' && typeof output.result.decision.id === 'string')",
+        "output.ok === false || typeof output.result.decision.title === 'string'",
+        "output.ok === false || (Number.isFinite(output.result.decision.votesFor) && output.result.decision.votesFor >= 0)",
+        "output.ok === false || (Number.isFinite(output.result.decision.votesAgainst) && output.result.decision.votesAgainst >= 0)",
+        "output.ok === false || Array.isArray(output.result.decision.tags)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "council.decision-archive",
+      "name": "decision-archive"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.decision-delete",
+      "name": "decision-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.decision-search",
+      "name": "decision-search"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.generate-minutes",
+      "name": "generate-minutes"
+    },
+    {
+      "_derived": false,
+      "domain": "council",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "actionItems": [
+              {
+                "assignee": "Alice",
+                "dueDate": "2026-07-01",
+                "task": "Draft"
+              }
+            ],
+            "agenda": [
+              {
+                "status": "discussed",
+                "topic": "Budget"
+              }
+            ],
+            "attendees": [
+              "Alice",
+              "Bob"
+            ],
+            "decisions": [
+              {
+                "passed": true,
+                "text": "Adopt policy",
+                "votedBy": "council"
+              }
+            ],
+            "title": "Q3 Session"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "agenda": [
+              "Plain string item"
+            ],
+            "decisions": [
+              "Plain decision"
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "attendees": "nope",
+            "title": null
+          }
+        }
+      ],
+      "inputs": {
+        "actionItems": {
+          "required": false,
+          "type": "array"
+        },
+        "agenda": {
+          "required": false,
+          "type": "array"
+        },
+        "attendees": {
+          "required": false,
+          "type": "array"
+        },
+        "date": {
+          "maxLength": 64,
+          "required": false,
+          "type": "string"
+        },
+        "decisions": {
+          "required": false,
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 256,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || typeof output.result.title === 'string'",
+        "output.ok === false || typeof output.result.date === 'string'",
+        "output.ok === false || Number.isFinite(output.result.attendees)",
+        "output.ok === false || Array.isArray(output.result.agendaItems)",
+        "output.ok === false || Array.isArray(output.result.decisions)",
+        "output.ok === false || Array.isArray(output.result.actionItems)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "council.generateMinutes",
+      "name": "generateMinutes"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.like",
+      "name": "like"
     },
     {
       "_derived": true,
@@ -36,6 +647,299 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "council.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.meeting-create",
+      "name": "meeting-create"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.meeting-delete",
+      "name": "meeting-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.meeting-list",
+      "name": "meeting-list"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.meeting-update",
+      "name": "meeting-update"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.packet-add",
+      "name": "packet-add"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.packet-remove",
+      "name": "packet-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.quorum-check",
+      "name": "quorum-check"
+    },
+    {
+      "_derived": false,
+      "domain": "council",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "ballots": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "ballots": [
+              {
+                "ranking": [
+                  "A",
+                  "B"
+                ],
+                "voter": "1"
+              },
+              {
+                "ranking": [
+                  "A",
+                  "C"
+                ],
+                "voter": "2"
+              },
+              {
+                "ranking": [
+                  "B",
+                  "A"
+                ],
+                "voter": "3"
+              },
+              {
+                "ranking": [
+                  "B",
+                  "C"
+                ],
+                "voter": "4"
+              },
+              {
+                "ranking": [
+                  "C",
+                  "A"
+                ],
+                "voter": "5"
+              }
+            ],
+            "candidates": [
+              {
+                "id": "A",
+                "label": "Alice"
+              },
+              {
+                "id": "B",
+                "label": "Bob"
+              },
+              {
+                "id": "C",
+                "label": "Carol"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {},
+          "input": {
+            "ballots": [
+              {
+                "ranking": [
+                  null
+                ]
+              },
+              {
+                "ranking": [
+                  "X"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "ballots": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "ballots": {
+          "required": false,
+          "type": "array"
+        },
+        "candidates": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.result.method === 'instant_runoff'",
+        "output.ok === false || Number.isFinite(output.result.totalBallots)",
+        "output.ok === false || Number.isFinite(output.result.majority)",
+        "output.ok === false || Array.isArray(output.result.rounds)",
+        "output.ok === false || Array.isArray(output.result.eliminated)",
+        "output.ok === false || output.result.winner === null || (typeof output.result.winner.candidate === 'string' && Number.isFinite(output.result.winner.votes))",
+        "output.ok === false || typeof output.result.decided === 'boolean'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "council.ranked-choice-tabulate",
+      "name": "ranked-choice-tabulate"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "council.recent_mine",
       "name": "recent_mine"
     },
@@ -49,8 +953,99 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "council.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "council.reviewGlobal",
       "name": "reviewGlobal"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.simulate-budget",
+      "name": "simulate-budget"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "council",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "council.tag",
+      "name": "tag"
     },
     {
       "_derived": true,
@@ -79,6 +1074,110 @@
       "name": "vote"
     },
     {
+      "_derived": false,
+      "domain": "council",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "votes": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "votes": [
+              {
+                "vote": "for"
+              },
+              {
+                "vote": "yes"
+              },
+              {
+                "vote": "support"
+              },
+              {
+                "vote": "against"
+              },
+              {
+                "vote": "abstain"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "quorum": 2,
+            "votes": [
+              {
+                "position": "for"
+              },
+              {
+                "position": "for"
+              },
+              {
+                "position": "for"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "votes": [
+              {},
+              {
+                "vote": null
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "votes": "nope"
+          }
+        }
+      ],
+      "inputs": {
+        "quorum": {
+          "required": false,
+          "type": "number"
+        },
+        "votes": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (typeof output.result.tally === 'object' && Number.isFinite(output.result.tally.for) && Number.isFinite(output.result.tally.against) && Number.isFinite(output.result.tally.abstain))",
+        "output.ok === false || Number.isFinite(output.result.total)",
+        "output.ok === false || (Number.isFinite(output.result.forPercent) && output.result.forPercent >= 0 && output.result.forPercent <= 100)",
+        "output.ok === false || typeof output.result.passed === 'boolean'",
+        "output.ok === false || typeof output.result.quorumMet === 'boolean'",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "council.voteCount",
+      "name": "voteCount"
+    },
+    {
       "_derived": true,
       "domain": "council",
       "fuzz_cases": [],
@@ -94,5 +1193,5 @@
   ],
   "domain": "council",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 7
+  "macroCount": 56
 }

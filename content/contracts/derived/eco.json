@@ -1,0 +1,950 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.aqi-current",
+      "name": "aqi-current"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.biodiversity-delete",
+      "name": "biodiversity-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.biodiversity-list",
+      "name": "biodiversity-list"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.biodiversity-log",
+      "name": "biodiversity-log"
+    },
+    {
+      "_derived": false,
+      "domain": "eco",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "species": {
+              "a": 25,
+              "b": 25,
+              "c": 25,
+              "d": 25
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "observations": [
+              {
+                "count": 50,
+                "species": "oak"
+              },
+              {
+                "count": 50,
+                "species": "oak"
+              },
+              {
+                "count": 1,
+                "species": "fern"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "species": {
+              "a": "Infinity",
+              "b": "1e999"
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "observations": [
+              {
+                "count": "NaN",
+                "species": "x"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "observations": {
+          "required": false,
+          "type": "array"
+        },
+        "species": {
+          "required": false,
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.speciesRichness) && Number.isFinite(output.result.totalIndividuals))",
+        "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.diversityIndices.shannonH) && Number.isFinite(output.result.diversityIndices.simpsonsD) && Number.isFinite(output.result.diversityIndices.shannonEvenness))",
+        "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.rankAbundance)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "eco.biodiversityIndex",
+      "name": "biodiversityIndex"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": false,
+      "domain": "eco",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "activities": [
+              {
+                "category": "electricity",
+                "quantity": 1000,
+                "type": "kwh"
+              },
+              {
+                "category": "beef",
+                "quantity": 10,
+                "type": "kg"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "activities": [
+              {
+                "category": "electricity",
+                "quantity": "Infinity",
+                "type": "kwh"
+              },
+              {
+                "category": "beef",
+                "quantity": "1e999",
+                "type": "kg"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "activities": [
+              {
+                "category": "x",
+                "emissionFactor": "NaN",
+                "quantity": -5,
+                "type": "y"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "activities": [
+              {
+                "category": "car",
+                "quantity": 100,
+                "type": "km"
+              }
+            ],
+            "offsets": [
+              {
+                "quantity": "Infinity",
+                "type": "tree_planting",
+                "unit": "tree"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "activities": {
+          "required": false,
+          "type": "array"
+        },
+        "offsets": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.totalEmissionsKgCO2e) && Number.isFinite(output.result.netEmissionsKgCO2e) && Number.isFinite(output.result.totalOffsetsKgCO2e))",
+        "output.ok === false || output.result.message !== undefined || (typeof output.result.carbonNeutral === 'boolean' && Array.isArray(output.result.categoryBreakdown) && Array.isArray(output.result.activities))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "eco.carbonFootprint",
+      "name": "carbonFootprint"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.challenges-catalog",
+      "name": "challenges-catalog"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.challenges-checkin",
+      "name": "challenges-checkin"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.challenges-join",
+      "name": "challenges-join"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.challenges-leave",
+      "name": "challenges-leave"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.challenges-mine",
+      "name": "challenges-mine"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.climate-actions-list",
+      "name": "climate-actions-list"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.climate-actions-log",
+      "name": "climate-actions-log"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.climate-actions-logged",
+      "name": "climate-actions-logged"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": false,
+      "domain": "eco",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "azimuth": 180,
+            "lat": 37.77,
+            "lng": -122.42,
+            "systemKw": 8,
+            "tilt": 30
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "azimuth": "NaN",
+            "lat": "Infinity",
+            "lng": "NaN",
+            "systemKw": "1e999",
+            "tilt": "Infinity"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lat": 37,
+            "lng": -122,
+            "systemKw": -5
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lat": 999,
+            "lng": -999,
+            "systemKw": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "azimuth": {
+          "required": false,
+          "type": "number"
+        },
+        "lat": {
+          "required": false,
+          "type": "number"
+        },
+        "lng": {
+          "required": false,
+          "type": "number"
+        },
+        "systemKw": {
+          "required": false,
+          "type": "number"
+        },
+        "tilt": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (Number.isFinite(output.result.systemKwp) && Number.isFinite(output.result.annualKwh) && Number.isFinite(output.result.co2AvoidedKgPerYear) && Number.isFinite(output.result.capacityFactor))",
+        "output.ok === false || (Array.isArray(output.result.monthlyKwh) && output.result.monthlyKwh.length === 12 && output.result.monthlyKwh.every(function(v){return Number.isFinite(v) && v >= 0;}))",
+        "output.ok === false || (output.result.location.lat >= -90 && output.result.location.lat <= 90 && output.result.location.lng >= -180 && output.result.location.lng <= 180)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "eco.energy-estimate",
+      "name": "energy-estimate"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.environmental-alerts",
+      "name": "environmental-alerts"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.footprint-delete",
+      "name": "footprint-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.footprint-history",
+      "name": "footprint-history"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.footprint-record",
+      "name": "footprint-record"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.locations-delete",
+      "name": "locations-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.locations-list",
+      "name": "locations-list"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.locations-save",
+      "name": "locations-save"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.observation-feed",
+      "name": "observation-feed"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.species-identify",
+      "name": "species-identify"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.species-suggest",
+      "name": "species-suggest"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.status",
+      "name": "status"
+    },
+    {
+      "_derived": false,
+      "domain": "eco",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "indicators": {
+              "environmental": {
+                "biodiversity": 80,
+                "emissions": 80,
+                "energyEfficiency": 80,
+                "wasteReduction": 80,
+                "waterUsage": 80
+              },
+              "governance": {
+                "transparency": 40
+              },
+              "social": {
+                "laborPractices": 60
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "indicators": {
+              "environmental": {
+                "emissions": "Infinity",
+                "energyEfficiency": "1e999",
+                "wasteReduction": -50
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "indicators": {
+              "environmental": {
+                "emissions": "NaN"
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "indicators": {}
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "indicators": {
+          "required": false,
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.overallScore === null || Number.isFinite(output.result.overallScore)",
+        "output.ok === false || (typeof output.result.maturityLevel === 'string' && typeof output.result.pillars === 'object')",
+        "output.ok === false || Number.isFinite(output.result.dataCompleteness)",
+        "output.ok === false || Array.isArray(output.result.recommendations)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "eco.sustainabilityScore",
+      "name": "sustainabilityScore"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "eco",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "eco.weather-forecast",
+      "name": "weather-forecast"
+    }
+  ],
+  "domain": "eco",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 47
+}

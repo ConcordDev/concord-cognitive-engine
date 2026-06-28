@@ -10,6 +10,341 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "forum.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.award-catalog",
+      "name": "award-catalog"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.award-give",
+      "name": "award-give"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.category-create",
+      "name": "category-create"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.category-delete",
+      "name": "category-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.category-list",
+      "name": "category-list"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "forum",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "activeUsers": 40,
+            "postsLastWeek": 50,
+            "postsThisWeek": 60,
+            "totalUsers": 100
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "activeUsers": "Infinity",
+            "postsLastWeek": "not-a-number",
+            "postsThisWeek": "NaN",
+            "totalUsers": "1e999"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "activeUsers": 10,
+            "postsLastWeek": 0,
+            "postsThisWeek": 5,
+            "totalUsers": 0
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "activeUsers": -5,
+            "postsLastWeek": -1,
+            "postsThisWeek": -1,
+            "totalUsers": -100
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "activeUsers": {
+          "required": false,
+          "type": "number"
+        },
+        "postsLastWeek": {
+          "required": false,
+          "type": "number"
+        },
+        "postsThisWeek": {
+          "required": false,
+          "type": "number"
+        },
+        "totalUsers": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (Number.isFinite(output.result.activeUsers) && Number.isFinite(output.result.totalUsers) && Number.isFinite(output.result.activityRate) && Number.isFinite(output.result.postsThisWeek) && Number.isFinite(output.result.growthRate))",
+        "output.ok === false || ['thriving','healthy','declining','dormant'].indexOf(output.result.health) !== -1",
+        "output.ok === false || Array.isArray(output.result.recommendations)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "forum.communityHealth",
+      "name": "communityHealth"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.extract_thesis",
+      "name": "extract_thesis"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.flag-create",
+      "name": "flag-create"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.flag-queue",
+      "name": "flag-queue"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.flag-resolve",
+      "name": "flag-resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.forum-dashboard",
+      "name": "forum-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.forum-search",
+      "name": "forum-search"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.generate_summary_dtu",
+      "name": "generate_summary_dtu"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "forum.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +358,773 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "forum.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.moderate",
+      "name": "moderate"
+    },
+    {
+      "_derived": false,
+      "domain": "forum",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "reports": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "reports": [
+              {
+                "date": "2026-06-02T00:00:00Z",
+                "reason": "spam",
+                "status": "pending"
+              },
+              {
+                "date": "2026-05-30T00:00:00Z",
+                "reason": "off_topic",
+                "status": "resolved"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "reports": [
+              {
+                "date": "garbage",
+                "status": "pending"
+              },
+              {
+                "date": "NaN",
+                "status": "pending"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "reports": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "reports": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || (Number.isFinite(output.result.totalReports) && Number.isFinite(output.result.pending) && Number.isFinite(output.result.resolved))",
+        "output.ok === false || (typeof output.result.byReason === 'object' && output.result.byReason !== null)",
+        "output.ok === false || ['low','medium','high'].indexOf(output.result.urgency) !== -1",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "forum.moderationQueue",
+      "name": "moderationQueue"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.notification-list",
+      "name": "notification-list"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.notification-read",
+      "name": "notification-read"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.post-delete",
+      "name": "post-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.post-history",
+      "name": "post-history"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.post-reply",
+      "name": "post-reply"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.rank_posts",
+      "name": "rank_posts"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "forum.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.save-toggle",
+      "name": "save-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.saved-list",
+      "name": "saved-list"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.subforum-add-mod",
+      "name": "subforum-add-mod"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.subforum-create",
+      "name": "subforum-create"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.subforum-delete",
+      "name": "subforum-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.subforum-list",
+      "name": "subforum-list"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.subforum-update-rules",
+      "name": "subforum-update-rules"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.subscription-list",
+      "name": "subscription-list"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.tag-list",
+      "name": "tag-list"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.thread-subscribe",
+      "name": "thread-subscribe"
+    },
+    {
+      "_derived": false,
+      "domain": "forum",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "posts": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "posts": [
+              {
+                "author": "a",
+                "content": "hello world"
+              },
+              {
+                "author": "b",
+                "content": "longer reply here"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "posts": [
+              {
+                "author": null,
+                "content": null
+              },
+              {},
+              {
+                "content": 123
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "posts": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "posts": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalPosts)",
+        "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.uniqueAuthors) && Number.isFinite(output.result.avgPostLength))",
+        "output.ok === false || output.result.message !== undefined || (Array.isArray(output.result.topContributors) && output.result.topContributors.every(function(c){ return typeof c.name === 'string' && Number.isFinite(c.posts); }))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "forum.threadAnalysis",
+      "name": "threadAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.topic-create",
+      "name": "topic-create"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.topic-delete",
+      "name": "topic-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.topic-get",
+      "name": "topic-get"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.topic-list",
+      "name": "topic-list"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.topic-lock",
+      "name": "topic-lock"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.topic-pin",
+      "name": "topic-pin"
+    },
+    {
+      "_derived": false,
+      "domain": "forum",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "threads": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "threads": [
+              {
+                "tags": [
+                  "mixing",
+                  "tutorial"
+                ]
+              },
+              {
+                "tags": [
+                  "mixing"
+                ]
+              },
+              {
+                "tags": []
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "threads": [
+              {},
+              {
+                "tags": null
+              },
+              {
+                "tags": [
+                  "a"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "threads": "nope"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "threads": {
+          "required": false,
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result === 'object'",
+        "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalThreads)",
+        "output.ok === false || output.result.message !== undefined || (Array.isArray(output.result.clusters) && output.result.clusters.every(function(c){ return typeof c.topic === 'string' && Number.isFinite(c.threads) && Number.isFinite(c.share); }))",
+        "output.ok === false || output.result.message !== undefined || (typeof output.result.topTopic === 'string' && Number.isFinite(output.result.uncategorized))",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "forum.topicClustering",
+      "name": "topicClustering"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.trending",
+      "name": "trending"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.user-profile",
+      "name": "user-profile"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.user-reputation",
+      "name": "user-reputation"
+    },
+    {
+      "_derived": true,
+      "domain": "forum",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "forum.vote",
+      "name": "vote"
     }
   ],
   "domain": "forum",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 64
 }

@@ -1,0 +1,462 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.complexityMeasure",
+      "name": "complexityMeasure"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.deletePreset",
+      "name": "deletePreset"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.exportPreset",
+      "name": "exportPreset"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.fractalDimension",
+      "name": "fractalDimension"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.importPreset",
+      "name": "importPreset"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.listPresets",
+      "name": "listPresets"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.listRenders",
+      "name": "listRenders"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.mandelbulb",
+      "name": "mandelbulb"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.orbit",
+      "name": "orbit"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.paletteFor",
+      "name": "paletteFor"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.recordRender",
+      "name": "recordRender"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.render",
+      "name": "render"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.savePreset",
+      "name": "savePreset"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.selfSimilarity",
+      "name": "selfSimilarity"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "fractal",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fractal.zoomPath",
+      "name": "zoomPath"
+    }
+  ],
+  "domain": "fractal",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 35
+}

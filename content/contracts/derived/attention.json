@@ -23,6 +23,110 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "attention.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.attentionBudget",
+      "name": "attentionBudget"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.calendarBlocks",
+      "name": "calendarBlocks"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.calendarRelease",
+      "name": "calendarRelease"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.calendarReserve",
+      "name": "calendarReserve"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "attention.complete_thread",
       "name": "complete_thread"
     },
@@ -49,8 +153,346 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "attention.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.distractionLog",
+      "name": "distractionLog"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.distractionSummary",
+      "name": "distractionSummary"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.energyTag",
+      "name": "energyTag"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.focusAnalytics",
+      "name": "focusAnalytics"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.focusModeGet",
+      "name": "focusModeGet"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.focusModeSet",
+      "name": "focusModeSet"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.focusScore",
+      "name": "focusScore"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "attention.list_threads",
       "name": "list_threads"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.peakHours",
+      "name": "peakHours"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.plannerAddTask",
+      "name": "plannerAddTask"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.plannerGet",
+      "name": "plannerGet"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.plannerMoveTask",
+      "name": "plannerMoveTask"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.plannerRemoveTask",
+      "name": "plannerRemoveTask"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.pomodoroComplete",
+      "name": "pomodoroComplete"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.pomodoroInterrupt",
+      "name": "pomodoroInterrupt"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.pomodoroStart",
+      "name": "pomodoroStart"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.pomodoroStats",
+      "name": "pomodoroStats"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.pomodoroStatus",
+      "name": "pomodoroStatus"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.priorityMatrix",
+      "name": "priorityMatrix"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.publish",
+      "name": "publish"
     },
     {
       "_derived": true,
@@ -75,11 +517,102 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "attention.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "attention.status",
       "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "attention",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "attention.vote",
+      "name": "vote"
     }
   ],
   "domain": "attention",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 6
+  "macroCount": 47
 }

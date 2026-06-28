@@ -10,6 +10,707 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "hr.applicant-add",
+      "name": "applicant-add"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.applicant-advance",
+      "name": "applicant-advance"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.applicant-list",
+      "name": "applicant-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.benefit-enroll",
+      "name": "benefit-enroll"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.benefit-plan-add",
+      "name": "benefit-plan-add"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.benefit-plan-list",
+      "name": "benefit-plan-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.benefit-waive",
+      "name": "benefit-waive"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.bls-series-lookup",
+      "name": "bls-series-lookup"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.clock-in",
+      "name": "clock-in"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.clock-out",
+      "name": "clock-out"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "hr",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "location": "SF",
+            "role": "Senior Engineer"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "location": "remote",
+            "role": "Junior Developer"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "role": "Recruiter"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "role": ""
+          }
+        }
+      ],
+      "inputs": {
+        "location": {
+          "maxLength": 200,
+          "required": false,
+          "type": "string"
+        },
+        "role": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.role === 'string'",
+        "output.ok === false || Number.isFinite(output.result.market50)",
+        "output.ok === false || Number.isFinite(output.result.market75)",
+        "output.ok === false || Number.isFinite(output.result.rangeLow)",
+        "output.ok === false || Number.isFinite(output.result.rangeHigh)",
+        "output.ok === false || Number.isFinite(output.result.offerSuggestion)",
+        "output.ok === false || (output.result.rangeLow <= output.result.market50 && output.result.market50 <= output.result.rangeHigh)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "hr.compensationBenchmark",
+      "name": "compensationBenchmark"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.compliance-acknowledge",
+      "name": "compliance-acknowledge"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.compliance-doc-add",
+      "name": "compliance-doc-add"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.compliance-doc-list",
+      "name": "compliance-doc-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.compliance-status",
+      "name": "compliance-status"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.course-add",
+      "name": "course-add"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.course-assign",
+      "name": "course-assign"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.course-assignment-list",
+      "name": "course-assignment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.course-list",
+      "name": "course-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.course-progress",
+      "name": "course-progress"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.department-list",
+      "name": "department-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.employee-add",
+      "name": "employee-add"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.employee-detail",
+      "name": "employee-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.employee-list",
+      "name": "employee-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.employee-offboard",
+      "name": "employee-offboard"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.employee-update",
+      "name": "employee-update"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.goal-list",
+      "name": "goal-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.goal-set",
+      "name": "goal-set"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.goal-update-progress",
+      "name": "goal-update-progress"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.headcount-report",
+      "name": "headcount-report"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.hr-dashboard",
+      "name": "hr-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.hr-document-add",
+      "name": "hr-document-add"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.hr-document-list",
+      "name": "hr-document-list"
+    },
+    {
+      "_derived": false,
+      "domain": "hr",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "candidate": "Dana",
+            "scores": {
+              "communication": 4,
+              "culture": 2,
+              "systems": 1,
+              "technical": 5
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "candidate": "Sam",
+            "scores": {
+              "communication": 5,
+              "culture": 5,
+              "experience": 4,
+              "technical": 5
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "candidate": "Lee",
+            "scores": {}
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "scores": {
+              "technical": 4
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "candidate": "Z",
+            "scores": {
+              "communication": 99,
+              "culture": 4,
+              "technical": "12abc"
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "candidate": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        },
+        "scores": {
+          "required": false,
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.message !== undefined) || Number.isFinite(output.result.totalScore)",
+        "output.ok === false || (output.result.message !== undefined) || Number.isFinite(output.result.passingScore)",
+        "output.ok === false || (output.result.message !== undefined) || typeof output.result.recommendation === 'string'",
+        "output.ok === false || (output.result.message !== undefined) || (output.result.totalScore >= 0 && output.result.totalScore <= 100)",
+        "output.ok === false || (output.result.message !== undefined) || Array.isArray(output.result.topStrengths)",
+        "output.ok === false || (output.result.message !== undefined) || Array.isArray(output.result.topWeaknesses)",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "hr.interviewScorecard",
+      "name": "interviewScorecard"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.job-list",
+      "name": "job-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.job-post",
+      "name": "job-post"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "hr.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +724,553 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "hr.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.onboarding-complete",
+      "name": "onboarding-complete"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.onboarding-list",
+      "name": "onboarding-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.onboarding-task-add",
+      "name": "onboarding-task-add"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.org-chart",
+      "name": "org-chart"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.payroll-list",
+      "name": "payroll-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.payroll-run",
+      "name": "payroll-run"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.payroll-stub",
+      "name": "payroll-stub"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": false,
+      "domain": "hr",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "annualDays": 24,
+            "employeeId": "emp_42"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "annualDays": 20,
+            "employeeId": "emp_9"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "annualDays": 20
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "annualDays": 0,
+            "employeeId": "e"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "annualDays": "Infinity",
+            "employeeId": "e"
+          }
+        }
+      ],
+      "inputs": {
+        "annualDays": {
+          "required": true,
+          "type": "number"
+        },
+        "employeeId": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.accrued)",
+        "output.ok === false || Number.isFinite(output.result.used)",
+        "output.ok === false || Number.isFinite(output.result.remaining)",
+        "output.ok === false || typeof output.result.rolloverDate === 'string'",
+        "output.ok === false || output.result.accrued <= output.result.annualDays",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "hr.ptoBalance",
+      "name": "ptoBalance"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "hr.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.review-create",
+      "name": "review-create"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.review-list",
+      "name": "review-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.self-service-summary",
+      "name": "self-service-summary"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.self-service-update",
+      "name": "self-service-update"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.timeclock-list",
+      "name": "timeclock-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.timeoff-approve",
+      "name": "timeoff-approve"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.timeoff-balance",
+      "name": "timeoff-balance"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.timeoff-list",
+      "name": "timeoff-list"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.timeoff-request",
+      "name": "timeoff-request"
+    },
+    {
+      "_derived": false,
+      "domain": "hr",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "headcount": 100,
+            "leaversLast12Months": 30
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "headcount": 200,
+            "leaversLast12Months": 10
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "headcount": 0,
+            "leaversLast12Months": 5
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "headcount": "Infinity",
+            "leaversLast12Months": "NaN"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "headcount": 80,
+            "leaversLast12Months": "12abc"
+          }
+        }
+      ],
+      "inputs": {
+        "headcount": {
+          "required": true,
+          "type": "number"
+        },
+        "leaversLast12Months": {
+          "required": true,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.ratePct)",
+        "output.ok === false || Number.isFinite(output.result.benchmarkPct)",
+        "output.ok === false || typeof output.result.topReason === 'string'",
+        "output.ok === false || typeof output.result.band === 'string'",
+        "output.ok === false || output.result.ratePct >= 0",
+        "output.ok === true || typeof (output.error || output.message) === 'string'"
+      ],
+      "macro_id": "hr.turnoverAnalysis",
+      "name": "turnoverAnalysis"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.vote",
+      "name": "vote"
+    },
+    {
+      "_derived": true,
+      "domain": "hr",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hr.workforce-analytics",
+      "name": "workforce-analytics"
     }
   ],
   "domain": "hr",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 77
 }

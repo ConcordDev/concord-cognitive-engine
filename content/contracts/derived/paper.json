@@ -10,8 +10,125 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "paper.abstractSummarize",
+      "name": "abstractSummarize"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "paper.build",
       "name": "build"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.citationAnalyze",
+      "name": "citationAnalyze"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.collection-assign",
+      "name": "collection-assign"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.collection-create",
+      "name": "collection-create"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.collection-list",
+      "name": "collection-list"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.comment",
+      "name": "comment"
     },
     {
       "_derived": true,
@@ -36,8 +153,177 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "paper.detect-contradictions",
+      "name": "detect-contradictions"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "paper.export",
       "name": "export"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.export_pdf",
+      "name": "export_pdf"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.group-add-paper",
+      "name": "group-add-paper"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.group-create",
+      "name": "group-create"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.group-join",
+      "name": "group-join"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.group-list",
+      "name": "group-list"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.group-papers",
+      "name": "group-papers"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.group-remove-paper",
+      "name": "group-remove-paper"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.library-dashboard",
+      "name": "library-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.like",
+      "name": "like"
     },
     {
       "_derived": true,
@@ -101,11 +387,505 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "paper.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-alert-read",
+      "name": "paper-alert-read"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-alerts-list",
+      "name": "paper-alerts-list"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-annotate",
+      "name": "paper-annotate"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-annotation-delete",
+      "name": "paper-annotation-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-annotations",
+      "name": "paper-annotations"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-annotations-sync",
+      "name": "paper-annotations-sync"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-capture",
+      "name": "paper-capture"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-check-alerts",
+      "name": "paper-check-alerts"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-delete",
+      "name": "paper-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-detail",
+      "name": "paper-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-enrich",
+      "name": "paper-enrich"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-find-duplicates",
+      "name": "paper-find-duplicates"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-list",
+      "name": "paper-list"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-merge-duplicates",
+      "name": "paper-merge-duplicates"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-pdf-attach",
+      "name": "paper-pdf-attach"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-pdf-get",
+      "name": "paper-pdf-get"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-pdf-remove",
+      "name": "paper-pdf-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-save",
+      "name": "paper-save"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.paper-update",
+      "name": "paper-update"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.readabilityScore",
+      "name": "readabilityScore"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "paper.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.revisionDiff",
+      "name": "revisionDiff"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.search",
+      "name": "search"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.summarize",
+      "name": "summarize"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.trace-lineage",
+      "name": "trace-lineage"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.validate",
+      "name": "validate"
+    },
+    {
+      "_derived": true,
+      "domain": "paper",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "paper.vote",
+      "name": "vote"
     }
   ],
   "domain": "paper",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 8
+  "macroCount": 68
 }

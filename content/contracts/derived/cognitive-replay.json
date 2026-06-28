@@ -1,0 +1,355 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "cognitive-replay",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cognitive-replay.compare",
+      "name": "compare"
+    },
+    {
+      "_derived": true,
+      "domain": "cognitive-replay",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cognitive-replay.event",
+      "name": "event"
+    },
+    {
+      "_derived": false,
+      "domain": "cognitive-replay",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "brain": "conscious"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "role": "user"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "brain": "<script>alert(1)</script>"
+          }
+        }
+      ],
+      "inputs": {
+        "brain": {
+          "maxLength": 80,
+          "required": false,
+          "type": "string"
+        },
+        "fromTs": {
+          "required": false,
+          "type": "number"
+        },
+        "limit": {
+          "required": false,
+          "type": "number"
+        },
+        "role": {
+          "maxLength": 40,
+          "required": false,
+          "type": "string"
+        },
+        "sessionId": {
+          "maxLength": 200,
+          "required": false,
+          "type": "string"
+        },
+        "toTs": {
+          "required": false,
+          "type": "number"
+        },
+        "tool": {
+          "maxLength": 80,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.events)",
+        "output.ok === false || (Number.isFinite(output.result.count) && output.result.count >= 0)",
+        "output.ok === false || output.result.count <= 1000",
+        "output.ok === false || Number.isFinite(output.result.totalMatching)",
+        "output.ok === false || (output.result.facets && Array.isArray(output.result.facets.brains))",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "cognitive-replay.filter",
+      "name": "filter"
+    },
+    {
+      "_derived": true,
+      "domain": "cognitive-replay",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cognitive-replay.heatmap",
+      "name": "heatmap"
+    },
+    {
+      "_derived": false,
+      "domain": "cognitive-replay",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "sinceDays": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "sinceDays": 7,
+            "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "title": "<script>alert(1)</script>"
+          }
+        }
+      ],
+      "inputs": {
+        "sinceDays": {
+          "required": false,
+          "type": "number"
+        },
+        "title": {
+          "maxLength": 200,
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || /^[0-9a-f]{16}$/.test(output.result.shareId)",
+        "output.ok === false || (output.result.snapshot.sinceDays >= 1 && output.result.snapshot.sinceDays <= 365)",
+        "output.ok === false || Number.isFinite(output.result.snapshot.stats.totalTokens)",
+        "output.ok === false || (typeof output.result.snapshot.title === 'string' && output.result.snapshot.title.length <= 120)",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "cognitive-replay.snapshot-create",
+      "name": "snapshot-create"
+    },
+    {
+      "_derived": true,
+      "domain": "cognitive-replay",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cognitive-replay.snapshot-delete",
+      "name": "snapshot-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "cognitive-replay",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cognitive-replay.snapshot-get",
+      "name": "snapshot-get"
+    },
+    {
+      "_derived": true,
+      "domain": "cognitive-replay",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "cognitive-replay.snapshot-list",
+      "name": "snapshot-list"
+    },
+    {
+      "_derived": false,
+      "domain": "cognitive-replay",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sinceDays": 7
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sinceDays": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sinceDays": -1
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sinceDays": "9999999999999999999999"
+          }
+        }
+      ],
+      "inputs": {
+        "sinceDays": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.result === 'object' && output.result !== null)",
+        "output.ok === false || (output.result.sinceDays >= 1 && output.result.sinceDays <= 365)",
+        "output.ok === false || (Number.isFinite(output.result.turns) && output.result.turns >= 0)",
+        "output.ok === false || Number.isFinite(output.result.totalTokens)",
+        "output.ok === false || Number.isFinite(output.result.avgTokensPerTurn)",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "cognitive-replay.stats",
+      "name": "stats"
+    },
+    {
+      "_derived": false,
+      "domain": "cognitive-replay",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sinceDays": 7
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sinceDays": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "sinceDays": -99
+          }
+        }
+      ],
+      "inputs": {
+        "sinceDays": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result.sinceDays >= 1 && output.result.sinceDays <= 365)",
+        "output.ok === false || typeof output.result.archetype === 'string'",
+        "output.ok === false || (Number.isInteger(output.result.peakHour) && output.result.peakHour >= 0 && output.result.peakHour <= 23)",
+        "output.ok === false || (Array.isArray(output.result.cards) && output.result.cards.length === 8)",
+        "output.ok === true || typeof (output.reason || output.error) === 'string'"
+      ],
+      "macro_id": "cognitive-replay.wrapped",
+      "name": "wrapped"
+    }
+  ],
+  "domain": "cognitive-replay",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 10
+}

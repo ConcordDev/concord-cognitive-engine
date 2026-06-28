@@ -10,8 +10,564 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "collab.addComment",
+      "name": "addComment"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": false,
+      "domain": "collab",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "members": [
+                  {
+                    "capacityHours": 40,
+                    "name": "alice"
+                  },
+                  {
+                    "capacityHours": 40,
+                    "name": "bob"
+                  }
+                ],
+                "tasks": [
+                  {
+                    "assignee": "alice",
+                    "hours": 50
+                  },
+                  {
+                    "assignee": "bob",
+                    "hours": 10
+                  },
+                  {
+                    "hours": 8
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "members": [],
+                "tasks": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "members": [
+                  {
+                    "capacityHours": "Infinity",
+                    "name": "a"
+                  },
+                  {
+                    "capacityHours": "12abc",
+                    "name": "b"
+                  }
+                ],
+                "tasks": [
+                  {
+                    "assignee": "a",
+                    "hours": "NaN"
+                  },
+                  {
+                    "assignee": "b",
+                    "hours": "abc"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "members": {
+          "type": "array"
+        },
+        "tasks": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.message === 'string' || Array.isArray(output.result.members)",
+        "output.ok === false || output.result.members === undefined || output.result.members.every(m => Number.isFinite(m.utilization))",
+        "output.ok === false || output.result.members === undefined || output.result.members.every(m => Number.isFinite(m.totalHours))",
+        "output.ok === false || output.result.members === undefined || output.result.members.every(m => Number.isFinite(m.capacity))",
+        "output.ok === false || output.result.members === undefined || Number.isFinite(output.result.avgUtilization)",
+        "output.ok === false || output.result.members === undefined || Number.isFinite(output.result.overloadedMembers)"
+      ],
+      "macro_id": "collab.balanceWorkload",
+      "name": "balanceWorkload"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": false,
+      "domain": "collab",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "contributions": [
+                  {
+                    "count": 2,
+                    "name": "alice",
+                    "quality": 1,
+                    "type": "code"
+                  },
+                  {
+                    "count": 1,
+                    "name": "bob",
+                    "quality": 0.8,
+                    "type": "review"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "contributions": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "contributions": [
+                  {
+                    "count": "NaN",
+                    "name": "a",
+                    "quality": "Infinity",
+                    "type": "code"
+                  },
+                  {
+                    "count": "9xyz",
+                    "name": "b",
+                    "quality": "12abc",
+                    "type": "review"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "contributions": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.message === 'string' || Array.isArray(output.result.rankings)",
+        "output.ok === false || output.result.rankings === undefined || output.result.rankings.every(r => Number.isFinite(r.totalScore))",
+        "output.ok === false || output.result.rankings === undefined || output.result.rankings.every(r => Number.isFinite(r.contributions))",
+        "output.ok === false || output.result.rankings === undefined || Number.isFinite(output.result.totalContributions)"
+      ],
+      "macro_id": "collab.contributionScore",
+      "name": "contributionScore"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "collab.createSession",
       "name": "createSession"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.cursorUpdate",
+      "name": "cursorUpdate"
+    },
+    {
+      "_derived": false,
+      "domain": "collab",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "votes": [
+                  {
+                    "position": "ship",
+                    "voter": "a"
+                  },
+                  {
+                    "position": "ship",
+                    "voter": "b"
+                  },
+                  {
+                    "position": "ship",
+                    "voter": "c"
+                  },
+                  {
+                    "position": "wait",
+                    "voter": "d"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "votes": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "votes": [
+                  {
+                    "vote": "yes",
+                    "voter": "a"
+                  },
+                  {
+                    "vote": "yes",
+                    "voter": "b"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "votes": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.result.message === 'string' || Number.isFinite(output.result.totalVotes)",
+        "output.ok === false || output.result.totalVotes === undefined || Number.isFinite(output.result.consensusPercent)",
+        "output.ok === false || output.result.totalVotes === undefined || typeof output.result.status === 'string'",
+        "output.ok === false || output.result.totalVotes === undefined || Array.isArray(output.result.dissenting)"
+      ],
+      "macro_id": "collab.detectConsensus",
+      "name": "detectConsensus"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.docCrdtRestore",
+      "name": "docCrdtRestore"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.docCrdtSnapshot",
+      "name": "docCrdtSnapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.docCrdtSnapshotList",
+      "name": "docCrdtSnapshotList"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.docCreate",
+      "name": "docCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.docHistory",
+      "name": "docHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.docList",
+      "name": "docList"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.docOp",
+      "name": "docOp"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.docRestore",
+      "name": "docRestore"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.docSnapshot",
+      "name": "docSnapshot"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.docState",
+      "name": "docState"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.docSync",
+      "name": "docSync"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.duplicate",
+      "name": "duplicate"
     },
     {
       "_derived": true,
@@ -36,6 +592,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "collab.extract_actions",
+      "name": "extract_actions"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.getPermissions",
+      "name": "getPermissions"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "collab.join",
       "name": "join"
     },
@@ -49,8 +631,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "collab.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "collab.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.listComments",
+      "name": "listComments"
     },
     {
       "_derived": true,
@@ -88,8 +696,112 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "collab.markNotificationRead",
+      "name": "markNotificationRead"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "collab.merge",
       "name": "merge"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.notifications",
+      "name": "notifications"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.presenceState",
+      "name": "presenceState"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.rate",
+      "name": "rate"
     },
     {
       "_derived": true,
@@ -114,11 +826,293 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "collab.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.resolveThread",
+      "name": "resolveThread"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.run_council",
+      "name": "run_council"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.save",
+      "name": "save"
+    },
+    {
+      "_derived": false,
+      "domain": "collab",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "durationMinutes": 30,
+                "messages": [
+                  {
+                    "author": "alice",
+                    "content": "hello team"
+                  },
+                  {
+                    "author": "alice",
+                    "content": "go"
+                  },
+                  {
+                    "author": "bob",
+                    "content": "ready"
+                  }
+                ],
+                "participants": [
+                  "alice",
+                  "bob"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "durationMinutes": 10,
+                "messages": [],
+                "participants": []
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {}
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "durationMinutes": "Infinity",
+                "messages": [
+                  {
+                    "sender": "a",
+                    "text": "x y z"
+                  }
+                ],
+                "participants": [
+                  "a"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "artifact": {
+              "data": {
+                "durationMinutes": "12abc",
+                "messages": [
+                  {
+                    "author": "a",
+                    "content": "x"
+                  }
+                ],
+                "participants": [
+                  "a"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "messages": {
+          "type": "array"
+        },
+        "participants": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Number.isFinite(output.result.totalMessages)",
+        "output.ok === false || Number.isFinite(output.result.totalParticipants)",
+        "output.ok === false || Number.isFinite(output.result.messagesPerMinute)",
+        "output.ok === false || Number.isFinite(output.result.durationMinutes)",
+        "output.ok === false || Number.isFinite(output.result.participationBalance)",
+        "output.ok === false || typeof output.result.balanceRating === 'string'",
+        "output.ok === false || Array.isArray(output.result.participantStats)"
+      ],
+      "macro_id": "collab.sessionAnalytics",
+      "name": "sessionAnalytics"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.setFollow",
+      "name": "setFollow"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.setPermission",
+      "name": "setPermission"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.summarize_thread",
+      "name": "summarize_thread"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "collab.unlock",
       "name": "unlock"
+    },
+    {
+      "_derived": true,
+      "domain": "collab",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "collab.vote",
+      "name": "vote"
     }
   ],
   "domain": "collab",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 9
+  "macroCount": 56
 }

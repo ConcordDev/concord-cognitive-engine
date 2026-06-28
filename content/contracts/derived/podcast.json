@@ -10,8 +10,320 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "podcast.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.continue-listening",
+      "name": "continue-listening"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.download-episode",
+      "name": "download-episode"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.download-list",
+      "name": "download-list"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.download-remove",
+      "name": "download-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.download-rule-list",
+      "name": "download-rule-list"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.download-rule-run",
+      "name": "download-rule-run"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.download-rule-set",
+      "name": "download-rule-set"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.episode-add",
+      "name": "episode-add"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.episode-detail",
+      "name": "episode-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.episode-list",
+      "name": "episode-list"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.episode-mark-played",
+      "name": "episode-mark-played"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.episode-stream",
+      "name": "episode-stream"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.episodeAnalytics",
+      "name": "episodeAnalytics"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.guestResearch",
+      "name": "guestResearch"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.itunes-podcast",
+      "name": "itunes-podcast"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.itunes-search",
+      "name": "itunes-search"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "podcast.list_mine",
       "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.listening-stats",
+      "name": "listening-stats"
     },
     {
       "_derived": true,
@@ -36,11 +348,570 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "podcast.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.monetizationCalc",
+      "name": "monetizationCalc"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.new-episodes",
+      "name": "new-episodes"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.playback-prefs-get",
+      "name": "playback-prefs-get"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.playback-prefs-set",
+      "name": "playback-prefs-set"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.playback-speed-set",
+      "name": "playback-speed-set"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.playback-update",
+      "name": "playback-update"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.playlist-add-episode",
+      "name": "playlist-add-episode"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.playlist-create",
+      "name": "playlist-create"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.playlist-detail",
+      "name": "playlist-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.playlist-list",
+      "name": "playlist-list"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.podcast-dashboard",
+      "name": "podcast-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.productionChecklist",
+      "name": "productionChecklist"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.queue-add",
+      "name": "queue-add"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.queue-list",
+      "name": "queue-list"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.queue-remove",
+      "name": "queue-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.queue-reorder",
+      "name": "queue-reorder"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "podcast.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.recommendations",
+      "name": "recommendations"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.rss-refresh",
+      "name": "rss-refresh"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.show-add",
+      "name": "show-add"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.show-delete",
+      "name": "show-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.show-detail",
+      "name": "show-detail"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.show-list",
+      "name": "show-list"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.show-rate",
+      "name": "show-rate"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.show-reviews",
+      "name": "show-reviews"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.show-subscribe",
+      "name": "show-subscribe"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.sync-push",
+      "name": "sync-push"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.sync-state",
+      "name": "sync-state"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.transcript-get",
+      "name": "transcript-get"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.transcript-search",
+      "name": "transcript-search"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.transcript-set",
+      "name": "transcript-set"
+    },
+    {
+      "_derived": true,
+      "domain": "podcast",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "podcast.vote",
+      "name": "vote"
     }
   ],
   "domain": "podcast",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 70
 }

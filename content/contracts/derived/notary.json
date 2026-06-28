@@ -1,0 +1,59 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "notary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "notary.notarize",
+      "name": "notarize"
+    },
+    {
+      "_derived": true,
+      "domain": "notary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "notary.record-get",
+      "name": "record-get"
+    },
+    {
+      "_derived": true,
+      "domain": "notary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "notary.records-list",
+      "name": "records-list"
+    },
+    {
+      "_derived": true,
+      "domain": "notary",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "notary.verify",
+      "name": "verify"
+    }
+  ],
+  "domain": "notary",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 4
+}

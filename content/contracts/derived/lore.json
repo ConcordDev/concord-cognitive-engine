@@ -42,6 +42,23 @@
         {
           "expect": {
             "ok": false,
+            "reason": "missing_id"
+          },
+          "input": {
+            "id": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "id": "lore_founding_compact"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
             "reason": "unknown_event"
           },
           "input": {
@@ -97,11 +114,45 @@
         },
         {
           "expect": {
+            "ok": true
+          },
+          "input": {
+            "era": "tessera"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "type": "founding",
+            "worldId": "tunya"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "q": "zzz_no_such_canon_substring_qqq"
+          }
+        },
+        {
+          "expect": {
             "ok": false,
             "reason": "invalid_limit"
           },
           "input": {
             "limit": -1
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_limit"
+          },
+          "input": {
+            "limit": 1e+308
           }
         }
       ],

@@ -10,6 +10,305 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "home-improvement.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.board-add",
+      "name": "board-add"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.board-delete",
+      "name": "board-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.board-idea-add",
+      "name": "board-idea-add"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.board-idea-delete",
+      "name": "board-idea-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.board-list",
+      "name": "board-list"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.colorPalette",
+      "name": "colorPalette"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.expense-log",
+      "name": "expense-log"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.feed",
+      "name": "feed"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.gallery-add",
+      "name": "gallery-add"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.gallery-delete",
+      "name": "gallery-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.gallery-list",
+      "name": "gallery-list"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.gantt",
+      "name": "gantt"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.home-improvement-dashboard",
+      "name": "home-improvement-dashboard"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.inventory-add",
+      "name": "inventory-add"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.inventory-delete",
+      "name": "inventory-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.inventory-list",
+      "name": "inventory-list"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "home-improvement.list_mine",
       "name": "list_mine"
     },
@@ -23,11 +322,531 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "home-improvement.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.maintenance-add",
+      "name": "maintenance-add"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.maintenance-complete",
+      "name": "maintenance-complete"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.maintenance-delete",
+      "name": "maintenance-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.maintenance-list",
+      "name": "maintenance-list"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.maintenance-seasonal",
+      "name": "maintenance-seasonal"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.permitCheck",
+      "name": "permitCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.phase-add",
+      "name": "phase-add"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.phase-delete",
+      "name": "phase-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.phase-update",
+      "name": "phase-update"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.pro-add",
+      "name": "pro-add"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.pro-delete",
+      "name": "pro-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.pro-list",
+      "name": "pro-list"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.pro-quote-add",
+      "name": "pro-quote-add"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.pro-review-add",
+      "name": "pro-review-add"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.project-add",
+      "name": "project-add"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.project-delete",
+      "name": "project-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.project-list",
+      "name": "project-list"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.project-status",
+      "name": "project-status"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.projectEstimate",
+      "name": "projectEstimate"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "home-improvement.recent_mine",
       "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.roiCalculator",
+      "name": "roiCalculator"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.shopping-add",
+      "name": "shopping-add"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.shopping-delete",
+      "name": "shopping-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.shopping-list",
+      "name": "shopping-list"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.shopping-price-update",
+      "name": "shopping-price-update"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.shopping-toggle",
+      "name": "shopping-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.task-add",
+      "name": "task-add"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.task-toggle",
+      "name": "task-toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "home-improvement",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "home-improvement.vote",
+      "name": "vote"
     }
   ],
   "domain": "home-improvement",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 2
+  "macroCount": 65
 }

@@ -10,8 +10,112 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "resonance.archive",
+      "name": "archive"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.audienceMatch",
+      "name": "audienceMatch"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.bookmark",
+      "name": "bookmark"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "resonance.boundary",
       "name": "boundary"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.comment",
+      "name": "comment"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.dislike",
+      "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.duplicate",
+      "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.engagementScore",
+      "name": "engagementScore"
     },
     {
       "_derived": true,
@@ -36,11 +140,310 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "resonance.impactPrediction",
+      "name": "impactPrediction"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.like",
+      "name": "like"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.listInsights",
+      "name": "listInsights"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.listPairs",
+      "name": "listPairs"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.lock",
+      "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.pairDrilldown",
+      "name": "pairDrilldown"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.pairTrend",
+      "name": "pairTrend"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.pin",
+      "name": "pin"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.priority",
+      "name": "priority"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.proposePair",
+      "name": "proposePair"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.repost",
+      "name": "repost"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.resonanceAlerts",
+      "name": "resonanceAlerts"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.resonanceGraph",
+      "name": "resonanceGraph"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.resonanceToInsight",
+      "name": "resonanceToInsight"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.save",
+      "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "resonance.scan",
       "name": "scan"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.share",
+      "name": "share"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.star",
+      "name": "star"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.tag",
+      "name": "tag"
+    },
+    {
+      "_derived": true,
+      "domain": "resonance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "resonance.vote",
+      "name": "vote"
     }
   ],
   "domain": "resonance",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 3
+  "macroCount": 34
 }
