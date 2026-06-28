@@ -1,0 +1,24 @@
+{
+  "macro_id": "marketing.audienceSegment",
+  "domain": "marketing",
+  "name": "audienceSegment",
+  "inputs": {
+    "users": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.message === 'string' || Array.isArray(output.result.segments)",
+    "output.ok === false || !output.result.segments || Number.isFinite(output.result.totalUsers)",
+    "output.ok === false || !output.result.segments || output.result.segments.every(function(s){ return Number.isFinite(s.users) && Number.isFinite(s.totalSpend) && Number.isFinite(s.avgSpend) && Number.isFinite(s.share); })",
+    "output.ok === false || output.result.pareto === undefined || typeof output.result.pareto === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "users": [{ "segment": "vip", "spend": 500 }, { "segment": "vip", "spend": 300 }, { "segment": "free", "spend": 0 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "users": [{ "tier": "gold", "ltv": 1200 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "users": [{ "segment": "vip", "spend": "Infinity" }, { "segment": "vip", "spend": "abc" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS calculator. reads artifact.data.users (array; each has segment|tier + spend|ltv). empty → {message}. groups by segment/tier; avgSpend=totalSpend/count; share=count/total×100; highValue=top by avgSpend; pareto when top segment >50% of revenue. POISON: spend/ltv via finFloat → Number.isFinite gate so 'Infinity'/'abc' collapse to 0 (prior `parseFloat(x)||0` leaked Infinity into totalSpend/avgSpend → card showed 'null'). Card renders totalUsers/pareto/segments[].segment+users+share+avgSpend/highValue EXACTLY. Pinned by server/tests/marketing-lens-macros.test.js."
+}
