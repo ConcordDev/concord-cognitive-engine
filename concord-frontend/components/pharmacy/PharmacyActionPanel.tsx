@@ -30,8 +30,11 @@ interface LabelResult { genericName?: string; brandName?: string; manufacturer?:
 interface InterPair { drug1: string; drug2: string; aMentionsB?: boolean; bMentionsA?: boolean; severity?: string }
 interface InterLabel { name: string; found: boolean; genericName?: string; brandName?: string; manufacturer?: string }
 interface InterResult { medications: string[]; labels: InterLabel[]; interactionsFound: number; coMentions: InterPair[]; disclaimer?: string }
-interface AdverseEvent { reaction?: string; outcome?: string; count?: number; serious?: boolean; date?: string }
-interface AdverseResult { drug?: string; total?: number; topReactions?: AdverseEvent[]; reports?: AdverseEvent[]; source?: string }
+// Matches the real pharmacy.adverse-events contract: { drug, reportCount,
+// topReactions: [{ term, count }], source, disclaimer }. The earlier shape
+// (total / reaction) was a phantom — the panel rendered blanks in production.
+interface AdverseReaction { term?: string; count?: number }
+interface AdverseResult { drug?: string; reportCount?: number; topReactions?: AdverseReaction[]; source?: string; disclaimer?: string }
 interface DoseResult { weightKg: number; dosePerKg: number; singleDose: string; frequency: string; dailyDose: string; maxDailyDose: string; capped: boolean; disclaimer: string }
 
 export function PharmacyActionPanel() {
@@ -86,7 +89,7 @@ export function PharmacyActionPanel() {
   async function actAdverse() {
     if (!drugName.trim()) { err('Drug required.'); return; }
     setBusy('adverse'); setFeedback(null);
-    try { const r = await callMacro<AdverseResult>('adverse-events', { drug: drugName.trim() }); if (r.ok && r.result) { setAdverseResult(r.result); pipe.publish('pharmacy.adverse', r.result, { label: `${r.result.total ?? 0} FAERS` }); ok(`${r.result.total ?? 0} FAERS reports.`); } else err(r.error ?? 'adverse failed'); }
+    try { const r = await callMacro<AdverseResult>('adverse-events', { drug: drugName.trim() }); if (r.ok && r.result) { setAdverseResult(r.result); pipe.publish('pharmacy.adverse', r.result, { label: `${r.result.reportCount ?? 0} FAERS` }); ok(`${r.result.reportCount ?? 0} FAERS reports.`); } else err(r.error ?? 'adverse failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDose() {
@@ -105,7 +108,7 @@ export function PharmacyActionPanel() {
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`💊 Rx note`, '', labelResult ? `${labelResult.brandName ?? labelResult.genericName} (${labelResult.route ?? '-'}, ${labelResult.rxOtc ?? '-'})` : '', interResult ? `Interaction screen: ${interResult.interactionsFound} co-mentions across ${interResult.medications.join(' + ')}` : '', adverseResult ? `FAERS: ${adverseResult.total} reports` : '', doseResult ? `Dose: ${doseResult.singleDose} ${doseResult.frequency} → ${doseResult.dailyDose} daily` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
+    const body = [`💊 Rx note`, '', labelResult ? `${labelResult.brandName ?? labelResult.genericName} (${labelResult.route ?? '-'}, ${labelResult.rxOtc ?? '-'})` : '', interResult ? `Interaction screen: ${interResult.interactionsFound} co-mentions across ${interResult.medications.join(' + ')}` : '', adverseResult ? `FAERS: ${adverseResult.reportCount} reports` : '', doseResult ? `Dose: ${doseResult.singleDose} ${doseResult.frequency} → ${doseResult.dailyDose} daily` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
     try {
       const messageId = await dmRecall.run(async () => {
         const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
@@ -212,9 +215,9 @@ export function PharmacyActionPanel() {
         {adverseResult && (
           <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">FAERS · {adverseResult.drug}</div>
-            <div className="text-2xl font-bold text-orange-300">{adverseResult.total ?? 0}</div>
+            <div className="text-2xl font-bold text-orange-300">{adverseResult.reportCount ?? 0}</div>
             <div className="text-[10px] text-zinc-400">reports</div>
-            {(adverseResult.topReactions ?? []).slice(0, 4).map((e, i) => <div key={i} className="text-[10px] text-orange-200 mt-0.5">{e.reaction} <span className="text-zinc-400">×{e.count}</span></div>)}
+            {(adverseResult.topReactions ?? []).slice(0, 4).map((e, i) => <div key={i} className="text-[10px] text-orange-200 mt-0.5">{e.term} <span className="text-zinc-400">×{e.count}</span></div>)}
           </div>
         )}
         {doseResult && (

@@ -1,0 +1,19 @@
+{
+  "macro_id": "pharmacy.refills-due",
+  "domain": "pharmacy",
+  "name": "refills-due",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || Array.isArray(output.result.due)",
+    "output.ok === false || (Number.isFinite(output.result.count) && output.result.count >= 0)",
+    "output.ok === false || output.result.due.every(d => Number.isFinite(d.daysOfSupply) && d.daysOfSupply >= 0)",
+    "output.ok === false || output.result.due.every(d => d.urgency === 'critical' || d.urgency === 'soon')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). Per-user STATE-backed days-supply math. For each non-archived med: daysOfSupply = floor(quantity / scheduledPerDay(schedule)) where scheduledPerDay = schedule.times.length; only meds with daysOfSupply<=7 enter due[], sorted ascending, with urgency='critical' (<=2 days) or 'soon'. due[] carries {medId,name,quantity,daysOfSupply,refillsRemaining,urgency} — the exact RxRefillsPanel fields. A fresh assassin ctx owns no meds → {due:[],count:0,ok:true}. Degrade-graceful: STATE absent → {ok:false,'STATE unavailable'} (never a throw). The happy-path days-supply derivation (add med qty 6 + 2x/day schedule → 3 days → 'soon') is pinned by server/tests/pharmacy-lens-macros.test.js."
+}

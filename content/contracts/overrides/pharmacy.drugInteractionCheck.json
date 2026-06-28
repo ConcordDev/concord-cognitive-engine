@@ -1,0 +1,25 @@
+{
+  "macro_id": "pharmacy.drugInteractionCheck",
+  "domain": "pharmacy",
+  "name": "drugInteractionCheck",
+  "reads_artifact_data": true,
+  "external_io": true,
+  "inputs": {
+    "medications": { "type": "array", "maxLength": 50 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (Number.isFinite(output.result.medicationsChecked) && output.result.medicationsChecked >= 0)",
+    "output.ok === false || (Number.isFinite(output.result.interactionsFound) && output.result.interactionsFound >= 0)",
+    "output.ok === false || (Array.isArray(output.result.interactions) && Array.isArray(output.result.coMentions))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "medications": ["warfarin"] } } }, "expect": { "ok": false } },
+    { "input": { "artifact": { "data": { "medications": [] } } }, "expect": { "ok": false } },
+    { "input": { "artifact": { "data": { "medications": ["", "  "] } } }, "expect": { "ok": false } }
+  ],
+  "_note": "EXTERNAL-IO (OpenFDA SPL label fetch) — marked external_io:true so the live network path is NOT assassin-driven; the validation-rejection fuzz cases below never reach fetch (they bail before the loop). Pulls each drug's DRUG_INTERACTIONS+WARNINGS label text and reports cross-mentions. result carries BOTH the canonical coMentions[] (PharmacyActionPanel) AND interactions[] (the SAME real array, what the FdaDrugReference InteractionsPanel + page interaction list render) — no phantom field; each pair has a real grounded {drug1,drug2,severity:'review-label',effect} where `effect` describes which FDA label mentions which. medicationsChecked = distinct screened names. <2 non-empty names rejects with 'at least 2 medications required' (never a fake 'all clear'). Fail-soft on network/parse error → {ok:false, error}. Pinned by server/tests/pharmacy-lens-macros.test.js (fetch stubbed)."
+}
