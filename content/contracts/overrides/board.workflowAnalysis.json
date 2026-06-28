@@ -1,0 +1,25 @@
+{
+  "macro_id": "board.workflowAnalysis",
+  "domain": "board",
+  "name": "workflowAnalysis",
+  "inputs": {
+    "cards": { "type": "array", "required": false },
+    "columns": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalCards)",
+    "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.cycleTime.mean) && Number.isFinite(output.result.leadTime.mean) && Number.isFinite(output.result.throughput.weeklyAvg) && Number.isFinite(output.result.wip.total))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "cards": [], "columns": [] }, "expect": { "ok": true } },
+    { "input": { "columns": [{ "name": "Done" }], "cards": [{ "id": "c1", "title": "A", "column": "Done", "createdAt": "2026-06-01T00:00:00Z", "completedAt": "2026-06-06T00:00:00Z" }] }, "expect": { "ok": true } },
+    { "input": { "columns": [{ "name": "Done" }], "cards": [{ "id": "c", "title": "X", "column": "Done", "createdAt": "bad", "completedAt": "also-bad" }] }, "expect": { "ok": true } },
+    { "input": { "cards": "nope" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'board.workflowAnalysis'. The /lenses/board AI Action Panel derives {columns:[{name,wipLimit?}], cards:[{id,title,column,createdAt,startedAt?,completedAt?,transitions?}]} from the live kanban tasks and passes them as run-action params (the persisted task artifact's .data is a single task and has no cards/columns — the prior dead surface). Handler reads params.X ?? artifact.data.X. Returns {totalCards,completedCards,inProgressCards,cycleTime:{mean,...},leadTime:{mean,...},throughput:{weeklyAvg},wip:{total,overLimitColumns:[{column,wip,limit}]},bottleneck,flowEfficiency}. POISON: unparseable dates are isNaN-guarded → every numeric output FINITE; non-array cards/columns degrade to a guidance message. Pinned by server/tests/board-lens-macros.test.js."
+}
