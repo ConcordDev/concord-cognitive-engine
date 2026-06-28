@@ -1,0 +1,29 @@
+{
+  "macro_id": "commonsense.plausibilityCheck",
+  "domain": "commonsense",
+  "name": "plausibilityCheck",
+  "inputs": {
+    "statement": { "type": "object", "required": false },
+    "constraints": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.plausibilityScore)",
+    "output.ok === false || (output.result.plausibilityScore >= 0 && output.result.plausibilityScore <= 100)",
+    "output.ok === false || typeof output.result.plausibilityLabel === 'string'",
+    "output.ok === false || (output.result.violations && Number.isFinite(output.result.violations.count) && Array.isArray(output.result.violations.items))",
+    "output.ok === false || Number.isFinite(output.result.constraintsSatisfied)",
+    "output.ok === false || Number.isFinite(output.result.eventsAnalyzed)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "statement": { "text": "The cat sat on the warm mat." } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "statement": { "text": "The dead man spoke clearly to the crowd." } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "statement": { "text": "trip", "events": [{ "action": "arrive", "time": "2026-01-02T10:00:00Z" }, { "action": "depart", "time": "2026-01-01T10:00:00Z" }] } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "statement": { "text": "x", "events": [{ "action": "a", "time": "Infinity" }, { "action": "b", "time": "NaN" }] } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "statement": "nope" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (registerLensAction). Dispatch key 'commonsense.plausibilityCheck'. CommonsenseActionPanel.tsx sends {artifact:{data:{statement:{text}}}} (was wrongly sending a BARE STRING → statement.text undefined → empty analysis; FIXED). Returns {plausibilityScore,plausibilityLabel,violations:{count,items:[{type,description,severity}]},constraintsSatisfied,totalChecksPerformed,eventsAnalyzed} — the EXACT fields the result card reads (was reading {verdict,reasoning} which the handler never returns → dead card; FIXED). Deterministic pure compute: regex causal/temporal/spatial/physical violation detection + constraint relevance + severity-adjusted score (Math.max(0, score - high*15)). POISON: event 'time' strings flow through new Date(t).getTime(); 'Infinity'/'NaN' → NaN guarded by !isNaN → score stays FINITE 0..100. Not assassin-driven (no derived contract for this LENS_ACTION); authored spec pinned by server/tests/commonsense-lens-macros.test.js."
+}

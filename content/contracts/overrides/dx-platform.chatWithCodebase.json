@@ -1,0 +1,22 @@
+{
+  "macro_id": "dx-platform.chatWithCodebase",
+  "domain": "dx-platform",
+  "name": "chatWithCodebase",
+  "inputs": {
+    "codebaseId": { "type": "string", "maxLength": 200 },
+    "question": { "type": "string", "maxLength": 2000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.answer === 'string')",
+    "output.ok === false || Array.isArray(output.result.citations)",
+    "output.ok === false || typeof output.result.grounded === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "no_question" } },
+    { "input": { "question": "where is login" }, "expect": { "ok": false, "error": "codebase_not_found" } },
+    { "input": { "codebaseId": "ghost", "question": "where is login" }, "expect": { "ok": false, "error": "codebase_not_found" } }
+  ],
+  "_note": "Deterministic, fully-grounded token-overlap retrieval over the caller's indexed codebase (NO LLM, NO network). The assassin's internal owner actor has indexed nothing → every codebaseId is codebase_not_found; absent question fails-closed first (NEVER no_db)."
+}

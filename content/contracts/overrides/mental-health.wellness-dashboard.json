@@ -1,0 +1,19 @@
+{
+  "macro_id": "mental-health.wellness-dashboard",
+  "domain": "mental-health",
+  "name": "wellness-dashboard",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.streak === 'number' && output.result.streak >= 0)",
+    "output.ok === false || (typeof output.result.sessionsThisWeek === 'number' && output.result.sessionsThisWeek >= 0)",
+    "output.ok === false || (output.result.latestMood === null || (output.result.latestMood >= 1 && output.result.latestMood <= 5))",
+    "output.ok === false || (output.result.avgSleepHours === null || typeof output.result.avgSleepHours === 'number')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "junk": "'; DROP TABLE moods; --", "n": 1e308 }, "expect": { "ok": true } }
+  ],
+  "_note": "mental-health.wellness-dashboard is a read-only LENS_ACTIONS aggregator over the per-user in-memory substrate (sessions/moods/sleep/courses/gratitude). It is degrade-graceful by construction: an empty user returns ok:true with all-zero / null stats (never no_db / never throw — it is wrapped in try/catch and returns {ok:false,error} only when STATE itself is unavailable). Pinned by server/tests/mental-health-lens-macros.test.js. Lens-action domain — not assassin-enumerable via runMacro."
+}

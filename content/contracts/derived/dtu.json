@@ -1,0 +1,215 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.cluster",
+      "name": "cluster"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.create",
+      "name": "create"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.dedupeSweep",
+      "name": "dedupeSweep"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.define",
+      "name": "define"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.delete",
+      "name": "delete"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.gapPromote",
+      "name": "gapPromote"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.listByKind",
+      "name": "listByKind"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.listShadow",
+      "name": "listShadow"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.protocol_validate",
+      "name": "protocol_validate"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.reconcile",
+      "name": "reconcile"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.saveSuggested",
+      "name": "saveSuggested"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.stats",
+      "name": "stats"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.syncFromGlobal",
+      "name": "syncFromGlobal"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.update",
+      "name": "update"
+    }
+  ],
+  "domain": "dtu",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 16
+}

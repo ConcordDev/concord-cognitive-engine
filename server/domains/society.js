@@ -92,7 +92,49 @@ function userId(ctx) {
   return (ctx && (ctx.userId || (ctx.actor && ctx.actor.userId))) || "anon";
 }
 
-export default function registerSocietyActions(registerLensAction) {
+// Reject a poisoned numeric input (NaN/±Infinity/1e308/negative) BEFORE it can
+// silently clamp through a Math.min/max bound and return a fabricated ok:true —
+// the defect the macro-assassin's V2 vector catches. An absent/null field is
+// fine (the macro uses its default). Returns null when clean, else the offending
+// key. Copied from server/domains/literary.js.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input == null || input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
+// A World Bank indicator code (e.g. "SP.POP.TOTL") or one of our human aliases
+// is alnum + dot/dash/underscore only. Validating the shape BEFORE the value is
+// interpolated into the WB URL path (a) rejects the assassin's XSS/`<script>`
+// probe BEFORE any outbound network call (so these macros are deterministic +
+// never hammer World Bank with hostile payloads), and (b) is genuine URL-path
+// injection hardening — a control char or `/` could otherwise re-target the
+// upstream request. Empty is reported separately by each macro.
+const INDICATOR_CODE_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
+function validIndicatorCode(raw) {
+  return INDICATOR_CODE_RE.test(raw);
+}
+
+export default function registerSocietyActions(register) {
+  // Legacy-convention shim: adapt the canonical register(ctx, input) the MACROS
+  // registry (and runMacro / the contract engine / macro-assassin) drive → the
+  // verified (ctx, artifact, params) handler bodies below, unchanged. The same
+  // compute lives here; no logic is duplicated. PRIOR BUG: this module used the
+  // LEGACY 3-arg registerLensAction convention AND was never imported by
+  // server.js — so every society.* (wb-*) macro was invisible to runMacro and
+  // hit `unknown_macro` at runtime, leaving the DataExplorer + SocietyActionPanel
+  // (the live World Bank surface) dead-wired. Rewired to canonical register.
+  const registerLensAction = (domain, action, handler) =>
+    register(domain, action, (ctx, input = {}) => {
+      const inp = input && typeof input === "object" ? input : {};
+      const artifact = inp.artifact && typeof inp.artifact === "object"
+        ? inp.artifact
+        : { id: null, domain, type: "domain_action", data: inp, meta: {} };
+      return handler(ctx, artifact, inp);
+    });
   /**
    * wb-indicator — Fetch a single World Bank indicator for a country.
    * params: { country: ISO-3 (e.g. "USA", "GBR"), indicator: WB code OR alias }
@@ -102,6 +144,7 @@ export default function registerSocietyActions(registerLensAction) {
     if (!/^[A-Z]{3}$/.test(country)) return { ok: false, error: "country must be 3-letter ISO code (e.g. 'USA', 'GBR', 'JPN')" };
     const raw = String(params.indicator || "").trim();
     if (!raw) return { ok: false, error: "indicator required (WB code like 'SP.POP.TOTL' or alias like 'population')" };
+    if (!validIndicatorCode(raw)) return { ok: false, error: "indicator must be a World Bank code or alias (alphanumeric, dot/dash/underscore)" };
     const indicator = COMMON_INDICATORS[raw] || raw;
     try {
       const url = `${WB_BASE}/country/${country}/indicator/${encodeURIComponent(indicator)}?format=json&per_page=70`;
@@ -170,6 +213,7 @@ export default function registerSocietyActions(registerLensAction) {
     if (!countries.every((c) => /^[A-Z]{3}$/.test(c))) return { ok: false, error: "all countries must be 3-letter ISO codes" };
     const raw = String(params.indicator || "").trim();
     if (!raw) return { ok: false, error: "indicator required" };
+    if (!validIndicatorCode(raw)) return { ok: false, error: "indicator must be a World Bank code or alias" };
     const indicator = COMMON_INDICATORS[raw] || raw;
     try {
       const url = `${WB_BASE}/country/${countries.join(";")}/indicator/${encodeURIComponent(indicator)}?format=json&per_page=2000&mrnev=1`;
@@ -217,6 +261,7 @@ export default function registerSocietyActions(registerLensAction) {
     if (!/^[A-Z]{3}$/.test(country)) return { ok: false, error: "country must be 3-letter ISO code" };
     const raw = String(params.indicator || "").trim();
     if (!raw) return { ok: false, error: "indicator required" };
+    if (!validIndicatorCode(raw)) return { ok: false, error: "indicator must be a World Bank code or alias" };
     const indicator = COMMON_INDICATORS[raw] || raw;
     const perCapita = params.perCapita === true;
     const inflationAdjust = params.inflationAdjust === true;
@@ -273,6 +318,13 @@ export default function registerSocietyActions(registerLensAction) {
     const countries = Array.isArray(params.countries) ? params.countries.map((c) => String(c).toUpperCase()) : [];
     if (countries.length < 2 || countries.length > 30) return { ok: false, error: "countries must be array of 2-30 ISO-3 codes" };
     if (!countries.every((c) => /^[A-Z]{3}$/.test(c))) return { ok: false, error: "all countries must be 3-letter ISO codes" };
+    const badNum = badNumericField(params, ["startYear", "endYear"]);
+    if (badNum) return { ok: false, error: `invalid ${badNum}` };
+    for (const f of ["xIndicator", "yIndicator", "sizeIndicator"]) {
+      if (params[f] != null && params[f] !== "" && !validIndicatorCode(String(params[f]))) {
+        return { ok: false, error: `${f} must be a World Bank code or alias` };
+      }
+    }
     const xInd = COMMON_INDICATORS[params.xIndicator] || params.xIndicator || "NY.GDP.PCAP.CD";
     const yInd = COMMON_INDICATORS[params.yIndicator] || params.yIndicator || "SP.DYN.LE00.IN";
     const sizeInd = COMMON_INDICATORS[params.sizeIndicator] || params.sizeIndicator || "SP.POP.TOTL";
@@ -335,6 +387,7 @@ export default function registerSocietyActions(registerLensAction) {
   registerLensAction("society", "wb-choropleth", async (_ctx, _artifact, params = {}) => {
     const raw = String(params.indicator || "").trim();
     if (!raw) return { ok: false, error: "indicator required" };
+    if (!validIndicatorCode(raw)) return { ok: false, error: "indicator must be a World Bank code or alias" };
     const indicator = COMMON_INDICATORS[raw] || raw;
     try {
       // Country metadata (lat/lon + region) for ~300 economies.
@@ -391,6 +444,11 @@ export default function registerSocietyActions(registerLensAction) {
   registerLensAction("society", "wb-indicator-search", async (_ctx, _artifact, params = {}) => {
     const query = String(params.query || "").trim().toLowerCase();
     if (query.length < 2) return { ok: false, error: "query must be at least 2 characters" };
+    // Search text is matched client-side, but guard the shape so a hostile
+    // payload (control chars / markup) can't reach the catalog scan loop.
+    if (!/^[\w .,'+&/()-]{2,80}$/.test(query)) return { ok: false, error: "query contains unsupported characters" };
+    const badNum = badNumericField(params, ["limit"]);
+    if (badNum) return { ok: false, error: `invalid ${badNum}` };
     const limit = Math.min(Math.max(Number(params.limit) || 40, 1), 200);
     try {
       // The WB catalog has no server-side text filter; pull pages of the
@@ -435,6 +493,9 @@ export default function registerSocietyActions(registerLensAction) {
       ? params.indicators
       : ["population", "gdpPerCapita", "lifeExpectancy", "literacyRate", "gini",
          "infantMortality", "unemployment", "internetUsers", "urbanPopulationPct", "co2EmissionsPerCapita"];
+    if (!aliases.every((a) => validIndicatorCode(String(a)))) {
+      return { ok: false, error: "every indicator must be a World Bank code or alias" };
+    }
     try {
       const profileJson = await wbJson(`${WB_BASE}/country/${country}?format=json`);
       const profile = profileJson[1]?.[0]
@@ -567,6 +628,7 @@ export default function registerSocietyActions(registerLensAction) {
   registerLensAction("society", "wb-region-rankings", async (_ctx, _artifact, params = {}) => {
     const raw = String(params.indicator || "").trim();
     if (!raw) return { ok: false, error: "indicator required" };
+    if (!validIndicatorCode(raw)) return { ok: false, error: "indicator must be a World Bank code or alias" };
     const indicator = COMMON_INDICATORS[raw] || raw;
     try {
       const codes = Object.keys(AGGREGATE_CODES);
@@ -616,6 +678,8 @@ export default function registerSocietyActions(registerLensAction) {
    */
   registerLensAction("society", "wb-transform-series", (_ctx, _artifact, params = {}) => {
   try {
+    const badNum = badNumericField(params, ["baseYear"]);
+    if (badNum) return { ok: false, error: `invalid ${badNum}` };
     const series = Array.isArray(params.series) ? params.series : [];
     if (!series.length) return { ok: false, error: "series array required" };
     let out = series

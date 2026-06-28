@@ -32,7 +32,7 @@ interface VinData {
 }
 interface Recall { campaignId?: string; component?: string; summary?: string; consequence?: string; remedy?: string; recallDate?: string }
 interface ScheduleItem { service: string; intervalMiles: number; intervalMonths: number; priority: 'low' | 'medium' | 'high'; notes?: string; milesUntilDue: number; overdue: boolean; status: 'due-now' | 'upcoming' | 'ok' }
-interface ScheduleResult { mileage?: number; due?: ScheduleItem[]; allCaughtUp?: boolean }
+interface ScheduleResult { mileage?: number; services?: ScheduleItem[]; allCaughtUp?: boolean }
 
 async function callAuto<T>(action: string, input: Record<string, unknown>): Promise<T | null> {
   try {
@@ -76,7 +76,7 @@ export function VehicleHistory() {
 
   const events: TimelineEvent[] = [
     ...recalls.map((r) => ({ kind: 'recall' as const, date: r.recallDate, recall: r })),
-    ...(schedule?.due || []).filter((i) => i.status !== 'ok').map((i) => ({ kind: 'maintenance' as const, mileage: odometer + i.milesUntilDue, item: i })),
+    ...(schedule?.services || []).filter((i) => i.status !== 'ok').map((i) => ({ kind: 'maintenance' as const, mileage: odometer + i.milesUntilDue, item: i })),
   ].sort((a, b) => {
     if (a.kind === 'recall' && b.kind === 'recall') return (b.date || '').localeCompare(a.date || '');
     if (a.kind === 'maintenance' && b.kind === 'maintenance') return a.mileage - b.mileage;
@@ -85,8 +85,8 @@ export function VehicleHistory() {
 
   const odoPct = Math.min(100, Math.round((odometer / 200000) * 100));
   const odoColour = odometer > 150000 ? 'text-rose-300' : odometer > 100000 ? 'text-amber-300' : 'text-emerald-300';
-  const overdueCount = (schedule?.due || []).filter((i) => i.overdue).length;
-  const upcomingCount = (schedule?.due || []).filter((i) => i.status === 'upcoming').length;
+  const overdueCount = (schedule?.services || []).filter((i) => i.overdue).length;
+  const upcomingCount = (schedule?.services || []).filter((i) => i.status === 'upcoming').length;
 
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
@@ -128,7 +128,7 @@ export function VehicleHistory() {
                 compact
                 apiSource="concord-auto-vehicle-history"
                 title={`${vinData?.year ?? ''} ${vinData?.make ?? ''} ${vinData?.model ?? ''} VIN ${vin} — ${recalls.length} recalls · ${overdueCount} overdue services`}
-                content={`VIN: ${vin}\nVehicle: ${vinData?.year} ${vinData?.make} ${vinData?.model} ${vinData?.trim || ''}\nEngine: ${vinData?.engine || 'unknown'}\nOdometer: ${odometer.toLocaleString()} mi\n\nRecalls (${recalls.length}):\n${recalls.map((r) => `  [${r.recallDate || 'undated'}] ${r.component} — ${r.summary}`).join('\n') || '  None'}\n\nMaintenance (${overdueCount} overdue, ${upcomingCount} upcoming):\n${(schedule?.due || []).filter((i) => i.status !== 'ok').map((i) => `  ${i.status === 'due-now' ? '⚠' : '○'} ${i.service} (${i.milesUntilDue} mi)`).join('\n') || '  All caught up'}`}
+                content={`VIN: ${vin}\nVehicle: ${vinData?.year} ${vinData?.make} ${vinData?.model} ${vinData?.trim || ''}\nEngine: ${vinData?.engine || 'unknown'}\nOdometer: ${odometer.toLocaleString()} mi\n\nRecalls (${recalls.length}):\n${recalls.map((r) => `  [${r.recallDate || 'undated'}] ${r.component} — ${r.summary}`).join('\n') || '  None'}\n\nMaintenance (${overdueCount} overdue, ${upcomingCount} upcoming):\n${(schedule?.services || []).filter((i) => i.status !== 'ok').map((i) => `  ${i.status === 'due-now' ? '⚠' : '○'} ${i.service} (${i.milesUntilDue} mi)`).join('\n') || '  All caught up'}`}
                 extraTags={['automotive', 'vin', vinData?.make?.toLowerCase() || 'unknown']}
                 rawData={{ vin, odometer, vinData, recalls, schedule }}
               />

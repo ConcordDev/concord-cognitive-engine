@@ -28,7 +28,12 @@ export default function registerLandscapingActions(registerLensAction) {
     return { ok: true, result: { zone, sunExposure: sun, soilType: soil, recommendations: suitable.map(p => ({ name: p.name, type: p.type })), totalMatches: suitable.length } };
   });
   registerLensAction("landscaping", "irrigationCalc", (ctx, artifact, _params) => {
-    const sqft = parseFloat(artifact.data?.squareFootage) || 1000;
+    // fail-CLOSED: parseFloat(Infinity) is NaN, but parseFloat("Infinity")
+    // and a raw Infinity are truthy → `|| 1000` would let Infinity through and
+    // leak Infinity into every rendered gallons figure. Guard with isFinite +
+    // floor negatives to 0 so the card never shows NaN/Infinity.
+    const rawSqft = parseFloat(artifact.data?.squareFootage);
+    const sqft = Number.isFinite(rawSqft) ? Math.max(0, rawSqft) || 1000 : 1000;
     const plantType = (artifact.data?.plantType || "lawn").toLowerCase();
     const rates = { lawn: 1.0, garden: 0.8, shrubs: 0.6, trees: 0.4, xeriscape: 0.2 };
     const inchesPerWeek = rates[plantType] || 1.0;
@@ -42,7 +47,10 @@ export default function registerLandscapingActions(registerLensAction) {
   });
   registerLensAction("landscaping", "materialEstimate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const sqft = parseFloat(data.squareFootage) || 100;
+    // fail-CLOSED on poisoned numerics: Infinity/NaN/garbage must never leak
+    // into cubicYards/bags/estimatedCost. isFinite guard + floor negatives.
+    const rawSqft = parseFloat(data.squareFootage);
+    const sqft = Number.isFinite(rawSqft) ? Math.max(0, rawSqft) || 100 : 100;
     const material = (data.material || "mulch").toLowerCase();
     const depths = { mulch: 3, gravel: 2, topsoil: 4, compost: 2, sand: 2, pavers: 0 };
     const depthInches = depths[material] || 3;

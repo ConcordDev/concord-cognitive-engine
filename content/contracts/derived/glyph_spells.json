@@ -1,0 +1,98 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "glyph_spells",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "glyph_spells.cast",
+      "name": "cast"
+    },
+    {
+      "_derived": true,
+      "domain": "glyph_spells",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "glyph_spells.casts_in_region",
+      "name": "casts_in_region"
+    },
+    {
+      "_derived": true,
+      "domain": "glyph_spells",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "glyph_spells.list_components",
+      "name": "list_components"
+    },
+    {
+      "_derived": true,
+      "domain": "glyph_spells",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "glyph_spells.list_for_user",
+      "name": "list_for_user"
+    },
+    {
+      "_derived": true,
+      "domain": "glyph_spells",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "glyph_spells.mint",
+      "name": "mint"
+    },
+    {
+      "_derived": true,
+      "domain": "glyph_spells",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "glyph_spells.preview",
+      "name": "preview"
+    },
+    {
+      "_derived": true,
+      "domain": "glyph_spells",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "glyph_spells.seed_library",
+      "name": "seed_library"
+    }
+  ],
+  "domain": "glyph_spells",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 7
+}

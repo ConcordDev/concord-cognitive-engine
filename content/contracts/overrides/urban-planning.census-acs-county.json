@@ -1,0 +1,21 @@
+{
+  "macro_id": "urban-planning.census-acs-county",
+  "domain": "urban-planning",
+  "name": "census-acs-county",
+  "inputs": {
+    "stateFips": { "type": "string", "required": true, "maxLength": 4 },
+    "countyFips": { "type": "string", "required": true, "maxLength": 4 },
+    "year": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string'",
+    "output.ok === false || typeof output.result === 'object'"
+  ],
+  "fuzz_cases": [
+    { "input": { "stateFips": "6", "countyFips": "75x" }, "expect": { "ok": false, "error": "stateFips (2 digits) + countyFips (3 digits) required" } },
+    { "input": { "stateFips": "123", "countyFips": "001" }, "expect": { "ok": false, "error": "stateFips (2 digits) + countyFips (3 digits) required" } }
+  ],
+  "_note": "urban-planning.census-acs-county is a LENS_ACTIONS handler (server/domains/urbanplanning.js, PATH-3, hyphenated key) that calls the REAL US Census ACS 5-year API over the network when given valid FIPS. The DETERMINISTIC, NETWORK-FREE surface is the input validation: stateFips pads to 2 digits / countyFips to 3 and a value that fails /^\\d{2}$/ + /^\\d{3}$/ rejects BEFORE any fetch with 'stateFips (2 digits) + countyFips (3 digits) required'. NOTE empty/absent FIPS pads to '00'/'000' which IS format-valid and would reach the network — so the network-free fuzz cases here only cover the malformed/over-long inputs that reject pre-fetch. Network failures are caught and returned as { ok:false, error:'census unreachable: …' } (never thrown). LENS_ACTIONS-only AND network-bound → not driven by the macro-assassin; the pre-fetch validation is pinned by server/tests/urban-planning-lens-macros.test.js."
+}

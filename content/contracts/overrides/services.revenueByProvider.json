@@ -1,0 +1,26 @@
+{
+  "macro_id": "services.revenueByProvider",
+  "domain": "services",
+  "name": "revenueByProvider",
+  "reads_artifact_data": true,
+  "inputs": {
+    "appointments": { "type": "array", "required": false },
+    "period": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.period)",
+    "output.ok === false || Array.isArray(output.result.summary)",
+    "output.ok === false || Number.isFinite(output.result.totalRevenue)",
+    "output.ok === false || output.result.summary.every(function(s){return typeof s.provider === 'string' && Number.isFinite(s.appointments) && Number.isFinite(s.revenue);})",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "appointments": [{ "provider": "Ana", "price": 120, "status": "completed" }], "period": 3650 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "appointments": [], "period": 30 } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "appointments": [{ "provider": "Ana", "price": "1e999", "status": "completed" }], "period": 3650 } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). COMPONENT-EXACT shape: RevenueRetentionPanel sends a SOLE-KEY {artifact:{data:{appointments,period}}} body so the dispatch peel (lib/lens-input-normalize.js) unwraps it to {appointments,period}, feeding BOTH the handler's artifact.data.appointments read AND its params.period read. A 2-key {artifact:{data},period} body is deliberately NOT peeled and would strand appointments (DEAD calculator) — fixed 2026-06-28. RETURNS {period,summary:[{provider,appointments,revenue}],totalRevenue} — the exact keys the panel renders. status='completed'|'paid' AND date within `period` days gate inclusion. POISON: price coerced via Number()+Number.isFinite so '1e999'/'Infinity'/'NaN' collapse to 0; totalRevenue stays finite. Pure compute, no STATE. Pinned by server/tests/services-lens-macros.test.js."
+}

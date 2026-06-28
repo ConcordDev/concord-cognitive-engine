@@ -1,0 +1,28 @@
+{
+  "macro_id": "repair.health_log",
+  "domain": "repair",
+  "name": "health_log",
+  "inputs": {
+    "limit": { "type": "number", "min": 1, "max": 200 },
+    "disposition": { "type": "string", "enum": ["healed", "escalated", "noted"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.entries.every(e => typeof e.id === 'string' && e.id.length > 0)",
+    "output.ok === false || output.entries.every(e => ['healed','escalated','noted'].includes(e.disposition))",
+    "output.ok === false || output.entries.every(e => ['economy','liveness','arc'].includes(e.category))",
+    "output.ok === false || output.entries.every(e => typeof e.checked_at === 'number')",
+    "output.ok === false || output.entries.every(e => e.detail === undefined || (typeof e.detail === 'object' && e.detail !== null))",
+    "output.ok === false || (() => { const ts = output.entries.map(e => e.checked_at); for (let i = 1; i < ts.length; i++) { if (ts[i] > ts[i-1]) return false; } return true; })()",
+    "output.ok === false || (!input || !input.disposition || output.entries.every(e => e.disposition === input.disposition))",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 25 }, "expect": { "ok": true } },
+    { "input": { "disposition": "escalated" }, "expect": { "ok": true } },
+    { "input": { "limit": 1e308 }, "expect": { "ok": false } }
+  ],
+  "_note": "repair.health_log reads the Homeostasis ledger (migration 304 health_check_log) for the operator repair-telemetry dashboard. Against a live migrated DB a valid read returns ok:true with an entries[] array (empty when the monitor has logged nothing), NEVER no_db (no_db is only the headless ctx-without-db path). limit fails CLOSED via badNumericField — a poisoned numeric (NaN/Infinity/negative/>1e6) → ok:false reason invalid_limit, never a silent coercion. A valid limit is then clamped to a SQL LIMIT of min(Number(limit)||50, 200). Entries are newest-first (checked_at DESC); detail_json is parsed onto .detail. disposition optionally filters to one of healed|escalated|noted."
+}

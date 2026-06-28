@@ -9,7 +9,9 @@ const DATAMUSE = "https://api.datamuse.com/words";
 
 export default function registerLinguisticsActions(registerLensAction) {
   registerLensAction("linguistics", "textAnalysis", (ctx, artifact, _params) => {
-    const text = artifact.data?.text || artifact.data?.content || "";
+    // Coerce to String so a poisoned non-string input (number/object) degrades
+    // gracefully instead of throwing `text.split is not a function` (fail-closed).
+    const text = String(artifact.data?.text ?? artifact.data?.content ?? "");
     if (!text) return { ok: true, result: { message: "Provide text to analyze." } };
     const words = text.split(/\s+/).filter(Boolean);
     const sentences = text.split(/[.!?]+/).filter(Boolean);
@@ -56,7 +58,7 @@ export default function registerLinguisticsActions(registerLensAction) {
     return { ok: true, result: { content, wordCount: words.length, sentenceCount: sentences.length, lexicalDiversity: ttr, readabilityGrade: grade, readingLevel: level, wordClasses: classes } };
   });
   registerLensAction("linguistics", "morphologyBreakdown", (ctx, artifact, _params) => {
-    const word = artifact.data?.word || "";
+    const word = String(artifact.data?.word ?? "");
     if (!word) return { ok: true, result: { message: "Provide a word to analyze morphologically." } };
     const prefixes = ["un","re","pre","dis","mis","over","under","out","sub","super","anti","non","inter","trans","multi"];
     const suffixes = ["ing","tion","sion","ment","ness","able","ible","ful","less","ous","ive","al","er","est","ly","ed","es","s"];
@@ -66,7 +68,7 @@ export default function registerLinguisticsActions(registerLensAction) {
     return { ok: true, result: { word, prefix: foundPrefix || "none", root, suffix: foundSuffix || "none", morphemeCount: (foundPrefix ? 1 : 0) + 1 + (foundSuffix ? 1 : 0), wordClass: foundSuffix === "ly" ? "adverb" : foundSuffix === "ness" ? "noun" : foundSuffix === "ful" || foundSuffix === "ous" ? "adjective" : foundSuffix === "ing" || foundSuffix === "ed" ? "verb-form" : "base-form" } };
   });
   registerLensAction("linguistics", "frequencyAnalysis", (ctx, artifact, _params) => {
-    const text = artifact.data?.text || "";
+    const text = String(artifact.data?.text ?? "");
     if (!text) return { ok: true, result: { message: "Provide text for frequency analysis." } };
     const words = text.toLowerCase().replace(/[^a-z\s]/g, "").split(/\s+/).filter(Boolean);
     const freq = {};
@@ -76,7 +78,7 @@ export default function registerLinguisticsActions(registerLensAction) {
     return { ok: true, result: { totalWords: words.length, uniqueWords: Object.keys(freq).length, topContentWords: contentWords.slice(0, 15).map(([w, c]) => ({ word: w, count: c, frequency: Math.round((c / words.length) * 10000) / 100 })), hapaxLegomena: Object.values(freq).filter(v => v === 1).length, zipfCompliance: contentWords.length > 0 ? "Approximate Zipf distribution" : "Insufficient data" } };
   });
   registerLensAction("linguistics", "sentimentAnalysis", (ctx, artifact, _params) => {
-    const text = artifact.data?.text || "";
+    const text = String(artifact.data?.text ?? "");
     if (!text) return { ok: true, result: { message: "Provide text for sentiment analysis." } };
     const positive = ["good","great","excellent","amazing","wonderful","love","happy","best","beautiful","perfect","fantastic","brilliant","outstanding","superb","delightful"];
     const negative = ["bad","terrible","awful","horrible","hate","worst","ugly","poor","disappointing","disgusting","dreadful","pathetic","miserable","annoying","boring"];

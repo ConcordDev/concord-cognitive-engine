@@ -35,6 +35,22 @@ export default function registerBountiesActions(registerLensAction) {
   const clean = (v, max = 280) => String(v == null ? "" : v).trim().slice(0, max);
   const num = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
 
+  // Fail-CLOSED numeric guard for money fields. A caller that PASSES a numeric
+  // field at all must pass a finite, non-negative value within a sane bound; an
+  // absent field is fine (the macro uses its default). Returns the offending key
+  // or null. This stops a poisoned reward (NaN/Infinity/-1/1e308) from minting a
+  // fabricated pool — `num()` clamps NaN/Infinity/negative but lets a finite but
+  // absurd 1e308 through, which would inflate poolCc + leaderboard earnings.
+  const REWARD_MAX = 1e6;
+  function badNumericField(input, keys) {
+    for (const k of keys) {
+      if (input == null || input[k] === undefined || input[k] === null) continue;
+      const n = Number(input[k]);
+      if (!Number.isFinite(n) || n < 0 || n > REWARD_MAX) return k;
+    }
+    return null;
+  }
+
   const CATEGORIES = ["security", "feature", "bug", "design", "docs", "research", "infra", "other"];
   const DIFFICULTIES = ["beginner", "intermediate", "advanced", "expert"];
 
@@ -98,6 +114,9 @@ export default function registerBountiesActions(registerLensAction) {
     try {
       const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = actor(ctx);
+      // Fail-CLOSED on poisoned money inputs before any state write.
+      const badTop = badNumericField(params, ["rewardCc"]);
+      if (badTop) return { ok: false, error: `invalid numeric field: ${badTop}` };
       const title = clean(params.title, 160);
       if (title.length < 6) return { ok: false, error: "title must be at least 6 characters" };
       const description = clean(params.description, 6000);
@@ -106,6 +125,8 @@ export default function registerBountiesActions(registerLensAction) {
       const difficulty = DIFFICULTIES.includes(params.difficulty) ? params.difficulty : "intermediate";
       const tags = parseTags(params.tags);
       const rawMilestones = Array.isArray(params.milestones) ? params.milestones : [];
+      const badMilestone = rawMilestones.findIndex((m) => badNumericField(m, ["rewardCc"]));
+      if (badMilestone !== -1) return { ok: false, error: `invalid numeric field: milestones[${badMilestone}].rewardCc` };
       const milestones = rawMilestones
         .map((m, i) => ({
           id: id("ms"),

@@ -1,0 +1,16 @@
+{
+  "macro_id": "housing.mine",
+  "domain": "housing",
+  "name": "mine",
+  "inputs": {
+    "userId": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.houses)",
+    "output.ok === false || output.houses.every(h => typeof h.id === 'string')",
+    "output.ok === false || output.houses.every(h => ['private','friends','public'].includes(h.visibility))"
+  ],
+  "fuzz_cases": []
+}

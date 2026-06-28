@@ -1,0 +1,30 @@
+{
+  "macro_id": "ml.hyperparameterSuggest",
+  "domain": "ml",
+  "name": "hyperparameterSuggest",
+  "inputs": {
+    "model": { "type": "string" },
+    "task": { "type": "string" },
+    "datasetSize": { "type": "number" },
+    "features": { "type": "number" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || typeof output.result.modelType === 'string'",
+    "output.ok === false || typeof output.result.taskType === 'string'",
+    "output.ok === false || (Number.isFinite(output.result.datasetSize) && Number.isFinite(output.result.featureCount))",
+    "output.ok === false || (typeof output.result.suggestions === 'object' && output.result.suggestions !== null)",
+    "output.ok === false || (Number.isFinite(output.result.suggestions.crossValidation) && Number.isFinite(output.result.suggestions.testSplit))",
+    "output.ok === false || Array.isArray(output.result.notes)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "model": "neural-network", "task": "classification", "datasetSize": 5000, "features": 20 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "model": "xgboost", "task": "regression", "datasetSize": 50000, "features": 120 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "model": "linear", "task": "classification", "datasetSize": 200, "features": 50 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "model": "neural-network", "task": "classification", "datasetSize": "abc", "features": "NaN" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. Component sends { model, task, datasetSize, features }. Returns modelType/taskType/datasetSize/featureCount/suggestions{}/notes[] — the EXACT fields MlActionPanel's hyperparam card renders (modelType header, suggestions entries, notes). NN/tree/linear branches all emit crossValidation + testSplit. Non-finite datasetSize/features fall to defaults (1000/10) via parseInt-||-default so the ratio note + numeric suggestions never go NaN (degrade-graceful, fixed 2026-06-28)."
+}

@@ -1,0 +1,21 @@
+{
+  "macro_id": "sentinel.triage.list",
+  "domain": "sentinel",
+  "name": "triage.list",
+  "inputs": {
+    "state": { "type": "string", "enum": ["open", "investigating", "contained", "resolved", "dismissed"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.cases)",
+    "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 0)",
+    "output.ok === false || (output.result.byState && typeof output.result.byState.open === 'number')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "state": "resolved" }, "expect": { "ok": true } },
+    { "input": { "state": "not-a-state" }, "expect": { "ok": true } }
+  ],
+  "_note": "Reads the per-user triage-case list from STATE keyed by ctx.actor.userId. The assassin's owner actor has no cases → ok:true with an empty cases[] and total 0 (NEVER no_db). An unknown state filter is ignored (returns all cases), never an error; byState always carries a count for each of the five canonical states."
+}

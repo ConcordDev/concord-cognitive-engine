@@ -46,12 +46,15 @@ export default function AccessibilityDOMApplier() {
     // 3) High contrast → class.
     root.classList.toggle('a11y-high-contrast', !!a11y.highContrast);
 
-    // 4) Reduced motion → class + window flag (the 3D world + GameJuice read it).
+    // 4) Reduced motion → class + window flag. The class drives CSS
+    // animation/transition suppression; the flag is the imperative read-API for
+    // any non-React Three.js loop. GameJuice reads reduced-motion directly from
+    // the accessibility store (shake/knockback suppression). The former
+    // `concordia:reduce-motion` dispatch had no listener and was redundant with
+    // both of those paths, so it was removed.
     const reduce = !!a11y.effectiveReducedMotion;
     root.classList.toggle('a11y-reduce-motion', reduce);
     (window as unknown as { __CONCORD_REDUCE_MOTION__?: boolean }).__CONCORD_REDUCE_MOTION__ = reduce;
-    // Notify any imperative listener (Three.js scene loop) of the change.
-    window.dispatchEvent(new CustomEvent('concordia:reduce-motion', { detail: { reduce } }));
   }, [a11y.colorblindMode, a11y.textScale, a11y.highContrast, a11y.effectiveReducedMotion]);
 
   return null;

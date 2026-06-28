@@ -1,0 +1,24 @@
+{
+  "macro_id": "mental-health.factor-correlations",
+  "domain": "mental-health",
+  "name": "factor-correlations",
+  "inputs": {
+    "minSamples": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "output.result && typeof output.result.hasData === 'boolean'",
+    "Array.isArray(output.result.correlations)",
+    "output.result.hasData === false || output.result.correlations.every(c => ['lifts','lowers','neutral'].includes(c.effect))",
+    "output.result.hasData === false || output.result.correlations.every(c => typeof c.delta === 'number' && Number.isFinite(c.delta))",
+    "output.result.hasData === false || output.result.correlations.every(c => c.samples >= 1)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "minSamples": 3 }, "expect": { "ok": true } },
+    { "input": { "minSamples": 1e308 }, "expect": { "ok": true } },
+    { "input": { "minSamples": "not-a-number" }, "expect": { "ok": true } }
+  ],
+  "_note": "mental-health.factor-correlations (Daylio-style) computes, per user-defined activity factor, the average tagged-mood delta vs the user's baseline, labelling each factor lifts/lowers/neutral. It is degrade-graceful: below minSamples it returns ok:true with hasData:false and an empty correlations array (never throws — wrapped in try/catch). minSamples is clamped to >=2 so a poisoned/absurd value can't break bucketing; deltas are finite rounded numbers derived only from real logged moods (no fabricated correlation data). Pinned by server/tests/mental-health-lens-macros.test.js. Lens-action domain — not assassin-enumerable via runMacro."
+}

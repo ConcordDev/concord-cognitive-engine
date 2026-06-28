@@ -1,0 +1,24 @@
+{
+  "macro_id": "manufacturing.bomCost",
+  "domain": "manufacturing",
+  "name": "bomCost",
+  "reads_artifact_data": true,
+  "inputs": {
+    "product": { "type": "string", "maxLength": 80 },
+    "components": { "type": "array", "maxLength": 5000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "Number.isFinite(output.result.totalCost) && output.result.totalCost >= 0",
+    "Number.isInteger(output.result.componentCount) && output.result.componentCount >= 0",
+    "Array.isArray(output.result.components)",
+    "output.result.components.every(c => Number.isFinite(c.lineCost))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "product": "HA-400", "components": [{ "name": "Housing", "quantity": 2, "unitCost": 12.5 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "components": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "components": [{ "name": "bad", "quantity": "lots", "unitCost": "free" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "ManufacturingActionPanel actBom() sends {artifact:{data:{product,components:[{name,quantity,unitCost}]}}}. Handler reads artifact.data.components, returns components[].part/quantity/unitCost/lineCost + totalCost + componentCount + product (artifact.title || data.product). quantity/unitCost coerce to finite numbers so a poisoned string row contributes 0, never NaN."
+}

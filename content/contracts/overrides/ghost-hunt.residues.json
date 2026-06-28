@@ -1,0 +1,28 @@
+{
+  "macro_id": "ghost-hunt.residues",
+  "domain": "ghost-hunt",
+  "name": "residues",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 64 },
+    "limit": { "type": "number", "min": 0, "max": 1000000 },
+    "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+    "driftType": { "type": "string", "enum": ["spectral", "echo_chamber", "self_reference", "memetic_drift"] },
+    "sort": { "type": "string", "enum": ["recent", "severity", "type"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.residues)",
+    "output.ok === false || typeof output.count === 'number'",
+    "output.ok === false || (Array.isArray(output.driftTypes) && output.driftTypes.length === 4)",
+    "output.ok === false || (Array.isArray(output.severities) && output.severities.length === 4)",
+    "output.ok === false || output.residues.every(r => typeof r.id === 'string' && r.coords && typeof r.coords.x === 'number' && typeof r.coords.z === 'number')",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "worldId": "concordia-hub", "sort": "severity", "limit": 30 }, "expect": { "ok": true } },
+    { "input": { "limit": "1e308" }, "expect": { "ok": false, "reason": "invalid_numeric_field" } },
+    { "input": { "limit": -1 }, "expect": { "ok": false, "reason": "invalid_numeric_field" } }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "macro_id": "defense.incidentResponse",
+  "domain": "defense",
+  "name": "incidentResponse",
+  "inputs": {
+    "type": { "type": "string", "maxLength": 120 },
+    "severity": { "type": "string", "maxLength": 20 },
+    "location": { "type": "string", "maxLength": 120 },
+    "reporter": { "type": "string", "maxLength": 80 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.incidentType === 'string'",
+    "output.ok === false || typeof output.result.severity === 'string'",
+    "output.ok === false || typeof output.result.responseTime === 'string'",
+    "output.ok === false || typeof output.result.escalationLevel === 'string'",
+    "output.ok === false || Array.isArray(output.result.immediateActions)",
+    "output.ok === false || output.result.immediateActions.length >= 1"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "type": "perimeter breach", "severity": "high", "location": "Sector 7G", "reporter": "sentry-04" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "type": "active intrusion", "severity": "critical" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "type": "anomaly", "severity": "weird" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. Maps severity (critical/high/medium/low) → a fixed response protocol (responseTime, escalationLevel, immediateActions[]); an unknown severity falls back to the medium protocol so the card never reads undefined. incidentType defaults to 'unspecified'. String-only — no arithmetic, so no NaN/Infinity surface. Result card renders incidentType/severity/responseTime/escalationLevel/immediateActions EXACTLY."
+}

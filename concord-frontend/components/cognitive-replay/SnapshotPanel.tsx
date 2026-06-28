@@ -34,8 +34,10 @@ export function SnapshotPanel({ sinceDays }: { sinceDays: number }) {
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const r = await lensRun<{ snapshots: Snapshot[] }>('cognitive-replay', 'snapshot-list', {});
     if (r.data.ok && r.data.result) setList(r.data.result.snapshots);
+    else setError(r.data.error || 'failed to load snapshots');
     setLoading(false);
   }, []);
 
@@ -88,7 +90,12 @@ export function SnapshotPanel({ sinceDays }: { sinceDays: number }) {
           Capture last {sinceDays}d
         </button>
       </div>
-      {error && <div className="rounded border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">{error}</div>}
+      {error && (
+        <div role="alert" className="flex items-center justify-between gap-3 rounded border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">
+          <span>{error}</span>
+          <button onClick={refresh} className="rounded border border-rose-500/40 px-2 py-0.5 font-medium text-rose-100 hover:bg-rose-500/20">Retry</button>
+        </div>
+      )}
 
       {opened && (
         <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-3">
@@ -106,7 +113,7 @@ export function SnapshotPanel({ sinceDays }: { sinceDays: number }) {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading snapshots…</div>
+        <div role="status" aria-live="polite" className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading snapshots…</div>
       ) : list.length === 0 ? (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-4 text-xs text-zinc-400">No snapshots yet. Capture one to share your cognitive week.</div>
       ) : (

@@ -1,0 +1,23 @@
+{
+  "macro_id": "urban-planning.walkabilityScore",
+  "domain": "urban-planning",
+  "name": "walkabilityScore",
+  "inputs": {
+    "amenities": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (typeof output.result.walkabilityScore === 'number' && output.result.walkabilityScore >= 0 && output.result.walkabilityScore <= 100)",
+    "output.ok === false || typeof output.result.rating === 'string'",
+    "output.ok === false || typeof output.result.amenityScores === 'object'"
+  ],
+  "fuzz_cases": [
+    { "input": { "amenities": [{ "category": "grocery", "withinWalkingDistance": true }, { "category": "transit", "withinWalkingDistance": true }] }, "expect": { "ok": true } },
+    { "input": { "amenities": [{ "category": "spaceport", "withinWalkingDistance": true }] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "amenities": "bad" }, "expect": { "ok": true } }
+  ],
+  "_note": "urban-planning.walkabilityScore is a LENS_ACTIONS handler (server/domains/urbanplanning.js, PATH-3, hyphenated key). DETERMINISTIC: folds an amenity list into 7 fixed categories (grocery/restaurant/school/park/transit/retail/healthcare), crediting 1 point for a within-walking-distance amenity and 0.3 otherwise, then normalizes to a 0–100 score (capped) and a Walk-Score-style rating band. Unknown categories are ignored; a non-array amenities value degrades to score 0. Reads input from artifact.data; no DB, no network. LENS_ACTIONS-only → not driven by the macro-assassin; pinned by server/tests/urban-planning-lens-macros.test.js."
+}

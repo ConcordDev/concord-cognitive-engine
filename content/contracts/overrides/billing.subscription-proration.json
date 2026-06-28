@@ -1,0 +1,25 @@
+{
+  "macro_id": "billing.subscription-proration",
+  "domain": "billing",
+  "name": "subscription-proration",
+  "inputs": {
+    "subscriptionId": { "type": "string", "required": true, "maxLength": 80 },
+    "newPlanId": { "type": "string", "required": true, "maxLength": 80 },
+    "apply": { "type": "boolean", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.unusedCredit)",
+    "output.ok === false || Number.isFinite(output.result.newPlanProrated)",
+    "output.ok === false || Number.isFinite(output.result.amountDue)",
+    "output.ok === false || (output.result.direction === 'upgrade-charge' || output.result.direction === 'downgrade-credit')",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "subscriptionId": "ghost", "newPlanId": "ghost2" }, "expect": { "ok": false } },
+    { "input": { "subscriptionId": "x", "newPlanId": "y" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/billing.js, dispatch key 'billing.subscription-proration'); the SubscriptionBillingSuite lens calls it via lensRun('billing','subscription-proration'). In-memory per-user state in globalThis._concordSTATE.billingLens. Money inputs come from STORED plan amounts (plan.amount is clamped at create via billNum + Math.max(0,…)) and the stored period window, NOT from user-supplied amounts — so proration is fail-CLOSED by construction (a poisoned amount can never have been persisted onto a plan). The assassin's fresh state has no plans/subs, so every fuzz call rejects ok:false with a string error (subscription/plan not found). Pinned by server/tests/billing-lens-macros.test.js (exact upgrade credit/charge + downgrade direction + apply round-trip)."
+}

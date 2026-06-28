@@ -1,0 +1,28 @@
+{
+  "macro_id": "world-creator.draft-create",
+  "domain": "world-creator",
+  "name": "draft-create",
+  "inputs": {
+    "name": { "type": "string", "required": true, "maxLength": 64 },
+    "biome": { "type": "string", "required": false, "maxLength": 40 },
+    "template": { "type": "string", "required": false, "maxLength": 40 },
+    "description": { "type": "string", "required": false, "maxLength": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || (output.result && output.result.draft && typeof output.result.draft.id === 'string')",
+    "output.ok !== true || (output.result.draft.visibility === 'private')",
+    "output.ok !== true || (typeof output.result.draft.rules === 'object' && Object.values(output.result.draft.rules).every(v => v >= 0.5 && v <= 1.5))",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "name": "Valid World" }, "expect": { "ok": true } },
+    { "input": { "name": "Templated", "template": "forest_realm" }, "expect": { "ok": true } },
+    { "input": { "name": "ab" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "name": "Clamp", "rules": { "combatLethality": 1e308 } }, "expect": { "ok": true } },
+    { "input": { "name": "Clamp", "rules": { "questDensity": "Infinity" } }, "expect": { "ok": true } }
+  ],
+  "_note": "world-creator.draft-create is a LENS_ACTIONS (path-3) handler in server/domains/world-creator.js, registered via domains/index.js → domainModules.forEach(mod => mod(registerLensAction)) and dispatched as handler(ctx, virtualArtifact, input). It is NOT in the runMacro MACROS registry, so the macro-assassin (which enumerates MACROS) does not drive it — only the generic lens hooks world-creator.{list_mine,recent_mine} appear there. This override documents the load-bearing contract: a name < 3 chars rejects; rules are clampRules()'d into [0.5,1.5] before persistence so a poisoned 1e308/Infinity/NaN can never reach draft.rules; visibility defaults to 'private'; drafts are kept per-user in globalThis._concordSTATE.worldCreatorLens.drafts keyed by ctx.actor.userId, so no cross-user leak. Behavioral coverage lives in server/tests/world-creator-lens.test.js (the 3-arg dispatch harness)."
+}

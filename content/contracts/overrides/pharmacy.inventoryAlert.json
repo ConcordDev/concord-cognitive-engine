@@ -1,0 +1,25 @@
+{
+  "macro_id": "pharmacy.inventoryAlert",
+  "domain": "pharmacy",
+  "name": "inventoryAlert",
+  "reads_artifact_data": true,
+  "inputs": {
+    "inventory": { "type": "array", "maxLength": 5000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.lowStock === undefined || (Number.isFinite(output.result.lowStock) && output.result.lowStock >= 0)",
+    "output.ok === false || output.result.expired === undefined || (Number.isFinite(output.result.expired) && output.result.expired >= 0)",
+    "output.ok === false || output.result.nearExpiry === undefined || (Number.isFinite(output.result.nearExpiry) && output.result.nearExpiry >= 0)",
+    "output.ok === false || output.result.alerts === undefined || Array.isArray(output.result.alerts)",
+    "output.ok === false || output.result.allClear === undefined || typeof output.result.allClear === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "inventory": [{ "name": "Aspirin", "quantity": 2, "reorderPoint": 10 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "inventory": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "inventory": [{ "name": "junk", "quantity": "NaN", "reorderPoint": "x", "expiryDate": "not-a-date" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Reads inventory[] from artifact.data (page Inventory Alert card sends {input: data}). Per item: qty=parseInt||0, reorder=parseInt||10; lowStock = qty<=reorder; expired = daysToExpiry<=0; nearExpiry = 0<daysToExpiry<=30. alerts[] is the SUBSET the card lists (low/expired/nearExpiry only) with {name,quantity,daysToExpiry,lowStock,expired,nearExpiry}. allClear=true when nothing flagged. Empty inventory returns the honest 'Add inventory items' prompt. POISON: NaN/negative quantity → 0; an unparseable expiryDate → daysToExpiry null (no flag); counts always finite. Pure compute, no STATE, no NaN leak."
+}

@@ -1,0 +1,189 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.humility",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.humility.abstain",
+      "name": "abstain"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.humility",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.humility.analyze_belief_stability",
+      "name": "analyze_belief_stability"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.humility",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.humility.annotate_resolution_path",
+      "name": "annotate_resolution_path"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.humility",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.humility.conceptual_debt_summary",
+      "name": "conceptual_debt_summary"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.humility",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.humility.list_abstentions",
+      "name": "list_abstentions"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.humility",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.humility.list_terminal_questions",
+      "name": "list_terminal_questions"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.humility",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.humility.list_unresolved",
+      "name": "list_unresolved"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.humility",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.humility.model_future_capacity",
+      "name": "model_future_capacity"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.humility",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.humility.preserve_unresolved",
+      "name": "preserve_unresolved"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.humility",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.humility.record_non_progress",
+      "name": "record_non_progress"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.humility",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.humility.register_terminal_question",
+      "name": "register_terminal_question"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.humility",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.humility.schedule_revisit",
+      "name": "schedule_revisit"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.humility",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.humility.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.humility",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.humility.track_conceptual_debt",
+      "name": "track_conceptual_debt"
+    }
+  ],
+  "domain": "loaf.humility",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 14
+}

@@ -89,6 +89,7 @@ export default function OpsTelemetryPage() {
   const [err, setErr] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   // Wave 7 / D2 — the cost-story telemetry ("a thousand NPCs for the cost of ten").
   const [costs, setCosts] = useState<{ calls: number; tokensIn: number; tokensOut: number; costLabel: string; byBrain: Record<string, { calls: number }> } | null>(null);
@@ -115,6 +116,7 @@ export default function OpsTelemetryPage() {
       if (ws?.ok) { setShards(ws.shards || []); setSharded(!!ws.sharded); }
       if (ic?.ok) setCosts({ calls: ic.calls, tokensIn: ic.tokensIn, tokensOut: ic.tokensOut, costLabel: ic.costLabel, byBrain: ic.byBrain || {} });
       setLastRefresh(new Date());
+      setHasLoadedOnce(true);
     } catch (e) {
       setErr(String((e as Error)?.message || e));
     } finally {
@@ -148,11 +150,53 @@ export default function OpsTelemetryPage() {
     </LensShell>
   );
 
+  // Initial load: show a genuine loading state (not stale empty tables) until the
+  // first fetch settles.
+  if (!hasLoadedOnce && loading && !err) return (
+    <LensShell lensId="ops-telemetry" asMain={false}>
+      <div
+        role="status"
+        aria-busy="true"
+        aria-label="Loading ops telemetry"
+        className="flex min-h-screen flex-col items-center justify-center gap-3 bg-zinc-950 text-slate-300"
+      >
+        <RefreshCcw className="h-6 w-6 animate-spin text-fuchsia-400" aria-hidden="true" />
+        <p className="text-sm">Loading telemetry…</p>
+      </div>
+    </LensShell>
+  );
+
+  // Initial fetch failed outright (network / server down) — show a clear error
+  // with a working Retry, rather than empty tables.
+  if (!hasLoadedOnce && err) return (
+    <LensShell lensId="ops-telemetry" asMain={false}>
+      <div
+        role="alert"
+        aria-label="Ops telemetry failed to load"
+        className="flex min-h-screen flex-col items-center justify-center gap-4 bg-zinc-950 px-6 text-center text-slate-300"
+      >
+        <AlertTriangle className="h-7 w-7 text-red-400" aria-hidden="true" />
+        <div>
+          <p className="text-sm font-semibold text-red-200">Telemetry failed to load</p>
+          <p className="mt-1 max-w-md text-xs text-slate-400 break-words">{err}</p>
+        </div>
+        <button
+          onClick={refresh}
+          disabled={loading}
+          className="flex items-center gap-1.5 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-3 py-1.5 text-xs font-medium text-fuchsia-300 hover:bg-fuchsia-500/20 disabled:opacity-50"
+        >
+          <RefreshCcw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
+          {loading ? 'retrying…' : 'Retry'}
+        </button>
+      </div>
+    </LensShell>
+  );
+
   return (
     <LensShell lensId="ops-telemetry" asMain={false}>
       <ManifestActionBar />
       <DepthBadge lensId="ops-telemetry" size="sm" className="ml-2" />
-      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-fuchsia-950/10 text-slate-100">
+      <main aria-label="Ops telemetry dashboard" className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-fuchsia-950/10 text-slate-100">
         <header className="border-b border-fuchsia-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6">
           <div className="mx-auto flex max-w-screen-2xl items-center gap-3">
             <div className="rounded-lg border border-fuchsia-500/40 bg-fuchsia-500/10 p-2">
@@ -164,13 +208,17 @@ export default function OpsTelemetryPage() {
                 Concurrency stack — heartbeat timings, worker pools, brain endpoints, world shards.
               </p>
             </div>
-            <button onClick={refresh} className="flex items-center gap-1.5 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-1 text-[11px] font-medium text-fuchsia-300 hover:bg-fuchsia-500/20">
-              <RefreshCcw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} /> {loading ? 'refreshing…' : 'refresh'}
+            <button onClick={refresh} disabled={loading} aria-label="Refresh telemetry" className="flex items-center gap-1.5 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-1 text-[11px] font-medium text-fuchsia-300 hover:bg-fuchsia-500/20 disabled:opacity-60">
+              <RefreshCcw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> {loading ? 'refreshing…' : 'refresh'}
             </button>
+            {loading && <span role="status" aria-live="polite" className="sr-only">Refreshing telemetry</span>}
           </div>
           {err && (
-            <div className="mx-auto mt-2 flex max-w-screen-2xl items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-200">
-              <AlertTriangle className="h-3.5 w-3.5" /> {err}
+            <div role="alert" className="mx-auto mt-2 flex max-w-screen-2xl items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-200">
+              <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> <span className="flex-1 break-words">{err}</span>
+              <button onClick={refresh} disabled={loading} className="shrink-0 rounded border border-red-400/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-100 hover:bg-red-500/20 disabled:opacity-50">
+                Retry
+              </button>
             </div>
           )}
           {lastRefresh && (
@@ -219,10 +267,11 @@ export default function OpsTelemetryPage() {
               <span className="text-[10px] font-normal text-slate-400">sorted by p99 (slowest first)</span>
             </h2>
             <div className="overflow-x-auto">
-              <table className="w-full text-[11px]">
+              <table className="w-full text-[11px]" aria-label="Heartbeat module timings">
+                <caption className="sr-only">Per-module heartbeat timing percentiles, sorted by p99 (slowest first)</caption>
                 <thead>
                   <tr className="border-b border-zinc-800 text-left text-slate-400">
-                    <th className="px-2 py-1.5">module</th>
+                    <th scope="col" className="px-2 py-1.5">module</th>
                     <th className="px-2 py-1.5">freq</th>
                     <th className="px-2 py-1.5">scope</th>
                     <th className="px-2 py-1.5">tags</th>
@@ -337,10 +386,11 @@ export default function OpsTelemetryPage() {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-[11px]">
+                <table className="w-full text-[11px]" aria-label="World shard status">
+                  <caption className="sr-only">Per-world shard process status, last tick, restart count, and restart action</caption>
                   <thead>
                     <tr className="border-b border-zinc-800 text-left text-slate-400">
-                      <th className="px-2 py-1.5">world</th>
+                      <th scope="col" className="px-2 py-1.5">world</th>
                       <th className="px-2 py-1.5">status</th>
                       <th className="px-2 py-1.5">pid</th>
                       <th className="px-2 py-1.5 text-right">last tick</th>
@@ -360,7 +410,7 @@ export default function OpsTelemetryPage() {
                         <td className="px-2 py-1 text-right font-mono text-slate-400">{s.lastTickAt ? `${Math.round((Date.now() - s.lastTickAt) / 1000)}s ago` : '—'}</td>
                         <td className="px-2 py-1 text-right font-mono text-slate-400">{s.restartCount}</td>
                         <td className="px-2 py-1 text-right">
-                          <button onClick={() => restartShard(s.worldId)} className="rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/20">restart</button>
+                          <button onClick={() => restartShard(s.worldId)} aria-label={`Restart shard ${s.worldId}`} className="rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/20">restart</button>
                         </td>
                       </tr>
                     ))}

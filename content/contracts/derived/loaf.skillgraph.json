@@ -1,0 +1,98 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.skillgraph",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.skillgraph.add_edge",
+      "name": "add_edge"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.skillgraph",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.skillgraph.add_node",
+      "name": "add_node"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.skillgraph",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.skillgraph.compile",
+      "name": "compile"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.skillgraph",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.skillgraph.export",
+      "name": "export"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.skillgraph",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.skillgraph.find_strategies",
+      "name": "find_strategies"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.skillgraph",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.skillgraph.import",
+      "name": "import"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.skillgraph",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.skillgraph.status",
+      "name": "status"
+    }
+  ],
+  "domain": "loaf.skillgraph",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 7
+}

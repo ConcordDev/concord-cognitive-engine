@@ -1,0 +1,22 @@
+{
+  "macro_id": "mesh.sendMessage",
+  "domain": "mesh",
+  "name": "sendMessage",
+  "inputs": {
+    "to": { "type": "string", "maxLength": 80 },
+    "body": { "type": "string", "maxLength": 4000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.message && typeof output.result.message.id === 'string')",
+    "output.ok === false || (output.result.message.state === 'delivered' || output.result.message.state === 'queued')",
+    "output.ok === false || (typeof output.result.queued === 'boolean')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "message body required" } },
+    { "input": { "to": "x" }, "expect": { "ok": false, "error": "message body required" } },
+    { "input": { "body": "hello mesh" }, "expect": { "ok": true } }
+  ],
+  "_note": "Sends a direct/group/broadcast message into per-user STATE keyed by ctx.actor.userId. STATE-backed (NEVER no_db). Empty body fails-closed. With no 'to', defaults to broadcast → delivered (queued:false). A direct message to an offline/unknown node is queued into the store-and-forward queue (queued:true). The assassin's owner actor send to 'broadcast' delivers immediately."
+}

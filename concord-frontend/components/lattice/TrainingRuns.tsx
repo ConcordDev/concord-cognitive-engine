@@ -18,9 +18,27 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChartKit } from '@/components/viz';
 import {
   Loader2, History as HistoryIcon, GitBranch, FlaskConical, RotateCcw, Check, X,
+  AlertTriangle, RefreshCw,
 } from 'lucide-react';
 
 const BRAINS = ['conscious', 'subconscious', 'utility', 'repair'] as const;
+
+function ErrorRow({ message, onRetry, retrying }: { message: string; onRetry: () => void; retrying?: boolean }) {
+  return (
+    <div role="alert" className="flex flex-wrap items-center gap-2 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2.5 text-xs text-rose-200">
+      <AlertTriangle className="h-4 w-4 text-rose-400" aria-hidden />
+      <span className="flex-1">{message}</span>
+      <button
+        onClick={onRetry}
+        disabled={retrying}
+        className="inline-flex items-center gap-1 rounded bg-rose-900/40 px-2 py-1 font-medium hover:bg-rose-800/60 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-rose-400"
+      >
+        {retrying ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <RefreshCw className="h-3 w-3" aria-hidden />}
+        {retrying ? 'Retrying…' : 'Retry'}
+      </button>
+    </div>
+  );
+}
 
 interface RunRow {
   id: string;
@@ -166,7 +184,13 @@ export function TrainingRuns() {
           )}
         </div>
         {curve.isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-fuchsia-500" />
+          <Loader2 role="status" aria-label="Loading eval curve" className="h-4 w-4 animate-spin text-fuchsia-500" />
+        ) : curve.isError ? (
+          <ErrorRow
+            message={(curve.error as Error)?.message ?? 'Failed to load eval curve.'}
+            onRetry={() => curve.refetch()}
+            retrying={curve.isFetching}
+          />
         ) : curveData.length === 0 ? (
           <p className="rounded border border-fuchsia-900/30 bg-fuchsia-950/10 px-4 py-6 text-center text-xs text-fuchsia-600">
             No eval-scored runs for {brain} yet — trigger a refresh on the Refresh tab.
@@ -192,7 +216,13 @@ export function TrainingRuns() {
           <h3 className="text-sm font-semibold text-fuchsia-300">Training run history</h3>
         </div>
         {runs.isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-fuchsia-500" />
+          <Loader2 role="status" aria-label="Loading run history" className="h-4 w-4 animate-spin text-fuchsia-500" />
+        ) : runs.isError ? (
+          <ErrorRow
+            message={(runs.error as Error)?.message ?? 'Failed to load run history.'}
+            onRetry={() => runs.refetch()}
+            retrying={runs.isFetching}
+          />
         ) : (runs.data?.runs ?? []).length === 0 ? (
           <p className="rounded border border-fuchsia-900/30 bg-fuchsia-950/10 px-4 py-6 text-center text-xs text-fuchsia-600">
             No refresh runs recorded for {brain} yet.

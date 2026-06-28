@@ -9,13 +9,19 @@ import assert from "node:assert/strict";
 import registerRootActions from "../domains/root.js";
 
 const ACTIONS = new Map();
+// root.js uses the legacy 3-arg registerLensAction(domain, action, (ctx,
+// artifact, params)) convention (loaded via server/domains/index.js). Mirror the
+// REAL LENS_ACTIONS dispatch (server.js:39150 — `handler(ctx, virtualArtifact,
+// input)`): store the raw handler, invoke with a virtual artifact + the input as
+// the 3rd `params` arg.
 function register(domain, name, fn) {
   ACTIONS.set(`${domain}.${name}`, fn);
 }
-function call(name, ctx, params = {}, data = {}) {
+function call(name, ctx, params = {}) {
   const fn = ACTIONS.get(`root.${name}`);
   if (!fn) throw new Error(`root.${name} not registered`);
-  return fn(ctx, { id: null, data, meta: {} }, params);
+  const virtualArtifact = { id: null, domain: "root", type: "domain_action", data: params, meta: {} };
+  return fn(ctx, virtualArtifact, params);
 }
 
 before(() => {

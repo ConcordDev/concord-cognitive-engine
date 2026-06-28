@@ -6,7 +6,7 @@
  * to jump to that conversation turn in the chat lens.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Loader2, X, ArrowRightCircle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
@@ -35,18 +35,16 @@ export function EventDetailModal({ eventId, onClose }: { eventId: string; onClos
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      setLoading(true);
-      const r = await lensRun<EventResult>('cognitive-replay', 'event', { eventId });
-      if (!alive) return;
-      if (r.data.ok && r.data.result) setData(r.data.result);
-      else setError(r.data.error || 'event not found');
-      setLoading(false);
-    })();
-    return () => { alive = false; };
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const r = await lensRun<EventResult>('cognitive-replay', 'event', { eventId });
+    if (r.data.ok && r.data.result) { setData(r.data.result); setError(null); }
+    else { setData(null); setError(r.data.error || 'event not found'); }
+    setLoading(false);
   }, [eventId]);
+
+  useEffect(() => { load(); }, [load]);
 
   return (
     <div
@@ -64,9 +62,12 @@ export function EventDetailModal({ eventId, onClose }: { eventId: string; onClos
           </button>
         </div>
         {loading ? (
-          <div className="mt-4 flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Resolving event…</div>
+          <div role="status" aria-live="polite" className="mt-4 flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Resolving event…</div>
         ) : error ? (
-          <div className="mt-4 rounded border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">{error}</div>
+          <div role="alert" className="mt-4 flex items-center justify-between gap-3 rounded border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">
+            <span>{error}</span>
+            <button onClick={load} className="rounded border border-rose-500/40 px-2 py-0.5 font-medium text-rose-100 hover:bg-rose-500/20">Retry</button>
+          </div>
         ) : data ? (
           <div className="mt-3 space-y-3">
             <div className="flex items-center justify-between">

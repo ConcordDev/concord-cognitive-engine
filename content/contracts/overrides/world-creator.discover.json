@@ -1,0 +1,22 @@
+{
+  "macro_id": "world-creator.discover",
+  "domain": "world-creator",
+  "name": "discover",
+  "inputs": {
+    "query": { "type": "string", "required": false, "maxLength": 60 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || Array.isArray(output.result.worlds)",
+    "output.ok !== true || output.result.worlds.length <= 60",
+    "output.ok !== true || output.result.worlds.every(w => typeof w.id === 'string' && typeof w.creatorId === 'string')",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "query": "frost" }, "expect": { "ok": true } },
+    { "input": { "query": "<script>alert(1)</script>" }, "expect": { "ok": true } }
+  ],
+  "_note": "world-creator.discover is the cross-creator public-world listing the DraftGallery 'Browse' panel drives. VISIBILITY ISOLATION is the load-bearing invariant: it walks every creator's drafts in STATE but only emits drafts with visibility === 'public' — private/unlisted drafts NEVER appear, even when the query string would otherwise match their name/description (pinned in server/tests/world-creator-lens.test.js: query 'vault' against a private 'Hidden Vault' returns count 0). Results are capped at 60 and sorted by updatedAt desc. With no STATE it returns ok:false 'STATE unavailable' (degrade-graceful, never throws). LENS_ACTIONS (path-3), not in the runMacro MACROS registry the assassin enumerates."
+}

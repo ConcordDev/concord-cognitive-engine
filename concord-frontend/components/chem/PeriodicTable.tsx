@@ -50,15 +50,19 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
   return data as MacroEnvelope<T>;
 }
 
+// Keys match the underscored category strings the chem.periodic-table handler
+// returns (alkali_metal, noble_gas, …) — NOT the space-separated forms that
+// were here before, which never matched a single element and painted the whole
+// table 'unknown'. ChemWorkbench's PeriodicTab uses the same underscored keys.
 const CATEGORY_COLOR: Record<string, string> = {
-  'alkali metal': 'bg-rose-500/15 text-rose-200 border-rose-500/30',
-  'alkaline earth metal': 'bg-amber-500/15 text-amber-200 border-amber-500/30',
-  'transition metal': 'bg-cyan-500/15 text-cyan-200 border-cyan-500/30',
-  'post-transition metal': 'bg-sky-500/15 text-sky-200 border-sky-500/30',
+  'alkali_metal': 'bg-rose-500/15 text-rose-200 border-rose-500/30',
+  'alkaline_earth': 'bg-amber-500/15 text-amber-200 border-amber-500/30',
+  'transition_metal': 'bg-cyan-500/15 text-cyan-200 border-cyan-500/30',
+  'post_transition': 'bg-sky-500/15 text-sky-200 border-sky-500/30',
   'metalloid': 'bg-emerald-500/15 text-emerald-200 border-emerald-500/30',
   'nonmetal': 'bg-lime-500/15 text-lime-200 border-lime-500/30',
   'halogen': 'bg-yellow-500/15 text-yellow-200 border-yellow-500/30',
-  'noble gas': 'bg-violet-500/15 text-violet-200 border-violet-500/30',
+  'noble_gas': 'bg-violet-500/15 text-violet-200 border-violet-500/30',
   'lanthanide': 'bg-fuchsia-500/15 text-fuchsia-200 border-fuchsia-500/30',
   'actinide': 'bg-pink-500/15 text-pink-200 border-pink-500/30',
   'unknown': 'bg-zinc-800 text-zinc-400 border-zinc-700',

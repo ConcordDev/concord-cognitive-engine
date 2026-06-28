@@ -1,0 +1,50 @@
+{
+  "macro_id": "crisis.playbook",
+  "domain": "crisis",
+  "name": "playbook",
+  "inputs": {
+    "crisisType": {
+      "type": "string",
+      "required": true,
+      "maxLength": 64
+    },
+    "crisisId": {
+      "type": "string",
+      "maxLength": 120
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.steps)",
+    "output.ok === false || output.result.steps.length > 0",
+    "output.ok === false || (output.result.completed <= output.result.total)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": false,
+        "error": "missing_crisis_type"
+      }
+    },
+    {
+      "input": {
+        "crisisType": "wildfire"
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "crisisType": "alien_invasion"
+      },
+      "expect": {
+        "ok": true
+      }
+    }
+  ],
+  "_note": "Returns the predefined response checklist for a crisis type with per-user completion folded in. Known type substrings (flood/wildfire/earthquake/storm/outbreak) pick a typed playbook; anything else \u2192 default. Missing crisisType \u2192 missing_crisis_type."
+}

@@ -1,0 +1,31 @@
+{
+  "macro_id": "law-enforcement.caseAnalysis",
+  "domain": "law-enforcement",
+  "name": "caseAnalysis",
+  "inputs": {
+    "evidence": { "type": "array", "maxLength": 5000 },
+    "witnesses": { "type": "array", "maxLength": 5000 },
+    "suspects": { "type": "array", "maxLength": 5000 },
+    "caseId": { "type": "string", "maxLength": 120 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.caseStrength)",
+    "output.ok === false || (output.result.caseStrength >= 0 && output.result.caseStrength <= 100)",
+    "output.ok === false || Number.isInteger(output.result.evidenceCount)",
+    "output.ok === false || Number.isInteger(output.result.witnessCount)",
+    "output.ok === false || Number.isInteger(output.result.suspectCount)",
+    "output.ok === false || typeof output.result.prosecutable === 'boolean'",
+    "output.ok === false || ['strong-case','developing','insufficient-evidence'].includes(output.result.status)",
+    "output.ok === false || Array.isArray(output.result.nextSteps)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "caseId": "C-1", "evidence": [{}, {}], "witnesses": [{}], "suspects": [{ "evidenceLinks": [1, 2] }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "caseId": "C-empty", "evidence": [], "witnesses": [], "suspects": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "evidence": "NaN", "witnesses": "Infinity", "suspects": "oops" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data (LawEnforcementActionPanel.actCase: callMacro('caseAnalysis',{artifact:{data:parsed,title}}) → runDomain → {input:{artifact:{data,title}}} → sole-key peel at dispatch yields artifact.data). caseStrength = round(min(100,evidence*15)*0.4 + min(100,witnesses*20)*0.3 + min(100,suspectLinks*25)*0.3); prosecutable = caseStrength>=60; status strong>=80 / developing>=50 / insufficient. The CaseResult card renders caseId/caseStrength/status/evidenceCount/witnessCount/suspectCount/nextSteps[]/prosecutable EXACTLY — all returned by the handler (verified 2026-06-28). Non-array evidence/witnesses/suspects fall back to 0 counts (default `|| []`), never NaN. Component-exact-shape gate: server/tests/law-enforcement-lens-macros.test.js."
+}

@@ -1,0 +1,229 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "move-builder",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "Array.isArray(output.skillKinds) && output.skillKinds.length > 0",
+        "output.skillKinds.includes('spell') && output.skillKinds.includes('fighting_style')",
+        "Array.isArray(output.elements) && output.elements.length > 0",
+        "output.elements.includes('fire')",
+        "Array.isArray(output.aspects) && output.aspects.length === 5",
+        "output.aspects.includes('power') && output.aspects.includes('control')",
+        "typeof output.defaultBudget === 'number' && output.defaultBudget >= 1"
+      ],
+      "macro_id": "move-builder.catalog",
+      "name": "catalog"
+    },
+    {
+      "_derived": false,
+      "domain": "move-builder",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "element": "fire",
+            "skillKind": "spell",
+            "skillLevel": 1
+          }
+        },
+        {
+          "expect": {
+            "ok": true,
+            "skillKind": "spell"
+          },
+          "input": {
+            "element": "fire",
+            "skillKind": "not_real_kind"
+          }
+        }
+      ],
+      "inputs": {
+        "element": {
+          "maxLength": 32,
+          "type": "string"
+        },
+        "skillKind": {
+          "enum": [
+            "fighting_style",
+            "spell",
+            "biopower",
+            "cyber_ability",
+            "psionic",
+            "tech_gadget",
+            "mundane"
+          ],
+          "type": "string"
+        },
+        "skillLevel": {
+          "max": 300,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "typeof output.skillKind === 'string' && output.skillKind.length > 0",
+        "typeof output.element === 'string' && output.element.length > 0",
+        "output.motion && typeof output.motion.motionFamily === 'string' && output.motion.motionFamily.length > 0",
+        "output.motion && typeof output.motion.effectArchetype === 'string' && output.motion.effectArchetype.length > 0",
+        "output.motion.element === output.element",
+        "output.tier >= 1 && output.tier <= 5",
+        "output.budget && typeof output.budget.spent === 'number' && output.budget.spent >= 0",
+        "output.budget && output.budget.budget >= 6",
+        "output.budget.overspent === (output.budget.spent > output.budget.budget)",
+        "output.ok === !output.budget.overspent"
+      ],
+      "macro_id": "move-builder.compose",
+      "name": "compose"
+    },
+    {
+      "_derived": false,
+      "domain": "move-builder",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_moveId"
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "moveId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (output.move && typeof output.move.id === 'string')",
+        "output.ok === false || (output.move && typeof output.move.name === 'string')"
+      ],
+      "macro_id": "move-builder.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "move-builder",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 10
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 200,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || Array.isArray(output.moves)",
+        "output.ok === false || output.moves.every(m => typeof m.id === 'string' && typeof m.name === 'string')"
+      ],
+      "macro_id": "move-builder.list",
+      "name": "list"
+    },
+    {
+      "_derived": false,
+      "domain": "move-builder",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_name"
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "element": {
+          "maxLength": 32,
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        },
+        "skillKind": {
+          "enum": [
+            "fighting_style",
+            "spell",
+            "biopower",
+            "cyber_ability",
+            "psionic",
+            "tech_gadget",
+            "mundane"
+          ],
+          "type": "string"
+        },
+        "skillLevel": {
+          "max": 300,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (typeof output.moveId === 'string' && output.moveId.length > 0)",
+        "output.ok === false || (output.motion && typeof output.motion.motionFamily === 'string')",
+        "output.reason !== 'budget_overspent' || (typeof output.spent === 'number' && output.spent > output.budget)"
+      ],
+      "macro_id": "move-builder.mint",
+      "name": "mint"
+    }
+  ],
+  "domain": "move-builder",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 5
+}

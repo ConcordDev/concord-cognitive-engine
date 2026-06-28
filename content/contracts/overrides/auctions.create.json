@@ -1,0 +1,61 @@
+{
+  "macro_id": "auctions.create",
+  "domain": "auctions",
+  "name": "create",
+  "inputs": {
+    "itemKind": {
+      "type": "string",
+      "enum": [
+        "dtu",
+        "inventory"
+      ]
+    },
+    "itemId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "startCc": {
+      "type": "number",
+      "min": 0,
+      "max": 1000000
+    },
+    "buyoutCc": {
+      "type": "number",
+      "min": 0,
+      "max": 1000000
+    },
+    "durationS": {
+      "type": "number",
+      "min": 60,
+      "max": 86400
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 120
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.auctionId === 'string' && output.auctionId.length > 0)",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": false
+      }
+    },
+    {
+      "input": {
+        "itemId": "x",
+        "startCc": -1
+      },
+      "expect": {
+        "ok": false
+      }
+    }
+  ]
+}

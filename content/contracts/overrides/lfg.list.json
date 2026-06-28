@@ -1,0 +1,24 @@
+{
+  "macro_id": "lfg.list",
+  "domain": "lfg",
+  "name": "list",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 120 },
+    "role": { "type": "string", "enum": ["tank", "healer", "dps", "support", "any"] },
+    "limit": { "type": "number", "min": 1, "max": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.requests)",
+    "output.ok === false || output.requests.every(r => typeof r.id === 'string')",
+    "output.ok === false || output.requests.every(r => ['tank','healer','dps','support','any'].includes(r.role))",
+    "output.ok === false || output.requests.every(r => typeof r.currentSize === 'number' && r.currentSize >= 1)",
+    "output.ok === false || output.requests.every(r => typeof r.partyMaxSize === 'number' && r.partyMaxSize >= 2)"
+  ],
+  "fuzz_cases": [
+    { "input": { "worldId": "tunya", "limit": 10 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "list is a read; it only ever returns OPEN, non-expired requests."
+}

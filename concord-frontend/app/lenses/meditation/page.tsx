@@ -102,6 +102,9 @@ export default function MeditationLensPage() {
   const [studioTab, setStudioTab] = useState<StudioTab>('studio');
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [streak, setStreak] = useState<StreakResult | null>(null);
+  // Four-UX-state machine for the practice summary (real `meditation.streak`).
+  const [practiceState, setPracticeState] = useState<'loading' | 'error' | 'ready'>('loading');
+  const [practiceError, setPracticeError] = useState<string | null>(null);
   const [dailyPrompt, setDailyPrompt] = useState<PromptResult | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
@@ -136,15 +139,41 @@ export default function MeditationLensPage() {
     })();
   }, []);
 
+  // Practice summary loads from the STATE-backed `meditation.streak` macro and
+  // drives the four-UX-state surface (loading → error+Retry → empty → populated).
+  const loadPractice = useCallback(async () => {
+    setPracticeState('loading');
+    setPracticeError(null);
+    try {
+      const r = await callMacro<{
+        currentStreak: number; totalSessions: number; totalMinutes: number;
+      }>('streak', {});
+      if (!r.ok || !r.result) {
+        setPracticeError(r.error ?? 'Could not load your practice.');
+        setPracticeState('error');
+        return;
+      }
+      // Fold the streak macro into the page's longest-streak-aware shape.
+      setStreak((prev) => ({
+        currentStreak: r.result!.currentStreak,
+        longestStreak: Math.max(prev?.longestStreak ?? 0, r.result!.currentStreak),
+        totalSessions: r.result!.totalSessions,
+        totalMinutes: r.result!.totalMinutes,
+        lastSessionAt: prev?.lastSessionAt ?? null,
+      }));
+      setPracticeState('ready');
+    } catch (e) {
+      setPracticeError(pickMessage(e));
+      setPracticeState('error');
+    }
+  }, []);
+
+  useEffect(() => { loadPractice(); }, [loadPractice]);
+  // Re-pull the practice summary whenever a new session artifact lands.
   useEffect(() => {
     if (sessionsArtifacts.length === 0) return;
-    (async () => {
-      try {
-        const r = await callMacro<StreakResult>('streakSummary', {});
-        if (r.ok && r.result) setStreak(r.result);
-      } catch {/* surfaced inline */}
-    })();
-  }, [sessionsArtifacts.length]);
+    loadPractice();
+  }, [sessionsArtifacts.length, loadPractice]);
 
   // Timer
   useEffect(() => {
@@ -508,13 +537,45 @@ export default function MeditationLensPage() {
             </div>
           )}
 
-          {/* Past sessions */}
-          {streak && streak.totalSessions > 0 && (
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <BookOpen className="w-4 h-4 text-zinc-400" />
-                <h3 className="text-sm font-semibold text-zinc-200">Your practice</h3>
+          {/* Your practice — four UX states (loading / error+Retry / empty / populated) */}
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <BookOpen className="w-4 h-4 text-zinc-400" />
+              <h3 className="text-sm font-semibold text-zinc-200">Your practice</h3>
+            </div>
+
+            {practiceState === 'loading' && (
+              <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-zinc-400 py-4 justify-center">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Loading your practice…</span>
               </div>
+            )}
+
+            {practiceState === 'error' && (
+              <div role="alert" className="flex flex-col items-center gap-3 py-4 text-center">
+                <div className="flex items-center gap-2 text-sm text-red-300">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>{practiceError ?? 'Could not load your practice.'}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={loadPractice}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Retry
+                </button>
+              </div>
+            )}
+
+            {practiceState === 'ready' && streak && streak.totalSessions === 0 && (
+              <div className="py-6 text-center">
+                <Wind className="w-6 h-6 text-purple-400/60 mx-auto mb-2" />
+                <p className="text-sm text-zinc-300 font-medium">No sessions yet</p>
+                <p className="text-xs text-zinc-500 mt-0.5">Pick a goal and a length above, then breathe. Your first sit starts the streak.</p>
+              </div>
+            )}
+
+            {practiceState === 'ready' && streak && streak.totalSessions > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 <div className="rounded bg-zinc-950/60 p-2 text-center">
                   <div className="text-lg font-bold text-orange-300 flex items-center justify-center gap-1"><Flame className="w-3 h-3" />{streak.currentStreak}</div>
@@ -533,8 +594,8 @@ export default function MeditationLensPage() {
                   <div className="text-[10px] text-zinc-400">minutes</div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           <AnimatePresence>
             {feedback && (

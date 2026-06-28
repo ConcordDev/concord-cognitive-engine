@@ -1,0 +1,26 @@
+{
+  "macro_id": "linguistics.analyze",
+  "domain": "linguistics",
+  "name": "analyze",
+  "inputs": {
+    "text": { "type": "string", "required": false },
+    "type": { "type": "string", "required": false, "maxLength": 40 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.content === 'string'",
+    "output.ok === false || Number.isFinite(output.result.readabilityGrade)",
+    "output.ok === false || Number.isFinite(output.result.lexicalDiversity)",
+    "output.ok === false || typeof output.result.wordClasses === 'object'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "text": "Beautiful happily running development creates wonderful organization.", "type": "morphosyntactic" }, "expect": { "ok": true } },
+    { "input": { "type": "morphosyntactic" }, "expect": { "ok": false } },
+    { "input": { "text": "" }, "expect": { "ok": false } },
+    { "input": { "text": 99 }, "expect": { "ok": true } },
+    { "input": { "text": "Infinity" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'linguistics.analyze'. app/lenses/linguistics/page.tsx Quick-Analysis box sends lensRun('linguistics','analyze',{text,type:'morphosyntactic'}); renders data.result.content (string). Handler reads params.text||artifact.data.text||content, String-coerced (already hardened). Returns {content, wordCount, sentenceCount, lexicalDiversity, readabilityGrade, readingLevel, wordClasses}. Validation: empty/missing text → ok:false 'text required'. Pinned by server/tests/linguistics-lens-macros.test.js."
+}

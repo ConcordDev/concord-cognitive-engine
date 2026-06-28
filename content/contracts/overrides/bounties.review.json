@@ -1,0 +1,24 @@
+{
+  "macro_id": "bounties.review",
+  "domain": "bounties",
+  "name": "review",
+  "inputs": {
+    "bountyId": { "type": "string", "required": true, "maxLength": 64 },
+    "submissionId": { "type": "string", "required": true, "maxLength": 64 },
+    "decision": { "type": "string", "required": true, "enum": ["accept", "reject"] },
+    "reviewNote": { "type": "string", "maxLength": 1000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.bounty && typeof output.result.bounty.id === 'string')",
+    "output.ok === false || typeof output.result.submission.status === 'string'",
+    "output.ok === false || output.result.paidCc === undefined || (typeof output.result.paidCc === 'number' && output.result.paidCc >= 0 && output.result.paidCc <= 1000000)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "bounty not found" } },
+    { "input": { "bountyId": "__nope__", "submissionId": "x", "decision": "accept" }, "expect": { "ok": false, "error": "bounty not found" } }
+  ],
+  "_note": "bounties.review is the owner-only accept/reject + payout gate. Unknown bounty → 'bounty not found'. Only the owner may review; a non-owner rejects. decision must be 'accept' or 'reject'. On accept the claimant is credited the REAL pool (whole-bounty) or the named milestone reward — paidCc is bounded by the bounty's own configured reward (<=1e6 because create fail-CLOSED guards the reward). No CC is minted beyond the configured pool; a re-review of an already-decided submission rejects (no double payout)."
+}

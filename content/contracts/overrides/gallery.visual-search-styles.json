@@ -1,0 +1,16 @@
+{
+  "macro_id": "gallery.visual-search-styles",
+  "domain": "gallery",
+  "name": "visual-search-styles",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.styles)",
+    "output.ok === false || output.result.styles.includes('impressionism')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "gallery.visual-search-styles returns the supported art-movement style keywords visual-search translates into CMA technique queries. Pure constant, no network."
+}

@@ -15,7 +15,39 @@
 import crypto from "node:crypto";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
-export default function registerToolsActions(registerLensAction) {
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) BEFORE using it.
+// An absent/null field is fine (the macro uses its default). Returns null when
+// clean, else the offending key. Copied from server/domains/literary.js.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input == null || input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e9) return k;
+  }
+  return null;
+}
+
+// REGISTRATION (saved-class fix): this file used to register through the
+// legacy `registerLensAction(domain, action, (ctx, artifact, params))`
+// convention AND was NEVER imported by server.js — so every `tools.*` macro
+// it defines was invisible to runMacro and to POST /api/lens/run → every call
+// hit unknown_macro. It is now wired through the canonical `register` (MACROS)
+// registry — `registerToolsActions(register)` in server.js — so the macros are
+// reachable both via POST /api/lens/run AND via runMacro (which the contract
+// engine + macro-assassin drive). The verified handler bodies below are kept
+// byte-for-byte intact via the `registerLensAction` shim that adapts the
+// canonical 2-arg `(ctx, input)` signature back to `(ctx, artifact, params)`.
+export default function registerToolsActions(register) {
+  // Legacy-convention shim: canonical register(ctx, input) → the verified
+  // (ctx, artifact, params) handler bodies below, unchanged. `params` IS the
+  // input; `artifact` is a virtual wrapper (no tools macro reads it).
+  const registerLensAction = (domain, action, handler) =>
+    register(domain, action, (ctx, input = {}) => {
+      const inp = input && typeof input === "object" ? input : {};
+      const artifact = { id: null, domain, type: "domain_action", data: inp, meta: {} };
+      return handler(ctx, artifact, inp);
+    });
+
   // ── per-user STATE ───────────────────────────────────────────────
   function getToolsState() {
     const STATE = globalThis._concordSTATE;
@@ -54,6 +86,7 @@ export default function registerToolsActions(registerLensAction) {
     const query = String(params.query || "").trim();
     if (!query) return { ok: false, error: "query required" };
     if (query.length > 400) return { ok: false, error: "query too long (max 400 chars)" };
+    if (badNumericField(params, ["limit"])) return { ok: false, error: "invalid_limit" };
     const limit = Math.min(Math.max(Number(params.limit) || 8, 1), 20);
     const results = [];
     let abstract = null;
@@ -150,6 +183,7 @@ export default function registerToolsActions(registerLensAction) {
   registerLensAction("tools", "research-history", (ctx, _artifact, params = {}) => {
     const s = getToolsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
+    if (badNumericField(params, ["limit"])) return { ok: false, error: "invalid_limit" };
     const limit = Math.min(Math.max(Number(params.limit) || 20, 1), 50);
     const hist = bucket(s.searchHistory, aid(ctx));
     return { ok: true, result: { history: hist.slice().reverse().slice(0, limit), total: hist.length } };
@@ -257,6 +291,7 @@ export default function registerToolsActions(registerLensAction) {
   registerLensAction("tools", "compile-history", (ctx, _artifact, params = {}) => {
     const s = getToolsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
+    if (badNumericField(params, ["limit"])) return { ok: false, error: "invalid_limit" };
     const limit = Math.min(Math.max(Number(params.limit) || 20, 1), 50);
     const hist = bucket(s.compileHistory, aid(ctx));
     return { ok: true, result: { history: hist.slice().reverse().slice(0, limit), total: hist.length } };

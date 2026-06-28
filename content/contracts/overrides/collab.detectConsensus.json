@@ -1,0 +1,24 @@
+{
+  "macro_id": "collab.detectConsensus",
+  "domain": "collab",
+  "name": "detectConsensus",
+  "inputs": {
+    "votes": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.message === 'string' || Number.isFinite(output.result.totalVotes)",
+    "output.ok === false || output.result.totalVotes === undefined || Number.isFinite(output.result.consensusPercent)",
+    "output.ok === false || output.result.totalVotes === undefined || typeof output.result.status === 'string'",
+    "output.ok === false || output.result.totalVotes === undefined || Array.isArray(output.result.dissenting)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "votes": [{ "voter": "a", "position": "ship" }, { "voter": "b", "position": "ship" }, { "voter": "c", "position": "ship" }, { "voter": "d", "position": "wait" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "votes": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "votes": [{ "voter": "a", "vote": "yes" }, { "voter": "b", "vote": "yes" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data (CollabActionPanel.actConsensus channel: runDomain → {input:{artifact:{data}}} peeled at dispatch). Empty votes → { message } empty-shape. Else tally by (v.position||v.vote||'abstain'); leadingPosition = highest tally; consensusPercent = round(topCount/total*100); hasConsensus = ≥67; hasSupermajority = ≥75; status = strong-consensus / consensus-reached / simple-majority (≥50) / no-consensus; dissenting = the non-leading positions with {position,count,percent}. No numeric input parsing (positions are labels — a numeric-looking '42' stays a string bucket, never coerced), so there is no parseFloat poison surface here. Result card renders status/totalVotes/consensusPercent/leadingPosition/hasConsensus/hasSupermajority/dissenting[].{position,count,percent} EXACTLY (verified field-for-field against CollabActionPanel.tsx 2026-06-28)."
+}

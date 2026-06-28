@@ -1,0 +1,27 @@
+{
+  "macro_id": "hr.turnoverAnalysis",
+  "domain": "hr",
+  "name": "turnoverAnalysis",
+  "inputs": {
+    "headcount": { "type": "number", "required": true },
+    "leaversLast12Months": { "type": "number", "required": true }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.ratePct)",
+    "output.ok === false || Number.isFinite(output.result.benchmarkPct)",
+    "output.ok === false || typeof output.result.topReason === 'string'",
+    "output.ok === false || typeof output.result.band === 'string'",
+    "output.ok === false || output.result.ratePct >= 0",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "headcount": 100, "leaversLast12Months": 30 }, "expect": { "ok": true } },
+    { "input": { "headcount": 200, "leaversLast12Months": 10 }, "expect": { "ok": true } },
+    { "input": { "headcount": 0, "leaversLast12Months": 5 }, "expect": { "ok": false } },
+    { "input": { "headcount": "Infinity", "leaversLast12Months": "NaN" }, "expect": { "ok": false } },
+    { "input": { "headcount": 80, "leaversLast12Months": "12abc" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/hr.js). 3-arg dispatch via /api/lens/run on key 'hr.turnoverAnalysis'. HrActionPanel sends FLAT { headcount, leaversLast12Months } and renders r.result.{ratePct,benchmarkPct,topReason,band}. Deterministic pure compute: ratePct = leavers / avg-headcount (head + leavers/2 BLS convention); benchmarkPct=13; band classifies vs benchmark; topReason is band-derived. Was DEAD both directions before the 2026-06-28 fix (handler read totalEmployees/departuresThisYear and returned turnoverRate/riskLevel). POISON: 'Infinity'/'NaN'/'12abc' coerce via Number()+isFinite (NOT parseFloat) so headcount stays a real N or the call rejects; ratePct never NaN/Infinity. Not driven by macro-assassin; pinned by server/tests/hr-lens-macros.test.js."
+}

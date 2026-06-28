@@ -1,0 +1,16 @@
+{
+  "macro_id": "foundry.blueprint_kinds",
+  "domain": "foundry",
+  "name": "blueprint_kinds",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "Array.isArray(output.nodeKinds)",
+    "Array.isArray(output.eventTypes)",
+    "Array.isArray(output.actionTypes)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ]
+}

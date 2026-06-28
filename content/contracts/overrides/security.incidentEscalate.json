@@ -1,0 +1,28 @@
+{
+  "macro_id": "security.incidentEscalate",
+  "domain": "security",
+  "name": "incidentEscalate",
+  "inputs": {
+    "severity": { "type": "string", "required": false, "maxLength": 16 },
+    "impact": { "type": "string", "required": false, "maxLength": 16 },
+    "type": { "type": "string", "required": false, "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.escalationScore)",
+    "output.ok === false || typeof output.result.escalationLevel === 'string'",
+    "output.ok === false || ['critical','high','medium','low'].indexOf(output.result.escalationLevel) >= 0",
+    "output.ok === false || typeof output.result.requiredResponseTime === 'string'",
+    "output.ok === false || Array.isArray(output.result.notifications)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "severity": "P1", "impact": "critical", "type": "breach" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "severity": "P5", "impact": "low" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "severity": "Infinity", "impact": "critical" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'security.incidentEscalate'. Drives the page escalation result card (escalationLevel/escalationScore/requiredResponseTime/notifications[]). Page artifact carries severity as a P1..P5 STRING — handler maps it to 1..5 (P1=5), then secFin() fail-closes a poisoned numeric so escalationScore is always finite. Pinned by server/tests/security-lens-macros.test.js."
+}

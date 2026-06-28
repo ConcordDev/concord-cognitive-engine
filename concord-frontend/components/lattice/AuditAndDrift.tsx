@@ -14,7 +14,24 @@
 import { useQuery } from '@tanstack/react-query';
 import { TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
-import { Loader2, ScrollText, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Loader2, ScrollText, AlertTriangle, ShieldCheck, RefreshCw } from 'lucide-react';
+
+function ErrorRow({ message, onRetry, retrying }: { message: string; onRetry: () => void; retrying?: boolean }) {
+  return (
+    <div role="alert" className="flex flex-wrap items-center gap-2 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2.5 text-xs text-rose-200">
+      <AlertTriangle className="h-4 w-4 text-rose-400" aria-hidden />
+      <span className="flex-1">{message}</span>
+      <button
+        onClick={onRetry}
+        disabled={retrying}
+        className="inline-flex items-center gap-1 rounded bg-rose-900/40 px-2 py-1 font-medium hover:bg-rose-800/60 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-rose-400"
+      >
+        {retrying ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <RefreshCw className="h-3 w-3" aria-hidden />}
+        {retrying ? 'Retrying…' : 'Retry'}
+      </button>
+    </div>
+  );
+}
 
 interface ConsentLogRow {
   id: string;
@@ -91,7 +108,13 @@ export function AuditAndDrift() {
           into a constraint-check reasoning pass.
         </p>
         {drift.isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-fuchsia-500" />
+          <Loader2 role="status" aria-label="Loading drift alerts" className="h-4 w-4 animate-spin text-fuchsia-500" />
+        ) : drift.isError ? (
+          <ErrorRow
+            message={(drift.error as Error)?.message ?? 'Failed to load drift alerts.'}
+            onRetry={() => drift.refetch()}
+            retrying={drift.isFetching}
+          />
         ) : !drift.data?.available ? (
           <p className="rounded border border-fuchsia-900/30 bg-fuchsia-950/10 px-4 py-6 text-center text-xs text-fuchsia-600">
             Drift monitor is not active on this instance yet.
@@ -145,7 +168,13 @@ export function AuditAndDrift() {
           toggles and account-wide bulk flips, with the prior value where known.
         </p>
         {consentLog.isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-fuchsia-500" />
+          <Loader2 role="status" aria-label="Loading consent log" className="h-4 w-4 animate-spin text-fuchsia-500" />
+        ) : consentLog.isError ? (
+          <ErrorRow
+            message={(consentLog.error as Error)?.message ?? 'Failed to load consent log.'}
+            onRetry={() => consentLog.refetch()}
+            retrying={consentLog.isFetching}
+          />
         ) : (consentLog.data?.log ?? []).length === 0 ? (
           <p className="rounded border border-fuchsia-900/30 bg-fuchsia-950/10 px-4 py-6 text-center text-xs text-fuchsia-600">
             No consent changes recorded yet — toggles on the Consent tab appear here.

@@ -1,0 +1,23 @@
+{
+  "macro_id": "root.history",
+  "domain": "root",
+  "name": "history",
+  "inputs": {
+    "limit": { "type": "number", "min": 1, "max": 200 },
+    "kind": { "type": "string", "enum": ["operation", "expression", "bitwise"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.computations)",
+    "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 0)",
+    "output.ok === false || output.result.computations.length <= output.result.total"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 10, "kind": "operation" }, "expect": { "ok": true } },
+    { "input": { "limit": -1 }, "expect": { "ok": false, "error": "invalid_limit" } },
+    { "input": { "limit": "abc" }, "expect": { "ok": false, "error": "invalid_limit" } }
+  ],
+  "_note": "root.history lists the caller's saved computations (most recent first) from the per-user notebook. The assassin's internal owner actor returns ok:true with an empty page (no no_user / no_db). limit is a fail-CLOSED numeric guard (badNumericField) — a poisoned value (NaN/Infinity/negative/huge/non-numeric) returns ok:false invalid_limit, never a clamped ok:true. The returned page can never exceed total."
+}

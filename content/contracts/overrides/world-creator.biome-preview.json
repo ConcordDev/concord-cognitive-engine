@@ -1,0 +1,25 @@
+{
+  "macro_id": "world-creator.biome-preview",
+  "domain": "world-creator",
+  "name": "biome-preview",
+  "inputs": {
+    "biome": { "type": "string", "required": true, "maxLength": 40 },
+    "weatherIntensity": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || (Array.isArray(output.result.climateCurve) && output.result.climateCurve.length === 6)",
+    "output.ok !== true || (Number.isFinite(output.result.stormChancePct) && output.result.stormChancePct >= 0 && output.result.stormChancePct <= 95)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "biome": "temperate_forest", "weatherIntensity": 1.0 }, "expect": { "ok": true } },
+    { "input": { "biome": "volcanic", "weatherIntensity": 1.5 }, "expect": { "ok": true } },
+    { "input": { "biome": "atlantis" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "biome": "desert", "weatherIntensity": 1e308 }, "expect": { "ok": true } },
+    { "input": { "biome": "desert", "weatherIntensity": "Infinity" }, "expect": { "ok": true } }
+  ],
+  "_note": "world-creator.biome-preview is a PURE, state-independent LENS_ACTIONS handler (it reads only the static BIOMES table, no STATE), so it works even with no globalThis._concordSTATE. It computes a deterministic 6-point day-cycle climate curve + a stormChancePct = min(95, round(hazardScore × 12 × clamp(weatherIntensity,0.5,1.5))). weatherIntensity is clamp()'d to [0.5,1.5] with a default of 1.0, so a poisoned Infinity/NaN/1e308 can never blow up the storm chance — it stays finite and ≤ 95 (pinned by the fail-CLOSED test in server/tests/world-creator-lens.test.js). An unknown biome rejects with 'unknown biome: <id>'. Like all world-creator.* macros this is LENS_ACTIONS (path-3), not in the runMacro MACROS registry the assassin enumerates."
+}

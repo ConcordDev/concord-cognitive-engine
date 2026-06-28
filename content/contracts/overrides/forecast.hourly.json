@@ -1,0 +1,22 @@
+{
+  "macro_id": "forecast.hourly",
+  "domain": "forecast",
+  "name": "hourly",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 120 },
+    "hours": { "type": "number", "min": 6, "max": 48 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.breakdown)",
+    "output.ok === false || typeof output.hours === 'number'",
+    "output.ok === false || output.breakdown.length === output.hours"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "hours": 12 }, "expect": { "ok": true } },
+    { "input": { "hours": -1 }, "expect": { "ok": false, "error": "invalid_hours" } }
+  ],
+  "_note": "forecast.hourly returns an hourly breakdown (6-48h, default 24) following the standard diurnal cosine curve anchored on the measured baseline. World-public read — {} returns ok:true. hours is a fail-CLOSED numeric: a poisoned value returns ok:false invalid_hours, never a clamped ok:true. breakdown.length always equals the resolved hours."
+}

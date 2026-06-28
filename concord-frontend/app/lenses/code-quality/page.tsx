@@ -323,7 +323,22 @@ export default function CodeQualityLensPage() {
                   {findings.length === 1 ? '' : 's'}
                 </span>
               )}
-              {error && <span className="text-sm text-red-400">{error}</span>}
+              {loading && (
+                <span role="status" aria-live="polite" className="text-sm text-gray-400">
+                  Running detector sweep…
+                </span>
+              )}
+              {error && (
+                <span role="alert" className="text-sm text-red-400 flex items-center gap-2">
+                  {error}
+                  <button
+                    onClick={runSweep}
+                    className="px-2 py-0.5 rounded border border-red-500/40 text-red-300 hover:bg-red-500/10 text-xs"
+                  >
+                    Retry
+                  </button>
+                </span>
+              )}
             </section>
 
             {summary && (

@@ -916,7 +916,7 @@ export default function SecurityLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8" role="status" aria-live="polite">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-green-400 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm text-gray-400">Scanning systems...</p>
@@ -925,9 +925,11 @@ export default function SecurityLensPage() {
     );
   }
 
+  // A failed feed must surface a role=alert with a WORKING retry — not a silent
+  // blank or the "no items" empty CTA (the swallowed-fetch → silent-empty class).
   if (isError) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8" role="alert">
         <ErrorState error={error?.message} onRetry={refetch} />
       </div>
     );
@@ -1217,6 +1219,84 @@ export default function SecurityLensPage() {
                     {(actionResult.recommendations as string[]).map((r, i) => <li key={i}>{r}</li>)}
                   </ul>
                 )}
+              </div>
+            )}
+            {/* vulnerabilityScan — findings + severity rollup */}
+            {actionResult.totalFindings !== undefined && Array.isArray(actionResult.findings) && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalFindings)}</p>
+                    <p className="text-[10px] text-gray-400">Findings</p>
+                  </div>
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className={`text-sm font-bold ${Number(actionResult.criticalCount) > 0 ? 'text-red-400' : 'text-green-400'}`}>{String(actionResult.criticalCount ?? 0)}</p>
+                    <p className="text-[10px] text-gray-400">Critical</p>
+                  </div>
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className={`text-sm font-bold ${Number(actionResult.highCount) > 0 ? 'text-orange-400' : 'text-green-400'}`}>{String(actionResult.highCount ?? 0)}</p>
+                    <p className="text-[10px] text-gray-400">High</p>
+                  </div>
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-amber-400">{String(actionResult.mediumCount ?? 0)}</p>
+                    <p className="text-[10px] text-gray-400">Medium</p>
+                  </div>
+                </div>
+                <div className="space-y-1 max-h-44 overflow-y-auto">
+                  {(actionResult.findings as { system: string; severity: string; detail: string }[]).slice(0, 8).map((f, i) => (
+                    <div key={i} className="flex items-center justify-between px-2 py-1 bg-lattice-surface rounded text-xs">
+                      <span className="text-gray-300 truncate">{f.system} — {f.detail}</span>
+                      <span className={`font-semibold ml-2 shrink-0 ${f.severity === 'critical' ? 'text-red-400' : f.severity === 'high' ? 'text-orange-400' : f.severity === 'medium' ? 'text-amber-400' : 'text-gray-400'}`}>{f.severity}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* incidentEscalate — escalation level + notifications */}
+            {actionResult.escalationLevel !== undefined && actionResult.escalationScore !== undefined && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className={`text-sm font-bold ${actionResult.escalationLevel === 'critical' ? 'text-red-400' : actionResult.escalationLevel === 'high' ? 'text-orange-400' : actionResult.escalationLevel === 'medium' ? 'text-amber-400' : 'text-green-400'}`}>{String(actionResult.escalationLevel)}</p>
+                    <p className="text-[10px] text-gray-400">Level (score {String(actionResult.escalationScore)})</p>
+                  </div>
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-neon-cyan">{String(actionResult.requiredResponseTime)}</p>
+                    <p className="text-[10px] text-gray-400">Response SLA</p>
+                  </div>
+                </div>
+                {Array.isArray(actionResult.notifications) && (
+                  <div className="flex flex-wrap gap-1">
+                    {(actionResult.notifications as { role: string; method: string }[]).map((n, i) => (
+                      <span key={i} className="px-1.5 py-0.5 bg-lattice-surface text-xs rounded text-gray-300">{n.role.replace(/_/g, ' ')} · {n.method.replace(/_/g, ' ')}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {/* threatAssessment — per-threat risk + overall */}
+            {actionResult.overallRiskScore !== undefined && Array.isArray(actionResult.assessments) && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-neon-cyan">{String(actionResult.overallRiskScore)}</p>
+                    <p className="text-[10px] text-gray-400">Overall Risk</p>
+                  </div>
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className={`text-sm font-bold ${Number(actionResult.criticalCount) > 0 ? 'text-red-400' : 'text-green-400'}`}>{String(actionResult.criticalCount ?? 0)}</p>
+                    <p className="text-[10px] text-gray-400">Critical</p>
+                  </div>
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-orange-400">{String(actionResult.highCount ?? 0)}</p>
+                    <p className="text-[10px] text-gray-400">High</p>
+                  </div>
+                </div>
+                {(actionResult.assessments as { name: string; riskLevel: string; riskScore: number; residualRisk: number }[]).slice(0, 4).map((a, i) => (
+                  <div key={i} className="flex items-center justify-between px-2 py-1 bg-lattice-surface rounded text-xs">
+                    <span className="text-gray-300">{a.name}</span>
+                    <span className={`font-semibold ${a.riskLevel === 'critical' ? 'text-red-400' : a.riskLevel === 'high' ? 'text-orange-400' : a.riskLevel === 'medium' ? 'text-amber-400' : 'text-green-400'}`}>{a.riskLevel} ({a.riskScore} → {a.residualRisk})</span>
+                  </div>
+                ))}
               </div>
             )}
             {/* generic fallback (e.g. failure {message}) */}

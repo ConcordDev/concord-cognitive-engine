@@ -65,8 +65,8 @@ const KNOWN_DEAD_BASELINE = new Set([
   "qualia:policy",                  // qualia engine — internal substrate event, no UI surface
   "timeline:post",                  // public timeline — frontend uses fast-path REST refresh
   "world:action",                   // generic world event — superseded by typed channels
-  "world:broadcast",                // world chat — replaced by chat:update
-  "world:loot-node",                // node loot drops — uses item:spawned channel
+  // "world:broadcast" + "world:loot-node" removed 2026-06-26: debt cleared — both now have real
+  // frontend subscribers (wired into EmergentEventFeed during the orphan-emit wiring pass).
   "world:notification",             // generic world toast — replaced by per-domain toasts
 ]);
 

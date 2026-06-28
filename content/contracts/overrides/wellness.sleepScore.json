@@ -1,0 +1,25 @@
+{
+  "macro_id": "wellness.sleepScore",
+  "domain": "wellness",
+  "name": "sleepScore",
+  "inputs": {
+    "minutesAsleep": { "type": "number", "min": 0, "max": 1000000 },
+    "minutesInBed": { "type": "number", "min": 0, "max": 1000000 },
+    "disturbances": { "type": "number", "min": 0, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.score === 'number')",
+    "output.ok === false || (output.result.score >= 0 && output.result.score <= 100)",
+    "output.ok === false || ['excellent','good','ok','poor'].includes(output.result.band)",
+    "output.ok === false || (typeof output.result.efficiencyPct === 'number' && output.result.efficiencyPct >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "minutesAsleep required" } },
+    { "input": { "minutesAsleep": 450, "minutesInBed": 480, "disturbances": 1 }, "expect": { "ok": true } },
+    { "input": { "minutesAsleep": -1 }, "expect": { "ok": false, "error": "invalid_minutesAsleep" } },
+    { "input": { "minutesInBed": "Infinity", "minutesAsleep": 400 }, "expect": { "ok": false } }
+  ],
+  "_note": "Pure-compute 0-100 sleep score (duration+efficiency+restfulness). Empty input fails-closed with 'minutesAsleep required' (a 0/absent value is not a usable reading). Every numeric input is fail-CLOSED guarded via badNumericField — a poisoned value returns ok:false invalid_<field>, never a clamped ok:true. No DB; runs identically for the assassin's internal owner actor."
+}

@@ -1,0 +1,25 @@
+{
+  "macro_id": "marketing.abTestAnalysis",
+  "domain": "marketing",
+  "name": "abTestAnalysis",
+  "inputs": {
+    "variants": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.message === 'string' || Array.isArray(output.result.variants)",
+    "output.ok === false || !output.result.variants || output.result.variants.every(function(v){ return Number.isFinite(v.conversionRate) && Number.isFinite(v.visitors) && Number.isFinite(v.conversions); })",
+    "output.ok === false || output.result.lift === undefined || Number.isFinite(output.result.lift)",
+    "output.ok === false || output.result.totalVisitors === undefined || Number.isFinite(output.result.totalVisitors)",
+    "output.ok === false || output.result.statisticallySignificant === undefined || typeof output.result.statisticallySignificant === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "variants": [{ "name": "A", "visitors": 1000, "conversions": 50 }, { "name": "B", "visitors": 1200, "conversions": 84 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "variants": [{ "name": "Only one", "visitors": 100, "conversions": 5 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "variants": [{ "name": "A", "visitors": "Infinity", "conversions": "abc" }, { "name": "B", "visitors": 1000, "conversions": 50 }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS calculator. reads artifact.data.variants (array of {name,visitors,conversions} pasted as JSON in MarketingActionPanel). <2 variants → {message} guidance only. conversionRate=conversions/visitors×100; winner=highest rate; lift=(winner-loser)/loser×100; statisticallySignificant when totalVisitors>1000 AND |lift|>5. POISON: visitors via finInt floored at 1, conversions via finInt → no NaN/Infinity in any rate (prior parseInt('Infinity')=NaN was masked by ||1 but not finite-guarded). Card renders winner/lift/variants[].name+conversionRate/totalVisitors/statisticallySignificant EXACTLY. Pinned by server/tests/marketing-lens-macros.test.js."
+}

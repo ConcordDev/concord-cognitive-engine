@@ -1,0 +1,137 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.hypothesis.challenge",
+      "name": "challenge"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.hypothesis.check_circular",
+      "name": "check_circular"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.hypothesis.defend",
+      "name": "defend"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.hypothesis.get_influence",
+      "name": "get_influence"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.hypothesis.influence_leaderboard",
+      "name": "influence_leaderboard"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.hypothesis.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.hypothesis.propose",
+      "name": "propose"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.hypothesis.red_team",
+      "name": "red_team"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.hypothesis.resolve",
+      "name": "resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.hypothesis",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.hypothesis.status",
+      "name": "status"
+    }
+  ],
+  "domain": "loaf.hypothesis",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 10
+}

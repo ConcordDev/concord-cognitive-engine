@@ -146,6 +146,32 @@ export default function registerAuditActions(registerLensAction) {
         ) / 100
       : 100;
 
+    // Rules that triggered ≥1 violation are the compliance "gaps" the card surfaces.
+    // metRequirements = rules that never failed across the population.
+    const triggeredRules = rules.filter(r => (ruleTriggerCounts[r.id] || 0) > 0);
+    const metRequirements = rules.length - triggeredRules.length;
+    const sevForCount = (count) => {
+      const rate = records.length > 0 ? count / records.length : 0;
+      return rate >= 0.5 ? "high" : rate >= 0.2 ? "medium" : "low";
+    };
+    const gaps = triggeredRules
+      .map(r => {
+        const count = ruleTriggerCounts[r.id] || 0;
+        return {
+          requirement: r.name || r.field || r.id,
+          severity: sevForCount(count),
+          remediation: `Resolve ${count} violation${count === 1 ? "" : "s"} of '${r.name || r.field || r.id}' across affected records.`,
+          ruleId: r.id,
+          violationCount: count,
+        };
+      })
+      .sort((a, b) => b.violationCount - a.violationCount);
+
+    const status = overallCompliance >= 95 ? "compliant"
+      : overallCompliance >= 80 ? "partial"
+      : "non-compliant";
+    const framework = artifact.data.framework ? String(artifact.data.framework) : "Custom";
+
     const result = {
       analyzedAt: new Date().toISOString(),
       totalRecords: records.length,
@@ -160,6 +186,15 @@ export default function registerAuditActions(registerLensAction) {
         ruleName: r.name,
         count: ruleTriggerCounts[r.id],
       })).sort((a, b) => b.count - a.count),
+      // ── Component-rendered card fields (AuditActionPanel.CompResult) ──
+      // These are the EXACT names the result card reads; the originals above are
+      // retained for the parity test + provenance. Aligned 2026-06-28.
+      framework,
+      complianceRate: overallCompliance,
+      totalRequirements: rules.length,
+      metRequirements,
+      status,
+      gaps,
     };
 
     artifact.data.complianceCheck = result;
@@ -322,6 +357,27 @@ export default function registerAuditActions(registerLensAction) {
     integrityScore -= mediumCount * 3;
     integrityScore = Math.max(0, integrityScore);
 
+    // ── Component-rendered card fields (AuditActionPanel.TrailResult) ──
+    // anomalies = each detected issue flattened to { event, user, reason } the
+    // card maps; the originating actor is resolved from the issue's sequence
+    // number when the issue itself carries no actor.
+    const seqToActor = {};
+    for (const entry of sorted) seqToActor[entry.sequenceNumber] = entry.actor;
+    const anomalies = issues.map(i => ({
+      event: i.type,
+      user: i.actor || (i.sequenceNumber !== undefined ? seqToActor[i.sequenceNumber] : undefined) || "—",
+      reason: i.detail || `${i.severity} severity ${i.type}`,
+      severity: i.severity,
+    }));
+    const userActivitySummary = Object.entries(actorSummary)
+      .map(([user, s]) => ({ user, eventCount: s.actionCount }))
+      .sort((a, b) => b.eventCount - a.eventCount);
+    // Human-readable rollups for the "↗" suspicious-pattern lines.
+    const suspiciousPatterns = [];
+    if (highCount > 0) suspiciousPatterns.push(`${highCount} high-severity sequence/timestamp anomal${highCount === 1 ? "y" : "ies"}`);
+    if (criticalCount > 0) suspiciousPatterns.push(`${criticalCount} critical integrity break${criticalCount === 1 ? "" : "s"} (hash chain / unauthorized actor)`);
+    if (!hashChainValid) suspiciousPatterns.push("Hash chain broken — possible tampering");
+
     const result = {
       analyzedAt: new Date().toISOString(),
       totalEntries: trail.length,
@@ -342,6 +398,11 @@ export default function registerAuditActions(registerLensAction) {
         avgGapMs: Math.round(avgGap),
         gapStdDevMs: Math.round(gapStdDev),
       },
+      // EXACT card fields (TrailResult). Aligned 2026-06-28.
+      totalEvents: trail.length,
+      anomalies,
+      userActivitySummary,
+      suspiciousPatterns,
     };
 
     artifact.data.trailAnalysis = result;
@@ -361,11 +422,16 @@ export default function registerAuditActions(registerLensAction) {
   try {
     const controls = artifact.data.controls || [];
     const inherentRisks = artifact.data.inherentRisks || [];
-    const priorRiskLevel = params.priorRiskLevel || 0.5;
+    // Fail-CLOSED probability coercion: Number()+Number.isFinite, then clamp to
+    // [0,1]. parseFloat accepts "Infinity" (→ Infinity, leaks NaN downstream) and
+    // a "12abc" prefix; this rejects both to 0. A finite out-of-range value is
+    // clamped so likelihood*impact and 1−effectiveness stay in [0,1].
+    const prob = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0; };
+    const priorRiskLevel = prob(params.priorRiskLevel ?? 0.5);
 
     // Evaluate control effectiveness from test results if available
     const controlResults = controls.map(ctrl => {
-      let effectiveness = parseFloat(ctrl.effectiveness) || 0;
+      let effectiveness = prob(ctrl.effectiveness);
 
       if (ctrl.testResults && ctrl.testResults.length > 0) {
         const passRate = ctrl.testResults.filter(t => t.passed).length / ctrl.testResults.length;
@@ -377,7 +443,7 @@ export default function registerAuditActions(registerLensAction) {
       return {
         id: ctrl.id,
         name: ctrl.name,
-        statedEffectiveness: parseFloat(ctrl.effectiveness) || 0,
+        statedEffectiveness: prob(ctrl.effectiveness),
         observedEffectiveness: ctrl.testResults
           ? Math.round((ctrl.testResults.filter(t => t.passed).length / ctrl.testResults.length) * 10000) / 10000
           : null,
@@ -399,8 +465,8 @@ export default function registerAuditActions(registerLensAction) {
 
     // Inherent risk assessment
     const riskAssessments = inherentRisks.map(risk => {
-      const likelihood = parseFloat(risk.likelihood) || 0;
-      const impact = parseFloat(risk.impact) || 0;
+      const likelihood = prob(risk.likelihood);
+      const impact = prob(risk.impact);
       // Risk score = likelihood * impact
       const riskScore = Math.round(likelihood * impact * 10000) / 10000;
       // Expected loss index
@@ -452,13 +518,15 @@ export default function registerAuditActions(registerLensAction) {
       : bayesianRisk >= 0.3 ? "medium"
       : "low";
 
+    const inherentRiskRounded = Math.round(avgInherentRisk * 10000) / 10000;
+
     const result = {
       analyzedAt: new Date().toISOString(),
       auditRisk,
       bayesianAdjustedRisk: bayesianRisk,
       riskLevel,
       components: {
-        inherentRisk: Math.round(avgInherentRisk * 10000) / 10000,
+        inherentRisk: inherentRiskRounded,
         controlRisk: overallControlRisk,
         detectionRisk,
       },
@@ -467,6 +535,15 @@ export default function registerAuditActions(registerLensAction) {
       controlResults,
       riskAssessments: riskAssessments.sort((a, b) => b.riskScore - a.riskScore),
       categoryRisks,
+      // ── Component-rendered card fields (AuditActionPanel.RiskResult) ──
+      // The card reads flat controls/overallControlRisk/detectionRisk/inherentRisk
+      // (not the nested `components`). controlResults already carries the exact
+      // RiskControlRow shape {id,name,adjustedEffectiveness,controlRisk,
+      // observedEffectiveness}. Aligned 2026-06-28.
+      controls: controlResults,
+      overallControlRisk,
+      detectionRisk,
+      inherentRisk: inherentRiskRounded,
     };
 
     artifact.data.riskScore = result;
@@ -485,16 +562,40 @@ export default function registerAuditActions(registerLensAction) {
    */
   registerLensAction("audit", "samplingPlan", (ctx, artifact, params) => {
   try {
-    const population = artifact.data.population || {};
-    const total = population.total || 0;
+    const d = artifact.data || {};
+    const population = d.population || {};
 
-    if (total <= 0) {
+    // Fail-CLOSED numeric coercion: Number()+Number.isFinite, NOT parseFloat
+    // (so "12abc"/"Infinity"/"NaN" fall to the supplied default, never leak).
+    const num = (v, dflt) => { const n = Number(v); return Number.isFinite(n) ? n : dflt; };
+    // Flat component keys (tolerableErrorRate/expectedErrorRate, and
+    // confidenceLevel sent alongside the flat populationSize) are ALWAYS percents
+    // (0–100) from the lens's "Conf %"/"Tol %" text inputs → divide by 100.
+    const asPercent = (v, dflt) => { const n = num(v, NaN); return Number.isFinite(n) && n > 0 ? n / 100 : dflt; };
+    // params/parity keys (marginOfError/expectedDefectRate, and a params-supplied
+    // confidenceLevel) are ALWAYS fractions (0–1).
+    const asFractionStrict = (v, dflt) => { const n = num(v, NaN); return Number.isFinite(n) && n > 0 ? n : dflt; };
+
+    // Population: flat `populationSize` (component) OR `population.total` (parity).
+    const total = num(d.populationSize, num(population.total, 0));
+
+    if (!(total > 0)) {
       return { ok: true, result: { message: "Population size must be positive." } };
     }
 
-    const confidenceLevel = params.confidenceLevel || 0.95;
-    const marginOfError = params.marginOfError || 0.05;
-    const expectedDefectRate = params.expectedDefectRate || 0.05;
+    // Disambiguate by which key arrived: a flat component percent vs a params
+    // fraction. The component path uses confidenceLevel/tolerableErrorRate/
+    // expectedErrorRate (percents); the parity path uses params.confidenceLevel/
+    // marginOfError/expectedDefectRate (fractions). Component wins when present.
+    const confidenceLevel = d.confidenceLevel !== undefined
+      ? asPercent(d.confidenceLevel, 0.95)
+      : asFractionStrict(params.confidenceLevel, 0.95);
+    const marginOfError = d.tolerableErrorRate !== undefined
+      ? asPercent(d.tolerableErrorRate, 0.05)
+      : asFractionStrict(d.marginOfError ?? params.marginOfError, 0.05);
+    const expectedDefectRate = d.expectedErrorRate !== undefined
+      ? asPercent(d.expectedErrorRate, 0.05)
+      : asFractionStrict(d.expectedDefectRate ?? params.expectedDefectRate, 0.05);
 
     // Z-score lookup for common confidence levels
     function zScore(confidence) {
@@ -605,6 +706,15 @@ export default function registerAuditActions(registerLensAction) {
       finitePopulationCorrection: Math.round((finiteSampleSize / infiniteSampleSize) * 10000) / 10000,
       comparisonByConfidence: sampleSizeComparison,
       stratifiedPlan,
+      // ── Component-rendered card fields (AuditActionPanel.SamplingResult) ──
+      // The card reads sampleSize / populationSize / confidenceLevel (as a PERCENT
+      // for the "{confidenceLevel}% confidence" line) / expectedErrorRate / method
+      // / rationale. Aligned 2026-06-28.
+      sampleSize: finiteSampleSize,
+      confidenceLevel: Math.round(confidenceLevel * 100),
+      expectedErrorRate: Math.round(expectedDefectRate * 10000) / 100,
+      method: strata.length > 0 ? "stratified" : "attribute (finite-population)",
+      rationale: `n=${finiteSampleSize} of ${total} at ${Math.round(confidenceLevel * 100)}% confidence, ±${Math.round(marginOfError * 100)}% margin, ${Math.round(expectedDefectRate * 10000) / 100}% expected error rate (Z=${z}).`,
     };
 
     artifact.data.samplingPlan = result;

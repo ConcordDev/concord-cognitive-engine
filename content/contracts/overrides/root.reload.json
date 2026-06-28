@@ -1,0 +1,18 @@
+{
+  "macro_id": "root.reload",
+  "domain": "root",
+  "name": "reload",
+  "inputs": {
+    "id": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.computation && typeof output.result.computation.id === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": { "id": "rc_does_not_exist" }, "expect": { "ok": false, "error": "computation not found" } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "root.reload fetches a single saved computation by id from the caller's per-user notebook so the lens can re-hydrate the playground. With a live owner actor + STATE, an unknown id (the realistic isolated-call reality — the assassin drives each macro independently with no prior save in the same notebook) fails-CLOSED with ok:false 'computation not found', never a throw or no_db. A matching id returns the immutable saved computation."
+}

@@ -1,0 +1,18 @@
+{
+  "macro_id": "inheritance.list_assets",
+  "domain": "inheritance",
+  "name": "list_assets",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.assets)",
+    "output.ok === false || (typeof output.result.totalValueCc === 'number' && Number.isFinite(output.result.totalValueCc) && output.result.totalValueCc >= 0)",
+    "output.ok === false || output.result.totalValueCc === output.result.assets.reduce((s, a) => s + (Number(a.valueCc) || 0), 0)",
+    "output.ok === false || (output.result.byCategory && typeof output.result.byCategory === 'object')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "list_assets is a user-scoped READ. A fresh caller (assassin internal owner actor → {}) returns ok:true with an empty inventory (assets [], totalValueCc 0) — never no_actor / no_db (in-memory globalThis._concordSTATE.inheritanceEstates). CONSERVATION invariant: totalValueCc is exactly the sum of the stored asset valueCc fields — no CC is fabricated in aggregation. byCategory groups the same values; each category's valueCc sub-total is derived only from real stored assets."
+}

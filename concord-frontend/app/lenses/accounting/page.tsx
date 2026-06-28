@@ -2635,8 +2635,9 @@ export default function AccountingLensPage() {
 
       {/* Artifact library */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
+        <div className="flex items-center justify-center py-20" role="status" aria-busy="true">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-green-400" />
+          <span className="sr-only">Loading {currentType}s…</span>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20">
@@ -2661,10 +2662,10 @@ export default function AccountingLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8" role="status" aria-busy="true">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading...</p>
+          <p className="text-sm text-gray-400">Loading accounting data…</p>
         </div>
       </div>
     );
@@ -2672,7 +2673,7 @@ export default function AccountingLensPage() {
 
   if (isError) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8" role="alert">
         <ErrorState error={error?.message} onRetry={refetch} />
       </div>
     );

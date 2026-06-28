@@ -1,0 +1,24 @@
+{
+  "macro_id": "gallery.virtual-room-place",
+  "domain": "gallery",
+  "name": "virtual-room-place",
+  "inputs": {
+    "roomId": { "type": "string", "required": true, "maxLength": 120 },
+    "title": { "type": "string", "required": true, "maxLength": 300 },
+    "x": { "type": "number", "min": 0, "max": 1 },
+    "y": { "type": "number", "min": 0, "max": 1 },
+    "widthM": { "type": "number", "min": 0.2 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.placement && typeof output.result.placement.id === 'string')",
+    "output.ok === false || (Number.isFinite(output.result.placement.x) && output.result.placement.x >= 0 && output.result.placement.x <= 1)",
+    "output.ok === false || (Number.isFinite(output.result.placement.y) && output.result.placement.y >= 0 && output.result.placement.y <= 1)"
+  ],
+  "fuzz_cases": [
+    { "input": { "roomId": "__no_such_room__", "title": "X" }, "expect": { "ok": false } },
+    { "input": { "title": "Y" }, "expect": { "ok": false } }
+  ],
+  "_note": "gallery.virtual-room-place hangs an artwork on a virtual wall for at-scale AR preview. An unknown roomId rejects 'room not found'; a blank title rejects. Coordinates fail-CLOSED: an omitted/NaN/overflow x or y is clamped to a finite [0,1] value (x defaults to centered 0.5, y to 0.42) so a placement never serializes a NaN/null position."
+}

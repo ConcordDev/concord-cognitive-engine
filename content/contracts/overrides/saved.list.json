@@ -1,0 +1,30 @@
+{
+  "macro_id": "saved.list",
+  "domain": "saved",
+  "name": "list",
+  "inputs": {
+    "query": { "type": "string", "maxLength": 400 },
+    "kind": { "type": "string", "enum": ["post", "dtu", "article", "artifact", "link", "other"] },
+    "state": { "type": "string", "enum": ["unread", "read", "archived"] },
+    "tag": { "type": "string", "maxLength": 40 },
+    "sortBy": { "type": "string", "enum": ["savedAt", "title", "author", "updatedAt"] },
+    "order": { "type": "string", "enum": ["asc", "desc"] },
+    "limit": { "type": "number", "min": 1, "max": 500 },
+    "offset": { "type": "number", "min": 0, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.items))",
+    "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 0)",
+    "output.ok === false || (typeof output.result.matched === 'number' && output.result.matched <= output.result.total)",
+    "output.ok === false || output.result.items.length <= output.result.matched"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "kind": "dtu", "state": "unread", "sortBy": "title", "order": "asc", "limit": 10 }, "expect": { "ok": true } },
+    { "input": { "limit": -1 }, "expect": { "ok": false, "error": "invalid_limit" } },
+    { "input": { "offset": -5 }, "expect": { "ok": false, "error": "invalid_offset" } }
+  ],
+  "_note": "saved.list searches/sorts/filters the caller's per-user saved items from globalThis._concordSTATE.savedLens. The assassin runs with an internal owner actor, so {} returns ok:true with an empty page (no no_user). total is the unfiltered count; matched is the post-filter count; the returned page can never exceed matched. limit/offset are fail-CLOSED numeric guards — a poisoned value returns ok:false invalid_<field>, never a clamped ok:true."
+}

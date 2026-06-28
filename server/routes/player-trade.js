@@ -16,6 +16,7 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { logInventoryTransfer } from "../lib/inventory-audit.js";
+import { withEntityLock } from "../lib/entity-lock.js";
 
 const ACCEPT_WINDOW_S = 5 * 60; // 5 minute trade lifetime
 const MAX_ACTIVE_TRADES_PER_USER = 3;
@@ -155,55 +156,64 @@ export default function createPlayerTradeRouter({ requireAuth, db, emitToUser })
   });
 
   // POST /api/player-trade/:id/ready
-  router.post("/:id/ready", auth, (req, res) => {
+  router.post("/:id/ready", auth, async (req, res) => {
     try {
       const userId = _userId(req);
-      const trade = db.prepare(`SELECT * FROM player_trades WHERE id = ?`).get(req.params.id);
-      if (!trade) return res.status(404).json({ ok: false, error: "trade_not_found" });
-      if (_isFinalStatus(trade.status)) {
-        return res.status(400).json({ ok: false, error: "trade_already_finished" });
-      }
-      const isInitiator = trade.initiator_id === userId;
-      const isRecipient = trade.recipient_id === userId;
-      if (!isInitiator && !isRecipient) {
-        return res.status(403).json({ ok: false, error: "not_a_participant" });
-      }
+      // Adversarial-hardening: serialize all read-modify-write on THIS trade so
+      // two concurrent /ready requests can't both observe "both ready" and call
+      // _executeTrade twice (the items/coins are escrowed once — a double
+      // execute would attempt to transfer them twice). Keyed by trade id, so
+      // different trades stay fully parallel.
+      const outcome = await withEntityLock(`trade:${req.params.id}`, () => {
+        const trade = db.prepare(`SELECT * FROM player_trades WHERE id = ?`).get(req.params.id);
+        if (!trade) return { status: 404, body: { ok: false, error: "trade_not_found" } };
+        if (_isFinalStatus(trade.status)) {
+          return { status: 400, body: { ok: false, error: "trade_already_finished" } };
+        }
+        const isInitiator = trade.initiator_id === userId;
+        const isRecipient = trade.recipient_id === userId;
+        if (!isInitiator && !isRecipient) {
+          return { status: 403, body: { ok: false, error: "not_a_participant" } };
+        }
 
-      const now = Math.floor(Date.now() / 1000);
-      if (now > trade.expires_at) {
-        db.prepare(`UPDATE player_trades SET status = 'expired' WHERE id = ?`).run(trade.id);
-        return res.status(400).json({ ok: false, error: "trade_expired" });
-      }
+        const now = Math.floor(Date.now() / 1000);
+        if (now > trade.expires_at) {
+          db.prepare(`UPDATE player_trades SET status = 'expired' WHERE id = ?`).run(trade.id);
+          return { status: 400, body: { ok: false, error: "trade_expired" } };
+        }
 
-      const readyCol = isInitiator ? "initiator_ready_at" : "recipient_ready_at";
-      db.prepare(`UPDATE player_trades SET ${readyCol} = ? WHERE id = ?`).run(now, trade.id);
+        const readyCol = isInitiator ? "initiator_ready_at" : "recipient_ready_at";
+        db.prepare(`UPDATE player_trades SET ${readyCol} = ? WHERE id = ?`).run(now, trade.id);
 
-      // Tell the other party. This is *not* the success message — the other
-      // side still needs to hit Ready themselves.
-      const otherUserId = isInitiator ? trade.recipient_id : trade.initiator_id;
-      _emit(otherUserId, "trade:other_ready", {
-        tradeId: trade.id,
-        bySide: isInitiator ? "initiator" : "recipient",
+        // Tell the other party. This is *not* the success message — the other
+        // side still needs to hit Ready themselves.
+        const otherUserId = isInitiator ? trade.recipient_id : trade.initiator_id;
+        _emit(otherUserId, "trade:other_ready", {
+          tradeId: trade.id,
+          bySide: isInitiator ? "initiator" : "recipient",
+        });
+
+        // If both sides are now ready, execute atomically.
+        const updated = db.prepare(`SELECT * FROM player_trades WHERE id = ?`).get(trade.id);
+        if (!updated) return { status: 409, body: { ok: false, error: "trade_no_longer_exists" } };
+        if (updated.initiator_ready_at && updated.recipient_ready_at) {
+          const result = _executeTrade(db, updated);
+          if (!result.ok) return { status: 400, body: { ok: false, error: result.error } };
+          _emit(updated.initiator_id, "trade:complete", {
+            tradeId: updated.id,
+            received: _tryParseJson(updated.recipient_offer_json),
+          });
+          _emit(updated.recipient_id, "trade:complete", {
+            tradeId: updated.id,
+            received: _tryParseJson(updated.initiator_offer_json),
+          });
+          return { status: 200, body: { ok: true, complete: true } };
+        }
+
+        return { status: 200, body: { ok: true, complete: false, awaitingOther: true } };
       });
 
-      // If both sides are now ready, execute atomically.
-      const updated = db.prepare(`SELECT * FROM player_trades WHERE id = ?`).get(trade.id);
-      if (!updated) return res.status(409).json({ ok: false, error: "trade_no_longer_exists" });
-      if (updated.initiator_ready_at && updated.recipient_ready_at) {
-        const result = _executeTrade(db, updated);
-        if (!result.ok) return res.status(400).json({ ok: false, error: result.error });
-        _emit(updated.initiator_id, "trade:complete", {
-          tradeId: updated.id,
-          received: _tryParseJson(updated.recipient_offer_json),
-        });
-        _emit(updated.recipient_id, "trade:complete", {
-          tradeId: updated.id,
-          received: _tryParseJson(updated.initiator_offer_json),
-        });
-        return res.json({ ok: true, complete: true });
-      }
-
-      res.json({ ok: true, complete: false, awaitingOther: true });
+      res.status(outcome.status).json(outcome.body);
     } catch {
       res.status(500).json({ ok: false, error: "An unexpected error occurred" });
     }

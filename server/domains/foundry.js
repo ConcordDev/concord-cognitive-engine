@@ -41,6 +41,21 @@ import {
   COLLAB_ROLES,
 } from "../lib/foundry/builder-extras.js";
 
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
+// silently clamp through a Math.min/max bound. A caller that PASSES a numeric
+// field at all must pass a finite, non-negative one — an absent field is fine
+// (the macro uses its default). Returns null when clean, or the offending key.
+// (Mirrors the fail-CLOSED guard in server/domains/literary.js.)
+function badNumericField(input, keys) {
+  if (!input || typeof input !== "object") return null;
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 // ── Row <-> API shape ───────────────────────────────────────────────────────
 function rowToWorld(row) {
   if (!row) return null;
@@ -244,6 +259,8 @@ export default function registerFoundryMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const creatorId = ctx?.actor?.userId || ctx?.actor?.id;
     if (!creatorId) return { ok: false, reason: "no_actor" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     const limit = Math.min(Math.max(Number(input && input.limit) || 50, 1), 200);
 
     const rows = db.prepare(`
@@ -904,6 +921,8 @@ export default function registerFoundryMacros(register) {
    */
   register("foundry", "multiplayer_set", (ctx, input = {}) => {
     try {
+      const badNum = badNumericField(input, ["minPlayers", "maxPlayers", "lobbyCountdownSec", "teamCount"]);
+      if (badNum) return { ok: false, reason: `invalid_${badNum}` };
       const r = loadWorldForBuilder(ctx, input && input.id, { needWrite: true });
       if (r.error) return r.error;
       const { db, row } = r;
@@ -936,6 +955,8 @@ export default function registerFoundryMacros(register) {
     try {
       const db = ctx?.db;
       if (!db) return { ok: false, reason: "no_db" };
+      const badNum = badNumericField(input, ["limit"]);
+      if (badNum) return { ok: false, reason: `invalid_${badNum}` };
       const limit = Math.min(Math.max(Number(input && input.limit) || 40, 1), 120);
       const q = input && input.q ? String(input.q).toLowerCase().trim() : null;
       const rows = db.prepare(`
@@ -1036,6 +1057,8 @@ export default function registerFoundryMacros(register) {
       if (!db) return { ok: false, reason: "no_db" };
       const userId = ctx?.actor?.userId || ctx?.actor?.id;
       if (!userId) return { ok: false, reason: "no_actor" };
+      const badNum = badNumericField(input, ["durationSec"]);
+      if (badNum) return { ok: false, reason: `invalid_${badNum}` };
       const id = String((input && input.id) || "");
       if (!id) return { ok: false, reason: "missing_id" };
       const row = db.prepare(`SELECT id, status FROM foundry_worlds WHERE id = ?`).get(id);

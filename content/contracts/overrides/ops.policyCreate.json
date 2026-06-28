@@ -1,0 +1,21 @@
+{
+  "macro_id": "ops.policyCreate",
+  "domain": "ops",
+  "name": "policyCreate",
+  "inputs": {
+    "name": { "type": "string", "maxLength": 120 },
+    "tiers": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.policy && Array.isArray(output.result.policy.tiers) && output.result.policy.tiers.length >= 1)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "name required" } },
+    { "input": { "name": "empty" }, "expect": { "ok": false, "error": "at least one tier required" } },
+    { "input": { "name": "Crit", "tiers": [{ "afterMinutes": -1, "target": "a" }] }, "expect": { "ok": false, "error": "invalid_tier_afterMinutes" } },
+    { "input": { "name": "Crit", "tiers": [{ "afterMinutes": 0, "target": "primary", "channel": "push" }] }, "expect": { "ok": true } }
+  ],
+  "_note": "Defines a tiered escalation policy into per-user STATE.opsLens.policies. Missing name / no tiers fail-closed. Each tier's afterMinutes is a fail-CLOSED numeric guard — a poisoned value (NaN/Infinity/-1/1e308) → invalid_tier_afterMinutes, never a clamped ok:true. STATE-backed owner actor (NEVER no_db)."
+}

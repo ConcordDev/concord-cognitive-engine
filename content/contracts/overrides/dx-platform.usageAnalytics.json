@@ -1,0 +1,22 @@
+{
+  "macro_id": "dx-platform.usageAnalytics",
+  "domain": "dx-platform",
+  "name": "usageAnalytics",
+  "inputs": {
+    "windowDays": { "type": "number", "min": 1, "max": 365 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.totalFires === 'number' && output.result.totalFires >= 0)",
+    "output.ok === false || (typeof output.result.acceptanceRate === 'number' && output.result.acceptanceRate >= 0 && output.result.acceptanceRate <= 1)",
+    "output.ok === false || Array.isArray(output.result.topFiring)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "windowDays": 7 }, "expect": { "ok": true } },
+    { "input": { "windowDays": -1 }, "expect": { "ok": false, "error": "invalid_windowDays" } },
+    { "input": { "windowDays": 1e308 }, "expect": { "ok": false, "error": "invalid_windowDays" } }
+  ],
+  "_note": "Aggregates the caller's recorded detector fires + fix outcomes from per-user STATE keyed by ctx.actor.userId. The assassin's internal owner actor has none → ok:true with zeros and an acceptanceRate of 0. windowDays is a fail-CLOSED numeric guard (poisoned → invalid_windowDays, never clamped). NEVER no_db."
+}

@@ -1,0 +1,23 @@
+{
+  "macro_id": "sessions.start",
+  "domain": "sessions",
+  "name": "start",
+  "inputs": {
+    "lensId": { "type": "string", "maxLength": 64 },
+    "title": { "type": "string", "maxLength": 200 },
+    "initialStep": { "type": "string", "maxLength": 64 },
+    "initialState": { "type": "object" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.session && typeof output.session.id === 'string')",
+    "output.ok === false || output.session.status === 'open'",
+    "output.ok === false || output.session.stepCount === 0"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_lens_id" } },
+    { "input": { "lensId": "kingdoms", "title": "War campaign" }, "expect": { "ok": true } }
+  ],
+  "_note": "sessions.start opens a new session owned by ctx.actor.userId. lensId is required (missing → missing_lens_id). With a live migrated DB + the assassin owner actor, a real lensId returns ok:true and an open, zero-step session row. A write {} returns a real validation reason (missing_lens_id), NEVER no_db."
+}

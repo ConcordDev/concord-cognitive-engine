@@ -1,0 +1,297 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "housing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "housing.claim",
+      "name": "claim"
+    },
+    {
+      "_derived": false,
+      "domain": "housing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "houseId": "ph_does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "houseId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (output.house !== null && typeof output.house === 'object')",
+        "output.ok === false || Array.isArray(output.house.rooms)"
+      ],
+      "macro_id": "housing.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "housing",
+      "fuzz_cases": [],
+      "inputs": {
+        "userId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.houses)",
+        "output.ok === false || output.houses.every(h => typeof h.id === 'string')",
+        "output.ok === false || output.houses.every(h => ['private','friends','public'].includes(h.visibility))"
+      ],
+      "macro_id": "housing.mine",
+      "name": "mine"
+    },
+    {
+      "_derived": false,
+      "domain": "housing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "houseId": "ph_x",
+            "item": {
+              "itemId": "sofa"
+            },
+            "roomId": "r_x"
+          }
+        }
+      ],
+      "inputs": {
+        "houseId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "item": {
+          "required": true,
+          "type": "object"
+        },
+        "roomId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string' || typeof output.reason === 'string'",
+        "output.ok === false || (typeof output.layoutSize === 'number' && output.layoutSize >= 0)"
+      ],
+      "macro_id": "housing.place_furniture",
+      "name": "place_furniture"
+    },
+    {
+      "_derived": false,
+      "domain": "housing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 100,
+          "min": 1,
+          "type": "number"
+        },
+        "worldId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.houses)",
+        "output.ok === false || output.houses.every(h => h.visibility === 'public' || h.visibility === undefined)",
+        "output.ok === false || output.houses.length <= 100"
+      ],
+      "macro_id": "housing.public",
+      "name": "public"
+    },
+    {
+      "_derived": true,
+      "domain": "housing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "housing.remove_furniture",
+      "name": "remove_furniture"
+    },
+    {
+      "_derived": true,
+      "domain": "housing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "housing.set_live_visits",
+      "name": "set_live_visits"
+    },
+    {
+      "_derived": false,
+      "domain": "housing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "houseId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "lockTier": {
+          "max": 5,
+          "min": 0,
+          "type": "number"
+        },
+        "roomId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string' || typeof output.reason === 'string'",
+        "output.ok === false || (output.lockTier >= 0 && output.lockTier <= 5)",
+        "output.ok === false || ['open','locked'].includes(output.lockState)"
+      ],
+      "macro_id": "housing.set_lock",
+      "name": "set_lock"
+    },
+    {
+      "_derived": false,
+      "domain": "housing",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "houseId": "ph_x",
+            "visibility": "nonsense"
+          }
+        }
+      ],
+      "inputs": {
+        "houseId": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        },
+        "visibility": {
+          "enum": [
+            "private",
+            "friends",
+            "public"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.error === 'string' || typeof output.reason === 'string'",
+        "output.ok === false || ['private','friends','public'].includes(output.visibility)"
+      ],
+      "macro_id": "housing.set_visibility",
+      "name": "set_visibility"
+    },
+    {
+      "_derived": true,
+      "domain": "housing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "housing.visit",
+      "name": "visit"
+    }
+  ],
+  "domain": "housing",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 10
+}

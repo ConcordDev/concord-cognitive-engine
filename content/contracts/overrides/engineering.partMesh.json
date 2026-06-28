@@ -1,0 +1,24 @@
+{
+  "macro_id": "engineering.partMesh",
+  "domain": "engineering",
+  "name": "partMesh",
+  "inputs": {
+    "kind": { "type": "string", "maxLength": 24 },
+    "params": { "type": "object", "required": false }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (Array.isArray(output.result.positions) && output.result.positions.length > 0)",
+    "output.ok === false || (Array.isArray(output.result.indices) && output.result.indices.length === output.result.triangleCount * 3)",
+    "output.ok === false || output.result.positions.every(p => Number.isFinite(p))",
+    "output.ok === false || (output.result.boundingBox && Number.isFinite(output.result.boundingBox.x))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "kind": "box", "params": { "width": 0.2, "height": 0.1, "length": 0.5 } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "kind": "sphere", "params": { "radius": 0.08 } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "kind": "i-beam", "params": {} } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Triangle mesh for the 3-D preview (GeometryEditor.tsx PartMesh → Three.js BufferGeometry). Flat positions[] + indexed triangles; indices.length === triangleCount × 3. Geometry params are sanitized to FINITE positive numbers (poisoned NaN/Infinity → per-kind default) so no non-finite vertex ever reaches the renderer. Reads from artifact.data. Pure compute, no STATE, deterministic."
+}

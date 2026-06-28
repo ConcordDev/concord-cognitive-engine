@@ -17,10 +17,15 @@
 
 import { useHUDContext } from './HUDContextProvider';
 import { StaminaWheel } from '@/components/concordia/StaminaWheel';
+import { useHudSettings } from '@/lib/concordia/hud-settings';
 
 export function AmbientLayer() {
   const mode = useHUDContext((s) => s.inputMode);
   const expertise = useHUDContext((s) => s.expertiseLevel);
+  // HUD settings gate each ambient signal — this is the real consumer of the
+  // HUDSettingsPanel toggles (concordia:hud-settings-changed). A toggled-off
+  // signal is suppressed here even when its underlying condition fires.
+  const settings = useHudSettings();
 
   if (mode === 'photo') return null;
 
@@ -31,26 +36,26 @@ export function AmbientLayer() {
       aria-hidden="false"
     >
       {/* Top-left — calendar / month + festival */}
-      {mode !== 'combat' && mode !== 'dialogue' && <CalendarBadge />}
+      {settings.ambient_calendar && mode !== 'combat' && mode !== 'dialogue' && <CalendarBadge />}
 
       {/* Top-right — refusal field warning + realm border. We already
           returned early on photo mode above. */}
-      <RefusalBadge />
+      {settings.ambient_refusal && <RefusalBadge />}
       <RealmExileTint />
 
       {/* Bottom-left — stamina wheel (reused) + active substrate badges */}
       <div className="absolute left-3 bottom-3 flex flex-col items-start gap-2 pointer-events-auto">
         <StaminaSlot />
-        {mode === 'exploration' && expertise !== 'newcomer' && <ActiveSchemeBadge />}
-        {mode === 'exploration' && expertise !== 'newcomer' && <ActiveCraftBadge />}
+        {settings.ambient_schemes && mode === 'exploration' && expertise !== 'newcomer' && <ActiveSchemeBadge />}
+        {settings.ambient_crafts && mode === 'exploration' && expertise !== 'newcomer' && <ActiveCraftBadge />}
         <PendingHeirBadge />
       </div>
 
       {/* Bottom-right — health bar (only when damaged) + oxygen (only when diving) + pain */}
       <div className="absolute right-3 bottom-3 flex flex-col items-end gap-2">
-        <HealthBar />
-        <OxygenBadge />
-        {mode !== 'combat' && expertise !== 'newcomer' && <PainBadge />}
+        {settings.ambient_health && <HealthBar />}
+        {settings.ambient_oxygen && <OxygenBadge />}
+        {settings.ambient_pain && mode !== 'combat' && expertise !== 'newcomer' && <PainBadge />}
       </div>
     </div>
   );

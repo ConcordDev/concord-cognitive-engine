@@ -10,7 +10,12 @@ export default function registerFilmStudiosActions(registerLensAction) {
   });
   registerLensAction("film-studios", "budgetBreakdown", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const totalBudget = parseFloat(data.totalBudget) || 0;
+    // Fail CLOSED on poisoned numerics: parseFloat passes Infinity / 1e400
+    // straight through, and `|| 0` can't catch a truthy non-finite value, so
+    // an unbounded totalBudget would mint absurd (non-finite) breakdown
+    // amounts. Clamp to a finite, non-negative budget before any math.
+    const parsed = parseFloat(data.totalBudget);
+    const totalBudget = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
     const categories = { "above-the-line": 0.25, "below-the-line": 0.40, "post-production": 0.15, "marketing": 0.15, "contingency": 0.05 };
     const breakdown = Object.entries(categories).map(([cat, pct]) => ({ category: cat.replace(/-/g, " "), percentage: pct * 100, amount: Math.round(totalBudget * pct * 100) / 100 }));
     return { ok: true, result: { totalBudget, breakdown, aboveTheLine: { talent: Math.round(totalBudget * 0.12), director: Math.round(totalBudget * 0.08), producer: Math.round(totalBudget * 0.05) }, tip: totalBudget > 1000000 ? "Consider completion bond insurance" : "Indie budget — maximize crew flexibility" } };
@@ -27,7 +32,12 @@ export default function registerFilmStudiosActions(registerLensAction) {
   registerLensAction("film-studios", "castAnalysis", (ctx, artifact, _params) => {
     const cast = artifact.data?.cast || [];
     if (cast.length === 0) return { ok: true, result: { message: "Add cast members to analyze." } };
-    const analyzed = cast.map(c => ({ name: c.name, role: c.role || "supporting", scenes: parseInt(c.sceneCount) || 0, dailyRate: parseFloat(c.dailyRate) || 0, totalCost: (parseInt(c.sceneCount) || 0) * (parseFloat(c.dailyRate) || 0) / 3 }));
+    // Fail CLOSED: parseFloat passes Infinity / 1e400 through (and `|| 0`
+    // can't catch a truthy non-finite), so a poisoned dailyRate would mint a
+    // non-finite totalCost / totalCastBudget. Clamp to finite, non-negative.
+    const finiteNum = (v) => { const n = parseFloat(v); return Number.isFinite(n) && n > 0 ? n : 0; };
+    const finiteInt = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) && n > 0 ? n : 0; };
+    const analyzed = cast.map(c => ({ name: c.name, role: c.role || "supporting", scenes: finiteInt(c.sceneCount), dailyRate: finiteNum(c.dailyRate), totalCost: finiteInt(c.sceneCount) * finiteNum(c.dailyRate) / 3 }));
     const totalCastBudget = analyzed.reduce((s, c) => s + c.totalCost, 0);
     return { ok: true, result: { cast: analyzed, totalCast: cast.length, leads: cast.filter(c => (c.role || "").toLowerCase().includes("lead")).length, totalCastBudget: Math.round(totalCastBudget), topCost: analyzed.sort((a, b) => b.totalCost - a.totalCost)[0]?.name } };
   });

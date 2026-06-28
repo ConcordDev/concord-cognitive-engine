@@ -128,7 +128,7 @@ export default function SupplyChainLensPage() {
     setEditorOpen(false);
   };
 
-  if (isError) return <ErrorState error={error?.message} onRetry={refetch} />;
+  if (isError) return <div role="alert"><ErrorState error={error?.message} onRetry={refetch} /></div>;
 
   const renderDashboard = () => {
     const all = items.map(i => i.data as unknown as SupplyChainArtifact);
@@ -179,7 +179,7 @@ export default function SupplyChainLensPage() {
         <select className={cn(ds.select, 'w-auto')} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="all">All Status</option>{Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select>
         <button onClick={openCreate} className={ds.btnPrimary}><Plus className="w-4 h-4" /> New</button>
       </div>
-      {isLoading ? <div className="flex items-center justify-center py-12"><div className="w-6 h-6 border-2 border-neon-blue border-t-transparent rounded-full animate-spin" /></div>
+      {isLoading ? <div role="status" aria-label="Loading supply chain items" className="flex items-center justify-center py-12"><div className="w-6 h-6 border-2 border-neon-blue border-t-transparent rounded-full animate-spin" /></div>
       : filtered.length === 0 ? <div className={cn(ds.panel, 'text-center py-12')}><Truck className="w-12 h-12 text-gray-600 mx-auto mb-3" /><p className={ds.textMuted}>No {activeArtifactType} items yet</p><button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-3')}><Plus className="w-4 h-4" /> Create First</button></div>
       : filtered.map((item, index) => {
         const d = item.data as unknown as SupplyChainArtifact;

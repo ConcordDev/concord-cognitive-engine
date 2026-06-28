@@ -1,0 +1,24 @@
+{
+  "macro_id": "ops.incidentCreate",
+  "domain": "ops",
+  "name": "incidentCreate",
+  "inputs": {
+    "title": { "type": "string", "maxLength": 200 },
+    "severity": { "type": "string", "maxLength": 8 },
+    "serviceId": { "type": "string", "maxLength": 64 },
+    "summary": { "type": "string", "maxLength": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.incident && typeof output.result.incident.id === 'string')",
+    "output.ok === false || output.result.incident.status === 'triggered'",
+    "output.ok === false || (['sev1','sev2','sev3','sev4'].indexOf(output.result.incident.severity) >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "title required" } },
+    { "input": { "title": "Checkout 5xx", "severity": "sev1" }, "expect": { "ok": true } },
+    { "input": { "title": "Bad sev", "severity": "nope" }, "expect": { "ok": true } }
+  ],
+  "_note": "Opens a new incident in the 'triggered' state into per-user STATE.opsLens.incidents keyed by ctx.actor.userId — STATE-backed, the assassin's owner actor writes a fresh row (NEVER no_db). Empty title fails-closed. An out-of-vocab severity defaults to sev3 (still ok:true). title is a string; no numeric inputs to poison."
+}

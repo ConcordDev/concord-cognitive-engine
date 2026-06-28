@@ -1,0 +1,31 @@
+{
+  "macro_id": "landscaping.materialEstimate",
+  "domain": "landscaping",
+  "name": "materialEstimate",
+  "inputs": {
+    "squareFootage": { "type": "number" },
+    "material": { "type": "string", "maxLength": 40 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.material === 'string'",
+    "output.ok === false || typeof output.result.squareFootage === 'number'",
+    "output.ok === false || typeof output.result.depthInches === 'number'",
+    "output.ok === false || typeof output.result.cubicYards === 'number'",
+    "output.ok === false || typeof output.result.bags === 'number'",
+    "output.ok === false || typeof output.result.estimatedCost === 'number'",
+    "output.ok === false || typeof output.result.deliveryNote === 'string'",
+    "output.ok === false || Number.isFinite(output.result.cubicYards)",
+    "output.ok === false || Number.isFinite(output.result.bags)",
+    "output.ok === false || Number.isFinite(output.result.estimatedCost)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "squareFootage": 500, "material": "mulch" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "squareFootage": 100, "material": "topsoil" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "squareFootage": "Infinity", "material": "moon-dust" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. depthInches from a per-material table (mulch 3 / gravel 2 / topsoil 4 / compost 2 / sand 2; unknown → 3). cubicYards = round((sqft × depth / 12 / 27) × 10)/10; bags = ceil(cubicYards × 13.5); estimatedCost = round(cubicYards × costPerYard) (mulch 35 / gravel 45 / topsoil 30 / compost 40 / sand 35; unknown → 35); deliveryNote = cubicYards>3 ? 'Bulk delivery recommended' : 'Bagged purchase sufficient'. FAIL-CLOSED (fixed 2026-06-28): Number.isFinite guard so a raw Infinity squareFootage can't leak Infinity into cubicYards/bags/estimatedCost (prior `parseFloat()||100` passed Infinity through). MaterialEstimator renders ALL fields above EXACTLY."
+}

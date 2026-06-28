@@ -1,0 +1,27 @@
+{
+  "macro_id": "electrical.conduitFill",
+  "domain": "electrical",
+  "name": "conduitFill",
+  "inputs": {
+    "conductors": { "type": "array", "maxLength": 5000 },
+    "conduitType": { "type": "string", "maxLength": 40 },
+    "conduitSize": { "type": "string", "maxLength": 12 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.result.totalConductors === undefined || (Number.isFinite(output.result.totalConductors) && output.result.totalConductors >= 0)",
+    "output.ok === false || output.result.totalConductorArea === undefined || (Number.isFinite(output.result.totalConductorArea) && output.result.totalConductorArea >= 0)",
+    "output.ok === false || output.result.necFillLimitPercent === undefined || [53,31,40].includes(output.result.necFillLimitPercent)",
+    "output.ok === false || output.result.conductors === undefined || output.result.conductors.every((c) => Number.isFinite(c.count) && c.count >= 1 && Number.isFinite(c.areaTotal) && c.areaTotal >= 0)",
+    "output.ok === false || output.result.requested == null || typeof output.result.requested.pass === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": { "conductors": [{ "awg": 12, "count": 3 }], "conduitType": "EMT" }, "expect": { "ok": true } },
+    { "input": { "conductors": [{ "awg": 4, "count": 9 }], "conduitType": "EMT", "conduitSize": "3/4" }, "expect": { "ok": true } },
+    { "input": { "conductors": [] }, "expect": { "ok": true } },
+    { "input": { "conductors": [{ "awg": 12, "count": -3 }, { "awg": 10, "count": "NaN" }] }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute. NecCalculators sends lensRun('electrical','conduitFill',{conductors,conduitType,conduitSize}) → body.input flat → handler reads artifact.data (== params). NEC Ch.9 fill: 1 conductor 53%, 2 → 31%, 3+ → 40%. Recommends the smallest conduit whose allowed area ≥ total conductor area; an optional conduitSize returns a requested PASS/FAIL block. Fail-closed: each conductor count sanitises via num() then floors to ≥1 (a physical conductor is never negative/NaN), so totalConductors + totalConductorArea never go negative or non-finite. Empty conductor list returns the honest 'Add conductors' prompt. Cards render recommendedConduitSize/recommendedActualFillPercent/necFillLimitPercent/fillRule/totalConductors/totalConductorArea + requested.{size,actualFillPercent,allowedFillPercent,pass} EXACTLY (field-aligned against ConduitFillCalc). No STATE, no DB."
+}

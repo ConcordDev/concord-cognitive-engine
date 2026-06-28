@@ -15,11 +15,25 @@ function tableExists(db, name) {
   catch { return false; }
 }
 
+// Fail-CLOSED numeric guard (copied from server/domains/literary.js). Returns
+// the first poisoned key (NaN/Infinity/negative/absurd) so the caller can
+// reject before touching the DB — never silently coerce a hostile number.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 export default function registerRepairMacros(register) {
   // The Homeostasis ledger — what the monitor found + how it dispositioned it.
   register("repair", "health_log", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     if (!tableExists(db, "health_check_log")) return { ok: true, entries: [] };
     const limit = Math.min(Number(input.limit) || 50, 200);
     const where = input.disposition ? "WHERE disposition = ?" : "";

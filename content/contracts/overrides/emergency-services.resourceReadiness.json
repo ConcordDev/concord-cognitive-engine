@@ -1,0 +1,25 @@
+{
+  "macro_id": "emergency-services.resourceReadiness",
+  "domain": "emergency-services",
+  "name": "resourceReadiness",
+  "inputs": {
+    "resources": { "type": "object", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (Number.isFinite(output.result.vehicleReadiness) && output.result.vehicleReadiness >= 0 && output.result.vehicleReadiness <= 100)",
+    "output.ok === false || (Number.isFinite(output.result.personnelReadiness) && output.result.personnelReadiness >= 0)",
+    "output.ok === false || (Number.isFinite(output.result.suppliesLevel) && output.result.suppliesLevel >= 0 && output.result.suppliesLevel <= 100)",
+    "output.ok === false || (Number.isFinite(output.result.overallReadiness) && output.result.overallReadiness >= 0 && output.result.overallReadiness <= 100)",
+    "output.ok === false || typeof output.result.status === 'string'",
+    "output.ok === false || Array.isArray(output.result.shortages)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "resources": { "vehicles": 10, "vehiclesReady": 9, "personnel": 40, "personnelOnDuty": 35, "suppliesPercent": 80 } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "resources": {} } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "resources": { "vehicles": 4, "vehiclesReady": 4, "personnel": 4, "personnelOnDuty": 4, "suppliesPercent": "1e999" } } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler — dispatch key 'emergency-services.resourceReadiness'. Component sends { artifact: { data: { resources:{vehicles,vehiclesReady,personnel,personnelOnDuty,suppliesPercent} } } }; peeler unwraps so handler reads artifact.data.resources.*. POISON: every field coerced via intOr/finOr (Number()-based) and suppliesPercent clamped [0,100] so 'Infinity'/'1e999' never leak into suppliesLevel/overallReadiness — both stay FINITE+bounded. Render contract (overallReadiness/status headline + vehicleReadiness/personnelReadiness/suppliesLevel + shortages[]) pinned by server/tests/emergency-services-lens-macros.test.js. Authored spec, not assassin-driven."
+}

@@ -1,0 +1,23 @@
+{
+  "macro_id": "aviation.flightSummary",
+  "domain": "aviation",
+  "name": "flightSummary",
+  "inputs": {
+    "flights": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.totalFlights)",
+    "output.ok === false || Number.isFinite(output.result.totalHours)",
+    "output.ok === false || output.result.totalFlights === 0 || Number.isFinite(output.result.averageDuration)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "flights": [{ "hobbsTime": 1.4, "fuelUsed": 12 }, { "hobbsTime": 2.0, "fuelUsed": 17 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "flights": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "flights": [{ "hobbsTime": "NaN", "fuelUsed": "abc" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Flight-summary aggregation. Returns totalFlights/totalHours/averageDuration/longestFlight/shortestFlight/totalFuelConsumed/avgFuelPerHour. The page's Action Result panel guards on totalHours+averageDuration (a render block was added — previously only the hobbsLog totalTime/picTime block existed, so flightSummary output never displayed). Empty flights returns totalFlights:0 / totalHours:0 with a message. Fixed 2026-06-28."
+}

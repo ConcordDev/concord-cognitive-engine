@@ -1,0 +1,25 @@
+{
+  "macro_id": "training-room.kind_frame_data",
+  "domain": "training-room",
+  "name": "kind_frame_data",
+  "inputs": {
+    "kind": { "type": "string", "required": true, "maxLength": 40 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || output.reason === 'unknown_kind'",
+    "output.ok === false || (output.frameData && typeof output.frameData === 'object')",
+    "output.ok === false || output.frameData.startup_ms > 0",
+    "output.ok === false || output.frameData.active_ms > 0",
+    "output.ok === false || output.frameData.recovery_ms > 0",
+    "output.ok === false || output.frameData.dodge_window_ms > 0",
+    "output.ok === false || ((output.frameData.kind === 'bow' || output.frameData.kind === 'staff') ? output.frameData.parry_window_ms === 0 : output.frameData.parry_window_ms > 0)"
+  ],
+  "fuzz_cases": [
+    { "input": { "kind": "sword" }, "expect": { "ok": true } },
+    { "input": { "kind": "staff" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "kind": "default" }, "expect": { "ok": false } }
+  ]
+}

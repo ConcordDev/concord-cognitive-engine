@@ -1,0 +1,21 @@
+{
+  "macro_id": "crisis.triage",
+  "domain": "crisis",
+  "name": "triage",
+  "inputs": {
+    "worldId": { "type": "string", "required": true, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.ranked)",
+    "output.ok === false || typeof output.result.total === 'number'",
+    "output.ok === true || typeof output.error === 'string'",
+    "output.error !== 'no_db'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "missing_world_id" } },
+    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": true } }
+  ],
+  "_note": "Ranks active crises in a world by severity+urgency (impact*0.6 + urgency*0.4, scored 0..100 with priority bands). Missing worldId → ok:false missing_world_id (NEVER no_db). A real worldId with no crises → ok:true ranked:[] total:0."
+}

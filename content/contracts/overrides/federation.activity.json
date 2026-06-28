@@ -1,0 +1,17 @@
+{
+  "macro_id": "federation.activity",
+  "domain": "federation",
+  "name": "activity",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.items))",
+    "output.ok === false || output.result.items.length <= 50",
+    "output.ok === false || output.result.items.every(i => typeof i.id === 'string' || typeof i.id === 'number' || i.id === undefined)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "federation.activity is a lens-action macro (LENS_ACTIONS, not MACROS) that surfaces the federated shadow-DTU feed for the lens. It scans STATE.shadowDtus for entries tagged 'federated_signal', maps each to { id, summary, sourcePeer, createdAt }, sorts newest-first, and caps at 50. It NEVER returns no_db (pure in-memory) and returns ok:true with an empty items[] when no federated shadows exist. Non-federated shadows are excluded by tag — verified in federation-lens-macros.test.js."
+}

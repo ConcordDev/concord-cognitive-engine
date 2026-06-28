@@ -1,0 +1,27 @@
+{
+  "macro_id": "hvac.zoneBalance",
+  "domain": "hvac",
+  "name": "zoneBalance",
+  "inputs": {
+    "zones": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.zones)",
+    "output.ok === false || Number.isFinite(output.result.maxDeviation)",
+    "output.ok === false || Number.isFinite(output.result.avgDeviation)",
+    "output.ok === false || typeof output.result.verdict === 'string'",
+    "output.ok === false || Number.isFinite(output.result.balanceScore)",
+    "output.ok === false || typeof output.result.recommendation === 'string'",
+    "output.ok === false || output.result.zones.every(z => typeof z.zone === 'string' && Number.isFinite(z.current) && Number.isFinite(z.target) && Number.isFinite(z.deviation))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "zones": [{ "name": "Living room", "currentTemp": 75, "targetTemp": 72 }, { "name": "Bedroom", "currentTemp": 68, "targetTemp": 72 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "zones": [{ "name": "A", "currentTemp": 72, "targetTemp": 72 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "zones": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "zones": [{ "name": "X", "currentTemp": "Infinity", "targetTemp": "NaN" }, { "name": "Y", "currentTemp": "abc", "targetTemp": 72 }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data.zones (ManualJCalc sends [{name, currentTemp:number, targetTemp:number}]). Per zone: deviation = round(|current-target|,1); maxDeviation/avgDeviation across zones; verdict balanced (<3) / minor imbalance (<=5) / imbalanced; balanceScore = max(0, 100 - maxDev*10); recommendation = recommendations[0]. Empty zones → safe empty-shape ({zones:[], verdict:'no zones', balanceScore:100, recommendation:'Add zones…'}) so the card still renders, never a crash. Fail-CLOSED numerics: temps coerce via Number()+Number.isFinite, poisoned 'Infinity'/'NaN'/'abc' fall to 72°F default so deviation stays finite. Result card renders zones[].{zone,current,target,deviation}/maxDeviation/avgDeviation/verdict/balanceScore/recommendation EXACTLY (the prior balanced(bool)/worstZone/recommendations[] were not what the card read — fixed 2026-06-28; retained as aliases)."
+}

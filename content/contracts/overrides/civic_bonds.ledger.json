@@ -1,0 +1,21 @@
+{
+  "macro_id": "civic_bonds.ledger",
+  "domain": "civic_bonds",
+  "name": "ledger",
+  "inputs": {
+    "bondId": { "type": "string" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.reason !== 'no_db'",
+    "output.ok || typeof output.reason === 'string'",
+    "!output.ok || (Array.isArray(output.pledges) && Array.isArray(output.milestones))"
+  ],
+  "fuzz_cases": [
+    {
+      "input": { "bondId": "does_not_exist" },
+      "expect": { "ok": false, "reason": "bond_not_found" }
+    }
+  ]
+}

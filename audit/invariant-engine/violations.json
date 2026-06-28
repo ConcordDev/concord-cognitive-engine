@@ -1,0 +1,99 @@
+{
+  "generatedAt": "2026-06-27T18:44:00.927Z",
+  "durationMs": 149452,
+  "totals": {
+    "macrosEnumerated": 3002,
+    "headlessSafeDriven": 2887,
+    "headlessUnsafeSkipped": 115,
+    "violations": 10,
+    "hardCrashes": 0
+  },
+  "byVector": {
+    "V1": 0,
+    "V2": 5,
+    "V3": 5,
+    "META": 0,
+    "HARD": 0
+  },
+  "byReason": {
+    "fuzz_timeout": 5,
+    "invariant_input_timeout": 5
+  },
+  "byDomain": {
+    "detectors": 8,
+    "emergent": 2
+  },
+  "violations": [
+    {
+      "macro_id": "detectors.diff",
+      "vector": "V2",
+      "reason": "fuzz_timeout",
+      "detail": {
+        "poisonedNumericFields": []
+      }
+    },
+    {
+      "macro_id": "detectors.diff",
+      "vector": "V3",
+      "reason": "invariant_input_timeout",
+      "detail": null
+    },
+    {
+      "macro_id": "detectors.findings",
+      "vector": "V2",
+      "reason": "fuzz_timeout",
+      "detail": {
+        "poisonedNumericFields": []
+      }
+    },
+    {
+      "macro_id": "detectors.findings",
+      "vector": "V3",
+      "reason": "invariant_input_timeout",
+      "detail": null
+    },
+    {
+      "macro_id": "detectors.runAll",
+      "vector": "V2",
+      "reason": "fuzz_timeout",
+      "detail": {
+        "poisonedNumericFields": []
+      }
+    },
+    {
+      "macro_id": "detectors.runAll",
+      "vector": "V3",
+      "reason": "invariant_input_timeout",
+      "detail": null
+    },
+    {
+      "macro_id": "detectors.summary",
+      "vector": "V2",
+      "reason": "fuzz_timeout",
+      "detail": {
+        "poisonedNumericFields": []
+      }
+    },
+    {
+      "macro_id": "detectors.summary",
+      "vector": "V3",
+      "reason": "invariant_input_timeout",
+      "detail": null
+    },
+    {
+      "macro_id": "emergent.repair.prophet",
+      "vector": "V2",
+      "reason": "fuzz_timeout",
+      "detail": {
+        "poisonedNumericFields": []
+      }
+    },
+    {
+      "macro_id": "emergent.repair.prophet",
+      "vector": "V3",
+      "reason": "invariant_input_timeout",
+      "detail": null
+    }
+  ],
+  "hardCrashes": []
+}

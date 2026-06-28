@@ -64,25 +64,36 @@ export default function DeathInsurancePage() {
     totalReceivedSparks: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const [list, notif, hist] = await Promise.all([
-      lensRun<ListResult>('insurance', 'pact-list', {}),
-      lensRun<NotificationsResult>('insurance', 'pact-notifications', { windowDays: 14 }),
-      lensRun<PayoutHistoryResult>('insurance', 'pact-payout-history', {}),
-    ]);
-    if (list.data?.ok && list.data.result) {
-      setWritten(list.data.result.written || []);
-      setBeneficiaryOf(list.data.result.beneficiaryOf || []);
+    setError(null);
+    try {
+      const [list, notif, hist] = await Promise.all([
+        lensRun<ListResult>('insurance', 'pact-list', {}),
+        lensRun<NotificationsResult>('insurance', 'pact-notifications', { windowDays: 14 }),
+        lensRun<PayoutHistoryResult>('insurance', 'pact-payout-history', {}),
+      ]);
+      // pact-list is the load-bearing read; if it failed, surface the real
+      // backend reason instead of silently rendering an empty workspace.
+      if (!list.data?.ok) {
+        setError(list.data?.error || 'Could not load your inheritance pacts. Try refreshing.');
+      } else if (list.data.result) {
+        setWritten(list.data.result.written || []);
+        setBeneficiaryOf(list.data.result.beneficiaryOf || []);
+      }
+      if (notif.data?.ok && notif.data.result) {
+        setNotifications(notif.data.result.notifications || []);
+        setUnreadHigh(notif.data.result.unreadHigh || 0);
+      }
+      if (hist.data?.ok && hist.data.result) {
+        setPayouts(hist.data.result);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Network error loading pacts.');
+    } finally {
+      setLoading(false);
     }
-    if (notif.data?.ok && notif.data.result) {
-      setNotifications(notif.data.result.notifications || []);
-      setUnreadHigh(notif.data.result.unreadHigh || 0);
-    }
-    if (hist.data?.ok && hist.data.result) {
-      setPayouts(hist.data.result);
-    }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -108,7 +119,7 @@ export default function DeathInsurancePage() {
     <LensShell lensId="death-insurance">
       <FirstRunTour lensId="death-insurance" />
       <DepthBadge lensId="death-insurance" size="sm" className="ml-2" />
-      <div className="mx-auto max-w-3xl p-6 sm:p-8">
+      <div className="mx-auto max-w-3xl p-6 sm:p-8" aria-busy={loading} data-testid="death-insurance-root">
         <header className="mb-6">
           <h1 className="text-2xl font-bold text-zinc-100">Inheritance Pact</h1>
           <p className="mt-1 text-sm text-zinc-400">
@@ -118,6 +129,24 @@ export default function DeathInsurancePage() {
             cannot fire within 24h of writing.
           </p>
         </header>
+
+        {error && (
+          <div
+            role="alert"
+            aria-live="assertive"
+            data-testid="death-insurance-error"
+            className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-rose-700/60 bg-rose-950/40 px-4 py-3 text-sm text-rose-200"
+          >
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              className="shrink-0 rounded-md border border-rose-600/60 px-2 py-1 text-xs font-medium text-rose-100 hover:bg-rose-900/50 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         <div className="mb-6">
           <PactWriter onWritten={() => void refresh()} />
@@ -131,9 +160,11 @@ export default function DeathInsurancePage() {
           Pacts You Wrote
         </h2>
         {loading ? (
-          <p className="mb-6 text-sm italic text-zinc-400">Loading…</p>
+          <p role="status" className="mb-6 text-sm italic text-zinc-400">Loading…</p>
         ) : written.length === 0 ? (
-          <p className="mb-6 text-sm italic text-zinc-400">No pacts yet — write one above.</p>
+          <p data-testid="death-insurance-written-empty" className="mb-6 text-sm italic text-zinc-400">
+            No pacts yet — write one above.
+          </p>
         ) : (
           <ul className="mb-6 space-y-2">
             {written.map((p) => (

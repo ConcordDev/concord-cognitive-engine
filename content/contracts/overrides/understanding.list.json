@@ -1,0 +1,23 @@
+{
+  "macro_id": "understanding.list",
+  "domain": "understanding",
+  "name": "list",
+  "inputs": {
+    "tag": { "type": "string" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result === 'object' && output.result !== null",
+    "Array.isArray(output.result.notes)",
+    "typeof output.result.count === 'number' && output.result.count >= 0",
+    "output.result.count === output.result.notes.length",
+    "output.result.notes.every(n => typeof n.id === 'string' && n.id.length > 0)",
+    "output.result.notes.every(n => Array.isArray(n.tags))",
+    "output.result.notes.every(n => typeof n.wordCount === 'number' && n.wordCount >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "tag": "study" }, "expect": { "ok": true } }
+  ]
+}

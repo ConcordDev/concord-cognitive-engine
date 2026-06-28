@@ -129,3 +129,38 @@ describe("Layer 12 invariant: handlers have heartbeat-compatible signature", () 
     }
   });
 });
+
+// Regression: the drift→HLR resolution path (lattice-orchestrator.js ~line 102)
+// was a DEAD CALLER for months — runHLR returned {ok:false} on every drift alert
+// because the call (1) passed an `input` field (runHLR reads `topic`/`question`),
+// (2) used mode "constraint_check" (not a valid REASONING_MODES value), and
+// (3) read the synthesised conclusion from `r.output.synthesizedConclusion`
+// (it's returned at the TOP LEVEL). This pins the corrected contract the
+// orchestrator now depends on so the path can't silently die again.
+describe("Layer 12 regression: drift→HLR resolution call is live (not a dead caller)", () => {
+  it("runHLR with the orchestrator's corrected args returns ok:true + real conclusions", async () => {
+    const { runHLR } = await import("../emergent/hlr-engine.js");
+    const r = runHLR({
+      question: "Drift alert: goodhart. Metric divergence — does this violate the system's invariants?",
+      mode: "deductive",
+      tags: ["drift_resolution"],
+    });
+    assert.equal(r.ok, true, "corrected call must succeed");
+    assert.ok(Array.isArray(r.chains) && r.chains.length >= 1, "must produce reasoning chains");
+    assert.ok(r.chains.some((c) => c.conclusion), "chains carry conclusions the orchestrator collects");
+    assert.ok(r.synthesizedConclusion, "synthesizedConclusion is TOP-LEVEL (not under r.output)");
+    assert.equal(r.output, undefined, "there is no r.output — reading r.output.* was the bug");
+  });
+
+  it("the OLD broken shapes each fail (proving the bug was real)", async () => {
+    const { runHLR } = await import("../emergent/hlr-engine.js");
+    // Wrong field name: `input` instead of topic/question.
+    const wrongField = runHLR({ input: "Drift alert: goodhart", mode: "deductive" });
+    assert.equal(wrongField.ok, false);
+    assert.equal(wrongField.error, "topic_or_question_required");
+    // Invalid mode: constraint_check is not a REASONING_MODES value.
+    const badMode = runHLR({ question: "Drift alert: goodhart", mode: "constraint_check" });
+    assert.equal(badMode.ok, false);
+    assert.equal(badMode.error, "invalid_mode");
+  });
+});

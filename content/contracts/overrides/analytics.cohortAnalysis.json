@@ -1,0 +1,26 @@
+{
+  "macro_id": "analytics.cohortAnalysis",
+  "domain": "analytics",
+  "name": "cohortAnalysis",
+  "inputs": {
+    "cohorts": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.cohorts)",
+    "output.ok === false || output.result.message !== undefined || output.result.cohorts.every(function(c){ return Number.isFinite(c.initialUsers) && Number.isFinite(c.avgRetention) && typeof c.cohort === 'string' && Array.isArray(c.retentionCurve); })",
+    "output.ok === false || output.result.message !== undefined || output.result.cohorts.every(function(c){ return c.retentionCurve.every(function(p){ return Number.isFinite(p.period) && Number.isFinite(p.retained) && Number.isFinite(p.rate); }); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "cohorts": [] }, "expect": { "ok": true } },
+    { "input": { "cohorts": [{ "name": "Jan", "initialUsers": 500, "retention": [400, 320, 250] }, { "name": "Feb", "initialUsers": 600, "retention": [550, 500, 460] }] }, "expect": { "ok": true } },
+    { "input": { "cohorts": [{ "name": "X", "initialUsers": "1e999", "retention": ["Infinity", "NaN"] }] }, "expect": { "ok": true } },
+    { "input": { "cohorts": [{ "period": "2026-W01", "initialUsers": 0, "retention": [10] }] }, "expect": { "ok": true } },
+    { "input": { "cohorts": "nope" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'analytics.cohortAnalysis'. Component sends {artifact:{data:{cohorts:[{name,initialUsers,retention}]}}}. Returns {cohorts:[{cohort,initialUsers,retentionCurve:[{period,retained,rate}],avgRetention}],bestCohort}. POISON: initialUsers/retention via finInt → FINITE; division guards initial===0 → rate 0 (no NaN). Non-array cohorts/retention degrades to a guidance message instead of throwing. Pinned by server/tests/analytics-lens-macros.test.js."
+}

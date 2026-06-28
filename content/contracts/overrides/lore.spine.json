@@ -1,0 +1,17 @@
+{
+  "macro_id": "lore.spine",
+  "domain": "lore",
+  "name": "spine",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.events)",
+    "output.ok === false || output.events.every(e => ['primordial','great_refusal','founding'].includes(e.type))",
+    "output.ok === false || output.events.every(e => !('hidden_truth' in e))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "lore.spine returns ONLY the cosmology narrative spine — the primordial / great_refusal / founding events that ground the goddess + the codex header. File-backed (no DB), so {} returns ok:true with the real spine events, never no_db. hidden_truth is stripped (author-only invariant)."
+}

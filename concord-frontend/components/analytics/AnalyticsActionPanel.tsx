@@ -67,8 +67,10 @@ export function AnalyticsActionPanel() {
     const parsed = parseJSON<{ stages: unknown[] }>(funnelText); if (!parsed) { err('Invalid funnel JSON.'); return; }
     setBusy('funnel'); setFeedback(null);
     try {
-      const r = await callMacro<FunnelResult>('funnelAnalysis', { artifact: { data: parsed } });
-      if (r.ok && r.result) { setFunnelResult(r.result); pipe.publish('analytics.funnel', r.result, { label: `Funnel ${r.result.overallConversion}%` }); ok(`${r.result.overallConversion}% top-to-bottom.`); } else err(r.error ?? 'funnel failed');
+      const r = await callMacro<FunnelResult & { message?: string }>('funnelAnalysis', { artifact: { data: parsed } });
+      if (r.ok && r.result && Array.isArray(r.result.stages)) { setFunnelResult(r.result); pipe.publish('analytics.funnel', r.result, { label: `Funnel ${r.result.overallConversion}%` }); ok(`${r.result.overallConversion}% top-to-bottom.`); }
+      else if (r.ok && r.result?.message) { setFunnelResult(null); err(r.result.message); }
+      else err(r.error ?? 'funnel failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCohort() {
@@ -76,8 +78,10 @@ export function AnalyticsActionPanel() {
     const parsed = parseJSON<{ cohorts: unknown[] }>(cohortText); if (!parsed) { err('Invalid cohorts JSON.'); return; }
     setBusy('cohort'); setFeedback(null);
     try {
-      const r = await callMacro<CohortResult>('cohortAnalysis', { artifact: { data: parsed } });
-      if (r.ok && r.result) { setCohortResult(r.result); pipe.publish('analytics.cohort', r.result, { label: `Cohort best: ${r.result.bestCohort}` }); ok(`Best: ${r.result.bestCohort}.`); } else err(r.error ?? 'cohort failed');
+      const r = await callMacro<CohortResult & { message?: string }>('cohortAnalysis', { artifact: { data: parsed } });
+      if (r.ok && r.result && Array.isArray(r.result.cohorts)) { setCohortResult(r.result); pipe.publish('analytics.cohort', r.result, { label: `Cohort best: ${r.result.bestCohort}` }); ok(`Best: ${r.result.bestCohort}.`); }
+      else if (r.ok && r.result?.message) { setCohortResult(null); err(r.result.message); }
+      else err(r.error ?? 'cohort failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAnom() {
@@ -85,8 +89,10 @@ export function AnalyticsActionPanel() {
     const parsed = parseJSON<{ dataPoints: unknown[] }>(seriesText); if (!parsed) { err('Invalid series JSON.'); return; }
     setBusy('anom'); setFeedback(null);
     try {
-      const r = await callMacro<AnomalyResult>('detectAnomalies', { artifact: { data: parsed } });
-      if (r.ok && r.result) { setAnomResult(r.result); pipe.publish('analytics.anom', r.result, { label: `${r.result.anomaliesFound} anomalies` }); ok(`${r.result.anomaliesFound} anomalies (μ ${r.result.mean}).`); } else err(r.error ?? 'anom failed');
+      const r = await callMacro<AnomalyResult & { message?: string }>('detectAnomalies', { artifact: { data: parsed } });
+      if (r.ok && r.result && Array.isArray(r.result.anomalies)) { setAnomResult(r.result); pipe.publish('analytics.anom', r.result, { label: `${r.result.anomaliesFound} anomalies` }); ok(`${r.result.anomaliesFound} anomalies (μ ${r.result.mean}).`); }
+      else if (r.ok && r.result?.message) { setAnomResult(null); err(r.result.message); }
+      else err(r.error ?? 'anom failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actTrend() {
@@ -94,8 +100,10 @@ export function AnalyticsActionPanel() {
     const parsed = parseJSON<{ dataPoints: unknown[] }>(seriesText); if (!parsed) { err('Invalid series JSON.'); return; }
     setBusy('trend'); setFeedback(null);
     try {
-      const r = await callMacro<TrendResult>('trendForecast', { artifact: { data: parsed } });
-      if (r.ok && r.result) { setTrendResult(r.result); pipe.publish('analytics.trend', r.result, { label: `Trend ${r.result.trend}` }); ok(`${r.result.trend} · slope ${r.result.slope}.`); } else err(r.error ?? 'trend failed');
+      const r = await callMacro<TrendResult & { message?: string }>('trendForecast', { artifact: { data: parsed } });
+      if (r.ok && r.result && Array.isArray(r.result.forecast)) { setTrendResult(r.result); pipe.publish('analytics.trend', r.result, { label: `Trend ${r.result.trend}` }); ok(`${r.result.trend} · slope ${r.result.slope}.`); }
+      else if (r.ok && r.result?.message) { setTrendResult(null); err(r.result.message); }
+      else err(r.error ?? 'trend failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {

@@ -1180,10 +1180,11 @@ export default function CalendarLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8" role="status" aria-live="polite" aria-busy="true">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading...</p>
+          <p className="text-sm text-gray-400">Loading calendar…</p>
+          <span className="sr-only">Loading calendar</span>
         </div>
       </div>
     );
@@ -1191,7 +1192,7 @@ export default function CalendarLensPage() {
 
   if (isError || isError2) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8" role="alert" aria-live="assertive">
         <ErrorState error={error?.message || error2?.message} onRetry={() => { refetch(); refetch2(); }} />
       </div>
     );
@@ -1291,6 +1292,21 @@ export default function CalendarLensPage() {
         {renderSidebar()}
 
         <main className="flex-1 flex flex-col overflow-hidden bg-lattice-deep relative">
+          {events.length === 0 && (
+            <div className="border-b border-lattice-border bg-lattice-surface/40 px-4 py-3 flex items-center justify-between gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <CalendarDays className="w-4 h-4 text-neon-cyan/70" />
+                <span>No events scheduled yet. Your calendar is empty.</span>
+              </div>
+              <button
+                onClick={() => { setEditingEventId(null); setShowCreateModal(true); }}
+                className="btn-neon flex items-center gap-1.5 text-sm px-3 py-1.5 flex-shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                Create your first event
+              </button>
+            </div>
+          )}
           {viewMode === 'month' && renderMonthView()}
           {viewMode === 'week' && renderWeekView()}
           {viewMode === 'day' && renderDayView()}
@@ -1383,14 +1399,14 @@ export default function CalendarLensPage() {
                       <div className="flex items-center gap-1.5 mb-2 text-yellow-400 font-semibold">
                         <AlertTriangle className="w-3.5 h-3.5" /> Conflict Report
                       </div>
-                      {(actionResult.conflicts as Array<{ event1: string; event2: string; overlap?: string }>).length === 0
+                      {(actionResult.conflicts as Array<{ event1: string; event2: string; overlapMinutes?: number }>).length === 0
                         ? <p className="text-gray-400">No scheduling conflicts found.</p>
-                        : (actionResult.conflicts as Array<{ event1: string; event2: string; overlap?: string }>).map((c, i) => (
+                        : (actionResult.conflicts as Array<{ event1: string; event2: string; overlapMinutes?: number }>).map((c, i) => (
                           <div key={i} className="mb-1 text-yellow-300">
                             <span className="font-medium">{c.event1}</span>
                             <span className="text-gray-400 mx-1">&#x2715;</span>
                             <span className="font-medium">{c.event2}</span>
-                            {c.overlap && <span className="text-gray-400 ml-1">({c.overlap})</span>}
+                            {c.overlapMinutes !== undefined && <span className="text-gray-400 ml-1">({c.overlapMinutes} min)</span>}
                           </div>
                         ))
                       }

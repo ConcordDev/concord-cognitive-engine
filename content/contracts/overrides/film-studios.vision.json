@@ -1,0 +1,18 @@
+{
+  "macro_id": "film-studios.vision",
+  "domain": "film-studios",
+  "name": "vision",
+  "external_io": true,
+  "inputs": {
+    "imageB64": { "type": "string" },
+    "imageUrl": { "type": "string" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "film-studios.vision routes to the LLaVA/Qwen-VL vision brain via callVision / callVisionUrl (server/lib/vision-inference.js) — EXTERNAL-IO, not headless-safe, so it is driven for its pure validation path ONLY. With neither imageB64 nor imageUrl supplied it returns { ok:false, error:'imageB64 or imageUrl required' } BEFORE any brain call (the only deterministic, network-free path). Any case that supplies an image would hit the vision brain and is intentionally excluded. Marked external_io:true so the harness does not fuzz it against a live model."
+}

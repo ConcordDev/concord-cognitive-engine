@@ -1,0 +1,23 @@
+{
+  "macro_id": "meditation.breathwork",
+  "domain": "meditation",
+  "name": "breathwork",
+  "inputs": {
+    "pattern": { "type": "string", "enum": ["box", "478", "coherent"] },
+    "cycles": { "type": "number", "min": 0, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || ['box','478','coherent'].includes(output.result.pattern)",
+    "output.ok === false || (output.result.cycles >= 1 && output.result.cycles <= 60)",
+    "output.ok === false || output.result.totalSeconds === output.result.cycleSeconds * output.result.cycles",
+    "output.ok === false || Array.isArray(output.result.phases)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "pattern": "478", "cycles": 4 }, "expect": { "ok": true } },
+    { "input": { "pattern": "nonsense", "cycles": 9999 }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure breathwork pacer (no DB/actor). Unknown pattern defaults to box; cycles clamp into [1,60]; totalSeconds is always cycleSeconds*cycles. A poisoned pattern/cycles is sanitised, not rejected — deterministic ok:true."
+}

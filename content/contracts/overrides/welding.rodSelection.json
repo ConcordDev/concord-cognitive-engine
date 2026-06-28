@@ -1,0 +1,30 @@
+{
+  "macro_id": "welding.rodSelection",
+  "domain": "welding",
+  "name": "rodSelection",
+  "inputs": {
+    "baseMetal": { "type": "string", "maxLength": 40 },
+    "position": { "type": "string", "maxLength": 40 },
+    "jointType": { "type": "string", "maxLength": 40 },
+    "thickness": { "type": "number" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.recommended && typeof output.result.recommended.rod === 'string')",
+    "output.ok === false || typeof output.result.recommended.process === 'string'",
+    "output.ok === false || typeof output.result.recommended.diameter === 'string'",
+    "output.ok === false || typeof output.result.recommended.amperageRange === 'string'",
+    "output.ok === false || Array.isArray(output.result.alternatives)",
+    "output.ok === false || Array.isArray(output.result.tips)",
+    "output.ok === false || Number.isFinite(parseFloat(output.result.recommended.diameter))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "baseMetal": "stainless-steel", "position": "vertical-up", "jointType": "fillet", "thickness": 4 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "baseMetal": "aluminum", "position": "flat", "thickness": 10 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "baseMetal": "made-up", "position": "overhead", "thickness": "NaN" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. Returns recommended{rod,process,diameter,amperageRange,notes} + alternatives[]{rod,process,notes} + tips[]. diameter band: ≤3→2.4mm, ≤6→3.2mm, ≤12→4mm, else 5mm. Unknown baseMetal falls to the mild-steel rod set. Non-finite thickness → default 6 (wFinite). Overhead position adds a lower-amperage tip. The result cards render recommended + alternatives + tips EXACTLY (the prior recommendations[].electrode/awsClass/suitability/tensileKsi fields were never returned — fixed 2026-06-28)."
+}

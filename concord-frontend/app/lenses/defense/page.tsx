@@ -205,7 +205,7 @@ export default function DefenseLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div role="status" aria-live="polite" className="flex items-center justify-center h-full p-8">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm text-gray-400">Loading defense systems...</p>
@@ -215,8 +215,11 @@ export default function DefenseLensPage() {
   }
 
   if (isError) {
+    // role=alert so a swallowed feed error surfaces to AT + the four-state test
+    // (not a silent blank). ErrorState renders a working "Try again" wired to
+    // refetch — the live backend re-fetch, never a dead button.
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div role="alert" className="flex items-center justify-center h-full p-8">
         <ErrorState error={error?.message} onRetry={refetch} />
       </div>
     );

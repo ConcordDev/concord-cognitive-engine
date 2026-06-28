@@ -1,0 +1,31 @@
+{
+  "macro_id": "neuro.statisticalTest",
+  "domain": "neuro",
+  "name": "statisticalTest",
+  "inputs": {
+    "groupA": { "type": "array" },
+    "groupB": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.test === 'string'",
+    "output.ok === false || (output.result.groupA && Number.isFinite(output.result.groupA.n) && Number.isFinite(output.result.groupA.mean) && Number.isFinite(output.result.groupA.sd))",
+    "output.ok === false || (output.result.groupB && Number.isFinite(output.result.groupB.n) && Number.isFinite(output.result.groupB.mean) && Number.isFinite(output.result.groupB.sd))",
+    "output.ok === false || Number.isFinite(output.result.tStatistic)",
+    "output.ok === false || Number.isFinite(output.result.degreesOfFreedom)",
+    "output.ok === false || (Number.isFinite(output.result.pValue) && output.result.pValue >= 0 && output.result.pValue <= 1)",
+    "output.ok === false || (Number.isFinite(output.result.cohensD) && typeof output.result.effectSize === 'string')",
+    "output.ok === false || typeof output.result.significance === 'string'",
+    "output.ok === false || typeof output.result.significant === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.meanDifference)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "groupA": [1.2, 0.9, 1.5, 1.1, 1.3], "groupB": [0.4, 0.6, 0.3, 0.5, 0.45] }, "expect": { "ok": true } },
+    { "input": { "groupA": [1], "groupB": [2, 3] }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "groupA": [1.2, "NaN", 0.9, "Infinity", 1.5, "abc", 1.1], "groupB": [0.4, 0.6, "-Infinity", 0.3, 0.5] }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads params. Welch's two-sample t-test + Cohen's d; p-value via the regularized-incomplete-beta Student-t survival. FAIL-CLOSED: groupA/groupB are .map(Number).filter(Number.isFinite)'d so NaN/Infinity/'abc' observations are dropped before the test (the EegWorkbench parse does the same). Rejects when either filtered group has <2 observations. The stats card reads test/groupA.{n,mean,sd}/groupB.{n,mean,sd}/tStatistic/degreesOfFreedom/pValue/cohensD/effectSize/significance/significant/meanDifference EXACTLY."
+}

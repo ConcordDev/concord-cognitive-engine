@@ -1,0 +1,16 @@
+{
+  "macro_id": "cognition.listExports",
+  "domain": "cognition",
+  "name": "listExports",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.exports))",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.exports.length)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Lists the caller's saved reasoning-trace exports (metadata only) from the per-user in-memory ledger. With no exports it returns ok:true with an empty array — never no_db (memory-backed). The macro-assassin's internal owner actor sees its own empty bucket → ok:true."
+}

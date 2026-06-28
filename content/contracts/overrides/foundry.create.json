@@ -1,0 +1,20 @@
+{
+  "macro_id": "foundry.create",
+  "domain": "foundry",
+  "name": "create",
+  "inputs": {
+    "name": { "type": "string", "required": true },
+    "description": { "type": "string", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.world && typeof output.world.id === 'string')",
+    "output.ok === false || output.world.status === 'draft'",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_name" } },
+    { "input": { "name": "Assassin Test World" }, "expect": { "ok": true } }
+  ]
+}

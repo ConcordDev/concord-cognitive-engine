@@ -1,0 +1,16 @@
+{
+  "macro_id": "quests.active",
+  "domain": "quests",
+  "name": "active",
+  "inputs": {
+    "userId": { "type": "string", "maxLength": 80 },
+    "worldId": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.quests)",
+    "output.ok === false || output.quests.every(q => typeof q.id === 'string' && Array.isArray(q.objectives) && Array.isArray(q.rewards))"
+  ],
+  "fuzz_cases": []
+}

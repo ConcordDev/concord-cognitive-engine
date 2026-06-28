@@ -6,8 +6,16 @@ import { cachedFetchJson } from "../lib/external-fetch.js";
 
 export default function registerVoiceActions(registerLensAction) {
   registerLensAction("voice", "transcriptAnalyze", (ctx, artifact, _params) => {
+  try {
     const text = artifact.data?.transcript || artifact.data?.text || "";
+    if (typeof text !== "string") return { ok: false, error: "invalid_input", message: "transcript must be a string" };
     if (!text.trim()) return { ok: true, result: { message: "Provide a transcript text to analyze." } };
+    // Fail-closed on a poisoned durationMinutes — a non-finite value
+    // (NaN / Infinity / "1e999") must not slip through to the WPM divide.
+    if (artifact.data?.durationMinutes != null && artifact.data?.durationMinutes !== "") {
+      const dm = Number(artifact.data.durationMinutes);
+      if (!Number.isFinite(dm) || dm < 0) return { ok: false, error: "invalid_input", message: "durationMinutes must be a finite non-negative number" };
+    }
     const words = text.split(/\s+/).filter(w => w.length > 0);
     const wordCount = words.length;
     const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
@@ -34,14 +42,16 @@ export default function registerVoiceActions(registerLensAction) {
     const uniqueWords = new Set(words.map(w => w.toLowerCase().replace(/[^a-z']/g, "")).filter(w => w.length > 0));
     const vocabularyRichness = wordCount > 0 ? Math.round((uniqueWords.size / wordCount) * 100) : 0;
     return { ok: true, result: { wordCount, sentenceCount, avgWordsPerSentence, avgWordLength, speakingRate: speakingRate ? `${speakingRate} words/min` : "Provide durationMinutes to calculate", fillerWords: fillerCounts, totalFillers, fillerRate: `${fillerRate}%`, longSentences, shortSentences, complexityRating, uniqueWordCount: uniqueWords.size, vocabularyRichness: `${vocabularyRichness}%` } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
   registerLensAction("voice", "speakerDiarize", (ctx, artifact, _params) => {
   try {
-    const segments = artifact.data?.segments || [];
+    const segments = Array.isArray(artifact.data?.segments) ? artifact.data.segments : [];
     const transcript = artifact.data?.transcript || "";
+    if (typeof transcript !== "string") return { ok: false, error: "invalid_input", message: "transcript must be a string" };
     if (segments.length === 0 && !transcript.trim()) return { ok: true, result: { message: "Provide segments (array of {speaker, text, startTime, endTime}) or a tagged transcript." } };
-    const parsed = segments;
+    const parsed = [...segments];
     if (parsed.length === 0 && transcript) {
       const tagPattern = /\[?(Speaker\s*\w+|SPEAKER[\s_]*\w+)\]?:\s*(.*?)(?=\[?(?:Speaker\s*\w+|SPEAKER[\s_]*\w+)\]?:|$)/gis;
       let match;
@@ -94,8 +104,10 @@ export default function registerVoiceActions(registerLensAction) {
 });
 
   registerLensAction("voice", "sentimentScore", (ctx, artifact, _params) => {
-    const segments = artifact.data?.segments || [];
+  try {
+    const segments = Array.isArray(artifact.data?.segments) ? artifact.data.segments : [];
     const transcript = artifact.data?.transcript || artifact.data?.text || "";
+    if (typeof transcript !== "string") return { ok: false, error: "invalid_input", message: "transcript must be a string" };
     if (segments.length === 0 && !transcript.trim()) return { ok: true, result: { message: "Provide a transcript or segments to score sentiment." } };
     const positiveWords = new Set(["good", "great", "excellent", "amazing", "wonderful", "fantastic", "love", "happy", "glad", "pleased", "awesome", "perfect", "beautiful", "brilliant", "enjoy", "success", "best", "better", "exciting", "positive", "agree", "right", "thank", "thanks", "helpful", "kind", "nice", "impressive", "outstanding", "remarkable", "superb", "terrific", "delighted", "satisfied", "thrilled", "confident", "optimistic", "fortunate", "grateful"]);
     const negativeWords = new Set(["bad", "terrible", "awful", "horrible", "hate", "angry", "sad", "upset", "disappointed", "worst", "worse", "poor", "fail", "failure", "wrong", "problem", "issue", "difficult", "hard", "never", "unfortunately", "disagree", "concern", "worried", "annoyed", "frustrated", "confused", "ugly", "boring", "painful", "miserable", "dreadful", "unhappy", "regret", "sorry", "fear", "anxious", "stress", "doubt"]);
@@ -143,16 +155,26 @@ export default function registerVoiceActions(registerLensAction) {
     const negativeSegments = segmentResults.filter(r => r.label === "negative").length;
     const neutralSegments = segmentResults.filter(r => r.label === "neutral").length;
     return { ok: true, result: { overallScore, overallLabel: overallScore > 0.25 ? "positive" : overallScore < -0.25 ? "negative" : "neutral", totalPositiveSignals: Math.round(overallPos * 10) / 10, totalNegativeSignals: Math.round(overallNeg * 10) / 10, segmentBreakdown: { positive: positiveSegments, negative: negativeSegments, neutral: neutralSegments, total: segmentResults.length }, segments: segmentResults, sentimentArc: segmentResults.length > 2 ? (segmentResults[segmentResults.length - 1].score > segmentResults[0].score ? "improving" : segmentResults[segmentResults.length - 1].score < segmentResults[0].score ? "declining" : "stable") : "insufficient-data" } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
   registerLensAction("voice", "keywordSpot", (ctx, artifact, _params) => {
+  try {
     const text = artifact.data?.transcript || artifact.data?.text || "";
-    const keywords = artifact.data?.keywords || [];
+    if (typeof text !== "string") return { ok: false, error: "invalid_input", message: "transcript must be a string" };
+    const keywords = Array.isArray(artifact.data?.keywords) ? artifact.data.keywords : [];
     if (!text.trim()) return { ok: true, result: { message: "Provide a transcript to search for keywords." } };
     if (keywords.length === 0) return { ok: true, result: { message: "Provide a keywords array to spot in the transcript." } };
-    const contextRadius = parseInt(artifact.data?.contextRadius) || 40;
+    // Fail-closed on a poisoned contextRadius — a non-finite value must not
+    // silently fall back to the default; reject it explicitly.
+    let contextRadius = 40;
+    if (artifact.data?.contextRadius != null && artifact.data?.contextRadius !== "") {
+      const cr = Number(artifact.data.contextRadius);
+      if (!Number.isFinite(cr) || cr < 0) return { ok: false, error: "invalid_input", message: "contextRadius must be a finite non-negative number" };
+      contextRadius = Math.round(cr);
+    }
     const results = keywords.map(kw => {
-      const pattern = new RegExp(`\\b${kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi");
+      const pattern = new RegExp(`\\b${String(kw).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi");
       const occurrences = [];
       let match;
       while ((match = pattern.exec(text)) !== null) {
@@ -169,6 +191,7 @@ export default function registerVoiceActions(registerLensAction) {
     const notFound = results.filter(r => r.count === 0).map(r => r.keyword);
     const topKeywords = results.filter(r => r.count > 0).slice(0, 10);
     return { ok: true, result: { keywordsSearched: keywords.length, totalOccurrences, keywordDensity: `${density}%`, wordCount, topKeywords, notFound, distribution: results.filter(r => r.count > 0).map(r => ({ keyword: r.keyword, count: r.count, frequency: `${Math.round((r.count / wordCount) * 10000) / 100}%` })) } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
   // ─── Otter.ai-shape recording / transcript substrate (per-user) ──────

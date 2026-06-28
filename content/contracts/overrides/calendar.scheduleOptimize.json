@@ -1,0 +1,17 @@
+{
+  "macro_id": "calendar.scheduleOptimize",
+  "domain": "calendar",
+  "name": "scheduleOptimize",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || typeof output.result === 'object'",
+    "output.ok !== true || output.result.message !== undefined || (Array.isArray(output.result.optimizedOrder) && Number.isFinite(output.result.totalMinutes) && typeof output.result.fitsInWorkday === 'boolean')",
+    "output.ok !== true || output.result.totalMinutes === undefined || Number.isFinite(output.result.totalMinutes)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "calendar.scheduleOptimize is a LENS_ACTIONS (PATH 3) handler in server/domains/calendar.js — it reads tasks from artifact.data.tasks (the action-panel payload), sorts by priority (critical>high>medium>low; unknown→medium), splits energy:high|priority:critical to the morning block, and sums durations (malformed duration→30, so totalMinutes is always finite — never NaN). This is the macro CLAUDE.md flagged as a known-FIXED source bug; the behavioral suite (server/tests/calendar-lens-macros.test.js) pins the exact ordering/blocks/totals so it stays correct. IMPORTANT: the macro-assassin drives `runMacro`, which does NOT resolve LENS_ACTIONS (only /api/lens/run does, at server.js:39155). So this contract is a SPEC artifact for the lens dispatch path; the assassin never fuzzes it (no derived contract exists for LENS_ACTIONS handlers). With no artifact.data.tasks it returns ok:true with a guidance message — the only deterministic, side-effect-free shape. No CC, no DB, no network."
+}

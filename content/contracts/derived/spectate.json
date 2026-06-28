@@ -1,0 +1,263 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "spectate",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_inputs"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "marketId": "999999",
+            "side": "yes",
+            "stakeSparks": 10
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_stakeSparks"
+          },
+          "input": {
+            "marketId": "1",
+            "side": "yes",
+            "stakeSparks": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_stakeSparks"
+          },
+          "input": {
+            "marketId": "1",
+            "side": "yes",
+            "stakeSparks": -5
+          }
+        }
+      ],
+      "inputs": {
+        "marketId": {
+          "maxLength": 64,
+          "required": true,
+          "type": "string"
+        },
+        "side": {
+          "maxLength": 8,
+          "required": true,
+          "type": "string"
+        },
+        "stakeSparks": {
+          "max": 1000000000,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.stake === 'number'",
+        "output.ok === false || output.currency === 'SPARKS'",
+        "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+      ],
+      "macro_id": "spectate.bet",
+      "name": "bet"
+    },
+    {
+      "_derived": false,
+      "domain": "spectate",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "concordia-hub"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_worldId"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "limit": 1e+308,
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 200,
+          "min": 1,
+          "type": "number"
+        },
+        "worldId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.worldId === 'string'",
+        "output.ok === false || (typeof output.spectacle === 'object' && output.spectacle !== null)",
+        "output.ok === false || typeof output.spectacle.watching === 'number'",
+        "output.ok === false || Array.isArray(output.spectacle.openMarkets)",
+        "output.ok === false || output.spectacle.openMarkets.every(m => typeof m.id === 'string')",
+        "output.ok === false || output.spectacle.openMarkets.every(m => typeof m.impliedYes === 'number' && m.impliedYes >= 0 && m.impliedYes <= 1)",
+        "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+      ],
+      "macro_id": "spectate.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "spectate",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 25
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "limit": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "limit": -1
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "max": 1000,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.spectacles)",
+        "output.ok === false || typeof output.count === 'number'",
+        "output.ok === false || typeof output.liveCount === 'number'",
+        "output.ok === false || output.spectacles.every(s => typeof s.worldId === 'string')",
+        "output.ok === false || output.spectacles.every(s => typeof s.watching === 'number' && s.watching >= 0)",
+        "output.ok === false || output.spectacles.every(s => typeof s.openMarketCount === 'number' && s.openMarketCount >= 0)",
+        "output.ok === false || output.spectacles.every(s => typeof s.live === 'boolean')"
+      ],
+      "macro_id": "spectate.list",
+      "name": "list"
+    },
+    {
+      "_derived": false,
+      "domain": "spectate",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.positions)",
+        "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+      ],
+      "macro_id": "spectate.my_positions",
+      "name": "my_positions"
+    },
+    {
+      "_derived": false,
+      "domain": "spectate",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "concordia-hub"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_worldId"
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "worldId": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.sessionToken === 'string' && output.sessionToken.length > 0)",
+        "output.ok === false || typeof output.worldId === 'string'",
+        "output.ok === false || typeof output.wsHint === 'string'",
+        "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+      ],
+      "macro_id": "spectate.watch",
+      "name": "watch"
+    }
+  ],
+  "domain": "spectate",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 5
+}

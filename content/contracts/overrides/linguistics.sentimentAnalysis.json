@@ -1,0 +1,28 @@
+{
+  "macro_id": "linguistics.sentimentAnalysis",
+  "domain": "linguistics",
+  "name": "sentimentAnalysis",
+  "inputs": {
+    "text": { "type": "string", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || ['positive','negative','neutral'].indexOf(output.result.sentiment) >= 0",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.score)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.positiveWords)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.negativeWords)",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.confidence === 'string'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "text": "" }, "expect": { "ok": true } },
+    { "input": { "text": "This is a great wonderful amazing day" }, "expect": { "ok": true } },
+    { "input": { "text": "This terrible awful horrible dreadful experience" }, "expect": { "ok": true } },
+    { "input": { "text": "The cat sat on the mat" }, "expect": { "ok": true } },
+    { "input": { "text": 9999 }, "expect": { "ok": true } },
+    { "input": { "text": { "x": 1 } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'linguistics.sentimentAnalysis'. LinguisticsActionPanel sends {artifact:{data:{text}}}; renders r.result.{sentiment,score,positiveWords,negativeWords,confidence}. Deterministic lexicon polarity. score = (pos-neg)/max(pos+neg,1)*100, bucketed >20 positive / <-20 negative / else neutral. FIXED: poisoned non-string text once threw split-of-non-string; now String-coerced so score stays FINITE and sentiment stays in {positive,negative,neutral}. Pinned by server/tests/linguistics-lens-macros.test.js."
+}

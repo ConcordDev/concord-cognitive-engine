@@ -40,14 +40,32 @@ export function FleetManager({ onSelect, selectedId }: { onSelect?: (r: RobotRow
   const [capWh, setCapWh] = useState('50');
   const [drawW, setDrawW] = useState('35');
 
+  const [loadFailed, setLoadFailed] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
-    const r = await lensRun('robotics', 'fleetList', {});
+    setLoadFailed(false);
+    // lensRun never rejects (it wraps its own throw → { ok:false, error }), but
+    // guard anyway so a thrown fetch can never strand the spinner or silently
+    // empty the fleet list.
+    let r: Awaited<ReturnType<typeof lensRun>>;
+    try {
+      r = await lensRun('robotics', 'fleetList', {});
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Failed to load fleet');
+      setLoadFailed(true);
+      setLoading(false);
+      return;
+    }
     if (r.data?.ok && r.data.result) {
       const res = r.data.result as { robots: RobotRow[]; total: number; online: number; running: number; errors: number };
       setRobots(res.robots || []);
       setCounts({ total: res.total, online: res.online, running: res.running, errors: res.errors });
-    } else setErr(r.data?.error || 'Failed to load fleet');
+      setErr(null);
+    } else {
+      setErr(r.data?.error || 'Failed to load fleet');
+      setLoadFailed(true);
+    }
     setLoading(false);
   }, []);
 
@@ -127,12 +145,28 @@ export function FleetManager({ onSelect, selectedId }: { onSelect?: (r: RobotRow
         </div>
       </div>
 
-      {err && <p className="text-xs text-red-400">{err}</p>}
+      {err && !loadFailed && !loading && <p className="text-xs text-red-400">{err}</p>}
 
       {loading ? (
-        <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-neon-cyan" /></div>
+        <div role="status" aria-live="polite" className="flex items-center justify-center gap-2 py-6 text-neon-cyan">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span className="sr-only">Loading fleet…</span>
+        </div>
+      ) : loadFailed ? (
+        <div role="alert" className="panel p-4 text-center space-y-2 border border-red-500/30 bg-red-500/5">
+          <AlertCircle className="w-6 h-6 mx-auto text-red-400" />
+          <p className="text-sm text-red-300">{err || 'Failed to load fleet'}</p>
+          <button onClick={load}
+            className="px-3 py-1.5 bg-neon-cyan/20 text-neon-cyan rounded text-sm hover:bg-neon-cyan/30 inline-flex items-center gap-1.5">
+            <RefreshCw className="w-3.5 h-3.5" /> Retry
+          </button>
+        </div>
       ) : robots.length === 0 ? (
-        <p className="text-gray-400 text-sm text-center py-4">No robots registered. Add one above.</p>
+        <div className="panel p-4 text-center space-y-1.5 py-6">
+          <Bot className="w-6 h-6 mx-auto text-gray-500" />
+          <p className="text-gray-400 text-sm">No robots registered yet.</p>
+          <p className="text-[11px] text-gray-500">Register your first robot above to start managing a fleet.</p>
+        </div>
       ) : (
         <div className="space-y-2">
           {robots.map(robot => (

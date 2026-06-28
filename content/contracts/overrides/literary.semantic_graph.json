@@ -1,0 +1,22 @@
+{
+  "macro_id": "literary.semantic_graph",
+  "domain": "literary",
+  "name": "semantic_graph",
+  "inputs": {
+    "query": { "type": "string", "maxLength": 500 },
+    "limit": { "type": "number", "min": 2, "max": 60 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.nodes)",
+    "output.ok === false || Array.isArray(output.edges)",
+    "output.ok === false || output.nodes.every(n => typeof n.id === 'string' && typeof n.label === 'string')",
+    "output.ok === false || output.edges.every(e => typeof e.source === 'string' && typeof e.target === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": { "query": "" }, "expect": { "ok": true } },
+    { "input": { "query": "power and conscience", "limit": 10 }, "expect": { "ok": true } }
+  ],
+  "_note": "Resonance graph for GraphView. Nodes = top hits; edges by shared work/author. Empty corpus → empty nodes/edges, never an error."
+}

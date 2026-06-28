@@ -50,7 +50,10 @@ export default function registerServicesActions(registerLensAction) {
       const provider = a.provider || 'Unknown';
       if (!byProvider[provider]) byProvider[provider] = { appointments: 0, revenue: 0 };
       byProvider[provider].appointments++;
-      byProvider[provider].revenue += a.price || 0;
+      // Fail-CLOSED on poisoned numerics: a non-finite price (Infinity/NaN)
+      // must never poison a money total — coerce it to 0 instead.
+      const price = Number(a.price);
+      byProvider[provider].revenue += Number.isFinite(price) ? price : 0;
     });
     const summary = Object.entries(byProvider).map(([name, data]) => ({ provider: name, ...data })).sort((a, b) => b.revenue - a.revenue);
     return { ok: true, result: { period, summary, totalRevenue: summary.reduce((s, p) => s + p.revenue, 0) } };
@@ -67,7 +70,10 @@ export default function registerServicesActions(registerLensAction) {
 
     const analyzed = clients.map(c => {
       const visits = c.visits || c.appointmentCount || 0;
-      const revenue = parseFloat(c.totalRevenue || c.lifetimeValue) || 0;
+      // Fail-CLOSED on poisoned numerics: a non-finite lifetime value
+      // (Infinity/NaN) must never reach totalRevenue / averageLifetimeValue.
+      const revenueRaw = parseFloat(c.totalRevenue ?? c.lifetimeValue);
+      const revenue = Number.isFinite(revenueRaw) ? revenueRaw : 0;
       const lastVisit = c.lastVisit ? new Date(c.lastVisit) : null;
       const daysSinceVisit = lastVisit ? Math.floor((now - lastVisit) / 86400000) : null;
       const isRepeat = visits > 1;
@@ -118,7 +124,10 @@ export default function registerServicesActions(registerLensAction) {
     let totalSales = 0;
     let totalCommission = 0;
     const details = sales.map((sale, idx) => {
-      const amount = parseFloat(sale.amount || sale.revenue) || 0;
+      // Fail-CLOSED on poisoned numerics: a non-finite amount (Infinity/NaN)
+      // must never reach a commission/total — coerce it to 0.
+      const amountRaw = parseFloat(sale.amount ?? sale.revenue);
+      const amount = Number.isFinite(amountRaw) ? amountRaw : 0;
       totalSales += amount;
 
       // Tiered commission calculation
@@ -188,17 +197,20 @@ export default function registerServicesActions(registerLensAction) {
     const completed = dayAppts.filter(a => a.status === 'completed' || a.status === 'paid');
     const noShows = dayAppts.filter(a => a.status === 'no_show' || a.status === 'no-show');
     const cancelled = dayAppts.filter(a => a.status === 'cancelled' || a.status === 'canceled');
-    const totalRevenue = Math.round(completed.reduce((s, a) => s + (parseFloat(a.price || a.revenue) || 0), 0) * 100) / 100;
+    // Fail-CLOSED on poisoned numerics: a non-finite price (Infinity/NaN) must
+    // never reach a money total — coerce it to 0.
+    const finiteNum = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
+    const totalRevenue = Math.round(completed.reduce((s, a) => s + finiteNum(a.price ?? a.revenue), 0) * 100) / 100;
 
     const productsSold = artifact.data?.productsSold || [];
-    const productRevenue = Math.round(productsSold.reduce((s, p) => s + (parseFloat(p.price || p.amount) || 0) * (parseInt(p.quantity, 10) || 1), 0) * 100) / 100;
+    const productRevenue = Math.round(productsSold.reduce((s, p) => s + finiteNum(p.price ?? p.amount) * (parseInt(p.quantity, 10) || 1), 0) * 100) / 100;
 
     const byProvider = {};
     for (const a of completed) {
       const prov = a.provider || 'Unknown';
       if (!byProvider[prov]) byProvider[prov] = { appointments: 0, revenue: 0 };
       byProvider[prov].appointments++;
-      byProvider[prov].revenue += parseFloat(a.price || a.revenue) || 0;
+      byProvider[prov].revenue += finiteNum(a.price ?? a.revenue);
     }
     const providerSummary = Object.entries(byProvider).map(([name, data]) => ({
       provider: name,

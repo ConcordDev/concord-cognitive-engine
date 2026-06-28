@@ -1,0 +1,22 @@
+{
+  "macro_id": "sessions.close",
+  "domain": "sessions",
+  "name": "close",
+  "inputs": {
+    "sessionId": { "type": "string", "maxLength": 64 },
+    "outcome": { "type": "string", "enum": ["completed", "abandoned"] },
+    "note": { "type": "string", "maxLength": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.status === 'completed' || output.status === 'abandoned'",
+    "output.ok === false || typeof output.closedAt === 'number'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_session_id" } },
+    { "input": { "sessionId": "x" }, "expect": { "ok": false, "reason": "invalid_outcome" } },
+    { "input": { "sessionId": "does-not-exist", "outcome": "completed" }, "expect": { "ok": false, "reason": "not_found" } }
+  ],
+  "_note": "sessions.close transitions a caller-owned session to completed/abandoned and appends a terminal event. Requires sessionId + a valid outcome; a foreign/unknown id → not_found; a re-close → already_closed. A write {} returns a real validation reason, NEVER no_db."
+}

@@ -1,0 +1,24 @@
+{
+  "macro_id": "engineering.materialLibrary",
+  "domain": "engineering",
+  "name": "materialLibrary",
+  "inputs": {
+    "id": { "type": "string", "required": false, "maxLength": 40 },
+    "category": { "type": "string", "required": false, "maxLength": 40 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.materials)",
+    "output.ok === false || Array.isArray(output.result.categories)",
+    "output.ok === false || output.result.materials.every(m => typeof m.id === 'string' && typeof m.label === 'string' && Number.isFinite(m.E) && Number.isFinite(m.density))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "category": "metal" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "id": "steel-a36" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "id": "unobtanium-9000" } } }, "expect": { "ok": false } }
+  ],
+  "_note": "Mechanical-property database (page.tsx Materials tab + GeometryEditor material picker). No id → {materials,categories,count}; each material carries {id,label,category,E,yield,ultimate,density,poisson,cte,thermalK,costPerKg}. A specific id → that material, or ok:false for an unknown id (the tab surfaces an error, not a blank card). Reads from artifact.data. Pure compute, no STATE, deterministic."
+}

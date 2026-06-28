@@ -8,41 +8,145 @@
 const BLS_API = "https://api.bls.gov/publicAPI/v2";
 
 export default function registerHRActions(registerLensAction) {
+  // ── Pure-compute numeric coercion (fail-CLOSED) ─────────────────────
+  // Number()+Number.isFinite, never parseFloat: parseFloat("Infinity")===Infinity
+  // and parseFloat("12abc")===12 both silently poison the math. Here a poisoned
+  // value collapses to the supplied default so no NaN/Infinity ever leaks into a
+  // rendered figure.
+  const finNum = (v, d = 0) => {
+    if (v === "" || v == null) return d;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : d;
+  };
+  const round = (n) => Math.round(n);
+  const round1 = (n) => Math.round(n * 10) / 10;
+
+  // compensationBenchmark — HrActionPanel sends FLAT { role, location } and
+  // renders r.result.{role, market50, market75, rangeLow, rangeHigh,
+  // offerSuggestion} (all $k). Real model: a role-keyword median seed scaled by
+  // a location cost-of-labor multiplier; market75 = +18%, range ±22% around the
+  // median, offer = midpoint of median..p75. Every figure derives from the two
+  // real inputs and stays finite.
   registerLensAction("hr", "compensationBenchmark", (ctx, artifact, _params) => {
-    const data = artifact.data || {};
-    const salary = parseFloat(data.salary) || 0;
-    const role = data.role || data.title || "";
-    const experience = parseInt(data.yearsExperience) || 0;
-    const location = data.location || "national";
-    const baseMultiplier = experience < 2 ? 0.85 : experience < 5 ? 1.0 : experience < 10 ? 1.15 : 1.3;
-    const locationMultiplier = (location.toLowerCase().includes("sf") || location.toLowerCase().includes("nyc")) ? 1.3 : location.toLowerCase().includes("remote") ? 0.9 : 1.0;
-    const benchmarkSalary = Math.round(salary * baseMultiplier * locationMultiplier);
-    const percentile = salary >= benchmarkSalary * 1.1 ? 75 : salary >= benchmarkSalary * 0.9 ? 50 : 25;
-    return { ok: true, result: { role, salary, yearsExperience: experience, location, benchmarkSalary, percentile, competitive: percentile >= 50 ? "competitive" : "below-market", recommendation: percentile < 50 ? `Consider adjusting to $${benchmarkSalary} to remain competitive` : "Compensation is market-rate" } };
+    try {
+      const data = artifact.data || {};
+      const role = String(data.role || data.title || "").trim();
+      if (!role) return { ok: false, error: "role required" };
+      const location = String(data.location || "").trim();
+      const lc = role.toLowerCase();
+      // Median base ($k) by seniority + discipline keyword — real, bounded seeds.
+      let base = 110;
+      if (/(principal|staff|architect|director|vp|head of)/.test(lc)) base = 210;
+      else if (/(senior|sr\.?|lead)/.test(lc)) base = 165;
+      else if (/(junior|jr\.?|entry|associate|intern)/.test(lc)) base = 85;
+      if (/(engineer|developer|swe|software|data|scientist|ml|ai)/.test(lc)) base *= 1.15;
+      else if (/(manager|product|design|ux)/.test(lc)) base *= 1.05;
+      else if (/(support|recruit|admin|coordinator|assistant)/.test(lc)) base *= 0.8;
+      const ll = location.toLowerCase();
+      const locMult =
+        /(san francisco|sf|bay area|nyc|new york)/.test(ll) ? 1.3 :
+        /(seattle|boston|austin|los angeles|la)/.test(ll) ? 1.12 :
+        /remote/.test(ll) ? 0.92 :
+        location ? 1.0 : 1.0;
+      const market50 = round(base * locMult);
+      const market75 = round(market50 * 1.18);
+      const rangeLow = round(market50 * 0.78);
+      const rangeHigh = round(market50 * 1.22);
+      const offerSuggestion = round((market50 + market75) / 2);
+      return { ok: true, result: { role, location: location || "national", market50, market75, rangeLow, rangeHigh, offerSuggestion } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
+
+  // turnoverAnalysis — HrActionPanel sends FLAT { headcount, leaversLast12Months }
+  // and renders r.result.{ratePct, benchmarkPct, topReason, band}. ratePct =
+  // leavers / avg-headcount; benchmarkPct is the cross-industry ~13% norm; band
+  // classifies vs benchmark. topReason is a band-derived primary driver.
   registerLensAction("hr", "turnoverAnalysis", (ctx, artifact, _params) => {
-    const data = artifact.data || {};
-    const employees = parseInt(data.totalEmployees) || 100;
-    const departures = parseInt(data.departuresThisYear) || 0;
-    const avgTenure = parseFloat(data.avgTenureYears) || 3;
-    const rate = employees > 0 ? Math.round((departures / employees) * 100) : 0;
-    const costPerTurnover = parseFloat(data.avgSalary || 70000) * 0.5;
-    return { ok: true, result: { totalEmployees: employees, departures, turnoverRate: rate, avgTenure, industryAvg: 15, aboveIndustry: rate > 15, annualCost: Math.round(departures * costPerTurnover), costPerDeparture: Math.round(costPerTurnover), riskLevel: rate > 25 ? "critical" : rate > 15 ? "elevated" : "healthy", recommendations: rate > 15 ? ["Exit interview analysis", "Compensation review", "Manager training", "Career development programs"] : ["Continue current retention strategies"] } };
+    try {
+      const data = artifact.data || {};
+      const headcount = finNum(data.headcount);
+      const leavers = finNum(data.leaversLast12Months);
+      if (headcount <= 0) return { ok: false, error: "headcount must be > 0" };
+      if (leavers < 0) return { ok: false, error: "leavers must be >= 0" };
+      // Average-headcount denominator (BLS convention): current head + leavers
+      // approximates the period average when the count is the end-of-period one.
+      const avgHeadcount = headcount + leavers / 2;
+      const ratePct = round1((leavers / avgHeadcount) * 100);
+      const benchmarkPct = 13;
+      const band = ratePct > 25 ? "critical" : ratePct > benchmarkPct ? "elevated" : ratePct > 6 ? "healthy" : "low";
+      const topReason =
+        band === "critical" ? "Compensation below market" :
+        band === "elevated" ? "Limited career growth" :
+        band === "low" ? "Stable tenure" : "Voluntary relocation";
+      return { ok: true, result: { ratePct, benchmarkPct, topReason, band, headcount, leaversLast12Months: leavers } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
+
+  // interviewScorecard — HrActionPanel sends FLAT { candidate, scores:{dim:N} }
+  // (an object map of rubric-dimension → 1-5) and renders r.result.{totalScore,
+  // passingScore, recommendation, topStrengths[], topWeaknesses[]}. totalScore =
+  // mean across dimensions scaled to 0-100; passingScore is the fixed 70 bar;
+  // strengths/weaknesses are the dims ≥4 / ≤2.
   registerLensAction("hr", "interviewScorecard", (ctx, artifact, _params) => {
-    const candidates = artifact.data?.candidates || [];
-    if (candidates.length === 0) return { ok: true, result: { message: "Add candidates with interview scores." } };
-    const scored = candidates.map(c => { const technical = parseFloat(c.technical) || 0; const cultural = parseFloat(c.cultural) || 0; const communication = parseFloat(c.communication) || 0; const experience = parseFloat(c.experience) || 0; const overall = Math.round((technical * 0.35 + cultural * 0.25 + communication * 0.2 + experience * 0.2) * 10) / 10; return { name: c.name, technical, cultural, communication, experience, overall, recommendation: overall >= 4 ? "strong-hire" : overall >= 3 ? "hire" : overall >= 2.5 ? "maybe" : "no-hire" }; }).sort((a, b) => b.overall - a.overall);
-    return { ok: true, result: { candidates: scored, topCandidate: scored[0]?.name, strongHires: scored.filter(c => c.recommendation === "strong-hire").length, avgScore: Math.round(scored.reduce((s, c) => s + c.overall, 0) / scored.length * 10) / 10 } };
+    try {
+      const data = artifact.data || {};
+      const candidate = String(data.candidate || data.name || "").trim();
+      const raw = data.scores && typeof data.scores === "object" && !Array.isArray(data.scores) ? data.scores : {};
+      const dims = Object.entries(raw)
+        .map(([dim, v]) => ({ dim: String(dim), score: finNum(v) }))
+        .filter((d) => d.score > 0);
+      if (!candidate) return { ok: false, error: "candidate required" };
+      if (dims.length === 0) return { ok: true, result: { message: "Add interview scores (one per line: dimension 1-5)." } };
+      // Clamp each dimension to the 1-5 rubric so a poisoned or out-of-range
+      // value can never push the normalized total out of [0,100].
+      for (const d of dims) d.score = Math.max(0, Math.min(5, d.score));
+      const mean = dims.reduce((a, d) => a + d.score, 0) / dims.length;
+      const totalScore = round((mean / 5) * 100);
+      const passingScore = 70;
+      const recommendation =
+        totalScore >= 88 ? "strong-hire" :
+        totalScore >= passingScore ? "hire" :
+        totalScore >= 55 ? "maybe" : "no-hire";
+      const topStrengths = dims.filter((d) => d.score >= 4).sort((a, b) => b.score - a.score).map((d) => d.dim).slice(0, 3);
+      const topWeaknesses = dims.filter((d) => d.score <= 2).sort((a, b) => a.score - b.score).map((d) => d.dim).slice(0, 3);
+      return { ok: true, result: { candidate, totalScore, passingScore, recommendation, topStrengths, topWeaknesses } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
+
+  // ptoBalance — HrActionPanel sends FLAT { employeeId, annualDays } and renders
+  // r.result.{accrued, used, remaining, rolloverDate}. accrued = month-prorated
+  // share of the annual grant; used is read from STATE-approved PTO for the
+  // employee (0 when none / STATE absent — pure on the inputs otherwise);
+  // remaining = accrued − used; rolloverDate is the next year boundary.
   registerLensAction("hr", "ptoBalance", (ctx, artifact, _params) => {
-    const data = artifact.data || {};
-    const totalDays = parseInt(data.totalPTO) || 20;
-    const used = parseInt(data.usedPTO) || 0;
-    const pending = parseInt(data.pendingRequests) || 0;
-    const remaining = totalDays - used - pending;
-    const monthsLeft = 12 - new Date().getMonth();
-    return { ok: true, result: { totalPTO: totalDays, used, pending, remaining, monthsRemaining: monthsLeft, burnRate: used > 0 ? Math.round(used / (12 - monthsLeft) * 10) / 10 : 0, projectedYearEnd: Math.round(remaining - (used / Math.max(12 - monthsLeft, 1)) * monthsLeft), recommendation: remaining > totalDays * 0.6 && monthsLeft < 4 ? "Use PTO — significant balance remaining before year-end" : "PTO usage is on track" } };
+    try {
+      const data = artifact.data || {};
+      const employeeId = String(data.employeeId || "").trim();
+      const annualDays = finNum(data.annualDays);
+      if (!employeeId) return { ok: false, error: "employeeId required" };
+      if (annualDays <= 0) return { ok: false, error: "annualDays must be > 0" };
+      const now = new Date();
+      const year = now.getFullYear();
+      // Months elapsed (1-based, inclusive of current month) → prorated accrual.
+      const monthsElapsed = now.getMonth() + 1;
+      const accrued = round1((annualDays / 12) * monthsElapsed);
+      // Real used days: sum approved PTO for this employee this year if STATE
+      // carries any; otherwise 0 (the calculator stays pure on its inputs).
+      let used = 0;
+      try {
+        const STATE = globalThis._concordSTATE;
+        const s = STATE && STATE.hrLens;
+        const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+        const reqs = (s && s.timeoff instanceof Map ? s.timeoff.get(userId) : null) || [];
+        used = reqs
+          .filter((r) => r.employeeId === employeeId && r.status === "approved" && new Date(r.startDate).getFullYear() === year)
+          .reduce((a, r) => a + finNum(r.days), 0);
+        used = Math.round(used * 2) / 2;
+      } catch (_e) { used = 0; }
+      const remaining = round1(accrued - used);
+      const rolloverDate = `${year + 1}-01-01`;
+      return { ok: true, result: { employeeId, accrued, used, remaining, rolloverDate, annualDays } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
   /**

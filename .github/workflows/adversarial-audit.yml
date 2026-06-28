@@ -1,0 +1,73 @@
+name: Adversarial Audit — composite gate
+
+# The single composite CI gate that fronts every push/PR on the working
+# branches. It does NOT re-implement any verification — it ORCHESTRATES the
+# existing verifier scripts via scripts/adversarial-audit.mjs and propagates
+# their real exit codes:
+#
+#   Gate 1  Lens wiring     — node scripts/verify-lens-backends.mjs
+#                             (0 broken UNWIRED/PARTIAL expected)
+#   Gate 2  Invariant engine— node scripts/contracts/derive-contracts.mjs
+#                             then node scripts/macro-assassin.mjs --ratchet
+#                             (fails ONLY on a NEW violation vs BASELINE.json)
+#   Gate 3  Detector ratchet— cd server && node scripts/run-detectors.js
+#                             --diff --ci (NEW high/critical only)
+#   Gate 4  Doc-claims      — node scripts/check-doc-claims.mjs (ADVISORY:
+#                             surfaces stale counts, never blocks)
+#
+# The NEW thing this workflow brings to CI is the macro-assassin invariant
+# ratchet running on the working-branch push/PR path. The detector ratchet is
+# ALSO gated on `main` by detectors-cartography.yml; running it here extends the
+# same gate forward to working branches so a regression is caught before merge.
+#
+# No structural counts are hardcoded anywhere — every verdict comes from the
+# verifier itself, so the gate never falsely fails as the codebase grows.
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches:
+      - main
+      - develop
+      - "claude/**"
+
+permissions:
+  contents: read
+
+jobs:
+  adversarial-audit:
+    name: Adversarial Audit (lens wiring + invariant ratchet + detectors)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+      # Test-mode flags so the in-process engine boot (macro-assassin) does not
+      # bind a port and falls back to a generated secret cleanly.
+      NODE_ENV: test
+      CONCORD_NO_LISTEN: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            server/package-lock.json
+            concord-frontend/package-lock.json
+
+      - name: Install server deps
+        working-directory: ./server
+        run: npm ci --prefer-offline --no-audit --no-fund || (sleep 5 && npm ci) || (sleep 10 && npm ci)
+
+      - name: Install frontend deps
+        working-directory: ./concord-frontend
+        run: npm ci --prefer-offline --no-audit --no-fund || (sleep 5 && npm ci) || (sleep 10 && npm ci)
+
+      - name: Run adversarial audit (full gate)
+        run: node scripts/adversarial-audit.mjs

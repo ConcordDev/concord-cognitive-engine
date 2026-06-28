@@ -5,8 +5,10 @@
  *
  * Build complete, persistent, cross-world games by composing Concord's
  * existing systems as configurable building blocks. This page is the
- * LensShell wrapper; the build/configure/validate/save/publish loop
- * lives in <FoundryCanvas>.
+ * LensShell wrapper; the front-door create → list → open → delete loop
+ * is wired straight to the foundry.* macros via <FoundryWorldsPanel>,
+ * and the deeper build/configure/validate/save/publish loop lives in
+ * <FoundryCanvas>.
  *
  * Distinct from /lenses/forge (the polyglot single-file *app*
  * generator) — different domain namespace (foundry.* macros),
@@ -14,6 +16,8 @@
  */
 
 import dynamic from 'next/dynamic';
+import { useLensData } from '@/lib/hooks/use-lens-data';
+import { FoundryWorldsPanel } from '@/components/foundry/FoundryWorldsPanel';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -40,6 +44,11 @@ const FoundryCanvas = dynamic(() => import('@/components/foundry/FoundryCanvas')
 });
 
 export default function FoundryLensPage() {
+  // Real persisted-artifact surface for the foundry domain (generic lens
+  // artifact store). Drives the front-door worlds count badge; the panel
+  // below wires the live foundry.* macro loop.
+  const { total: worldArtifacts } = useLensData('foundry', 'foundry_world', { noSeed: true });
+
   return (
     <LensShell lensId="foundry" asMain={false}>
       <FirstRunTour lensId="foundry" />
@@ -61,13 +70,21 @@ export default function FoundryLensPage() {
                 cross-world game. No code, no infrastructure.
               </p>
             </div>
-            <span className="hidden rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-300 sm:inline">
+            <span
+              className="hidden rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-300 sm:inline"
+              title={`${worldArtifacts} persisted foundry artifact(s)`}
+            >
               Beta
             </span>
           </div>
         </header>
 
-        <section className="mx-auto max-w-screen-2xl">
+        {/* Front-door worlds loop — wired straight to foundry.{list,create,get,delete} */}
+        <section className="mx-auto mt-4 max-w-screen-2xl rounded-xl border border-sky-500/20 bg-slate-950/40 p-4">
+          <FoundryWorldsPanel />
+        </section>
+
+        <section className="mx-auto mt-6 max-w-screen-2xl">
           <FoundryCanvas />
         </section>
         <section className="mx-auto mt-6 max-w-screen-2xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

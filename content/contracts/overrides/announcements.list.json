@@ -1,0 +1,55 @@
+{
+  "macro_id": "announcements.list",
+  "domain": "announcements",
+  "name": "list",
+  "inputs": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "feature_drop",
+        "balance_change",
+        "event",
+        "news",
+        "roadmap"
+      ]
+    },
+    "limit": {
+      "type": "number",
+      "min": 1,
+      "max": 200
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true || typeof output.reason === 'string'",
+    "!output.ok || Array.isArray(output.announcements)",
+    "!output.ok || output.announcements.every(a => typeof a.id === 'string' && a.id.length > 0)",
+    "!output.ok || output.announcements.every(a => ['feature_drop','balance_change','event','news','roadmap'].includes(a.kind))",
+    "!output.ok || (!input || !input.kind || output.announcements.every(a => a.kind === input.kind))",
+    "!output.ok || output.announcements.every(a => a.expires_at === null || a.expires_at > Math.floor(Date.now()/1000))"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "kind": "roadmap"
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "input": {
+        "limit": 1e+308
+      },
+      "expect": {
+        "ok": false
+      }
+    }
+  ]
+}

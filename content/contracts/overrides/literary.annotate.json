@@ -1,0 +1,23 @@
+{
+  "macro_id": "literary.annotate",
+  "domain": "literary",
+  "name": "annotate",
+  "inputs": {
+    "chunkId": { "type": "string", "required": true, "maxLength": 120 },
+    "note": { "type": "string", "required": true, "maxLength": 4000 },
+    "quote": { "type": "string", "maxLength": 4000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || typeof output.dtuId === 'string'",
+    "output.ok === false || output.citedChunkId === input.chunkId"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_input" } },
+    { "input": { "chunkId": "abc" }, "expect": { "ok": false, "reason": "missing_input" } },
+    { "input": { "chunkId": "__no_such_chunk__", "note": "a reading" }, "expect": { "ok": false, "reason": "not_found" } }
+  ],
+  "_note": "Reader annotation → derivative DTU citing the source passage (self-growing lattice). Missing chunkId or note → missing_input. Unknown chunk → not_found. On success returns the minted dtuId + citedChunkId."
+}

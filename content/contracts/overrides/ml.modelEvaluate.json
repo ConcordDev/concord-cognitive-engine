@@ -1,0 +1,27 @@
+{
+  "macro_id": "ml.modelEvaluate",
+  "domain": "ml",
+  "name": "modelEvaluate",
+  "inputs": {
+    "predictions": { "type": "array" },
+    "actuals": { "type": "array" },
+    "labels": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message != null || ['classification','regression'].includes(output.result.type)",
+    "output.ok === false || output.result.type !== 'classification' || (Number.isFinite(output.result.accuracy) && Number.isFinite(output.result.avgF1) && Array.isArray(output.result.perClass))",
+    "output.ok === false || output.result.type !== 'classification' || output.result.perClass.every(p => Number.isFinite(p.precision) && Number.isFinite(p.recall) && Number.isFinite(p.f1) && Number.isFinite(p.support))",
+    "output.ok === false || output.result.type !== 'regression' || (Number.isFinite(output.result.mse) && Number.isFinite(output.result.rmse) && Number.isFinite(output.result.mae) && Number.isFinite(output.result.r2))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "predictions": ["cat", "dog", "cat", "dog", "cat"], "actuals": ["cat", "dog", "dog", "dog", "cat"] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "predictions": [3.1, 2.0, 5.5, 4.2], "actuals": [3.0, 2.5, 5.0, 4.0] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "predictions": [3.5, "Infinity", "NaN", 2.1], "actuals": [3.0, 2.5, 5.0, 2.0] } } }, "expect": { "ok": false } }
+  ],
+  "_note": "Pure compute, reads artifact.data (component double-wrap { artifact: { data } } is peeled at dispatch). Auto-detects classification (≤20 string/int classes) vs regression. Classification returns type/samples/accuracy/avgF1/perClass[].{class,precision,recall,f1,support}/confusionMatrix — the EXACT fields MlActionPanel's eval card renders. Regression returns type/samples/mse/rmse/mae/r2. FAIL-CLOSED: a non-finite prediction/actual in the regression path is REJECTED (ok:false) so NaN never serializes as `null` into the rendered 'MSE null' card (fixed 2026-06-28)."
+}

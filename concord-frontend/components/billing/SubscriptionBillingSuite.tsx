@@ -79,7 +79,7 @@ export function SubscriptionBillingSuite() {
       </div>
 
       {err && (
-        <div className="flex items-center justify-between rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">
+        <div role="alert" className="flex items-center justify-between rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">
           {err}
           <button onClick={() => setErr(null)} aria-label="Dismiss error"><X className="h-3.5 w-3.5" /></button>
         </div>
@@ -147,6 +147,8 @@ function PlansPanel({ onError }: { onError: (e: string) => void }) {
   const [plans, setPlans] = useState<MacroJSON[]>([]);
   const [subData, setSubData] = useState<MacroJSON | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
   const [pName, setPName] = useState('');
   const [pInterval, setPInterval] = useState('monthly');
   const [pAmount, setPAmount] = useState('29');
@@ -159,15 +161,41 @@ function PlansPanel({ onError }: { onError: (e: string) => void }) {
   const [proResult, setProResult] = useState<MacroJSON | null>(null);
 
   const reload = useCallback(async () => {
+    setLoading(true);
+    setLoadErr(null);
     try {
       const [pl, su] = await Promise.all([run('plan-list'), run('subscription-list')]);
       setPlans(pl?.plans || []);
       setSubData(su);
-    } catch (e) { onError(e instanceof Error ? e.message : 'load failed'); }
-  }, [onError]);
+    } catch (e) {
+      // Surface the load failure in the panel's own alert (with Retry) — do NOT
+      // also bubble to the suite-level banner, which has no re-fetch affordance.
+      setLoadErr(e instanceof Error ? e.message : 'load failed');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { reload(); }, []);
+
+  if (loading) {
+    return (
+      <div role="status" aria-live="polite" className="flex items-center gap-2 px-3 py-6 text-xs text-zinc-400">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading plans &amp; subscriptions…
+      </div>
+    );
+  }
+
+  if (loadErr) {
+    return (
+      <div role="alert" className="space-y-2 rounded border border-red-500/20 bg-red-500/5 px-3 py-4 text-xs text-red-300">
+        <div>Could not load billing data: {loadErr}</div>
+        <Btn onClick={reload} kind="ghost"><RefreshCw className="h-3.5 w-3.5" />Retry</Btn>
+      </div>
+    );
+  }
 
   const createPlan = async () => {
     if (!pName.trim()) { onError('plan name required'); return; }
@@ -219,9 +247,17 @@ function PlansPanel({ onError }: { onError: (e: string) => void }) {
   };
 
   const subs: MacroJSON[] = subData?.subscriptions || [];
+  const isEmpty = plans.length === 0 && subs.length === 0;
 
   return (
     <div className="space-y-3">
+      {isEmpty && (
+        <div className="rounded-md border border-dashed border-cyan-500/30 bg-cyan-500/5 px-4 py-5 text-center">
+          <p className="text-sm font-medium text-zinc-200">No recurring plans yet.</p>
+          <p className="mt-1 text-xs text-zinc-400">Create your first plan below to start subscribing customers and tracking MRR.</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat label="MRR" value={money(subData?.mrr)} accent="text-emerald-300" />
         <Stat label="ARR" value={money(subData?.arr)} accent="text-emerald-300" />

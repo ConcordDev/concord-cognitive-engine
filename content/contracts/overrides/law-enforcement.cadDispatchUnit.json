@@ -1,0 +1,25 @@
+{
+  "macro_id": "law-enforcement.cadDispatchUnit",
+  "domain": "law-enforcement",
+  "name": "cadDispatchUnit",
+  "inputs": {
+    "callId": { "type": "string", "required": true, "maxLength": 80 },
+    "unitId": { "type": "string", "maxLength": 80 }
+  },
+  "reads_artifact_data": false,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string'",
+    "output.ok === false || (output.result.call && typeof output.result.call.id === 'string')",
+    "output.ok === false || (output.result.unit && typeof output.result.unit.callSign === 'string')",
+    "output.ok === false || output.result.call.status === 'dispatched'",
+    "output.ok === false || output.result.etaMinutes === null || Number.isFinite(output.result.etaMinutes)",
+    "output.ok === false || typeof output.result.routed === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "callId": "does-not-exist" }, "expect": { "ok": false } }
+  ],
+  "_note": "Flat params (RmsCadConsole CadTab.dispatch: lensRun('law-enforcement','cadDispatchUnit',{callId}) — auto-route omits unitId). Auto-routes the nearest AVAILABLE unit by Haversine when both call and unit carry lat/lon, else the first free unit; rejects with { ok:false } when the call is unknown or no unit is free. etaMinutes = round(km/40*60) only when all four coords are present, else null (the banner shows ETA ONLY when numeric — never a fabricated '0m'). The dispatch banner reads result.unit.callSign + result.etaMinutes EXACTLY; queue/board re-render from the mutated call.status='dispatched' / unit.status='dispatched'."
+}

@@ -2,7 +2,10 @@
 export default function registerMasonryActions(registerLensAction) {
   registerLensAction("masonry", "materialEstimate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const sqft = parseFloat(data.squareFootage) || 0;
+    // Fail-closed: a non-finite (NaN/Infinity/"abc") squareFootage floors to 0
+    // so no NaN/Infinity leaks into any rendered number.
+    const sqftRaw = parseFloat(data.squareFootage);
+    const sqft = Number.isFinite(sqftRaw) && sqftRaw > 0 ? sqftRaw : 0;
     const material = (data.material || "brick").toLowerCase();
     const rates = { brick: { unitsPerSqFt: 7, mortar: 0.02, costPerUnit: 0.75 }, block: { unitsPerSqFt: 1.125, mortar: 0.03, costPerUnit: 2.5 }, stone: { unitsPerSqFt: 5, mortar: 0.025, costPerUnit: 8 } };
     const r = rates[material] || rates.brick;
@@ -10,7 +13,15 @@ export default function registerMasonryActions(registerLensAction) {
     const mortarBags = Math.ceil(sqft * r.mortar);
     const materialCost = Math.round(units * r.costPerUnit);
     const mortarCost = Math.round(mortarBags * 12);
-    return { ok: true, result: { material, squareFootage: sqft, unitsNeeded: units, mortarBags80lb: mortarBags, materialCost, mortarCost, totalMaterialCost: materialCost + mortarCost, laborEstimate: Math.round(sqft * 15), grandTotal: materialCost + mortarCost + Math.round(sqft * 15) } };
+    const laborEstimate = Math.round(sqft * 15);
+    const totalMaterialCost = materialCost + mortarCost;
+    const grandTotal = totalMaterialCost + laborEstimate;
+    // Real, computed recommendation surfaced by the result card — derived from
+    // the actual estimate, never a placeholder.
+    const recommendation = sqft <= 0
+      ? "Enter a positive wall area to size materials."
+      : `Order ~${Math.ceil(units * 1.0)} ${material} units and ${mortarBags} 80 lb mortar bag${mortarBags === 1 ? "" : "s"}; budget $${grandTotal.toLocaleString()} all-in (materials $${totalMaterialCost.toLocaleString()} + labor $${laborEstimate.toLocaleString()}). The unit count already carries 5% waste.`;
+    return { ok: true, result: { material, squareFootage: sqft, unitsNeeded: units, mortarBags80lb: mortarBags, materialCost, mortarCost, totalMaterialCost, laborEstimate, grandTotal, recommendation } };
   });
   registerLensAction("masonry", "mortarMix", (ctx, artifact, _params) => {
     const application = (artifact.data?.application || "general").toLowerCase();
@@ -20,8 +31,12 @@ export default function registerMasonryActions(registerLensAction) {
   });
   registerLensAction("masonry", "wallStrength", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const height = parseFloat(data.heightFeet) || 8;
-    const thickness = parseFloat(data.thicknessInches) || 8;
+    // Fail-closed: non-finite height/thickness fall back to defaults so the
+    // slenderness ratio can never become NaN/Infinity.
+    const hRaw = parseFloat(data.heightFeet);
+    const tRaw = parseFloat(data.thicknessInches);
+    const height = Number.isFinite(hRaw) && hRaw > 0 ? hRaw : 8;
+    const thickness = Number.isFinite(tRaw) && tRaw > 0 ? tRaw : 8;
     const reinforced = data.reinforced !== false;
     const loadBearing = data.loadBearing !== false;
     const slenderness = (height * 12) / thickness;
@@ -29,9 +44,12 @@ export default function registerMasonryActions(registerLensAction) {
     return { ok: true, result: { heightFeet: height, thicknessInches: thickness, slendernessRatio: Math.round(slenderness * 10) / 10, maxAllowedRatio: maxSlenderness, passesSlenderness: slenderness <= maxSlenderness, reinforced, loadBearing, recommendation: slenderness > maxSlenderness ? "Wall too slender — increase thickness or add pilasters" : slenderness > maxSlenderness * 0.8 ? "Near limit — consider additional reinforcement" : "Wall dimensions are adequate" } };
   });
   registerLensAction("masonry", "jobCosting", (ctx, artifact, _params) => {
-    const items = artifact.data?.items || [];
+    const items = Array.isArray(artifact.data?.items) ? artifact.data.items : [];
     if (items.length === 0) return { ok: true, result: { message: "Add job items with hours and costs." } };
-    const costed = items.map(i => { const hours = parseFloat(i.hours || i.laborHours) || 0; const rate = parseFloat(i.rate || i.laborRate) || 55; const materials = parseFloat(i.materialCost) || 0; return { item: i.name || i.description, laborHours: hours, laborRate: rate, laborCost: Math.round(hours * rate), materialCost: materials, totalCost: Math.round(hours * rate + materials) }; });
+    // Fail-closed numeric coercion: non-finite values floor to 0 (or the 55
+    // default rate) so no NaN/Infinity reaches a cost field.
+    const fin = (v, d = 0) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
+    const costed = items.filter(i => i && typeof i === "object").map(i => { const hours = fin(i.hours != null ? i.hours : i.laborHours, 0); const rate = fin(i.rate != null ? i.rate : i.laborRate, 55); const materials = fin(i.materialCost, 0); return { item: i.name || i.description, laborHours: hours, laborRate: rate, laborCost: Math.round(hours * rate), materialCost: materials, totalCost: Math.round(hours * rate + materials) }; });
     const totalLabor = costed.reduce((s, c) => s + c.laborCost, 0);
     const totalMaterials = costed.reduce((s, c) => s + c.materialCost, 0);
     const overhead = Math.round((totalLabor + totalMaterials) * 0.15);

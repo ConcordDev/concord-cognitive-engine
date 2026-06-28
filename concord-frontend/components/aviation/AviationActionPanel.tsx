@@ -56,6 +56,7 @@ export function AviationActionPanel() {
 
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
+  const [lastAction, setLastAction] = useState<(() => void) | null>(null);
 
   const pipe = usePipe();
   const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
@@ -190,7 +191,7 @@ export function AviationActionPanel() {
         {actions.map(act => {
           const Icon = act.icon; const isBusy = busy === act.id;
           return (
-            <button key={act.id} type="button" disabled={!!busy} onClick={act.handler}
+            <button key={act.id} type="button" disabled={!!busy} onClick={() => { setLastAction(() => act.handler); act.handler(); }}
               className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: act.accent + '20', color: act.accent }}>
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
@@ -201,6 +202,19 @@ export function AviationActionPanel() {
           );
         })}
       </div>
+
+      {busy && (
+        <div role="status" aria-live="polite" className="flex items-center gap-2 px-3 py-2 rounded text-[11px] text-sky-300 bg-sky-500/5 border border-sky-500/20">
+          <Loader2 className="h-3 w-3 animate-spin" /> <span>Working…</span>
+        </div>
+      )}
+
+      {!busy && !aptResult && !wxResult && !toResult && !ldgResult && !agentReply && (!feedback || feedback.kind === 'ok') && (
+        <div className="rounded-md border border-dashed border-zinc-700 bg-zinc-900/30 p-4 text-center">
+          <p className="text-[12px] text-zinc-300">No flight prep yet.</p>
+          <p className="text-[11px] text-zinc-500 mt-0.5">Enter an ICAO and run Airport, METAR, or a C172 perf calc to begin.</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {aptResult && (
@@ -243,7 +257,7 @@ export function AviationActionPanel() {
       {agentReply && (<div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto"><div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Go/no-go brief</div><pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre></div>)}
 
       <AnimatePresence>
-        {feedback && (<motion.div key={feedback.text} initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -2 }} className={cn('px-3 py-2 rounded text-[11px] flex items-start gap-2 border', feedback.kind === 'ok' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-red-500/10 text-red-300 border-red-500/30')}>{feedback.kind === 'ok' ? <Check className="h-3 w-3 mt-0.5" /> : <AlertTriangle className="h-3 w-3 mt-0.5" />}<span>{feedback.text}</span></motion.div>)}
+        {feedback && (<motion.div key={feedback.text} role={feedback.kind === 'err' ? 'alert' : 'status'} initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -2 }} className={cn('px-3 py-2 rounded text-[11px] flex items-start gap-2 border', feedback.kind === 'ok' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-red-500/10 text-red-300 border-red-500/30')}>{feedback.kind === 'ok' ? <Check className="h-3 w-3 mt-0.5" /> : <AlertTriangle className="h-3 w-3 mt-0.5" />}<span className="flex-1">{feedback.text}</span>{feedback.kind === 'err' && lastAction && (<button type="button" disabled={!!busy} onClick={() => lastAction()} className="ml-2 px-2 py-0.5 rounded border border-red-500/40 text-red-200 hover:bg-red-500/10 disabled:opacity-40">Retry</button>)}</motion.div>)}
       </AnimatePresence>
     </div>
   );

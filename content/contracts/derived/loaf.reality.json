@@ -1,0 +1,228 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.apply_correction",
+      "name": "apply_correction"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.attribute_error",
+      "name": "attribute_error"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.create_feedback_loop",
+      "name": "create_feedback_loop"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.detect_goodhart",
+      "name": "detect_goodhart"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.error_summary",
+      "name": "error_summary"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.list_feedback_loops",
+      "name": "list_feedback_loops"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.list_mismatches",
+      "name": "list_mismatches"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.measure_intervention_impact",
+      "name": "measure_intervention_impact"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.monitor_metric",
+      "name": "monitor_metric"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.record_breakdown",
+      "name": "record_breakdown"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.record_metric_value",
+      "name": "record_metric_value"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.record_mismatch",
+      "name": "record_mismatch"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.record_outcome",
+      "name": "record_outcome"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.register_abstraction",
+      "name": "register_abstraction"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.register_typed_truth",
+      "name": "register_typed_truth"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.reality",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.reality.validate_against_reality",
+      "name": "validate_against_reality"
+    }
+  ],
+  "domain": "loaf.reality",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 17
+}

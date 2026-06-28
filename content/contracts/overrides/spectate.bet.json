@@ -1,0 +1,24 @@
+{
+  "macro_id": "spectate.bet",
+  "domain": "spectate",
+  "name": "bet",
+  "inputs": {
+    "marketId": { "type": "string", "required": true, "maxLength": 64 },
+    "side": { "type": "string", "required": true, "maxLength": 8 },
+    "stakeSparks": { "type": "number", "min": 1, "max": 1000000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.stake === 'number'",
+    "output.ok === false || output.currency === 'SPARKS'",
+    "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_inputs" } },
+    { "input": { "marketId": "999999", "side": "yes", "stakeSparks": 10 }, "expect": { "ok": false } },
+    { "input": { "marketId": "1", "side": "yes", "stakeSparks": 1e+308 }, "expect": { "ok": false, "reason": "invalid_stakeSparks" } },
+    { "input": { "marketId": "1", "side": "yes", "stakeSparks": -5 }, "expect": { "ok": false, "reason": "invalid_stakeSparks" } }
+  ],
+  "_note": "Place a SPARKS wager on an open market. Actor-gated (no_actor without ctx.actor). Delegates to betting-markets.placeBet: escrows the stake from sparks_balances, persists a market_positions row, bumps the pool. Poisoned numeric stakes fail-CLOSE (invalid_stakeSparks) BEFORE any escrow; a non-existent market yields market_not_found."
+}

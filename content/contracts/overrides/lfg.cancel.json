@@ -1,0 +1,17 @@
+{
+  "macro_id": "lfg.cancel",
+  "domain": "lfg",
+  "name": "cancel",
+  "inputs": {
+    "lfgId": { "type": "string", "required": true, "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "cancel is owner-gated: it only flips a request the caller OWNS and that is still OPEN. A non-owner or already-resolved request yields ok:false error:not_open_or_unauthorized."
+}

@@ -1,0 +1,24 @@
+{
+  "macro_id": "mental-health.crisis-hotlines",
+  "domain": "mental-health",
+  "name": "crisis-hotlines",
+  "inputs": {
+    "country": { "type": "string", "required": false, "maxLength": 4 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "output.result && typeof output.result.country === 'string'",
+    "typeof output.result.available === 'boolean'",
+    "output.result.available === false || (output.result.hotlines && output.result.hotlines.primary && typeof output.result.hotlines.primary.phone === 'string')",
+    "output.result.available === true || typeof output.result.fallback === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "country": "US" }, "expect": { "ok": true } },
+    { "input": { "country": "uk" }, "expect": { "ok": true } },
+    { "input": { "country": "zz" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "country": "￿; rm -rf" }, "expect": { "ok": true } }
+  ],
+  "_note": "mental-health.crisis-hotlines returns AUTHORITATIVE, REAL crisis contact data (988 Suicide & Crisis Lifeline + verified national hotline registries — source-attributed, NOT synthesized). It is total: any unknown/garbage country degrades to the findahelpline.com fallback with available:false, still ok:true (never throws — wrapped in try/catch). This is the one safety-critical surface; the data must never be fabricated or omitted. Lens-action domain (registerLensAction) — not assassin-enumerable via runMacro."
+}

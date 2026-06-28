@@ -1,0 +1,22 @@
+{
+  "macro_id": "sentinel.metrics.series",
+  "domain": "sentinel",
+  "name": "metrics.series",
+  "inputs": {
+    "days": { "type": "number", "min": 1, "max": 90 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.chart)",
+    "output.ok === false || Array.isArray(output.result.severityBreakdown)",
+    "output.ok === false || (typeof output.result.openCases === 'number' && output.result.openCases >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "days": -1 }, "expect": { "ok": false, "error": "invalid_days" } },
+    { "input": { "days": 1e308 }, "expect": { "ok": false, "error": "invalid_days" } },
+    { "input": { "days": 7 }, "expect": { "ok": true } }
+  ],
+  "_note": "Derives a time-bucketed metrics series from the per-user timeline + case store in STATE keyed by ctx.actor.userId. The assassin's owner actor has no activity → ok:true with all-zero buckets and openCases 0 (NEVER no_db). days is a fail-CLOSED numeric guard (poisoned NaN/Infinity/-1/1e308 → invalid_days, never a clamped ok:true); an absent days defaults to 14 and is then clamped into [1,90]."
+}

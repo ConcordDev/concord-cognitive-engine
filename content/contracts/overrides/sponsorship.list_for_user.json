@@ -1,0 +1,16 @@
+{
+  "macro_id": "sponsorship.list_for_user",
+  "domain": "sponsorship",
+  "name": "list_for_user",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.sponsorships)",
+    "output.ok === false || output.sponsorships.every(s => s && (s.id !== undefined))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "sponsorship.list_for_user (server.js:76556, MACROS/runMacro path) returns the caller's ACTIVE npc_sponsorships joined to world_npcs for the NPC name. The assassin's internal owner actor has no rows, so {} returns ok:true with sponsorships:[] (an empty array, never no_db). This is the DB-backed macro; note the lens itself resolves sponsorship.list_for_user to the LENS_ACTIONS in-memory handler (LENS_ACTIONS wins in /api/lens/run dispatch), so this MACROS entry is reached only via runMacro/MCP, not the lens UI. Read-only — no wallet writes."
+}

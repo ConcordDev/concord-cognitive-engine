@@ -1,0 +1,26 @@
+{
+  "macro_id": "electrical.safetyInspection",
+  "domain": "electrical",
+  "name": "safetyInspection",
+  "inputs": {
+    "inspectionItems": { "type": "array", "maxLength": 5000 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.total === undefined || (Number.isFinite(output.result.total) && output.result.total >= 0)",
+    "output.ok === false || output.result.passRate === undefined || (Number.isFinite(output.result.passRate) && output.result.passRate >= 0 && output.result.passRate <= 100)",
+    "output.ok === false || output.result.criticalFailures === undefined || (Number.isFinite(output.result.criticalFailures) && output.result.criticalFailures >= 0)",
+    "output.ok === false || output.result.results === undefined || Array.isArray(output.result.results)",
+    "output.ok === false || output.result.overallResult === undefined || typeof output.result.overallResult === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "inspectionItems": [{ "name": "GFCI present", "necCode": "210.8", "passed": true, "critical": false, "notes": "ok" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "inspectionItems": [{ "name": "Ground bond", "necCode": "250.28", "passed": false, "critical": true, "notes": "missing" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "inspectionItems": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data.inspectionItems (NecCodeCalc runDomain wrapper, peeled at dispatch). Per-item severity = critical|minor|ok from passed/critical flags; overallResult = FAIL (any critical fail) | PASS (all pass) | CONDITIONAL (minor fails). passRate = round(passed/total×100), bounded 0..100 since length>0 is guarded (empty returns the honest 'Add inspection items' prompt, not a fabricated verdict). Cards render results[].{item,code,passed,severity,notes} + total/passed/failed/criticalFailures/passRate/overallResult EXACTLY (field-aligned against SafetyChecklist). No STATE, no DB."
+}

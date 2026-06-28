@@ -77,6 +77,10 @@ describe("Phase AA-AG — depth sprint end-to-end smoke", () => {
 
     // ── AC — place buy order, sell into it ────────────────────────────
     db.prepare(`INSERT INTO users (id, concordia_credits) VALUES (?, ?)`).run(player, 500);
+    // The seller must have a wallet row: fillBuyOrder's G8 checked-credit guard
+    // rolls the fill back (ok:false, seller_wallet_missing) if the seller can't be
+    // credited. The test previously omitted the seller, so the fill silently failed.
+    db.prepare(`INSERT INTO users (id, concordia_credits) VALUES (?, ?)`).run("healer-npc", 0);
     const buyOrder = placeBuyOrder(db, player, {
       worldId: "tunya", itemDescriptor: "willowbark_tea",
       unitPriceCc: 10, quantity: 20,

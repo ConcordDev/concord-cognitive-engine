@@ -1,0 +1,19 @@
+{
+  "macro_id": "auctions.bid",
+  "domain": "auctions",
+  "name": "bid",
+  "inputs": {
+    "auctionId": { "type": "string", "required": true, "maxLength": 64 },
+    "amountCc": { "type": "number", "min": 1, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.bid === 'number'",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "auctionId": "does_not_exist", "amountCc": 10 }, "expect": { "ok": false } }
+  ]
+}

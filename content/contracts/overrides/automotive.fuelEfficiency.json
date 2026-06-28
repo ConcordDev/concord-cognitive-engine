@@ -1,0 +1,29 @@
+{
+  "macro_id": "automotive.fuelEfficiency",
+  "domain": "automotive",
+  "name": "fuelEfficiency",
+  "reads_artifact_data": true,
+  "inputs": {
+    "fillups": { "type": "array", "required": false, "maxLength": 5000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.avgMPG)",
+    "output.ok === false || (output.result.avgMPG >= 0)",
+    "output.ok === false || Number.isFinite(output.result.totalGallons)",
+    "output.ok === false || Number.isFinite(output.result.totalFuelCost)",
+    "output.ok === false || Number.isFinite(output.result.costPerMile)",
+    "output.ok === false || Array.isArray(output.result.readings)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "fillups": [{ "mileage": 100, "gallons": 10, "pricePerGallon": 3 }, { "mileage": 300, "gallons": 10, "pricePerGallon": 3.5 }] } } }, "expect": { "ok": true } },
+    { "input": { "fillups": [{ "mileage": 0, "gallons": 8 }, { "mileage": 240, "gallons": 8 }] }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "fillups": [{ "mileage": 1, "gallons": 1 }] } } }, "expect": { "ok": false } },
+    { "input": { "artifact": { "data": { "fillups": [] } } }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "artifact": { "data": { "fillups": [{ "mileage": "1e999", "gallons": "NaN" }, { "mileage": "x", "gallons": "y" }] } } }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). DOUBLE-WRAP wiring via CalcPanel (input:{artifact:{data:{fillups}}}); resolveData() peels the wrapper. Requires >=2 fill-ups; sorts by odometer before differencing. MPG = miles/gallons per full-tank segment; avgMPG = mean; costPerMile = totalCost/(totalGallons*avgMPG). totalFuelCost (NOT totalCost) + readings (NOT mpgReadings) are the real output keys the FuelRepairPanel reads. Poisoned numerics (gallons 'NaN' → parseFloat||1) never NaN-leak into the totals; every output number stays FINITE. Pure compute, no STATE. Pinned by server/tests/automotive-lens-macros.test.js."
+}

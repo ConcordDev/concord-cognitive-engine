@@ -20,8 +20,50 @@
 // All state is per-user in globalThis._concordSTATE.dxPlatformLens. No
 // seed/demo data — every value is real user input or computed from it.
 // Detector definitions are static *rules* (regex patterns), not data.
+//
+// Fail-CLOSED numeric guard: every macro that READS or WRITES from a numeric
+// input (windowDays / count) calls `badNumericField` BEFORE using it, rejecting
+// NaN/Infinity/1e308/negative with `invalid_<field>` instead of silently
+// clamping them to an accepted result (the macro-assassin's V2 vector probes
+// exactly this). Copied from server/domains/literary.js. An absent/null field
+// is fine (the macro uses its default).
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input == null || input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e9) return k;
+  }
+  return null;
+}
+//
+// REGISTRATION (saved-class fix): this file used to register through the
+// legacy `registerLensAction(domain, action, (ctx, artifact, params))`
+// convention AND was NEVER imported by server.js — so every `dx-platform.*`
+// macro was invisible to runMacro and to POST /api/lens/run → every call hit
+// `unknown_macro`, leaving the DxWorkbench (chat/PR-review/search/team/detector
+// config/usage analytics/CI) dead-wired. It is now wired through the canonical
+// `register` (MACROS) registry — `registerDxPlatformActions(register)` in
+// server.js — so the macros are reachable BOTH via POST /api/lens/run AND via
+// runMacro (which the contract engine + macro-assassin + behavior-smoke harness
+// drive).
+//
+// To keep the verified handler bodies byte-for-byte identical we adapt the
+// canonical 2-arg `(ctx, input)` signature back to the legacy
+// `(ctx, _artifact, params)` shape via the `registerLensAction` shim below —
+// `params` is the input, identical to what `/api/lens/run` would have built.
+// Handlers return a `{ ok, result }` envelope (the dispatcher's
+// `_unwrapLensEnvelope` strips the `result` layer so the frontend reads
+// `r.data.result.<field>`).
 
-export default function registerDxPlatformActions(registerLensAction) {
+export default function registerDxPlatformActions(register) {
+  // Legacy-convention shim: adapt canonical register(ctx, input) → the
+  // verified (ctx, _artifact, params) handler bodies below, unchanged.
+  const registerLensAction = (domain, action, handler) =>
+    register(domain, action, (ctx, input = {}) => {
+      const inp = input && typeof input === "object" ? input : {};
+      return handler(ctx, { id: null, domain, type: "domain_action", data: inp, meta: {} }, inp);
+    });
+
   // ── State plumbing ──────────────────────────────────────────────────
   function getState() {
     const STATE = (globalThis._concordSTATE = globalThis._concordSTATE || {});
@@ -491,6 +533,8 @@ export default function registerDxPlatformActions(registerLensAction) {
     if (!userId) return { ok: false, error: "auth_required" };
     const detectorId = String(params.detectorId || "");
     if (!DETECTOR_BY_ID.has(detectorId)) return { ok: false, error: "unknown_detector" };
+    const bad = badNumericField(params, ["count"]);
+    if (bad) return { ok: false, error: `invalid_${bad}` };
     const s = getState();
     const a = userAnalytics(s, userId);
     a.fires.push({
@@ -527,6 +571,8 @@ export default function registerDxPlatformActions(registerLensAction) {
   try {
     const userId = actor(ctx);
     if (!userId) return { ok: false, error: "auth_required" };
+    const bad = badNumericField(params, ["windowDays"]);
+    if (bad) return { ok: false, error: `invalid_${bad}` };
     const s = getState();
     const a = userAnalytics(s, userId);
     const windowDays = Math.max(1, Math.min(parseInt(params.windowDays, 10) || 30, 365));

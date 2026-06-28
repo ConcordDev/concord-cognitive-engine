@@ -78,9 +78,19 @@ export default function registerPharmacyActions(registerLensAction) {
         const aMentionsB = [b.genericName, b.brandName].filter(Boolean).some((n) => aText.includes(n.toLowerCase()));
         const bMentionsA = [a.genericName, a.brandName].filter(Boolean).some((n) => bText.includes(n.toLowerCase()));
         if (aMentionsB || bMentionsA) {
+          // `effect` is a REAL, grounded description of what the FDA labels
+          // actually disclose — derived from which label cross-mentions which.
+          // It is NOT a fabricated clinical claim; it states the observed
+          // co-mention direction so a reader knows where to look.
+          const effect = aMentionsB && bMentionsA
+            ? `Both FDA labels cross-mention each other in their interaction/warnings sections — review both labels.`
+            : aMentionsB
+              ? `${a.name}'s FDA label mentions ${b.name} in its interaction/warnings section — review the ${a.name} label.`
+              : `${b.name}'s FDA label mentions ${a.name} in its interaction/warnings section — review the ${b.name} label.`;
           pairs.push({
             drug1: a.name, drug2: b.name,
             aMentionsB, bMentionsA,
+            effect,
             source: "fda-spl-cross-mention",
             severity: "review-label",
           });
@@ -91,16 +101,39 @@ export default function registerPharmacyActions(registerLensAction) {
       ok: true,
       result: {
         medications: names,
+        // medicationsChecked: the count of distinct drugs actually screened —
+        // a real number the FdaDrugReference + page interaction cards render.
+        medicationsChecked: names.length,
         labels: labels.map(({ drugInteractionsText: _d, warningsText: _w, ...meta }) => meta),
         interactionsFound: pairs.length,
+        // coMentions is the canonical field (PharmacyActionPanel reads it).
+        // `interactions` is the SAME real data under the alias the
+        // FdaDrugReference InteractionsPanel + page interaction list render,
+        // so neither consumer renders a phantom field. Both carry the real
+        // `effect` string + `severity` computed above.
         coMentions: pairs,
+        interactions: pairs,
         source: "openfda-drug-label",
         disclaimer: "FDA SPL cross-mention is a SIGNAL, not a clinical decision. For pharmacy-grade interaction screening, use Lexicomp / First Databank / Wolters Kluwer. ALWAYS verify with a pharmacist.",
       },
     };
   });
 
-  registerLensAction("pharmacy", "dosageCalculator", (ctx, artifact, _params) => { const data = artifact.data || {}; const weight = parseFloat(data.weightKg) || 70; const dosePerKg = parseFloat(data.dosePerKg) || 0; const frequency = parseInt(data.frequencyPerDay) || 1; const maxDaily = parseFloat(data.maxDailyDose) || Infinity; if (!dosePerKg) return { ok: true, result: { message: "Provide dose per kg to calculate." } }; const singleDose = Math.round(weight * dosePerKg * 100) / 100; const dailyDose = singleDose * frequency; const capped = Math.min(dailyDose, maxDaily); return { ok: true, result: { weightKg: weight, dosePerKg, singleDose: `${singleDose} mg`, frequency: `${frequency}x daily`, dailyDose: `${Math.round(capped)} mg`, maxDailyDose: isFinite(maxDaily) ? `${maxDaily} mg` : "not specified", capped: dailyDose > maxDaily, disclaimer: "Verify all dosages with prescriber" } }; });
+  registerLensAction("pharmacy", "dosageCalculator", (ctx, artifact, _params) => { const data = artifact.data || {};
+    // FAIL-CLOSED: a dosing calculator must NEVER emit NaN/Infinity. A non-finite
+    // weight/dose/freq is treated as absent (defaults), and a non-finite dose/kg
+    // returns the honest prompt rather than printing "Infinity mg".
+    const fin = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
+    const weight = fin(data.weightKg) ?? 70;
+    const dosePerKgRaw = fin(data.dosePerKg);
+    const dosePerKg = dosePerKgRaw != null && dosePerKgRaw > 0 ? dosePerKgRaw : 0;
+    const freqRaw = parseInt(data.frequencyPerDay, 10); const frequency = Number.isFinite(freqRaw) && freqRaw > 0 ? freqRaw : 1;
+    const maxFin = fin(data.maxDailyDose); const maxDaily = maxFin != null && maxFin > 0 ? maxFin : Infinity;
+    if (!dosePerKg) return { ok: true, result: { message: "Provide dose per kg to calculate." } };
+    const singleDose = Math.round(weight * dosePerKg * 100) / 100;
+    const dailyDose = singleDose * frequency;
+    const capped = Math.min(dailyDose, maxDaily);
+    return { ok: true, result: { weightKg: weight, dosePerKg, singleDose: `${singleDose} mg`, frequency: `${frequency}x daily`, dailyDose: `${Math.round(capped)} mg`, maxDailyDose: isFinite(maxDaily) ? `${maxDaily} mg` : "not specified", capped: dailyDose > maxDaily, disclaimer: "Verify all dosages with prescriber" } }; });
   registerLensAction("pharmacy", "inventoryAlert", (ctx, artifact, _params) => { const items = artifact.data?.inventory || []; if (items.length === 0) return { ok: true, result: { message: "Add inventory items to monitor." } }; const alerts = items.map(i => { const qty = parseInt(i.quantity) || 0; const reorder = parseInt(i.reorderPoint) || 10; const expiry = i.expiryDate ? new Date(i.expiryDate) : null; const daysToExpiry = expiry ? Math.ceil((expiry.getTime() - Date.now()) / 86400000) : null; return { name: i.name, quantity: qty, reorderPoint: reorder, lowStock: qty <= reorder, expired: daysToExpiry !== null && daysToExpiry <= 0, nearExpiry: daysToExpiry !== null && daysToExpiry > 0 && daysToExpiry <= 30, daysToExpiry }; }); return { ok: true, result: { totalItems: items.length, lowStock: alerts.filter(a => a.lowStock).length, expired: alerts.filter(a => a.expired).length, nearExpiry: alerts.filter(a => a.nearExpiry).length, alerts: alerts.filter(a => a.lowStock || a.expired || a.nearExpiry), allClear: alerts.every(a => !a.lowStock && !a.expired && !a.nearExpiry) } }; });
   registerLensAction("pharmacy", "formularySearch", (ctx, artifact, _params) => { const query = (artifact.data?.query || artifact.data?.drugName || "").toLowerCase(); const formulary = artifact.data?.formulary || []; if (!query) return { ok: true, result: { message: "Provide a drug name to search." } }; const matches = formulary.filter(f => (f.name || f.genericName || "").toLowerCase().includes(query) || (f.brandName || "").toLowerCase().includes(query)); return { ok: true, result: { query, matches: matches.map(m => ({ generic: m.genericName || m.name, brand: m.brandName || "", tier: m.tier || "unknown", covered: m.covered !== false, priorAuth: m.priorAuth || false })), found: matches.length, formularySize: formulary.length } }; });
 

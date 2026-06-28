@@ -1,0 +1,20 @@
+{
+  "macro_id": "dx-platform.getDetectorConfig",
+  "domain": "dx-platform",
+  "name": "getDetectorConfig",
+  "inputs": {
+    "codebaseId": { "type": "string", "maxLength": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.detectors)",
+    "output.ok === false || (output.result.detectors.length === output.result.totalCount)",
+    "output.ok === false || (output.result.enabledCount >= 0 && output.result.enabledCount <= output.result.totalCount)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "codebaseId": "ghost" }, "expect": { "ok": false, "error": "codebase_not_found" } }
+  ],
+  "_note": "With no codebaseId, returns the default detector grid (static rule set — the enabled set is default:true detectors). With a codebaseId the assassin's internal owner actor hasn't indexed → codebase_not_found. No-codebase path NEVER no_db (the grid is static rules, not data)."
+}

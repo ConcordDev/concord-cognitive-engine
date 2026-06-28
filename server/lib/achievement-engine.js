@@ -23,6 +23,12 @@ import { awardSparks } from "./currency.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONTENT_DIR = path.resolve(__dirname, "..", "..", "content", "achievements");
 
+// Sentinel world_id for account-wide achievement titles. `player_titles.world_id`
+// is NOT NULL (migration 192); achievement titles aren't world-scoped, so they
+// share this stable sentinel + the UNIQUE (user_id, world_id, title) index makes
+// re-granting the same title a no-op.
+const ACCOUNT_TITLE_WORLD_ID = "__account__";
+
 /** @type {Map<string, object>} */
 const _catalogCache = new Map();
 /** @type {Map<string, Array<object>>} eventKind → [{achievement, condition}] */
@@ -214,12 +220,18 @@ export function unlockAchievement(db, userId, achievementId, ctx = {}) {
     }
 
     // Title reward: insert into player_titles (table from migration 192).
+    // Achievement titles are ACCOUNT-WIDE, not world-scoped, but the table's
+    // `world_id` is NOT NULL with a UNIQUE (user_id, world_id, title) index — so
+    // we use a stable sentinel world_id and ON CONFLICT DO NOTHING. (Prior code
+    // inserted world_id = NULL, which the NOT NULL constraint rejected on every
+    // real DB, silently dropping the title reward.)
     if (a.rewardTitle) {
       try {
         db.prepare(`
           INSERT INTO player_titles (id, user_id, world_id, title, earned_at)
-          VALUES (?, ?, NULL, ?, unixepoch())
-        `).run(`title_${crypto.randomBytes(6).toString("hex")}`, userId, a.rewardTitle);
+          VALUES (?, ?, ?, ?, unixepoch())
+          ON CONFLICT (user_id, world_id, title) DO NOTHING
+        `).run(`title_${crypto.randomBytes(6).toString("hex")}`, userId, ACCOUNT_TITLE_WORLD_ID, a.rewardTitle);
       } catch (err) {
         logger.warn?.("achievement-engine", "title_insert_failed", { userId, title: a.rewardTitle, error: err?.message });
       }

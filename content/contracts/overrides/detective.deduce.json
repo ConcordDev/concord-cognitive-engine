@@ -1,0 +1,24 @@
+{
+  "macro_id": "detective.deduce",
+  "domain": "detective",
+  "name": "deduce",
+  "inputs": {
+    "crimeId": { "type": "string", "required": true, "maxLength": 80 },
+    "suspectId": { "type": "string", "required": true, "maxLength": 80 },
+    "weapon": { "type": "string", "maxLength": 80 },
+    "motive": { "type": "string", "maxLength": 280 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "(typeof output.ok === 'boolean')",
+    "output.ok === false || typeof output.solved === 'boolean'",
+    "output.ok === false || (typeof output.correctCount === 'number' && output.correctCount >= 0 && output.correctCount <= 3)",
+    "output.ok === false || Array.isArray(output.reasons)",
+    "output.ok === false || output.solved === false || (output.correctCount >= 2 && output.reasons.includes('suspect_match'))",
+    "output.ok === false || output.reasons.includes('suspect_match') || output.solved === false"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "crimeId": "no_such_crime", "suspectId": "x" }, "expect": { "ok": false, "error": "no_crime" } }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "macro_id": "education.generateReportCard",
+  "domain": "education",
+  "name": "generateReportCard",
+  "inputs": {
+    "grades": { "type": "array", "required": false, "maxLength": 5000 },
+    "studentName": { "type": "string", "required": false, "maxLength": 256 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (Number.isFinite(output.result.cumulativeGpa) && output.result.cumulativeGpa >= 0 && output.result.cumulativeGpa <= 4)",
+    "output.ok === false || ['none','honor-roll','high-honors'].includes(output.result.honorRoll)",
+    "output.ok === false || (Array.isArray(output.result.subjects) && output.result.subjects.every(s => Number.isFinite(s.gpa) && Number.isFinite(s.percentage)))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "studentName": "Ada", "grades": [{ "subject": "Math", "score": 95, "maxScore": 100, "credits": 3 }, { "subject": "English", "score": 85, "maxScore": 100, "credits": 1 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "grades": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "grades": [{ "subject": "Math", "score": "Infinity", "maxScore": "NaN", "credits": "abc" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "grades": "broken" } } }, "expect": { "ok": false } }
+  ],
+  "_note": "education.generateReportCard is a LENS_ACTIONS handler reached via /api/lens/run (artifact.data === unwrapped input); the StudentProgress dashboard's 'Report Card' button drives it via useRunArtifact('education'). DETERMINISTIC pure compute. Returns cumulativeGpa, honorRoll, totalSubjects, subjects[].{subject,letterGrade,gpa,percentage,credits}. POISON: score/maxScore/credits coerced via eduFinite — non-finite collapse to a finite fallback (0/100/1) so cumulativeGpa stays in [0,4] and never NaN; a non-array grades throws → caught {ok:false,error:'handler_error'}. Pinned by server/tests/education-lens-macros.test.js."
+}

@@ -1,0 +1,26 @@
+{
+  "macro_id": "education.gradeCalculation",
+  "domain": "education",
+  "name": "gradeCalculation",
+  "inputs": {
+    "students": { "type": "array", "required": false, "maxLength": 5000 },
+    "weightScheme": { "type": "array", "required": false }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (Number.isFinite(output.result.studentsGraded) && output.result.studentsGraded >= 0)",
+    "output.ok === false || (typeof output.result.classStats === 'object' && Number.isFinite(output.result.classStats.average) && Number.isFinite(output.result.classStats.median) && Number.isFinite(output.result.classStats.high) && Number.isFinite(output.result.classStats.low))",
+    "output.ok === false || (Array.isArray(output.result.students) && output.result.students.every(s => Number.isFinite(s.weightedPct) && typeof s.letterGrade === 'string'))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "students": [{ "studentId": "s1", "name": "Ada", "grades": [{ "category": "exams", "score": 90, "maxScore": 100 }, { "category": "homework", "score": 80, "maxScore": 100 }] }], "weightScheme": [{ "category": "exams", "weight": 60 }, { "category": "homework", "weight": 40 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "students": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "students": [{ "studentId": "s1", "name": "Bad", "grades": [{ "category": "exams", "score": "Infinity", "maxScore": "NaN" }] }], "weightScheme": [{ "category": "exams", "weight": "abc" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "students": 123 } } }, "expect": { "ok": false } }
+  ],
+  "_note": "education.gradeCalculation is a LENS_ACTIONS handler (server/domains/education.js, registerLensAction('education','gradeCalculation',...)), NOT a runMacro/MACROS macro — reached via /api/lens/run, 3-arg handler(ctx, virtualArtifact, input) with virtualArtifact.data === input (the dispatch peelRedundantArtifactWrapper unwraps the EducationActionPanel's {artifact:{data}} envelope to a single layer). DETERMINISTIC pure compute (no LLM, no network, no STATE). Returns a CLASS report — studentsGraded, classStats.{average,median,high,low}, students[].{studentId,name,weightedPct,letterGrade,categoryBreakdown}. The component + inline page Domain-Actions panel both render these EXACT fields. POISON: score/maxScore/weight coerced via eduFinite — non-finite (Infinity/NaN/'abc') collapse to a finite fallback (0 / 100 / 0) so every weightedPct + classStat stays FINITE; a non-array students throws inside the map and is caught → {ok:false,error:'handler_error'} (never crashes). Pinned by server/tests/education-lens-macros.test.js."
+}

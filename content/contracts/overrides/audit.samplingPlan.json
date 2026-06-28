@@ -1,0 +1,29 @@
+{
+  "macro_id": "audit.samplingPlan",
+  "domain": "audit",
+  "name": "samplingPlan",
+  "inputs": {
+    "populationSize": { "type": "number" },
+    "confidenceLevel": { "type": "number" },
+    "tolerableErrorRate": { "type": "number" },
+    "expectedErrorRate": { "type": "number" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.sampleSize)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.populationSize)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.confidenceLevel)",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.method === 'string'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.rationale === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "populationSize": 10000, "confidenceLevel": 95, "tolerableErrorRate": 5, "expectedErrorRate": 1 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "populationSize": 5000, "confidenceLevel": 90, "tolerableErrorRate": 2, "expectedErrorRate": 5 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "populationSize": 0 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "populationSize": "Infinity", "confidenceLevel": "NaN", "tolerableErrorRate": "abc", "expectedErrorRate": "12xyz" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. AuditActionPanel.actSample sends FLAT PERCENTS {populationSize, confidenceLevel:95, tolerableErrorRate:5, expectedErrorRate:1}; the original parity path sends {population:{total}} + params.confidenceLevel(0.95 fraction). Handler accepts BOTH: flat component keys (confidenceLevel/tolerableErrorRate/expectedErrorRate) are percents (/100), params keys (marginOfError/expectedDefectRate) are fractions. Finite-population attribute sample size n = (Z^2 p q / E^2) / (1 + (n_inf-1)/N). Result card renders sampleSize / populationSize / confidenceLevel(as a PERCENT for the '{confidenceLevel}% confidence' line) / expectedErrorRate / method / rationale EXACTLY (the prior requiredSampleSize + nested parameters{} fields were NOT what the card read → the sample card was blank and the flat percents reached fraction-reading params; fixed 2026-06-28; requiredSampleSize + parameters{} retained for parity + provenance). Fail-CLOSED numerics: Number()+Number.isFinite, so 'Infinity' populationSize is rejected (-> non-positive -> empty message, never an Infinity sample) and '12abc' confidence falls to the 95% default, never silently accepted as 12."
+}

@@ -1,0 +1,38 @@
+{
+  "macro_id": "crisis.team",
+  "domain": "crisis",
+  "name": "team",
+  "inputs": {
+    "crisisId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.team)",
+    "output.ok === false || Array.isArray(output.result.roles)",
+    "output.ok === false || typeof output.result.count === 'number'",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": false,
+        "error": "missing_crisis_id"
+      }
+    },
+    {
+      "input": {
+        "crisisId": "cr_empty"
+      },
+      "expect": {
+        "ok": true
+      }
+    }
+  ],
+  "_note": "Lists the responder roster for a crisis, bucketed by command role. Unknown/empty crisis \u2192 ok:true with team:[] count:0. Missing crisisId \u2192 missing_crisis_id."
+}

@@ -1,0 +1,137 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.sandbox",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.sandbox.audit_trail",
+      "name": "audit_trail"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.sandbox",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.sandbox.check_permission",
+      "name": "check_permission"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.sandbox",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.sandbox.consume_budget",
+      "name": "consume_budget"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.sandbox",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.sandbox.create_agent",
+      "name": "create_agent"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.sandbox",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.sandbox.create_app",
+      "name": "create_app"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.sandbox",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.sandbox.kill",
+      "name": "kill"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.sandbox",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.sandbox.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.sandbox",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.sandbox.read_memory",
+      "name": "read_memory"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.sandbox",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.sandbox.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.sandbox",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.sandbox.write_memory",
+      "name": "write_memory"
+    }
+  ],
+  "domain": "loaf.sandbox",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 10
+}

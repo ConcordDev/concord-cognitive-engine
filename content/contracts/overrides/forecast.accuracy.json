@@ -1,0 +1,21 @@
+{
+  "macro_id": "forecast.accuracy",
+  "domain": "forecast",
+  "name": "accuracy",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 120 },
+    "limit": { "type": "number", "min": 1, "max": 100 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.summary && typeof output.summary.sample_count === 'number')",
+    "output.ok === false || Array.isArray(output.comparisons)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 30 }, "expect": { "ok": true } },
+    { "input": { "limit": -1 }, "expect": { "ok": false, "error": "invalid_limit" } }
+  ],
+  "_note": "forecast.accuracy compares each past persisted forecast against the persisted forecast nearest its 24h target window (both real rows) and reports kind hit-rate + mean temp error. World-public read — {} returns ok:true with sample_count 0 when too few rows exist to pair, never no_db. limit is a fail-CLOSED numeric: a poisoned value returns ok:false invalid_limit."
+}

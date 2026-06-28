@@ -1,0 +1,29 @@
+{
+  "macro_id": "automotive.maintenanceSchedule",
+  "domain": "automotive",
+  "name": "maintenanceSchedule",
+  "reads_artifact_data": true,
+  "inputs": {
+    "mileage": { "type": "number", "required": false, "min": 1, "max": 100000000 },
+    "year": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.services)",
+    "output.ok === false || output.result.services.length === 12",
+    "output.ok === false || Number.isFinite(output.result.mileage)",
+    "output.ok === false || output.result.services.every(function(s){ return Number.isFinite(s.milesUntilDue) && typeof s.status === 'string'; })",
+    "output.ok === false || Number.isFinite(output.result.overdueCount)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "mileage": 50000, "year": 2020 } } }, "expect": { "ok": true } },
+    { "input": { "mileage": 7500 }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "currentMileage": 4900 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "mileage": 0 } } }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "artifact": { "data": { "mileage": "1e999" } } }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). DOUBLE-WRAP wiring: the lens (AutomotiveActionPanel/VehicleHistory/CalcPanel) sends input:{artifact:{data:{...}}}, so the dispatch's artifact.data ends up as {artifact:{data}}; resolveData() peels exactly one wrapper (carpentry-class double-wrap fix) — also accepts bare params + the currentMileage alias. Rejects mileage<=0 / non-finite ('1e999'→Infinity→parseInt NaN→0→rejected): fail-CLOSED. Returns the 12 OEM-typical service intervals with per-item milesUntilDue + status (due-now/upcoming/ok). Pure compute, no STATE, no network. Pinned by server/tests/automotive-lens-macros.test.js."
+}

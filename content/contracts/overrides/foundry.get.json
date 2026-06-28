@@ -1,0 +1,16 @@
+{
+  "macro_id": "foundry.get",
+  "domain": "foundry",
+  "name": "get",
+  "inputs": { "id": { "type": "string", "required": true } },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || (output.world && typeof output.world.id === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_id" } },
+    { "input": { "id": "fw_does_not_exist" }, "expect": { "ok": false, "reason": "not_found" } }
+  ]
+}

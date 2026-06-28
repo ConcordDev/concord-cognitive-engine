@@ -1,0 +1,25 @@
+{
+  "macro_id": "sub_worlds.discover",
+  "domain": "sub_worlds",
+  "name": "discover",
+  "inputs": {
+    "query": { "type": "string", "maxLength": 120 },
+    "kind": { "type": "string", "enum": ["physics_simulator", "research_zone", "concord_substrate"] },
+    "sort": { "type": "string", "enum": ["popular", "recent", "favorites"] },
+    "limit": { "type": "number", "min": 0, "max": 1000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.worlds)",
+    "output.ok === false || typeof output.result.total === 'number'",
+    "output.ok === false || output.result.worlds.every(w => w.privacy === 'public' || w.can_edit === true)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "sort": "recent" }, "expect": { "ok": true } },
+    { "input": { "query": "lab", "kind": "physics_simulator" }, "expect": { "ok": true } },
+    { "input": { "limit": "NaN" }, "expect": { "ok": false, "error": "bad_numeric_field" } }
+  ],
+  "_note": "sub_worlds.discover is the cross-user gallery: it surfaces PUBLIC worlds always and unlisted/private only to their owner/editors. Archived worlds are excluded. Empty input ⇒ ok:true with a worlds array + total count. query/kind filter; sort ∈ popular|recent|favorites; limit is fail-CLOSED via badNumericField (poisoned NaN/Infinity/-1/1e308 ⇒ ok:false bad_numeric_field). The privacy invariant pins that no non-public world leaks to a non-editor viewer. Live STATE + actor — never no_db."
+}

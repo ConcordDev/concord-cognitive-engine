@@ -1,0 +1,28 @@
+{
+  "macro_id": "hr.interviewScorecard",
+  "domain": "hr",
+  "name": "interviewScorecard",
+  "inputs": {
+    "candidate": { "type": "string", "required": true, "maxLength": 200 },
+    "scores": { "type": "object", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.message !== undefined) || Number.isFinite(output.result.totalScore)",
+    "output.ok === false || (output.result.message !== undefined) || Number.isFinite(output.result.passingScore)",
+    "output.ok === false || (output.result.message !== undefined) || typeof output.result.recommendation === 'string'",
+    "output.ok === false || (output.result.message !== undefined) || (output.result.totalScore >= 0 && output.result.totalScore <= 100)",
+    "output.ok === false || (output.result.message !== undefined) || Array.isArray(output.result.topStrengths)",
+    "output.ok === false || (output.result.message !== undefined) || Array.isArray(output.result.topWeaknesses)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "candidate": "Dana", "scores": { "technical": 5, "communication": 4, "culture": 2, "systems": 1 } }, "expect": { "ok": true } },
+    { "input": { "candidate": "Sam", "scores": { "technical": 5, "communication": 5, "culture": 5, "experience": 4 } }, "expect": { "ok": true } },
+    { "input": { "candidate": "Lee", "scores": {} }, "expect": { "ok": true } },
+    { "input": { "scores": { "technical": 4 } }, "expect": { "ok": false } },
+    { "input": { "candidate": "Z", "scores": { "technical": "12abc", "communication": 99, "culture": 4 } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/hr.js). 3-arg dispatch via /api/lens/run on key 'hr.interviewScorecard'. HrActionPanel sends FLAT { candidate, scores:{dim:N} } (object map, 1-5 per dimension) and renders r.result.{totalScore,passingScore,recommendation,topStrengths[],topWeaknesses[]}. Deterministic pure compute: each dim clamped to [0,5]; totalScore = mean/5*100; passingScore=70; strengths = dims>=4, weaknesses = dims<=2. Was DEAD before the 2026-06-28 fix (handler read data.candidates[] array and returned candidates[]/topCandidate/avgScore). POISON: '12abc'->0 (dropped), 99 clamped to 5, so totalScore never leaves [0,100]. Empty scores -> empty-shape message (not a crash). Not driven by macro-assassin; pinned by server/tests/hr-lens-macros.test.js."
+}

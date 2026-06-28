@@ -1,0 +1,21 @@
+{
+  "macro_id": "ghost-hunt.leaderboard",
+  "domain": "ghost-hunt",
+  "name": "leaderboard",
+  "inputs": {
+    "limit": { "type": "number", "min": 0, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || Array.isArray(output.leaderboard)",
+    "output.ok === false || typeof output.totalHunters === 'number'",
+    "output.ok === false || output.leaderboard.every(e => typeof e.rank === 'number' && e.rank >= 1)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 25 }, "expect": { "ok": true } },
+    { "input": { "limit": -5 }, "expect": { "ok": false, "reason": "invalid_numeric_field" } }
+  ]
+}

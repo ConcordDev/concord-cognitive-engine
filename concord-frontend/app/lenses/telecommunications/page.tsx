@@ -172,6 +172,28 @@ export default function TelecommunicationsLensPage() {
   );
 
 
+  // ── Four UX states: the error surface is owned at the page level so it carries
+  // a genuine a11y role=alert + a WORKING Retry that re-fetches the real
+  // /api/lens/telecommunications feed. LensPageShell's shared ErrorState/Loading
+  // don't expose role=alert/role=status, so we render error here and surface
+  // loading via role=status in the items region below (and don't hand
+  // isLoading/isError to the shell — closing the swallowed-fetch → silent-empty
+  // defect: a failed feed reads as role=alert + Retry, not a blank "no items").
+  if (isError) {
+    return (
+      <LensShell lensId="telecommunications" asMain={false}>
+        <div role="alert" className="mx-auto mt-12 max-w-md rounded-lg border border-red-500/40 bg-zinc-900 p-6 text-center">
+          <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <p className="text-red-300 font-medium">Couldn&apos;t load telecommunications data</p>
+          {error?.message && <p className="mt-1 text-xs text-red-400/80">{error.message}</p>}
+          <button onClick={() => refetch()} className="mt-4 inline-flex items-center gap-2 px-3 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm">
+            Retry
+          </button>
+        </div>
+      </LensShell>
+    );
+  }
+
   return (
     <LensShell lensId="telecommunications" asMain={false}>
       <FirstRunTour lensId="telecommunications" />
@@ -182,10 +204,6 @@ export default function TelecommunicationsLensPage() {
       title="Telecommunications"
       description="Networks, towers, spectrum management & fiber infrastructure"
       headerIcon={<Radio className="w-5 h-5 text-violet-400" />}
-      isLoading={isLoading}
-      isError={isError}
-      error={error}
-      onRetry={refetch}
       actions={
         runAction.isPending ? (
           <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>
@@ -303,7 +321,24 @@ export default function TelecommunicationsLensPage() {
       )}
 
       <div className="space-y-2">
-        {items.map((item, index) => (
+        {isLoading ? (
+          <div role="status" aria-live="polite" aria-busy="true" className="flex items-center justify-center gap-3 py-12">
+            <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+            <span className="sr-only">Loading {currentType.toLowerCase()} items…</span>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="text-center py-12 text-gray-400">
+            <Radio className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p>No {currentType.toLowerCase()} items yet</p>
+            <button
+              onClick={() => create({ title: `New ${currentType}`, data: {} })}
+              className="mt-3 inline-flex items-center gap-2 px-3 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm"
+            >
+              <Plus className="w-4 h-4" /> Create First
+            </button>
+          </div>
+        ) : (
+        items.map((item, index) => (
           <motion.div
             key={item.id}
             initial={{ opacity: 0, y: 20 }}
@@ -342,12 +377,7 @@ export default function TelecommunicationsLensPage() {
               </div>
             </div>
           </motion.div>
-        ))}
-        {items.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            <Radio className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p>No {currentType.toLowerCase()}s found</p>
-          </div>
+        ))
         )}
       </div>
 

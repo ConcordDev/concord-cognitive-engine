@@ -86,6 +86,16 @@ export default function registerCollabActions(registerLensAction) {
     }
     return text;
   }
+  // Fail-CLOSED numeric coercion. parseFloat/parseInt silently leak Infinity
+  // (parseFloat("Infinity") === Infinity) and accept "12abc" as 12, which then
+  // poisons every downstream division/ratio with Infinity/NaN. This helper
+  // returns `fallback` for anything that isn't a finite number, so a poisoned
+  // input degrades to the default instead of corrupting the computed result.
+  function finiteNum(v, fallback = 0) {
+    const n = typeof v === "number" ? v : Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
   // Prune stale presence rows (no heartbeat in 45s).
   function prunePresence(map) {
     const cutoff = cbNow() - 45_000;
@@ -101,7 +111,7 @@ export default function registerCollabActions(registerLensAction) {
     const data = artifact.data || {};
     const participants = data.participants || [];
     const messages = data.messages || [];
-    const duration = parseFloat(data.durationMinutes) || 0;
+    const duration = Math.max(0, finiteNum(data.durationMinutes, 0));
     const participantStats = participants.map(p => {
       const pName = p.name || p;
       const pMessages = messages.filter(m => m.author === pName || m.sender === pName);
@@ -125,9 +135,12 @@ export default function registerCollabActions(registerLensAction) {
     const weights = { code: 3, design: 2.5, document: 2, review: 1.5, discussion: 1, admin: 0.5 };
     const scored = contributions.map(c => {
       const type = (c.type || "discussion").toLowerCase();
-      const quality = parseFloat(c.quality) || 0.7;
+      // Fail-CLOSED: a non-finite / poisoned quality falls to the 0.7 default
+      // (preserving the original `|| 0.7` semantics), then clamps to [0,1].
+      const quality = Math.max(0, Math.min(1, finiteNum(c.quality, 0.7) || 0.7));
       const weight = weights[type] || 1;
-      return { contributor: c.name || c.author, type, quality: Math.round(quality * 100), score: Math.round(weight * quality * 100), count: parseInt(c.count) || 1 };
+      const count = Math.max(1, Math.round(finiteNum(c.count, 1)) || 1);
+      return { contributor: c.name || c.author, type, quality: Math.round(quality * 100), score: Math.round(weight * quality * 100), count };
     });
     const byPerson = {};
     for (const s of scored) {
@@ -160,8 +173,10 @@ export default function registerCollabActions(registerLensAction) {
     if (members.length === 0) return { ok: true, result: { message: "Add team members and tasks to balance workload." } };
     const memberLoads = members.map(m => {
       const assigned = tasks.filter(t => t.assignee === m.name || t.assignee === m);
-      const totalHours = assigned.reduce((s, t) => s + (parseFloat(t.hours || t.estimatedHours) || 2), 0);
-      const capacity = parseFloat(m.capacityHours) || 40;
+      // Fail-CLOSED: poisoned hours/capacity fall to sane defaults (2h/task, 40h cap)
+      // so Infinity/NaN never leaks into totalHours, capacity, or utilization.
+      const totalHours = assigned.reduce((s, t) => s + Math.max(0, finiteNum(t.hours ?? t.estimatedHours, 2) || 2), 0);
+      const capacity = Math.max(1, finiteNum(m.capacityHours, 40) || 40);
       return { name: typeof m === "string" ? m : m.name, assignedTasks: assigned.length, totalHours, capacity, utilization: Math.round((totalHours / capacity) * 100), status: totalHours > capacity ? "overloaded" : totalHours > capacity * 0.8 ? "near-capacity" : "available" };
     });
     const unassigned = tasks.filter(t => !t.assignee);

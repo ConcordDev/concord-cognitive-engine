@@ -1,0 +1,46 @@
+{
+  "macro_id": "crisis.playbook_step",
+  "domain": "crisis",
+  "name": "playbook_step",
+  "inputs": {
+    "crisisId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 120
+    },
+    "stepId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 64
+    },
+    "done": {
+      "type": "boolean"
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.done === 'boolean'",
+    "output.ok === false || typeof output.result.completed === 'number'",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": false,
+        "error": "missing_crisis_or_step"
+      }
+    },
+    {
+      "input": {
+        "crisisId": "cr_x",
+        "stepId": "step_0"
+      },
+      "expect": {
+        "ok": true
+      }
+    }
+  ],
+  "_note": "Toggles a playbook checklist step's completion per-user (default add \u2192 done:true; done:false removes it). Missing crisisId or stepId \u2192 missing_crisis_or_step."
+}

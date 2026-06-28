@@ -1,0 +1,19 @@
+{
+  "macro_id": "photos.share",
+  "domain": "photos",
+  "name": "share",
+  "inputs": {
+    "photoId": { "type": "string", "required": true, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.dtuId === 'string'",
+    "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_photoId" } },
+    { "input": { "photoId": "__no_such_photo__" }, "expect": { "ok": false, "reason": "no_photo" } }
+  ],
+  "_note": "photos.share mints a kind='photo' DTU + flips the photo's visibility to public so the royalty cascade fires when the photo is later cited. Owner-only: a missing photoId rejects missing_photoId; an unknown photo rejects no_photo; a photo owned by someone else rejects not_owner. The assassin's internal owner actor owns no photos, so an arbitrary photoId returns no_photo — never no_db. On success it returns the minted dtuId."
+}

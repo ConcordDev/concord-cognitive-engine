@@ -1,0 +1,26 @@
+{
+  "macro_id": "ml.featureImportance",
+  "domain": "ml",
+  "name": "featureImportance",
+  "inputs": {
+    "features": { "type": "array" },
+    "dataset": { "type": "array" },
+    "target": { "type": "string" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message != null || Array.isArray(output.result.rankings)",
+    "output.ok === false || output.result.message != null || Array.isArray(output.result.topFeatures)",
+    "output.ok === false || !Array.isArray(output.result.rankings) || output.result.rankings.every(r => typeof r.feature === 'string' && Number.isFinite(r.variance) && Number.isFinite(r.stdDev) && Number.isFinite(r.correlation) && Number.isFinite(r.importance))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "features": [{ "x": 1, "y": 2, "t": 1 }, { "x": 2, "y": 1, "t": 0 }, { "x": 3, "y": 5, "t": 1 }, { "x": 4, "y": 1, "t": 0 }], "target": "t" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "dataset": [{ "a": 10, "b": 5 }, { "a": 20, "b": 6 }, { "a": 30, "b": 7 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "features": [{ "a": 1 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "features": [{ "x": "Infinity", "t": 1 }, { "x": "NaN", "t": 0 }, { "x": 3, "t": 1 }], "target": "t" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. Component sends { features: parsed.dataset, target }. Returns totalFeatures/numericFeatures/targetField/rankings[].{feature,variance,stdDev,correlation,absCorrelation,importance}/topFeatures — the EXACT fields MlActionPanel's feature card renders (feature + importance bar). <3 rows → honest {message}. FAIL-CLOSED: a non-finite cell (\"Infinity\"/\"NaN\") makes the field non-numeric (Number.isFinite gate) so it is EXCLUDED from rankings rather than poisoning variance/importance with NaN that renders as `null%` bar width (fixed 2026-06-28)."
+}

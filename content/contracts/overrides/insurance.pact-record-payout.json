@@ -1,0 +1,24 @@
+{
+  "macro_id": "insurance.pact-record-payout",
+  "domain": "insurance",
+  "name": "pact-record-payout",
+  "inputs": {
+    "pactId": { "type": "string", "maxLength": 120 },
+    "cause": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.payout && typeof output.result.payout.id === 'string')",
+    "output.ok === false || Array.isArray(output.result.payout.splits)",
+    "output.ok === false || typeof output.result.payout.totalSparks === 'number'",
+    "output.ok === false || Number.isFinite(output.result.payout.totalSparks)",
+    "output.ok === false || output.result.payout.splits.every(s => Number.isFinite(s.sparks) && s.sparks >= 0)",
+    "output.ok === false || output.result.payout.splits.reduce((a, s) => a + s.sparks, 0) === output.result.payout.totalSparks"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "pact not found" } },
+    { "input": { "pactId": "nope" }, "expect": { "ok": false, "error": "pact not found" } }
+  ],
+  "_note": "insurance.pact-record-payout fires a pact (the insured fell in Concordia) and splits its sparks payout across the accepted beneficiaries by share percentage — the 'claim on death pays out the real amount' path. Idempotent on pactId (a fired pact rejects 'pact already fired'). Guards: revoked/expired/within-24h-of-write/no-accepted-beneficiary all fail-CLOSED. STATE-backed with the internal actor, so an unknown/empty pactId returns 'pact not found' — NEVER no_db."
+}

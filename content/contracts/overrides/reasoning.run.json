@@ -1,0 +1,24 @@
+{
+  "macro_id": "reasoning.run",
+  "domain": "reasoning",
+  "name": "run",
+  "inputs": {
+    "topic": { "type": "string", "maxLength": 2000 },
+    "question": { "type": "string", "maxLength": 2000 },
+    "mode": { "type": "string", "enum": ["deductive", "inductive", "abductive", "adversarial", "analogical", "temporal", "counterfactual"] },
+    "depth": { "type": "number", "min": 1, "max": 5 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.traceId === 'string'",
+    "output.ok === false || Array.isArray(output.chains)",
+    "Array.isArray(output.modes) && output.modes.length === 7"
+  ],
+  "fuzz_cases": [
+    { "input": { "topic": "Does X imply Y?", "mode": "deductive", "depth": 3 }, "expect": { "ok": true } },
+    { "input": { "mode": "deductive" }, "expect": { "ok": false, "error": "topic_or_question_required" } },
+    { "input": { "topic": "valid topic", "mode": "not_a_mode" }, "expect": { "ok": false, "error": "invalid_mode" } }
+  ],
+  "_note": "reasoning.run delegates to server/emergent/hlr-engine.js#runHLR. A run needs topic OR question; mode is one of the 7 reasoning modes; depth clamps 1..5. On success it records a real in-memory trace (traceId) reachable via reasoning.trace. The 7-mode list is always surfaced for the filter UI."
+}

@@ -1,0 +1,98 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "combat_polish",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "combat_polish.attempt_dodge",
+      "name": "attempt_dodge"
+    },
+    {
+      "_derived": true,
+      "domain": "combat_polish",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "combat_polish.attempt_grapple",
+      "name": "attempt_grapple"
+    },
+    {
+      "_derived": true,
+      "domain": "combat_polish",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "combat_polish.attempt_parry",
+      "name": "attempt_parry"
+    },
+    {
+      "_derived": true,
+      "domain": "combat_polish",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "combat_polish.change_stance",
+      "name": "change_stance"
+    },
+    {
+      "_derived": true,
+      "domain": "combat_polish",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "combat_polish.list_profiles",
+      "name": "list_profiles"
+    },
+    {
+      "_derived": true,
+      "domain": "combat_polish",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "combat_polish.recent_events",
+      "name": "recent_events"
+    },
+    {
+      "_derived": true,
+      "domain": "combat_polish",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "combat_polish.state_for_actor",
+      "name": "state_for_actor"
+    }
+  ],
+  "domain": "combat_polish",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 7
+}

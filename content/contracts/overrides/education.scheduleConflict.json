@@ -1,0 +1,25 @@
+{
+  "macro_id": "education.scheduleConflict",
+  "domain": "education",
+  "name": "scheduleConflict",
+  "inputs": {
+    "schedules": { "type": "array", "required": false, "maxLength": 5000 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (Number.isFinite(output.result.conflictsFound) && output.result.conflictsFound >= 0)",
+    "output.ok === false || (Number.isFinite(output.result.totalEntries) && typeof output.result.conflictFree === 'boolean')",
+    "output.ok === false || (Array.isArray(output.result.conflicts) && output.result.conflicts.every(c => Number.isFinite(c.overlapMinutes)))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "schedules": [{ "id": "x", "title": "A", "day": "Mon", "startTime": "09:00", "endTime": "10:00", "room": "101" }, { "id": "y", "title": "B", "day": "Mon", "startTime": "09:30", "endTime": "10:30", "room": "101" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "schedules": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "schedules": [{ "id": "x", "day": "Mon", "startTime": "not:time", "endTime": null }, { "id": "y", "day": "Mon", "startTime": null, "endTime": "??:??" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "schedules": 42 } } }, "expect": { "ok": false } }
+  ],
+  "_note": "education.scheduleConflict is a LENS_ACTIONS handler reached via /api/lens/run (artifact.data === unwrapped input). DETERMINISTIC pure compute. Returns the conflict tally the inline page Domain-Actions panel reads — conflictsFound, totalEntries, conflictFree, conflicts[].{day,conflictType,overlapMinutes}. POISON: garbage HH:MM strings parse to NaN minutes but overlap math stays finite (no crash, no NaN overlap leaked); a non-array schedules throws → caught {ok:false,error:'handler_error'}. Pinned by server/tests/education-lens-macros.test.js."
+}

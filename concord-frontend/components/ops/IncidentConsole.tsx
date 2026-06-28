@@ -80,6 +80,21 @@ async function run<T = any>(name: string, params: Record<string, unknown> = {}):
   }
 }
 
+// Same call, but surfaces the failure reason so the primary incidents view can
+// render an honest role=alert error state with a working Retry (vs silently
+// swallowing it). Returns { ok, result } | { ok:false, error }.
+async function runResult<T = any>(name: string, params: Record<string, unknown> = {}): Promise<
+  { ok: true; result: T } | { ok: false; error: string }
+> {
+  try {
+    const r = await lensRun('ops', name, params);
+    if (r.data?.ok) return { ok: true, result: r.data.result as T };
+    return { ok: false, error: r.data?.error || 'request failed' };
+  } catch (e) {
+    return { ok: false, error: (e as { message?: string })?.message || 'network error' };
+  }
+}
+
 // ───────────────────────── component ─────────────────────────
 export function IncidentConsole() {
   const [tab, setTab] = useState<Tab>('incidents');
@@ -99,6 +114,9 @@ export function IncidentConsole() {
   const [status, setStatus] = useState<StatusPage | null>(null);
   const [graphEdges, setGraphEdges] = useState<Array<{ from: string; to: string }>>([]);
   const [selectedIncident, setSelectedIncident] = useState<string | null>(null);
+  // Primary-surface load state (incidents) → drives the four UX states.
+  const [incLoading, setIncLoading] = useState(true);
+  const [incError, setIncError] = useState<string | null>(null);
 
   const flash = (kind: 'ok' | 'err', text: string) => {
     setToast({ kind, text });
@@ -107,8 +125,12 @@ export function IncidentConsole() {
 
   // ── loaders ──
   const loadIncidents = useCallback(async () => {
-    const r = await run<{ incidents: Incident[] }>('incidentList', {});
-    if (r) setIncidents(r.incidents || []);
+    setIncLoading(true);
+    setIncError(null);
+    const r = await runResult<{ incidents: Incident[] }>('incidentList', {});
+    if (r.ok) setIncidents(r.result.incidents || []);
+    else setIncError(r.error);
+    setIncLoading(false);
   }, []);
   const loadAlerts = useCallback(async () => {
     const r = await run<{ alerts: RawAlert[] }>('alertList', { limit: 50 });
@@ -289,6 +311,7 @@ export function IncidentConsole() {
           selected={selectedIncident} onSelect={setSelectedIncident}
           onCreate={createIncident} onTransition={transition} onNote={noteIncident}
           onNotify={dispatchNotify} notifications={notifications}
+          loading={incLoading} error={incError} onRetry={loadIncidents}
         />
       )}
       {tab === 'alerts' && <AlertsTab alerts={alerts} busy={busy} onIngest={ingestAlert} />}
@@ -309,6 +332,7 @@ export function IncidentConsole() {
 // ───────────────────────── incidents ─────────────────────────
 function IncidentsTab({
   incidents, services, busy, selected, onSelect, onCreate, onTransition, onNote, onNotify, notifications,
+  loading, error, onRetry,
 }: {
   incidents: Incident[]; services: Service[]; busy: string | null;
   selected: string | null; onSelect: (id: string | null) => void;
@@ -317,6 +341,7 @@ function IncidentsTab({
   onNote: (id: string, n: string) => void;
   onNotify: (id: string | null, t: string, c: Channel, m: string) => void;
   notifications: Notification[];
+  loading: boolean; error: string | null; onRetry: () => void;
 }) {
   const [title, setTitle] = useState('');
   const [sev, setSev] = useState<Sev>('sev2');
@@ -353,12 +378,36 @@ function IncidentsTab({
           </button>
         </div>
 
-        {incidents.length === 0 ? (
-          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-400">
-            No incidents. Trigger one above or ingest an alert.
+        {loading ? (
+          <div
+            data-testid="ops-incidents-loading"
+            role="status"
+            aria-busy="true"
+            aria-live="polite"
+            className="flex items-center justify-center gap-2 rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-xs text-zinc-400"
+          >
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading incidents…
+          </div>
+        ) : error ? (
+          <div
+            data-testid="ops-incidents-error"
+            role="alert"
+            className="flex flex-col items-center gap-2 rounded border border-rose-500/40 bg-rose-500/10 px-4 py-8 text-center text-xs text-rose-200"
+          >
+            <span className="flex items-center gap-1.5"><AlertTriangle className="h-4 w-4" aria-hidden /> Couldn&apos;t load incidents: {error}</span>
+            <button
+              onClick={onRetry}
+              className="rounded border border-rose-400/50 bg-rose-500/20 px-3 py-1 font-medium text-rose-100 hover:bg-rose-500/30 focus:outline-none focus:ring-2 focus:ring-rose-400/50"
+            >
+              Retry
+            </button>
+          </div>
+        ) : incidents.length === 0 ? (
+          <p data-testid="ops-incidents-empty" className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-400">
+            No incidents yet. Trigger one above or ingest an alert.
           </p>
         ) : (
-          <ul className="space-y-1.5">
+          <ul data-testid="ops-incidents-list" className="space-y-1.5">
             {incidents.map((i) => (
               <li key={i.id}>
                 <button

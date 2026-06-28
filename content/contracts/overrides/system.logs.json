@@ -1,0 +1,29 @@
+{
+  "macro_id": "system.logs",
+  "domain": "system",
+  "name": "logs",
+  "inputs": {
+    "level": { "type": "string", "enum": ["error", "warn", "info", "debug"] },
+    "source": { "type": "string", "maxLength": 80 },
+    "lens": { "type": "string", "maxLength": 80 },
+    "search": { "type": "string", "maxLength": 200 },
+    "since": { "type": "string" },
+    "limit": { "type": "number", "minimum": 1, "maximum": 1000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.entries))",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.entries.length)",
+    "output.ok === false || (output.result.tally && typeof output.result.tally.error === 'number')",
+    "output.ok === false || Array.isArray(output.result.sources)",
+    "output.ok === false || typeof output.result.bufferSize === 'number'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "level": "error", "limit": 50 }, "expect": { "ok": true } },
+    { "input": { "limit": "Infinity" }, "expect": { "ok": false, "error": "invalid_limit" } },
+    { "input": { "limit": -5 }, "expect": { "ok": false, "error": "invalid_limit" } }
+  ],
+  "_note": "Searches the in-process logger ring buffer (level/source/lens/free-text filters). The buffer is shared server state, not per-actor or DB → ok:true with whatever entries the live logger has accumulated (possibly empty; NEVER no_db). A poisoned numeric limit fails CLOSED with invalid_limit before any query."
+}

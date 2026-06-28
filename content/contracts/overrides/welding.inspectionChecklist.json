@@ -1,0 +1,30 @@
+{
+  "macro_id": "welding.inspectionChecklist",
+  "domain": "welding",
+  "name": "inspectionChecklist",
+  "inputs": {
+    "weldType": { "type": "string", "maxLength": 40 },
+    "code": { "type": "string", "maxLength": 40 },
+    "inspections": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.checklist)",
+    "output.ok === false || output.result.checklist.length === output.result.totalItems",
+    "output.ok === false || Number.isFinite(output.result.passed)",
+    "output.ok === false || Number.isFinite(output.result.failed)",
+    "output.ok === false || Number.isFinite(output.result.pending)",
+    "output.ok === false || (output.result.passRate >= 0 && output.result.passRate <= 100)",
+    "output.ok === false || typeof output.result.verdict === 'string'",
+    "output.ok === false || output.result.checklist.every(c => ['pass','fail','pending'].includes(c.status))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "weldType": "butt", "code": "AWS D1.1", "inspections": [{ "item": "Visual inspection — surface cracks", "passed": true }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "weldType": "fillet", "code": "ASME IX" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "weldType": "butt", "inspections": "not-an-array" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. Builds a code/weldType-derived checklist; each entry carries status 'pass'|'fail'|'pending' resolved against the caller's inspections[] (matched by item text). passRate = round(passed/totalItems × 100). verdict: any fail → FAIL, else any pending → INCOMPLETE, else PASS. A non-array/garbage inspections payload is filtered to empty (Array.isArray + object-filter guard) — never crashes. Result card maps over checklist[] and derives the NDT panel from category==='ndt' EXACTLY (the prior items[].passed(boolean)/criticalFailed/ndtRequired/ndtRecommendations fields were never returned; checklist entries use status strings, not booleans — fixed 2026-06-28)."
+}

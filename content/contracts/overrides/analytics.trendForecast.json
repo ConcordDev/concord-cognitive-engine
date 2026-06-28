@@ -1,0 +1,27 @@
+{
+  "macro_id": "analytics.trendForecast",
+  "domain": "analytics",
+  "name": "trendForecast",
+  "inputs": {
+    "dataPoints": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || ['upward','downward','flat'].indexOf(output.result.trend) >= 0",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.slope)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.lastValue)",
+    "output.ok === false || output.result.message !== undefined || (Array.isArray(output.result.forecast) && output.result.forecast.every(function(f){ return Number.isFinite(f.periodsAhead) && Number.isFinite(f.predicted); }))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "dataPoints": [] }, "expect": { "ok": true } },
+    { "input": { "dataPoints": [{ "value": 10 }, { "value": 20 }, { "value": 30 }, { "value": 40 }] }, "expect": { "ok": true } },
+    { "input": { "dataPoints": [{ "value": "1e999" }, { "value": 1 }, { "value": 2 }] }, "expect": { "ok": true } },
+    { "input": { "dataPoints": [{ "value": "Infinity" }, { "value": "NaN" }, { "value": 3 }] }, "expect": { "ok": true } },
+    { "input": { "dataPoints": "nope" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'analytics.trendForecast'. Component sends {artifact:{data:{dataPoints:[{value}]}}}. Returns {trend,slope,dataPoints,lastValue,forecast:[{periodsAhead,predicted}],confidence}. POISON (real bug fixed): parseFloat('1e999')=Infinity poisoned slope/predicted → null → blank render. finNum + safeRound keep slope/lastValue/predicted FINITE and trend in {upward,downward,flat}. Pinned by server/tests/analytics-lens-macros.test.js."
+}

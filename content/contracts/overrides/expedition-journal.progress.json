@@ -1,0 +1,21 @@
+{
+  "macro_id": "expedition-journal.progress",
+  "domain": "expedition-journal",
+  "name": "progress",
+  "inputs": {
+    "worldId": { "type": "string", "enum": ["concordia-hub", "concord-link-frontier", "cyber", "fantasy", "lattice-crucible", "sovereign-ruins"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.stages))",
+    "output.ok === false || (typeof output.result.completed === 'number' && output.result.completed >= 0 && output.result.completed <= output.result.total)",
+    "output.ok === false || (output.result.percent >= 0 && output.result.percent <= 100)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "worldId": "cyber" }, "expect": { "ok": true } },
+    { "input": { "worldId": "atlantis" }, "expect": { "ok": false } }
+  ],
+  "_note": "Per-user per-world progress view from globalThis._concordSTATE.expeditionJournalLens. The assassin runs with an internal owner actor, so {} returns ok:true (worldId defaults to concordia-hub, all stages incomplete — NEVER no_db). An unknown world returns ok:false 'unknown world: <id>'. completed never exceeds total; percent is 0..100."
+}

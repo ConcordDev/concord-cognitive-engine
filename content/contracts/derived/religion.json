@@ -1,0 +1,202 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.accuse_heresy",
+      "name": "accuse_heresy"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.constants",
+      "name": "constants"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.convert",
+      "name": "convert"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.excommunicate",
+      "name": "excommunicate"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.found",
+      "name": "found"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.join",
+      "name": "join"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.leave",
+      "name": "leave"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.my_worship",
+      "name": "my_worship"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.pray",
+      "name": "pray"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.recent_events",
+      "name": "recent_events"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.sermon",
+      "name": "sermon"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.tick",
+      "name": "tick"
+    },
+    {
+      "_derived": true,
+      "domain": "religion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "religion.worshipper",
+      "name": "worshipper"
+    }
+  ],
+  "domain": "religion",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 15
+}

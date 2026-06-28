@@ -572,8 +572,9 @@ export default function CarpentryLensPage() {
         </button>
       </div>
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
+        <div className="flex items-center justify-center py-12" role="status" aria-live="polite">
           <div className="w-6 h-6 border-2 border-neon-blue border-t-transparent rounded-full animate-spin" />
+          <span className="sr-only">Loading {activeArtifactType} items…</span>
         </div>
       ) : filtered.length === 0 ? (
         <div className={cn(ds.panel, 'text-center py-12')}>
@@ -637,6 +638,27 @@ export default function CarpentryLensPage() {
     </div>
   );
 
+  // ── Four UX states: loading / error own page-level surfaces so they carry
+  // genuine a11y roles (role=status / role=alert) and a WORKING Retry that
+  // re-fetches the real /api/lens/carpentry feed. (LensPageShell's shared
+  // Loading/ErrorState don't expose these roles, so we render them here and
+  // don't hand isLoading/isError to the shell — empty + populated render
+  // through renderLibrary below.)
+  if (isError) {
+    return (
+      <LensShell lensId="carpentry" asMain={false}>
+        <div role="alert" className={cn(ds.panel, 'mx-auto mt-12 max-w-md border-red-500/40 text-center')}>
+          <X className="w-10 h-10 text-red-400 mx-auto mb-3" />
+          <p className="text-red-300 font-medium">Couldn&apos;t load carpentry data</p>
+          {error?.message && <p className="mt-1 text-xs text-red-400/80">{error.message}</p>}
+          <button onClick={() => refetch()} className={cn(ds.btnPrimary, 'mt-4')}>
+            Retry
+          </button>
+        </div>
+      </LensShell>
+    );
+  }
+
   return (
     <LensShell lensId="carpentry" asMain={false}>
       <FirstRunTour lensId="carpentry" />
@@ -647,10 +669,6 @@ export default function CarpentryLensPage() {
       title="Carpentry"
       description="Jobs, estimates, codes, materials, CRM, invoicing, inspections, and certifications"
       headerIcon={<Hammer className="w-6 h-6" />}
-      isLoading={isLoading}
-      isError={isError}
-      error={error}
-      onRetry={refetch}
       actions={
         <>
           {runAction.isPending && (

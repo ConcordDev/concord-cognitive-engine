@@ -1,0 +1,20 @@
+{
+  "macro_id": "ops.incidentList",
+  "domain": "ops",
+  "name": "incidentList",
+  "inputs": {
+    "status": { "type": "string", "maxLength": 20 },
+    "severity": { "type": "string", "maxLength": 8 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.incidents))",
+    "output.ok === false || (typeof output.result.total === 'number' && output.result.total === output.result.incidents.length)",
+    "output.ok === false || (typeof output.result.open === 'number' && output.result.open <= output.result.total)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Lists the caller's incidents (optionally filtered by status/severity) from per-user STATE.opsLens.incidents keyed by ctx.actor.userId. The assassin's internal owner actor has none yet → ok:true with an empty incidents[] and total/open 0 (NEVER no_db)."
+}

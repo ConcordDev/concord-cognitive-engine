@@ -1,0 +1,21 @@
+{
+  "macro_id": "agriculture.predict-yield",
+  "domain": "agriculture",
+  "name": "predict-yield",
+  "inputs": {
+    "crop": { "type": "string", "maxLength": 40 },
+    "soilType": { "type": "string", "maxLength": 24 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result.estimatedYieldPerAcre === 'number' && Number.isFinite(output.result.estimatedYieldPerAcre)",
+    "typeof output.result.totalYield === 'number' && !Number.isNaN(output.result.totalYield)",
+    "output.result.estimatedYieldPerAcre >= 0"
+  ],
+  "fuzz_cases": [
+    { "input": { "crop": "corn", "acreage": 10, "soilType": "loam" }, "expect": { "ok": true } },
+    { "input": { "crop": "soybeans", "acreage": 5, "soilType": "clay" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ]
+}

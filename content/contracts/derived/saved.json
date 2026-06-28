@@ -1,0 +1,362 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "saved",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "kind": "link",
+            "title": "Concord docs",
+            "url": "https://x"
+          }
+        },
+        {
+          "expect": {
+            "error": "need_title_or_ref",
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "kind": {
+          "enum": [
+            "post",
+            "dtu",
+            "article",
+            "artifact",
+            "link",
+            "other"
+          ],
+          "type": "string"
+        },
+        "note": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "refId": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "tags": {
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 400,
+          "type": "string"
+        },
+        "url": {
+          "maxLength": 1000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.item && typeof output.result.item.id === 'string')",
+        "output.ok === false || typeof output.result.deduped === 'boolean'",
+        "output.ok === false || ['post','dtu','article','artifact','link','other'].includes(output.result.item.kind)",
+        "output.ok === false || ['unread','read','archived'].includes(output.result.item.state)"
+      ],
+      "macro_id": "saved.add",
+      "name": "add"
+    },
+    {
+      "_derived": true,
+      "domain": "saved",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "saved.export",
+      "name": "export"
+    },
+    {
+      "_derived": false,
+      "domain": "saved",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Reading list"
+          }
+        },
+        {
+          "expect": {
+            "error": "need_name",
+            "ok": false
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {
+        "color": {
+          "maxLength": 20,
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 400,
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.folder && typeof output.result.folder.id === 'string')",
+        "output.ok === false || (typeof output.result.folder.name === 'string' && output.result.folder.name.length > 0)"
+      ],
+      "macro_id": "saved.folderCreate",
+      "name": "folderCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "saved",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "saved.folderDelete",
+      "name": "folderDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "saved",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "saved.folderList",
+      "name": "folderList"
+    },
+    {
+      "_derived": true,
+      "domain": "saved",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "saved.folderUpdate",
+      "name": "folderUpdate"
+    },
+    {
+      "_derived": false,
+      "domain": "saved",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "kind": "dtu",
+            "limit": 10,
+            "order": "asc",
+            "sortBy": "title",
+            "state": "unread"
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_limit",
+            "ok": false
+          },
+          "input": {
+            "limit": -1
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_offset",
+            "ok": false
+          },
+          "input": {
+            "offset": -5
+          }
+        }
+      ],
+      "inputs": {
+        "kind": {
+          "enum": [
+            "post",
+            "dtu",
+            "article",
+            "artifact",
+            "link",
+            "other"
+          ],
+          "type": "string"
+        },
+        "limit": {
+          "max": 500,
+          "min": 1,
+          "type": "number"
+        },
+        "offset": {
+          "max": 1000000,
+          "min": 0,
+          "type": "number"
+        },
+        "order": {
+          "enum": [
+            "asc",
+            "desc"
+          ],
+          "type": "string"
+        },
+        "query": {
+          "maxLength": 400,
+          "type": "string"
+        },
+        "sortBy": {
+          "enum": [
+            "savedAt",
+            "title",
+            "author",
+            "updatedAt"
+          ],
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "unread",
+            "read",
+            "archived"
+          ],
+          "type": "string"
+        },
+        "tag": {
+          "maxLength": 40,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && Array.isArray(output.result.items))",
+        "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 0)",
+        "output.ok === false || (typeof output.result.matched === 'number' && output.result.matched <= output.result.total)",
+        "output.ok === false || output.result.items.length <= output.result.matched"
+      ],
+      "macro_id": "saved.list",
+      "name": "list"
+    },
+    {
+      "_derived": false,
+      "domain": "saved",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "need_id",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "not_found",
+            "ok": false
+          },
+          "input": {
+            "id": "does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 200,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.removed === 'string')"
+      ],
+      "macro_id": "saved.remove",
+      "name": "remove"
+    },
+    {
+      "_derived": true,
+      "domain": "saved",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "saved.stats",
+      "name": "stats"
+    },
+    {
+      "_derived": true,
+      "domain": "saved",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "saved.tags",
+      "name": "tags"
+    },
+    {
+      "_derived": true,
+      "domain": "saved",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "saved.update",
+      "name": "update"
+    }
+  ],
+  "domain": "saved",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 11
+}

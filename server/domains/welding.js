@@ -1,11 +1,18 @@
 // server/domains/welding.js
 export default function registerWeldingActions(registerLensAction) {
+  // Fail-closed numeric coercion for the pure calculators: a non-finite input
+  // (NaN / Infinity / "abc") falls back to `dflt` so a poisoned field can never
+  // leak NaN/Infinity into a computed result. parseFloat alone passes Infinity
+  // through ("Infinity" → Infinity), so Number.isFinite is the real guard.
+  const wFinite = (v, dflt) => { const n = parseFloat(v); return Number.isFinite(n) ? n : dflt; };
+
   registerLensAction("welding", "jointStrength", (ctx, artifact, _params) => {
+    try {
     const data = artifact.data || {};
-    const thickness = parseFloat(data.thickness) || 6;
+    const thickness = wFinite(data.thickness, 6);
     const weldType = (data.weldType || "fillet").toLowerCase();
     const material = (data.material || "mild-steel").toLowerCase();
-    const length = parseFloat(data.length) || 100;
+    const length = wFinite(data.length, 100);
     const tensileStrengths = { "mild-steel": 400, "stainless-steel": 520, "aluminum": 270, "high-strength": 690, "cast-iron": 200 };
     const tensile = tensileStrengths[material] || 400;
     const weldFactors = { fillet: 0.707, butt: 1.0, groove: 0.9, lap: 0.65, plug: 0.5 };
@@ -15,14 +22,16 @@ export default function registerWeldingActions(registerLensAction) {
     const loadCapacity = Math.round(throatSize * length * shearStrength / 1000);
     const safeLoad = Math.round(loadCapacity / 1.5);
     return { ok: true, result: { material, weldType, thickness: `${thickness}mm`, length: `${length}mm`, throatSize: `${Math.round(throatSize * 10) / 10}mm`, tensileStrength: `${tensile} MPa`, theoreticalCapacity: `${loadCapacity} kN`, safeWorkingLoad: `${safeLoad} kN`, safetyFactor: 1.5, rating: safeLoad > 100 ? "heavy-duty" : safeLoad > 50 ? "structural" : safeLoad > 20 ? "medium-duty" : "light-duty" } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
   registerLensAction("welding", "rodSelection", (ctx, artifact, _params) => {
+    try {
     const data = artifact.data || {};
     const baseMetal = (data.baseMetal || data.material || "mild-steel").toLowerCase();
     const position = (data.position || "flat").toLowerCase();
     const jointType = (data.jointType || "fillet").toLowerCase();
-    const thickness = parseFloat(data.thickness) || 6;
+    const thickness = wFinite(data.thickness, 6);
     const rodDatabase = {
       "mild-steel": [
         { rod: "E6010", process: "SMAW", positions: ["all"], notes: "Deep penetration, all-position", amps: { min: 75, max: 130 } },
@@ -45,25 +54,32 @@ export default function registerWeldingActions(registerLensAction) {
     const recommended = suitable[0] || rods[0];
     const diameter = thickness <= 3 ? 2.4 : thickness <= 6 ? 3.2 : thickness <= 12 ? 4.0 : 5.0;
     return { ok: true, result: { baseMetal, position, jointType, materialThickness: `${thickness}mm`, recommended: { rod: recommended.rod, process: recommended.process, diameter: `${diameter}mm`, amperageRange: `${recommended.amps.min}-${recommended.amps.max}A`, notes: recommended.notes }, alternatives: suitable.slice(1).map(r => ({ rod: r.rod, process: r.process, notes: r.notes })), tips: [`Preheat if thickness > 25mm`, `Clean base metal thoroughly before welding`, position === "overhead" ? "Use lower amperage for overhead position" : null].filter(Boolean) } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
   registerLensAction("welding", "heatInput", (ctx, artifact, _params) => {
-    const voltage = parseFloat(artifact.data?.voltage) || 25;
-    const amperage = parseFloat(artifact.data?.amperage || artifact.data?.current) || 150;
-    const travelSpeed = parseFloat(artifact.data?.travelSpeed) || 5;
-    const efficiency = parseFloat(artifact.data?.efficiency) || 0.8;
-    const maxInterpass = parseFloat(artifact.data?.maxInterpassTemp) || 250;
+    try {
+    const voltage = wFinite(artifact.data?.voltage, 25);
+    const amperage = wFinite(artifact.data?.amperage ?? artifact.data?.current, 150);
+    const travelSpeedRaw = wFinite(artifact.data?.travelSpeed, 5);
+    // Guard against a zero/negative travel speed: heatInput = V·I·η / v would
+    // divide by zero and emit Infinity. Floor at a tiny positive value.
+    const travelSpeed = travelSpeedRaw > 0 ? travelSpeedRaw : 5;
+    const efficiency = wFinite(artifact.data?.efficiency, 0.8);
+    const maxInterpass = wFinite(artifact.data?.maxInterpassTemp, 250);
     const heatInputJmm = (voltage * amperage * efficiency) / travelSpeed;
     const heatInputKJmm = Math.round(heatInputJmm / 1000 * 100) / 100;
     const risk = heatInputKJmm > 3.0 ? "high" : heatInputKJmm > 1.5 ? "moderate" : "low";
     return { ok: true, result: { voltage: `${voltage}V`, amperage: `${amperage}A`, travelSpeed: `${travelSpeed} mm/s`, efficiency, heatInput: `${heatInputKJmm} kJ/mm`, heatInputJoules: Math.round(heatInputJmm), maxInterpassTemp: `${maxInterpass}°C`, distortionRisk: risk, recommendations: [heatInputKJmm > 2.5 ? "Reduce heat input — increase travel speed or reduce amperage" : null, heatInputKJmm < 0.5 ? "Low heat input — risk of incomplete fusion" : null, "Monitor interpass temperature between passes", risk === "high" ? "Use backstep welding technique to reduce distortion" : null].filter(Boolean) } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
   registerLensAction("welding", "inspectionChecklist", (ctx, artifact, _params) => {
+    try {
     const data = artifact.data || {};
     const weldType = (data.weldType || "fillet").toLowerCase();
     const code = (data.code || "AWS D1.1").toUpperCase();
-    const inspections = data.inspections || [];
+    const inspections = (Array.isArray(data.inspections) ? data.inspections : []).filter((i) => i && typeof i === "object");
     const baseChecklist = [
       { item: "Visual inspection — surface cracks", category: "visual", required: true },
       { item: "Visual inspection — porosity", category: "visual", required: true },
@@ -88,6 +104,7 @@ export default function registerWeldingActions(registerLensAction) {
     const failed = checklist.filter(c => c.status === "fail").length;
     const pending = checklist.filter(c => c.status === "pending").length;
     return { ok: true, result: { weldType, code, totalItems: checklist.length, passed, failed, pending, passRate: checklist.length > 0 ? Math.round((passed / checklist.length) * 100) : 0, checklist, verdict: failed > 0 ? "FAIL — rework required" : pending > 0 ? "INCOMPLETE — inspections pending" : "PASS — all inspections cleared" } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
   // ─── Field-service operations substrate (per-user, STATE-backed) ──────

@@ -9,17 +9,23 @@ export default function registerRetailActions(registerLensAction) {
    */
   registerLensAction("retail", "reorderCheck", (ctx, artifact, _params) => {
   try {
-    const products = artifact.data.products || artifact.data.inventory || [];
+    // FAIL-CLOSED numeric coercion: parseFloat("Infinity")===Infinity would leak
+    // a non-finite onHand/daysOfStock into the rendered card, so reject non-finite.
+    const finNum = (v, fallback = 0) => { const n = Number(v); return Number.isFinite(n) ? n : fallback; };
+    const products = Array.isArray(artifact.data.products)
+      ? artifact.data.products
+      : (Array.isArray(artifact.data.inventory) ? artifact.data.inventory : []);
 
     const needsReorder = [];
     const critical = [];
     const sufficient = [];
 
     for (const product of products) {
-      const onHand = parseFloat(product.onHand) || 0;
-      const reorderPoint = parseFloat(product.reorderPoint) || 0;
-      const dailyUsage = parseFloat(product.dailyUsage) || 0;
-      const leadTimeDays = parseFloat(product.leadTimeDays) || 7;
+      if (!product || typeof product !== "object") continue;
+      const onHand = Math.max(0, finNum(product.onHand, 0));
+      const reorderPoint = Math.max(0, finNum(product.reorderPoint, 0));
+      const dailyUsage = Math.max(0, finNum(product.dailyUsage, 0));
+      const leadTimeDays = finNum(product.leadTimeDays, 7);
       const daysOfStock = dailyUsage > 0 ? Math.floor(onHand / dailyUsage) : Infinity;
       const willStockOutBeforeDelivery = daysOfStock < leadTimeDays;
 
@@ -28,8 +34,8 @@ export default function registerRetailActions(registerLensAction) {
         name: product.name,
         onHand,
         reorderPoint,
-        reorderQty: product.reorderQty || 0,
-        daysOfStock: daysOfStock === Infinity ? "N/A" : daysOfStock,
+        reorderQty: Math.max(0, finNum(product.reorderQty, 0)),
+        daysOfStock: Number.isFinite(daysOfStock) ? daysOfStock : "N/A",
         leadTimeDays,
       };
 
@@ -186,15 +192,29 @@ export default function registerRetailActions(registerLensAction) {
    * pipelineValue
    * Calculate weighted pipeline value from deals/opportunities.
    * artifact.data.deals: [{ name, value, probability, stage, expectedCloseDate }]
+   *
+   * RENDERED BY components/retail/RetailActionPanel.tsx (the Pipeline card).
+   * The card reads, EXACTLY: totalDeals, totalWeighted, totalUnweighted,
+   * byStage[stage].{count,weighted}, expectedRevenue, conversionRate. Those are
+   * the canonical names — the older totalWeightedValue/byStage.weightedValue
+   * shape is kept alongside (back-compat) but the component-exact aliases are
+   * the load-bearing surface. FAIL-CLOSED: value/probability are coerced via a
+   * finite guard so a poisoned "1e999"/NaN/Infinity deal collapses to 0 and no
+   * money field ever renders Infinity/NaN.
    */
-  registerLensAction("retail", "pipelineValue", (ctx, artifact, params) => {
+  registerLensAction("retail", "pipelineValue", (ctx, artifact, params = {}) => {
   try {
-    const deals = artifact.data.deals || artifact.data.opportunities || [];
+    const finNum = (v, fallback = 0) => { const n = Number(v); return Number.isFinite(n) ? n : fallback; };
+    const round2 = (n) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
+    const deals = Array.isArray(artifact.data.deals)
+      ? artifact.data.deals
+      : (Array.isArray(artifact.data.opportunities) ? artifact.data.opportunities : []);
     const includeClosed = params.includeClosed || false;
 
+    const isClosed = (st) => st === "closed-won" || st === "closed-lost" || st === "won" || st === "lost";
     const activeDealsList = includeClosed
-      ? deals
-      : deals.filter((d) => d.stage !== "closed-won" && d.stage !== "closed-lost");
+      ? deals.filter((d) => d && typeof d === "object")
+      : deals.filter((d) => d && typeof d === "object" && !isClosed(d.stage));
 
     let totalUnweighted = 0;
     let totalWeighted = 0;
@@ -202,20 +222,24 @@ export default function registerRetailActions(registerLensAction) {
     const byStage = {};
 
     const detailed = activeDealsList.map((deal) => {
-      const value = parseFloat(deal.value) || 0;
-      const probability = parseFloat(deal.probability) || 0;
-      const weighted = Math.round(value * (probability / 100) * 100) / 100;
+      const value = finNum(deal.value, 0);
+      const probabilityRaw = finNum(deal.probability, 0);
+      // clamp probability to [0,100] so a poisoned 1e9 can't inflate weighted
+      const probability = Math.max(0, Math.min(100, probabilityRaw));
+      const weighted = round2(value * (probability / 100));
       const stage = deal.stage || "unknown";
 
       totalUnweighted += value;
       totalWeighted += weighted;
 
       if (!byStage[stage]) {
-        byStage[stage] = { count: 0, totalValue: 0, weightedValue: 0 };
+        // component reads .count + .weighted; legacy readers read .totalValue + .weightedValue
+        byStage[stage] = { count: 0, totalValue: 0, weightedValue: 0, weighted: 0 };
       }
       byStage[stage].count++;
-      byStage[stage].totalValue = Math.round((byStage[stage].totalValue + value) * 100) / 100;
-      byStage[stage].weightedValue = Math.round((byStage[stage].weightedValue + weighted) * 100) / 100;
+      byStage[stage].totalValue = round2(byStage[stage].totalValue + value);
+      byStage[stage].weightedValue = round2(byStage[stage].weightedValue + weighted);
+      byStage[stage].weighted = byStage[stage].weightedValue;
 
       return {
         name: deal.name,
@@ -233,19 +257,35 @@ export default function registerRetailActions(registerLensAction) {
     const closingThisMonth = detailed.filter((d) => {
       if (!d.expectedCloseDate) return false;
       const close = new Date(d.expectedCloseDate);
-      return close >= now && close <= monthEnd;
+      return !isNaN(close.getTime()) && close >= now && close <= monthEnd;
     });
+
+    const dealCount = activeDealsList.length;
+    const totalUnweightedR = round2(totalUnweighted);
+    const totalWeightedR = round2(totalWeighted);
+    // conversionRate = the blended close-probability across the active pipeline
+    // (weighted / unweighted), as a percentage. 0 when there is no value.
+    const conversionRate = totalUnweightedR > 0
+      ? Math.round((totalWeightedR / totalUnweightedR) * 10000) / 100
+      : 0;
 
     const result = {
       generatedAt: new Date().toISOString(),
-      dealCount: activeDealsList.length,
-      totalUnweightedValue: Math.round(totalUnweighted * 100) / 100,
-      totalWeightedValue: Math.round(totalWeighted * 100) / 100,
-      avgDealSize: activeDealsList.length > 0 ? Math.round((totalUnweighted / activeDealsList.length) * 100) / 100 : 0,
+      // ── component-exact fields (the rendered Pipeline card) ──
+      totalDeals: dealCount,
+      totalUnweighted: totalUnweightedR,
+      totalWeighted: totalWeightedR,
+      expectedRevenue: totalWeightedR,
+      conversionRate,
       byStage,
+      // ── legacy aliases (back-compat with prior parity callers) ──
+      dealCount,
+      totalUnweightedValue: totalUnweightedR,
+      totalWeightedValue: totalWeightedR,
+      avgDealSize: dealCount > 0 ? round2(totalUnweighted / dealCount) : 0,
       closingThisMonth: {
         count: closingThisMonth.length,
-        weightedValue: Math.round(closingThisMonth.reduce((s, d) => s + d.weightedValue, 0) * 100) / 100,
+        weightedValue: round2(closingThisMonth.reduce((s, d) => s + d.weightedValue, 0)),
       },
     };
 
@@ -261,8 +301,44 @@ export default function registerRetailActions(registerLensAction) {
    * artifact.data.customers: [{ customerId, name, orders: [{ date, total }], acquisitionDate }]
    * params.customerId — compute for one customer (or all if omitted)
    */
-  registerLensAction("retail", "customerLTV", (ctx, artifact, params) => {
+  registerLensAction("retail", "customerLTV", (ctx, artifact, params = {}) => {
   try {
+    const finNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+    const round2 = (n) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
+
+    // ── Flat unit-economics branch (the live RetailActionPanel LTV card) ──
+    // Component sends { avgOrderValue, purchaseFrequencyPerYear,
+    //   customerLifespanYears, cac } and renders { avgOrderValue,
+    //   purchaseFrequency, customerLifespanYears, ltv, cac, ltvToCacRatio,
+    //   profitable }. LTV = AOV × freq/yr × lifespan(yr). FAIL-CLOSED: any
+    //   poisoned numeric → finite default; cac=0 → ratio collapses to ltv
+    //   (no Infinity), never NaN.
+    const aov = finNum(artifact.data.avgOrderValue);
+    const freq = finNum(artifact.data.purchaseFrequencyPerYear);
+    const lifespan = finNum(artifact.data.customerLifespanYears);
+    if (aov != null || freq != null || lifespan != null || artifact.data.cac != null) {
+      if (!(artifact.data.customers && Array.isArray(artifact.data.customers) && artifact.data.customers.length)) {
+        const avgOrderValue = Math.max(0, aov ?? 0);
+        const purchaseFrequency = Math.max(0, freq ?? 0);
+        const customerLifespanYears = Math.max(0, lifespan ?? 0);
+        const cac = Math.max(0, finNum(artifact.data.cac) ?? 0);
+        const ltv = round2(avgOrderValue * purchaseFrequency * customerLifespanYears);
+        const ltvToCacRatio = cac > 0 ? Math.round((ltv / cac) * 100) / 100 : (ltv > 0 ? ltv : 0);
+        const result = {
+          generatedAt: new Date().toISOString(),
+          avgOrderValue: round2(avgOrderValue),
+          purchaseFrequency: Math.round(purchaseFrequency * 100) / 100,
+          customerLifespanYears: Math.round(customerLifespanYears * 100) / 100,
+          ltv,
+          cac: round2(cac),
+          ltvToCacRatio,
+          profitable: ltvToCacRatio >= 3,
+        };
+        artifact.data.ltvReport = result;
+        return { ok: true, result };
+      }
+    }
+
     const customers = artifact.data.customers || [];
     const targetId = params.customerId || null;
 
@@ -349,8 +425,69 @@ export default function registerRetailActions(registerLensAction) {
    * artifact.data.tickets: [{ ticketId, subject, priority, createdAt, resolvedAt, slaHours }]
    * params.defaultSlaHours — default SLA if not per-ticket (default 24)
    */
-  registerLensAction("retail", "slaStatus", (ctx, artifact, params) => {
+  registerLensAction("retail", "slaStatus", (ctx, artifact, params = {}) => {
   try {
+    const finNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+    const round2 = (n) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
+
+    // ── Incident response-time branch (the live RetailActionPanel SLA card) ──
+    // Component sends { incidents: [...] } and renders { totalIncidents,
+    //   withinSLA, breaches, complianceRate, avgResponseMinutes, tier }. Each
+    //   incident carries a response time (responseMinutes | responseTime |
+    //   responseHours) checked against an SLA target (slaMinutes | slaHours |
+    //   targetMinutes), defaulting to a per-priority target. FAIL-CLOSED: any
+    //   poisoned numeric → finite default; an incident with no response time is
+    //   counted as an open breach; complianceRate/avgResponseMinutes stay finite.
+    if (Array.isArray(artifact.data.incidents)) {
+      const defaultTargetByPriority = params.slaTargetMinutes || { critical: 60, high: 240, medium: 1440, low: 2880 };
+      const defaultTarget = finNum(params.defaultSlaMinutes) ?? 1440; // 24h
+      const incidents = artifact.data.incidents.filter((i) => i && typeof i === "object");
+      let withinSLA = 0;
+      let breaches = 0;
+      let responseSum = 0;
+      let responseSamples = 0;
+      for (const inc of incidents) {
+        // response time in minutes (accept minutes, hours, or raw responseTime as minutes)
+        let respMin = finNum(inc.responseMinutes);
+        if (respMin == null && finNum(inc.responseHours) != null) respMin = finNum(inc.responseHours) * 60;
+        if (respMin == null) respMin = finNum(inc.responseTime); // treated as minutes
+        // sla target in minutes
+        let targetMin = finNum(inc.slaMinutes) ?? finNum(inc.targetMinutes);
+        if (targetMin == null && finNum(inc.slaHours) != null) targetMin = finNum(inc.slaHours) * 60;
+        if (targetMin == null) targetMin = finNum(defaultTargetByPriority[inc.priority]) ?? defaultTarget;
+        targetMin = Math.max(0, targetMin);
+        if (respMin == null || respMin < 0) {
+          // no/invalid response time → unresolved → counts as a breach
+          breaches++;
+          continue;
+        }
+        responseSum += respMin;
+        responseSamples++;
+        if (respMin <= targetMin) withinSLA++;
+        else breaches++;
+      }
+      const totalIncidents = incidents.length;
+      const complianceRate = totalIncidents > 0
+        ? Math.round((withinSLA / totalIncidents) * 10000) / 100
+        : 100;
+      const avgResponseMinutes = responseSamples > 0 ? round2(responseSum / responseSamples) : 0;
+      const tier = complianceRate >= 95 ? "platinum"
+        : complianceRate >= 90 ? "gold"
+        : complianceRate >= 80 ? "silver"
+        : complianceRate >= 60 ? "bronze" : "at-risk";
+      const result = {
+        checkedAt: new Date().toISOString(),
+        totalIncidents,
+        withinSLA,
+        breaches,
+        complianceRate,
+        avgResponseMinutes,
+        tier,
+      };
+      artifact.data.slaReport = result;
+      return { ok: true, result };
+    }
+
     const tickets = artifact.data.tickets || [];
     const defaultSlaHours = params.defaultSlaHours || 24;
     const now = new Date();

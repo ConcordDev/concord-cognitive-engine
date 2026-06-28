@@ -1,0 +1,26 @@
+{
+  "macro_id": "aviation.dutyTimeCheck",
+  "domain": "aviation",
+  "name": "dutyTimeCheck",
+  "inputs": {
+    "shifts": { "type": "array" },
+    "flights": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.compliant === 'boolean'",
+    "output.ok === false || typeof output.result.limits === 'object'",
+    "output.ok === false || Number.isFinite(output.result.limits.flightDuty.actual)",
+    "output.ok === false || Number.isFinite(output.result.limits.sevenDay.actual)",
+    "output.ok === false || Number.isFinite(output.result.limits.twentyEightDay.actual)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "shifts": [{ "startTime": "2026-06-28T08:00:00.000Z", "dutyHours": 8 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "shifts": [{ "startTime": "2026-06-28T08:00:00.000Z", "dutyHours": 12 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "shifts": [{ "startTime": "2026-06-28T08:00:00.000Z", "dutyHours": "NaN" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "FAR 117 duty-time limits (10h flight duty / 60h 7-day / 190h 28-day). A poisoned 'NaN' dutyHours STRING is truthy and slipped past `||`, NaN-ing every reduction — fixed with a finiteHours(...) Number() guard so the limits stay finite. Returns limits.{flightDuty,sevenDay,twentyEightDay}.{limit,actual,exceeded} + compliant + remaining*. Fixed 2026-06-28."
+}

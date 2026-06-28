@@ -1,0 +1,25 @@
+{
+  "macro_id": "sessions.bulk_close",
+  "domain": "sessions",
+  "name": "bulk_close",
+  "inputs": {
+    "sessionIds": { "type": "array" },
+    "outcome": { "type": "string", "enum": ["completed", "abandoned"] },
+    "scope": { "type": "string", "enum": ["stale"] },
+    "idleDays": { "type": "number", "min": 1, "max": 365 },
+    "note": { "type": "string", "maxLength": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.closed === 'number' && output.closed >= 0)",
+    "output.ok === false || Array.isArray(output.sessionIds)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "invalid_outcome" } },
+    { "input": { "outcome": "completed" }, "expect": { "ok": false, "reason": "no_targets" } },
+    { "input": { "outcome": "completed", "scope": "stale", "idleDays": 30 }, "expect": { "ok": true } },
+    { "input": { "outcome": "completed", "scope": "stale", "idleDays": -1 }, "expect": { "ok": false, "reason": "invalid_idleDays" } }
+  ],
+  "_note": "sessions.bulk_close closes many caller-owned open/paused sessions in one sweep. Requires a valid outcome, then either an explicit sessionIds[] OR scope:'stale'. With no targets specified → no_targets. scope:'stale' on a live DB + assassin owner actor returns ok:true closing the caller's (zero, for the assassin) stale rows. idleDays is a fail-CLOSED numeric guard (invalid_idleDays). A write {} returns a real validation reason, NEVER no_db."
+}

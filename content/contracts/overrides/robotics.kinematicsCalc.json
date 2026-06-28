@@ -1,0 +1,28 @@
+{
+  "macro_id": "robotics.kinematicsCalc",
+  "domain": "robotics",
+  "name": "kinematicsCalc",
+  "inputs": {
+    "joints": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.degreesOfFreedom)",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.maxReach === 'string'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(parseFloat(output.result.maxReach))",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.workspace === 'string'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.type === 'string'",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.joints)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "joints": [{ "type": "revolute", "angle": 30, "length": 120 }, { "type": "prismatic", "angle": -20, "length": 100 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "joints": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "joints": [{ "length": "Infinity", "angle": "NaN" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "joints": "not-an-array" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data.joints. Field-aligned 2026-06-28 to RoboticsActionPanel.tsx: the result card renders degreesOfFreedom / maxReach / workspace / type EXACTLY plus joints[].{joint,type,angle,length} (the J{joint} {type} {angle}° / {length}mm list). maxReach = sum of joint lengths in 'Nmm'; workspace = 'full-6DOF' at >=6 DOF else 'N-DOF limited'; type = articulated (>=6) / SCARA-like (>=3) / simple. Fail-CLOSED: non-finite angle/length fall to finite defaults (angle 0, length 100, range [-180,180]) via Number.isFinite — a poisoned input can never leak Infinity into maxReach. A non-array joints coerces to [] (honest empty message), never throws."
+}

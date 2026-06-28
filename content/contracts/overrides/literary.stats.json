@@ -1,0 +1,20 @@
+{
+  "macro_id": "literary.stats",
+  "domain": "literary",
+  "name": "stats",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.sources === 'number'",
+    "output.ok === false || typeof output.chunks === 'number'",
+    "output.ok === false || typeof output.embedded === 'number'",
+    "output.ok === false || output.sources >= 0",
+    "output.ok === false || output.chunks >= 0",
+    "output.ok === false || output.embedded <= output.chunks"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Corpus counts: works, chunks, embedded chunks. Counts are non-negative; embedded never exceeds total chunks. Empty corpus → all zero."
+}

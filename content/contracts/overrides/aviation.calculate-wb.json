@@ -1,0 +1,32 @@
+{
+  "macro_id": "aviation.calculate-wb",
+  "domain": "aviation",
+  "name": "calculate-wb",
+  "inputs": {
+    "emptyWeight": { "type": "number" },
+    "emptyArm": { "type": "number" },
+    "fuelWeight": { "type": "number" },
+    "fuelArm": { "type": "number" },
+    "pilotWeight": { "type": "number" },
+    "pilotArm": { "type": "number" },
+    "maxGross": { "type": "number" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.grossWeight)",
+    "output.ok === false || Number.isFinite(output.result.cg)",
+    "output.ok === false || Number.isFinite(output.result.totalMoment)",
+    "output.ok === false || Array.isArray(output.result.stations)",
+    "output.ok === false || typeof output.result.summary === 'string'",
+    "output.ok === false || output.result.stations.every(s => Number.isFinite(s.weight) && Number.isFinite(s.arm) && Number.isFinite(s.moment))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "emptyWeight": 1500, "emptyArm": 39, "fuelWeight": 180, "fuelArm": 48, "pilotWeight": 170, "pilotArm": 37, "maxGross": 2550, "fwdCGLimit": 35, "aftCGLimit": 47.3 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "aircraft": { "emptyWeight": 1500, "emptyArm": 39, "maxGrossWeight": 2550, "cgEnvelope": { "fwd": 35, "aft": 47.3 } }, "loading": [{ "station": "Pilot", "weight": 170, "arm": 37 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "emptyWeight": "NaN", "emptyArm": "Infinity", "fuelWeight": 1e308, "fuelArm": "abc", "pilotWeight": 170, "pilotArm": 37, "maxGross": "x" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "W&B (Weight & Balance). The W&B editor (app/lenses/aviation/page.tsx#renderWBEditor) persists a FLAT artifact.data shape — emptyWeight/emptyArm + per-station <name>Weight/<name>Arm pairs (fuel/pilot/copilot/paxRow1/paxRow2/cargo/baggage) + maxGross/fwdCGLimit/aftCGLimit. The handler was written for the STRUCTURED { aircraft:{emptyWeight,emptyArm,maxGrossWeight,cgEnvelope:{fwd,aft}}, loading:[{station,weight,arm}] } shape, so the W&B Calculate button returned gross 0 / cg 0 for EVERY input (a dead safety-critical calculator). normalizeWBInput now folds BOTH shapes onto the same math; non-finite numerics drop to 0 so a poisoned field never NaN/Infinity-s gross weight or CG. The Action Result panel renders grossWeight/cg/totalMoment/stations[]/maxGrossWeight/summary EXACTLY (a render block for these was added — they were never displayed before). Fixed 2026-06-28."
+}

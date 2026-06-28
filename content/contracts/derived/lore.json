@@ -1,0 +1,174 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "lore",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.facets && typeof output.facets === 'object')",
+        "output.ok === false || Array.isArray(output.facets.worlds)",
+        "output.ok === false || Array.isArray(output.facets.types)",
+        "output.ok === false || Array.isArray(output.facets.eras)",
+        "output.ok === false || typeof output.facets.count === 'number'",
+        "output.ok === false || output.facets.count >= 0"
+      ],
+      "macro_id": "lore.facets",
+      "name": "facets"
+    },
+    {
+      "_derived": false,
+      "domain": "lore",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "unknown_event"
+          },
+          "input": {
+            "id": "lore_does_not_exist_xyz"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 120,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.event && typeof output.event.id === 'string')",
+        "output.ok === false || !('hidden_truth' in output.event)",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "lore.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "lore",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 5,
+            "type": "primordial"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "tunya"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_limit"
+          },
+          "input": {
+            "limit": -1
+          }
+        }
+      ],
+      "inputs": {
+        "era": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "limit": {
+          "max": 1000,
+          "min": 1,
+          "type": "number"
+        },
+        "q": {
+          "maxLength": 400,
+          "type": "string"
+        },
+        "type": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.events)",
+        "output.ok === false || output.events.every(e => typeof e.id === 'string' && typeof e.title === 'string')",
+        "output.ok === false || output.events.every(e => !('hidden_truth' in e))",
+        "output.ok === false || output.events.length <= 1000"
+      ],
+      "macro_id": "lore.list",
+      "name": "list"
+    },
+    {
+      "_derived": false,
+      "domain": "lore",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.events)",
+        "output.ok === false || output.events.every(e => ['primordial','great_refusal','founding'].includes(e.type))",
+        "output.ok === false || output.events.every(e => !('hidden_truth' in e))"
+      ],
+      "macro_id": "lore.spine",
+      "name": "spine"
+    }
+  ],
+  "domain": "lore",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 4
+}

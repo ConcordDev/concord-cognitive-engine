@@ -1,0 +1,19 @@
+{
+  "macro_id": "creatures.species",
+  "domain": "creatures",
+  "name": "species",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "Array.isArray(output.species)",
+    "output.species.length > 0",
+    "output.count === output.species.length",
+    "output.species.every(s => typeof s.species_id === 'string' && s.species_id.length > 0)",
+    "output.species.every(s => typeof s.topology === 'string' && s.topology.length > 0)",
+    "output.species.every(s => typeof s.clade === 'string' && typeof s.diet === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ]
+}

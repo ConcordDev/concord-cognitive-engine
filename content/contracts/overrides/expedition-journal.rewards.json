@@ -1,0 +1,17 @@
+{
+  "macro_id": "expedition-journal.rewards",
+  "domain": "expedition-journal",
+  "name": "rewards",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.xp === 'number' && output.result.xp >= 0)",
+    "output.ok === false || (typeof output.result.level === 'number' && output.result.level >= 1)",
+    "output.ok === false || (Array.isArray(output.result.badges) && Array.isArray(output.result.log))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Per-user XP / level / earned-badge ledger from STATE. The assassin's internal owner actor returns ok:true with xp:0, level:1, empty badges/log (NEVER no_db). level = 1 + floor(xp/200); xp is never negative."
+}

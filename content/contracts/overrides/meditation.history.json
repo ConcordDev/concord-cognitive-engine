@@ -1,0 +1,18 @@
+{
+  "macro_id": "meditation.history",
+  "domain": "meditation",
+  "name": "history",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.sessions)",
+    "output.ok === false || typeof output.result.count === 'number'",
+    "output.ok === false || output.result.sessions.length === output.result.count",
+    "output.ok === false || output.result.sessions.length <= 50"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Most-recent-first slice (<=50) of the caller's completed sessions from STATE. Empty ledger → ok:true with an empty array, never no_db."
+}

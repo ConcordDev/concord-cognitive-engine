@@ -1,0 +1,22 @@
+{
+  "macro_id": "bounties.dispute-resolve",
+  "domain": "bounties",
+  "name": "dispute-resolve",
+  "inputs": {
+    "bountyId": { "type": "string", "required": true, "maxLength": 64 },
+    "ruling": { "type": "string", "required": true, "enum": ["uphold", "overturn", "split"] },
+    "rulingNote": { "type": "string", "maxLength": 1500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.dispute && output.result.dispute.status === 'resolved')",
+    "output.ok === false || ['uphold', 'overturn', 'split'].includes(output.result.dispute.ruling)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "bounty not found" } },
+    { "input": { "bountyId": "__nope__", "ruling": "uphold" }, "expect": { "ok": false, "error": "bounty not found" } }
+  ],
+  "_note": "bounties.dispute-resolve arbitrates an open dispute. Unknown bounty → 'bounty not found'. A bounty with no open dispute rejects ('no open dispute on this bounty'). ruling must be 'uphold' | 'overturn' | 'split'. 'overturn' reopens the bounty (open/claimed) and clears the accepted submission; 'uphold'/'split' restore the paid/in_review state. This macro re-shapes status only — it never moves additional CC."
+}

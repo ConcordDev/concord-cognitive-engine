@@ -1,0 +1,30 @@
+{
+  "macro_id": "physics.convert-units",
+  "domain": "physics",
+  "name": "convert-units",
+  "inputs": {
+    "value": { "type": "number", "required": true },
+    "from": { "type": "string", "required": true, "maxLength": 16 },
+    "to": { "type": "string", "required": true, "maxLength": 16 },
+    "kind": { "type": "string", "required": true, "enum": ["length", "mass", "time", "velocity", "energy", "force", "pressure", "temperature"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.result)",
+    "output.ok === false || output.result.from === input.from",
+    "output.ok === false || output.result.to === input.to",
+    "output.ok === false || output.result.kind === input.kind",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "value": 1, "from": "m", "to": "ft", "kind": "length" }, "expect": { "ok": true } },
+    { "input": { "value": 100, "from": "C", "to": "F", "kind": "temperature" }, "expect": { "ok": true } },
+    { "input": { "value": 100, "from": "kmh", "to": "mps", "kind": "velocity" }, "expect": { "ok": true } },
+    { "input": { "value": 1, "from": "m", "to": "ft", "kind": "luminance" }, "expect": { "ok": false } },
+    { "input": { "value": 1, "from": "furlong", "to": "ft", "kind": "length" }, "expect": { "ok": false } },
+    { "input": { "from": "m", "to": "ft", "kind": "length" }, "expect": { "ok": false } },
+    { "input": { "value": "1e999", "from": "m", "to": "ft", "kind": "length" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (dispatch key 'physics.convert-units'; 3-arg). Deterministic pure compute: SI-factor unit conversion across 8 kinds + special C/F/K temperature path. Drives PhysicsActionPanel.actUnit + PhysicsWorkbench.UnitsTab; component renders result.{value,from,to,kind,result}. Validation: unknown kind/from/to → ok:false. POISON fail-CLOSED: Number.isFinite(value) guard rejects '1e999'/'Infinity' before conversion. Not assassin-driven (LENS_ACTIONS); authored spec pinned by server/tests/physics-lens-macros.test.js."
+}

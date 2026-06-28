@@ -1,0 +1,17 @@
+{
+  "macro_id": "gallery.collection-list",
+  "domain": "gallery",
+  "name": "collection-list",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.collections)",
+    "output.ok === false || typeof output.result.count === 'number'",
+    "output.ok === false || output.result.collections.every(c => typeof c.id === 'string' && typeof c.artworkCount === 'number')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "gallery.collection-list returns the caller's collections, auto-seeding a default 'Favorites' on first read so count is always >= 1 for a real actor. Each row carries id/name/artworkCount/cover. Per-user isolated by ctx actor."
+}

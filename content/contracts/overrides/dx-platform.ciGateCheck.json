@@ -1,0 +1,23 @@
+{
+  "macro_id": "dx-platform.ciGateCheck",
+  "domain": "dx-platform",
+  "name": "ciGateCheck",
+  "inputs": {
+    "findings": { "type": "array" },
+    "failOn": { "type": "string", "maxLength": 10 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.passed === 'boolean'",
+    "output.ok === false || ['pass','fail'].includes(output.result.verdict)",
+    "output.ok === false || (output.result.blockingFindings >= 0 && output.result.blockingFindings <= output.result.totalFindings)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "findings": [], "failOn": "error" }, "expect": { "ok": true } },
+    { "input": { "findings": [{ "severity": 5 }], "failOn": "error" }, "expect": { "ok": true } },
+    { "input": { "findings": [{ "severity": 1 }], "failOn": "error" }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure-compute gate verdict over a caller-supplied findings list (no DB, no STATE). Empty findings → passed. A severity-5 finding at failOn:error → fail. ok stays true throughout (the verdict lives in result.passed/verdict). NEVER no_db."
+}

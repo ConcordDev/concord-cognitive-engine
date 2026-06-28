@@ -1,0 +1,19 @@
+{
+  "macro_id": "worldmodel.wm_status",
+  "domain": "worldmodel",
+  "name": "wm_status",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result === 'object' && output.result !== null",
+    "Number.isInteger(output.result.entities) && output.result.entities >= 0",
+    "Number.isInteger(output.result.relations) && output.result.relations >= 0",
+    "Number.isInteger(output.result.simulations) && output.result.simulations >= 0",
+    "Number.isInteger(output.result.snapshots) && output.result.snapshots >= 0"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "worldmodel.wm_status is served by the LENS_ACTIONS registry (server/domains/worldmodel.js via registerLensAction), NOT the server.js MACROS register() blocks — and /api/lens/run PREFERS LENS_ACTIONS, so this is the registry the lens UI actually reaches. The lens-driven worldmodel.* names (wm_status, graph, run_scenario, ingest, capture_snapshot, …) are DISJOINT from the server.js MACROS worldmodel names (status, simulate, create_entity, …); there is no shadowing. Because runMacro (the assassin's driver) only walks MACROS, this handler is exercised by server/tests/worldmodel-lens-macros.test.js (the LENS_ACTIONS 3-arg dispatch), not by the assassin. The handler returns the { ok, result } envelope and degrades to all-zero counts on empty STATE — never no_db, never a throw. Read-only — no writes."
+}

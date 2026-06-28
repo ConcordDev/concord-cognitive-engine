@@ -1,0 +1,28 @@
+{
+  "macro_id": "cognition.compareModes",
+  "domain": "cognition",
+  "name": "compareModes",
+  "inputs": {
+    "claim": { "type": "string", "maxLength": 2000 },
+    "question": { "type": "string", "maxLength": 2000 },
+    "topic": { "type": "string", "maxLength": 2000 },
+    "modeA": { "type": "string", "enum": ["deductive", "inductive", "abductive", "adversarial", "analogical", "temporal", "counterfactual"] },
+    "modeB": { "type": "string", "enum": ["deductive", "inductive", "abductive", "adversarial", "analogical", "temporal", "counterfactual"] },
+    "depth": { "type": "number", "min": 1, "max": 5 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.prompt === 'string')",
+    "output.ok === false || (output.result.a && typeof output.result.a.mode === 'string')",
+    "output.ok === false || (output.result.b && typeof output.result.b.mode === 'string')",
+    "output.ok === false || typeof output.result.higherConfidence === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "claim_or_question_required" } },
+    { "input": { "claim": "Privacy is a precondition for free thought.", "modeA": "deductive", "modeB": "deductive" }, "expect": { "ok": false, "error": "modes_must_differ" } },
+    { "input": { "claim": "Privacy is a precondition for free thought.", "modeA": "deductive", "modeB": "zzz" }, "expect": { "ok": false, "error": "invalid_mode" } },
+    { "input": { "claim": "Privacy is a precondition for free thought.", "depth": -1 }, "expect": { "ok": false, "error": "invalid_depth" } }
+  ],
+  "_note": "Runs one prompt through two distinct HLR reasoning modes via the real in-process HLR engine (lazy-imported, no network/LLM in the default path). Empty input fails-closed with 'claim_or_question_required'; same/invalid modes are rejected; 'depth' is a fail-CLOSED numeric guard (poisoned → ok:false invalid_depth, never a clamped ok:true). If the HLR engine is not loadable it returns ok:false hlr_engine_unavailable — never a fabricated success. No DB; runs for the assassin's internal owner actor."
+}

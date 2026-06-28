@@ -1,0 +1,30 @@
+{
+  "macro_id": "linguistics.textAnalysis",
+  "domain": "linguistics",
+  "name": "textAnalysis",
+  "inputs": {
+    "text": { "type": "string", "required": false },
+    "content": { "type": "string", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.wordCount)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.sentenceCount)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.vocabularySize)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.lexicalDiversity)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.readabilityGrade)",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.readingLevel === 'string'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "text": "" }, "expect": { "ok": true } },
+    { "input": { "text": "The quick brown fox jumps over the lazy dog. It was a sunny day." }, "expect": { "ok": true } },
+    { "input": { "content": "Hello world. Goodbye world." }, "expect": { "ok": true } },
+    { "input": { "text": 12345 }, "expect": { "ok": true } },
+    { "input": { "text": "Infinity" }, "expect": { "ok": true } },
+    { "input": { "text": { "a": 1 } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/linguistics.js). Dispatch key 'linguistics.textAnalysis' via /api/lens/run; 3-arg handler(ctx, virtualArtifact, input) with input PEELED of one redundant {artifact:{data}} wrapper by lens-input-normalize.js. LinguisticsActionPanel sends callMacro('textAnalysis',{artifact:{data:{text}}}) → handler reads artifact.data.text||content; renders r.result.{wordCount,sentenceCount,vocabularySize,lexicalDiversity,readabilityGrade,readingLevel,avgWordLength,avgSentenceLength}. Deterministic pure compute (Flesch-Kincaid). FIXED (real defect): a poisoned non-string text threw 'text.split is not a function' (a 500, fail-OPEN); now String-coerced so poison degrades gracefully and every numeric output stays FINITE. Pinned by server/tests/linguistics-lens-macros.test.js."
+}

@@ -75,6 +75,8 @@ export default function BlackMarketPage() {
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<RevealedMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Distinct from `error` (purchase failures): a failure to LOAD the market.
+  const [loadError, setLoadError] = useState<string | null>(null);
   type EncFilter = 'all' | Listing['encryption_level'];
   type SortMode = 'newest' | 'price-asc' | 'price-desc' | 'expiring';
   const [encFilter, setEncFilter] = useState<EncFilter>('all');
@@ -82,18 +84,24 @@ export default function BlackMarketPage() {
 
   const reload = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [listingsRes, repRes] = await Promise.all([
-        fetch('/api/black-market').then((r) => r.json()).catch(() => ({ ok: false })),
+        fetch('/api/black-market').then((r) => r.json()),
         fetch('/api/black-market/reputation', { credentials: 'same-origin' })
           .then((r) => r.json()).catch(() => ({ ok: false })),
       ]);
       if (listingsRes?.ok && Array.isArray(listingsRes.listings)) {
         setListings(listingsRes.listings);
+      } else {
+        // The market endpoint responded but not with a usable listings array.
+        setLoadError(listingsRes?.error || 'The black market is unreachable right now.');
       }
       if (repRes?.ok && Array.isArray(repRes.reputation)) {
         setReputation(repRes.reputation);
       }
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'The black market is unreachable right now.');
     } finally {
       setLoading(false);
     }
@@ -195,8 +203,33 @@ export default function BlackMarketPage() {
         )}
 
         {error && (
-          <div className="mb-4 rounded border border-rose-500/40 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">
+          <div role="alert" className="mb-4 rounded border border-rose-500/40 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">
             {error}
+          </div>
+        )}
+
+        {loadError && !loading && (
+          <div
+            role="alert"
+            className="mb-4 flex items-center justify-between gap-3 rounded border border-rose-500/40 bg-rose-950/40 px-3 py-2 text-sm text-rose-200"
+          >
+            <span>{loadError}</span>
+            <button
+              onClick={reload}
+              className="shrink-0 rounded border border-rose-400/50 bg-rose-900/40 px-3 py-1 text-xs font-medium text-rose-100 hover:bg-rose-800/60 focus:outline-none focus:ring-2 focus:ring-rose-400"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {loading && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-4 rounded border border-slate-800 bg-slate-900/40 px-3 py-2 text-sm text-slate-400"
+          >
+            Loading intercepted messages…
           </div>
         )}
 
@@ -256,7 +289,7 @@ export default function BlackMarketPage() {
               </button>
             </div>
           </div>
-          {!loading && listings.length === 0 && (
+          {!loading && !loadError && listings.length === 0 && (
             <p className="rounded border border-slate-800 bg-slate-900/40 p-4 text-center text-sm text-slate-400">
               No intercepted messages on the market right now. Check back after a Walker journey gets interrupted.
             </p>

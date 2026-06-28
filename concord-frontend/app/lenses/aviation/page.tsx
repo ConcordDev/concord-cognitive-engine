@@ -489,7 +489,7 @@ export default function AviationLensPage() {
   if (isLoading) {
     return (
       <div data-lens-theme="aviation" className="flex items-center justify-center h-full p-8">
-        <div className="text-center space-y-3">
+        <div role="status" aria-live="polite" className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-sky-400 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm text-gray-400">Preparing flight data...</p>
         </div>
@@ -499,7 +499,7 @@ export default function AviationLensPage() {
 
   if (isError && activeMode !== 'dashboard') {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div role="alert" className="flex items-center justify-center h-full p-8">
         <ErrorState error={error?.message} onRetry={refetch} />
       </div>
     );
@@ -2028,6 +2028,113 @@ export default function AviationLensPage() {
                   <p className="text-[10px] text-gray-400">Monthly Rev</p>
                 </div>
               </div>
+            </div>
+          )}
+          {/* calculate-wb (Weight & Balance) */}
+          {actionResult.grossWeight !== undefined && actionResult.cg !== undefined && actionResult.stations !== undefined && (
+            <div className="space-y-2" data-testid="wb-result">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-sm font-bold text-neon-cyan">{String(actionResult.grossWeight)}<span className="text-[10px] text-gray-400"> lb</span></p>
+                  <p className="text-[10px] text-gray-400">Gross Weight</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-sm font-bold text-neon-cyan">{String(actionResult.cg)}<span className="text-[10px] text-gray-400"> in</span></p>
+                  <p className="text-[10px] text-gray-400">CG</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalMoment)}</p>
+                  <p className="text-[10px] text-gray-400">Total Moment</p>
+                </div>
+              </div>
+              {actionResult.maxGrossWeight != null && (
+                <div className="text-[10px] text-gray-400">Max Gross: {String(actionResult.maxGrossWeight)} lb</div>
+              )}
+              <div className="space-y-1">
+                {(actionResult.stations as {station:string;weight:number;arm:number;moment:number}[]).map((st, i) => (
+                  <div key={i} className="flex items-center justify-between p-1.5 bg-lattice-surface rounded text-xs">
+                    <span className="text-gray-300">{st.station}</span>
+                    <span className="text-gray-400 font-mono">{st.weight} lb @ {st.arm} in · {st.moment} lb-in</span>
+                  </div>
+                ))}
+              </div>
+              {!!actionResult.summary && <p className="text-[11px] text-gray-300">{String(actionResult.summary)}</p>}
+            </div>
+          )}
+          {/* flightSummary */}
+          {actionResult.totalHours !== undefined && actionResult.averageDuration !== undefined && (
+            <div className="grid grid-cols-3 gap-2" data-testid="flight-summary-result">
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalHours)}h</p>
+                <p className="text-[10px] text-gray-400">Total Hours</p>
+              </div>
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalFlights)}</p>
+                <p className="text-[10px] text-gray-400">Total Flights</p>
+              </div>
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-sm font-bold text-neon-cyan">{String(actionResult.averageDuration)}h</p>
+                <p className="text-[10px] text-gray-400">Avg Duration</p>
+              </div>
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-sm font-bold text-neon-cyan">{String(actionResult.longestFlight)}h</p>
+                <p className="text-[10px] text-gray-400">Longest</p>
+              </div>
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalFuelConsumed)}</p>
+                <p className="text-[10px] text-gray-400">Fuel (gal)</p>
+              </div>
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-sm font-bold text-neon-cyan">{String(actionResult.avgFuelPerHour)}</p>
+                <p className="text-[10px] text-gray-400">Gal/hr</p>
+              </div>
+            </div>
+          )}
+          {/* weatherCheck */}
+          {actionResult.flightCategory !== undefined && actionResult.windComponents !== undefined && (
+            <div className="space-y-2" data-testid="weather-check-result">
+              <div className="flex items-center gap-3">
+                <span className={`px-2 py-0.5 rounded text-xs font-semibold bg-${(STATUS_COLORS[String(actionResult.flightCategory)] || 'gray-400').replace('-400', '-500')}/20 text-${STATUS_COLORS[String(actionResult.flightCategory)] || 'gray-400'}`}>{String(actionResult.flightCategory)}</span>
+                <span className="text-xs text-gray-400">{String(actionResult.station ?? '')}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="p-1.5 bg-lattice-surface rounded"><span className="text-gray-400">Wind </span><span className="font-mono text-white">{String(actionResult.wind)}</span></div>
+                <div className="p-1.5 bg-lattice-surface rounded"><span className="text-gray-400">Vis </span><span className="font-mono text-white">{String(actionResult.visibility)}</span></div>
+                <div className="p-1.5 bg-lattice-surface rounded"><span className="text-gray-400">Ceil </span><span className="font-mono text-white">{String(actionResult.ceiling)}</span></div>
+              </div>
+            </div>
+          )}
+          {/* dutyTimeCheck */}
+          {actionResult.limits !== undefined && actionResult.compliant !== undefined && (
+            <div className="space-y-2" data-testid="duty-time-result">
+              <div className="flex items-center gap-3">
+                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${actionResult.compliant ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{actionResult.compliant ? 'Compliant' : 'LIMIT EXCEEDED'}</span>
+                <span className="text-xs text-gray-400">{String(actionResult.crewMember ?? '')}</span>
+              </div>
+              {Object.entries(actionResult.limits as Record<string, {limit:number;actual:number;exceeded:boolean}>).map(([k, l]) => (
+                <div key={k} className={`flex items-center justify-between p-1.5 rounded text-xs ${l.exceeded ? 'bg-red-500/10' : 'bg-lattice-surface'}`}>
+                  <span className="text-gray-300">{k}</span>
+                  <span className={`font-mono ${l.exceeded ? 'text-red-400' : 'text-gray-300'}`}>{l.actual} / {l.limit}h</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* maintenanceAlert */}
+          {actionResult.alerts !== undefined && actionResult.allClear !== undefined && (
+            <div className="space-y-1" data-testid="maintenance-alert-result">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-xs text-gray-400">{String(actionResult.aircraft ?? '')}</span>
+                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${actionResult.allClear ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{actionResult.allClear ? 'All Clear' : `${String(actionResult.overdueCount)} Overdue`}</span>
+              </div>
+              {(actionResult.alerts as {name:string;category:string;priority:string;reasons:string[]}[]).map((a, i) => (
+                <div key={i} className="p-1.5 bg-red-500/10 rounded">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-300">{a.name}</span>
+                    <span className="text-[10px] font-semibold text-red-400 uppercase">{a.priority}</span>
+                  </div>
+                  <div className="text-[10px] text-gray-400">{a.reasons.join(' · ')}</div>
+                </div>
+              ))}
             </div>
           )}
         </div>

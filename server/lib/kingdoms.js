@@ -190,8 +190,16 @@ export function adjustLegitimacy(db, kingdomId, delta, _reason) {
 
 /** Update treasury (for tax/decree economics). */
 export function adjustTreasury(db, kingdomId, delta) {
-  if (!db || !kingdomId || !delta) return { ok: false };
-  db.prepare(`UPDATE realms SET treasury = MAX(0, treasury + ?), updated_at = unixepoch() WHERE id = ?`).run(delta, kingdomId);
+  if (!db || !kingdomId) return { ok: false };
+  // Fail-closed numeric guard: a poisoned/derived delta (env-sourced
+  // CONCORD_CIVIC_INHOUSE_FACTOR, computed loot, Infinity/NaN/1e308) must
+  // never corrupt the realm treasury. Reject anything non-finite or
+  // absurdly large in magnitude before it reaches the SQL write. This runs
+  // BEFORE the no-op short-circuit so callers always get a clear reason.
+  const n = Number(delta);
+  if (!Number.isFinite(n) || Math.abs(n) > 1e9) return { ok: false, reason: "invalid_delta" };
+  if (n === 0) return { ok: false, reason: "noop" };
+  db.prepare(`UPDATE realms SET treasury = MAX(0, treasury + ?), updated_at = unixepoch() WHERE id = ?`).run(n, kingdomId);
   return { ok: true };
 }
 

@@ -1,0 +1,22 @@
+{
+  "macro_id": "wellness.recovery-score",
+  "domain": "wellness",
+  "name": "recovery-score",
+  "inputs": {
+    "date": { "type": "string", "maxLength": 32 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.score === 'number')",
+    "output.ok === false || (output.result.score >= 0 && output.result.score <= 100)",
+    "output.ok === false || ['green','yellow','red'].includes(output.result.band)",
+    "output.ok === false || Array.isArray(output.result.inputsUsed)",
+    "output.ok === false || typeof output.result.hasEnoughData === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "date": "2026-06-01" }, "expect": { "ok": true } }
+  ],
+  "_note": "State-backed daily recovery score over globalThis._concordSTATE.wellnessLens (in-memory; NOT no_db — this lens is memory-backed by design, like saved.js). With no metrics logged for the actor's day it returns a neutral score 50 'yellow' with hasEnoughData:false — ok:true, never an error. The assassin runs with an internal owner actor so {} returns ok:true."
+}

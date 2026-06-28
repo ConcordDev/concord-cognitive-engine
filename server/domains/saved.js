@@ -8,6 +8,14 @@
 // them into folders/collections, tag them freeform, search/sort/filter,
 // flip read-later / archive states, and export the whole list.
 //
+// Registration: this domain registers through the canonical `register`
+// (MACROS) registry — `registerSavedMacros(register)` in server.js — so the
+// macros are reachable both via POST /api/lens/run AND via runMacro (which
+// the contract engine + macro-assassin drive). Handlers use the canonical
+// 2-arg `(ctx, input)` convention and return a `{ ok, result }` envelope
+// (the dispatcher's `_unwrapLensEnvelope` strips the `result` layer so the
+// frontend reads `r.data.result.<field>`).
+//
 // Persistence: globalThis._concordSTATE.savedLens — two Maps keyed by
 // userId:
 //   items[userId]   -> Map(itemId -> savedItem)
@@ -26,6 +34,19 @@ const VALID_STATES = ["unread", "read", "archived"];
 
 function uid(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) BEFORE reading.
+// Fail-CLOSED: a clamped poisoned `limit`/`offset` that returns ok:true is the
+// defect the macro-assassin's V2 vector catches. An absent/null field is fine.
+// Returns null when clean, else the offending key.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
 }
 
 function persist() {
@@ -94,17 +115,17 @@ function publicItem(it) {
   };
 }
 
-export default function registerSavedActions(registerLensAction) {
+export default function registerSavedMacros(register) {
   // --------------------------------------------------------------------
   // saved.add — save any item (post / dtu / article / artifact / link).
-  // params: { kind, refId?, title, url?, author?, excerpt?, mediaType?,
-  //           folderId?, tags?, note?, sourceLens? }
+  // input: { kind, refId?, title, url?, author?, excerpt?, mediaType?,
+  //          folderId?, tags?, note?, sourceLens? }
   // --------------------------------------------------------------------
-  registerLensAction("saved", "add", (ctx, _artifact, params = {}) => {
+  register("saved", "add", (ctx, input = {}) => {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
-      const p = params || {};
+      const p = input || {};
       const kind = VALID_KINDS.includes(p.kind) ? p.kind : "other";
       const title = String(p.title || "").trim().slice(0, MAX_TITLE_LEN);
       if (!title && !p.refId && !p.url) {
@@ -147,17 +168,17 @@ export default function registerSavedActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
-  });
+  }, { note: "save any item (post/dtu/article/artifact/link) for the caller" });
 
   // --------------------------------------------------------------------
-  // saved.remove — delete a saved item.
-  // params: { id }
+  // saved.remove — delete a saved item.  input: { id }
   // --------------------------------------------------------------------
-  registerLensAction("saved", "remove", (ctx, _artifact, params = {}) => {
+  register("saved", "remove", (ctx, input = {}) => {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
-      const id = String(params?.id || "");
+      const id = String(input?.id || "");
+      if (!id) return { ok: false, error: "need_id" };
       const items = userItems(userId);
       if (!items.has(id)) return { ok: false, error: "not_found" };
       items.delete(id);
@@ -166,21 +187,22 @@ export default function registerSavedActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
-  });
+  }, { note: "remove a saved item by id" });
 
   // --------------------------------------------------------------------
   // saved.update — patch an item (folder, tags, note, state, title…).
-  // params: { id, ...patch }
+  // input: { id, ...patch }
   // --------------------------------------------------------------------
-  registerLensAction("saved", "update", (ctx, _artifact, params = {}) => {
+  register("saved", "update", (ctx, input = {}) => {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
-      const id = String(params?.id || "");
+      const id = String(input?.id || "");
+      if (!id) return { ok: false, error: "need_id" };
       const items = userItems(userId);
       const item = items.get(id);
       if (!item) return { ok: false, error: "not_found" };
-      const p = params || {};
+      const p = input || {};
       if (typeof p.title === "string") {
         item.title = p.title.trim().slice(0, MAX_TITLE_LEN) || item.title;
       }
@@ -202,19 +224,21 @@ export default function registerSavedActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
-  });
+  }, { note: "patch a saved item (folder/tags/note/state/title)" });
 
   // --------------------------------------------------------------------
   // saved.list — search / sort / filter the caller's saved items.
-  // params: { query?, kind?, mediaType?, folderId?, tag?, state?,
-  //           sortBy? ('savedAt'|'title'|'author'), order? ('asc'|'desc'),
-  //           limit?, offset? }
+  // input: { query?, kind?, mediaType?, folderId?, tag?, state?,
+  //          sortBy? ('savedAt'|'title'|'author'|'updatedAt'),
+  //          order? ('asc'|'desc'), limit?, offset? }
   // --------------------------------------------------------------------
-  registerLensAction("saved", "list", (ctx, _artifact, params = {}) => {
+  register("saved", "list", (ctx, input = {}) => {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
-      const p = params || {};
+      const p = input || {};
+      const badNum = badNumericField(p, ["limit", "offset"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       let rows = [...userItems(userId).values()];
       const total = rows.length;
 
@@ -278,12 +302,12 @@ export default function registerSavedActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
-  });
+  }, { note: "search/sort/filter the caller's saved items" });
 
   // --------------------------------------------------------------------
   // saved.stats — counts for the lens header (by state / kind / folder).
   // --------------------------------------------------------------------
-  registerLensAction("saved", "stats", (ctx, _artifact, _params) => {
+  register("saved", "stats", (ctx, _input = {}) => {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
@@ -309,12 +333,12 @@ export default function registerSavedActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
-  });
+  }, { note: "saved-item counts by state/kind/mediaType for the lens header" });
 
   // --------------------------------------------------------------------
   // saved.tags — distinct tags with usage counts, for tag chips/filter.
   // --------------------------------------------------------------------
-  registerLensAction("saved", "tags", (ctx, _artifact, _params) => {
+  register("saved", "tags", (ctx, _input = {}) => {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
@@ -329,16 +353,16 @@ export default function registerSavedActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
-  });
+  }, { note: "distinct tags with usage counts" });
 
   // --------------------------------------------------------------------
   // FOLDERS / COLLECTIONS
   // --------------------------------------------------------------------
-  registerLensAction("saved", "folderCreate", (ctx, _artifact, params = {}) => {
+  register("saved", "folderCreate", (ctx, input = {}) => {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
-      const name = String(params?.name || "").trim().slice(0, 120);
+      const name = String(input?.name || "").trim().slice(0, 120);
       if (!name) return { ok: false, error: "need_name" };
       const folders = userFolders(userId);
       for (const f of folders.values()) {
@@ -350,9 +374,9 @@ export default function registerSavedActions(registerLensAction) {
       const folder = {
         id: uid("fld"),
         name,
-        color: params?.color ? String(params.color).slice(0, 20) : "amber",
-        description: params?.description
-          ? String(params.description).slice(0, 400) : "",
+        color: input?.color ? String(input.color).slice(0, 20) : "amber",
+        description: input?.description
+          ? String(input.description).slice(0, 400) : "",
         createdAt: now,
       };
       folders.set(folder.id, folder);
@@ -361,37 +385,39 @@ export default function registerSavedActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
-  });
+  }, { note: "create a saved-items collection/folder" });
 
-  registerLensAction("saved", "folderUpdate", (ctx, _artifact, params = {}) => {
+  register("saved", "folderUpdate", (ctx, input = {}) => {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
-      const id = String(params?.id || "");
+      const id = String(input?.id || "");
+      if (!id) return { ok: false, error: "need_id" };
       const folders = userFolders(userId);
       const folder = folders.get(id);
       if (!folder) return { ok: false, error: "not_found" };
-      if (typeof params.name === "string" && params.name.trim()) {
-        folder.name = params.name.trim().slice(0, 120);
+      if (typeof input.name === "string" && input.name.trim()) {
+        folder.name = input.name.trim().slice(0, 120);
       }
-      if (typeof params.color === "string") {
-        folder.color = params.color.slice(0, 20);
+      if (typeof input.color === "string") {
+        folder.color = input.color.slice(0, 20);
       }
-      if (typeof params.description === "string") {
-        folder.description = params.description.slice(0, 400);
+      if (typeof input.description === "string") {
+        folder.description = input.description.slice(0, 400);
       }
       persist();
       return { ok: true, result: { folder } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
-  });
+  }, { note: "rename/recolour a collection" });
 
-  registerLensAction("saved", "folderDelete", (ctx, _artifact, params = {}) => {
+  register("saved", "folderDelete", (ctx, input = {}) => {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
-      const id = String(params?.id || "");
+      const id = String(input?.id || "");
+      if (!id) return { ok: false, error: "need_id" };
       const folders = userFolders(userId);
       if (!folders.has(id)) return { ok: false, error: "not_found" };
       folders.delete(id);
@@ -409,9 +435,9 @@ export default function registerSavedActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
-  });
+  }, { note: "delete a collection and unfile its items" });
 
-  registerLensAction("saved", "folderList", (ctx, _artifact, _params) => {
+  register("saved", "folderList", (ctx, _input = {}) => {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
@@ -426,13 +452,13 @@ export default function registerSavedActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
-  });
+  }, { note: "list collections with per-folder item counts" });
 
   // --------------------------------------------------------------------
   // saved.export — full dump of the caller's saved list (JSON or CSV).
-  // params: { format? ('json'|'csv') }
+  // input: { format? ('json'|'csv') }
   // --------------------------------------------------------------------
-  registerLensAction("saved", "export", (ctx, _artifact, params = {}) => {
+  register("saved", "export", (ctx, input = {}) => {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_user" };
@@ -440,7 +466,7 @@ export default function registerSavedActions(registerLensAction) {
         .sort((a, b) => (a.savedAt < b.savedAt ? 1 : -1))
         .map(publicItem);
       const folders = [...userFolders(userId).values()];
-      const format = params?.format === "csv" ? "csv" : "json";
+      const format = input?.format === "csv" ? "csv" : "json";
       const exportedAt = new Date().toISOString();
 
       if (format === "csv") {
@@ -481,5 +507,5 @@ export default function registerSavedActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
-  });
+  }, { note: "export the caller's saved list as JSON or CSV" });
 }

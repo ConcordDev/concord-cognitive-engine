@@ -1,0 +1,19 @@
+{
+  "macro_id": "forecast.checkAlerts",
+  "domain": "forecast",
+  "name": "checkAlerts",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.triggered)",
+    "output.ok === false || typeof output.subscriptionCount === 'number'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": true } }
+  ],
+  "_note": "forecast.checkAlerts composes a fresh forecast and returns which of the CALLER's subscriptions it trips. With the assassin owner actor + a live DB and no subscriptions yet, {} returns ok:true with subscriptionCount 0 and an empty triggered array — it short-circuits before composing, never no_db."
+}

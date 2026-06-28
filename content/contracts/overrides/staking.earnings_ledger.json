@@ -1,0 +1,21 @@
+{
+  "macro_id": "staking.earnings_ledger",
+  "domain": "staking",
+  "name": "earnings_ledger",
+  "inputs": {
+    "limit": { "type": "number", "min": 1, "max": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (Array.isArray(output.result.entries) && output.result.count === output.result.entries.length)",
+    "output.ok === false || (typeof output.result.totalYieldEarnedCc === 'number' && Number.isFinite(output.result.totalYieldEarnedCc))",
+    "output.ok === false || (typeof output.result.totalPenaltiesCc === 'number' && Number.isFinite(output.result.totalPenaltiesCc))",
+    "output.ok === false || Array.isArray(output.result.timeline)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 50 }, "expect": { "ok": true } }
+  ],
+  "_note": "earnings_ledger is a user-scoped READ. Internal owner actor → {} returns ok:true with an empty ledger (count 0) for a fresh user; never no_actor / no_db (in-memory globalThis._concordSTATE.stakingLedger). limit is internally clamped [1,500]; totals/timeline derive only from realized stake_redeemed/compounded/early_unstake rows."
+}

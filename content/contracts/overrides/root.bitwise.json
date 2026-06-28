@@ -1,0 +1,26 @@
+{
+  "macro_id": "root.bitwise",
+  "domain": "root",
+  "name": "bitwise",
+  "inputs": {
+    "a": { "type": "string", "maxLength": 60 },
+    "b": { "type": "string", "maxLength": 60 },
+    "op": { "type": "string", "enum": ["and", "or", "xor", "shl", "shr", "mod", "not"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.decimal === 'number')",
+    "output.ok === false || typeof output.result.glyph === 'string'",
+    "output.ok === false || typeof output.result.base6 === 'string'",
+    "output.ok === false || ['and','or','xor','shl','shr','mod','not'].includes(output.result.op)"
+  ],
+  "fuzz_cases": [
+    { "input": { "a": 12, "b": 10, "op": "and" }, "expect": { "ok": true } },
+    { "input": { "a": 17, "b": 6, "op": "mod" }, "expect": { "ok": true } },
+    { "input": { "a": 5, "b": 0, "op": "mod" }, "expect": { "ok": false } },
+    { "input": { "a": 1, "b": 1, "op": "nand" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "root.bitwise applies a bitwise/modular operator (and/or/xor/shl/shr/mod/not) to two operands that may be decimals OR glyph strings. Operands are coerced + truncated to integers; result is reported as decimal + glyph + base-6 + binary. Pure compute, no DB/actor dependency. mod-by-zero (Refusal) and unknown ops fail-CLOSED with a clean ok:false, never a throw. A missing required operand also rejects (ok:false), never ok:true on garbage."
+}

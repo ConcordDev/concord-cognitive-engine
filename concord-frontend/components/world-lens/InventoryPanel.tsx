@@ -14,7 +14,10 @@ import {
   Search,
   ChevronDown,
   Info,
+  Wrench,
 } from 'lucide-react';
+import { lensRun } from '../../lib/api/client';
+import { subscribe } from '../../lib/realtime/socket';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -46,6 +49,21 @@ interface InventoryItem {
   effectiveness?: number;
   effectivenessLabel?: string;
   hasKnowledge?: boolean;
+  // Gear durability — only present on items the backend reports as having
+  // durability (NULL-max / non-gear items have none and render no bar).
+  durabilityCurrent?: number;
+  durabilityMax?: number;
+  durabilityBroken?: boolean;
+  durabilityLow?: boolean;
+}
+
+// Shape returned by the `gear.durability` macro for each gear item.
+interface DurabilityRow {
+  itemId: string;
+  current: number;
+  max: number;
+  broken: boolean;
+  lowDurability: boolean;
 }
 
 interface EquippedItems {
@@ -118,11 +136,35 @@ export default function InventoryPanel({
   const [hoveredItem, setHoveredItem] = useState<InventoryItem | null>(null);
   const [showStorage, setShowStorage] = useState(false);
   const [fetchedItems, setFetchedItems] = useState<InventoryItem[] | null>(null);
+  // Gear durability — itemId → row from the `gear.durability` macro.
+  const [durabilityById, setDurabilityById] = useState<Record<string, DurabilityRow>>({});
+  const [repairCostTotal, setRepairCostTotal] = useState(0);
+  const [repairing, setRepairing] = useState(false);
+  const [repairError, setRepairError] = useState<string | null>(null);
 
   // Polish-pass SFX: rustle on open
   useEffect(() => {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('concordia:inventory-opened'));
+    }
+  }, []);
+
+  // Pull the caller's gear durability (broken/low flags + repair cost). Only
+  // items the backend reports as having durability appear here — never
+  // fabricated client-side. Returns the indexed map so callers can refresh.
+  const loadDurability = useCallback(async () => {
+    try {
+      const { data } = await lensRun('gear', 'durability', {});
+      const result = data.result as
+        | { items?: DurabilityRow[]; repairCostTotal?: number }
+        | null;
+      if (!data.ok || !result?.items) return;
+      const map: Record<string, DurabilityRow> = {};
+      for (const row of result.items) map[row.itemId] = row;
+      setDurabilityById(map);
+      setRepairCostTotal(Number(result.repairCostTotal ?? 0));
+    } catch {
+      /* durability surface optional — inventory still renders */
     }
   }, []);
 
@@ -150,11 +192,59 @@ export default function InventoryPanel({
         setFetchedItems(mapped);
       })
       .catch(() => {});
-  }, []);
+    loadDurability();
+  }, [loadDurability]);
+
+  // Death-tied durability changes / repairs pushed from the server → refresh.
+  // The server emits these to the caller's user:<id> room (see the death hook
+  // in server.js + gear.repair_all macro).
+  useEffect(() => {
+    const offDamaged = subscribe('world:gear-damaged', () => loadDurability());
+    const offRepaired = subscribe('world:gear-repaired', () => loadDurability());
+    return () => {
+      offDamaged();
+      offRepaired();
+    };
+  }, [loadDurability]);
+
+  // Repair All — gold sink. Calls the macro, then refreshes durability.
+  const handleRepairAll = useCallback(async () => {
+    setRepairing(true);
+    setRepairError(null);
+    try {
+      const { data } = await lensRun('gear', 'repair_all', {});
+      const result = data.result as { ok?: boolean; reason?: string } | null;
+      if (!data.ok || result?.ok === false) {
+        setRepairError(
+          result?.reason === 'insufficient_funds'
+            ? 'Not enough Concord Coin to repair.'
+            : data.error || result?.reason || 'Repair failed.',
+        );
+      }
+    } catch {
+      setRepairError('Repair failed.');
+    } finally {
+      setRepairing(false);
+      await loadDurability();
+    }
+  }, [loadDurability]);
 
   // Real inventory only — never render fabricated items. Empty until the
   // real /api/player-inventory fetch resolves; honest empty-state otherwise.
-  const items = fetchedItems ?? itemsProp ?? [];
+  // Durability flags are merged in from the gear.durability surface by item id.
+  const items = (fetchedItems ?? itemsProp ?? []).map((it) => {
+    const d = durabilityById[it.id];
+    if (!d) return it;
+    return {
+      ...it,
+      durabilityCurrent: d.current,
+      durabilityMax: d.max,
+      durabilityBroken: d.broken,
+      durabilityLow: d.lowDurability,
+    };
+  });
+
+  const brokenCount = items.filter((i) => i.durabilityBroken).length;
 
   /* Filtering & sorting */
   const filtered = items
@@ -308,6 +398,37 @@ export default function InventoryPanel({
                       {item.quantity}
                     </span>
                   )}
+                  {/* Durability bar — only items the backend reports with
+                      durability render this; broken = red, low = amber. */}
+                  {typeof item.durabilityMax === 'number' && item.durabilityMax > 0 && (
+                    <span
+                      className="absolute bottom-0 left-0 right-0 h-1 bg-black/60 rounded-b overflow-hidden"
+                      title={`Durability ${item.durabilityCurrent}/${item.durabilityMax}${
+                        item.durabilityBroken ? ' — BROKEN' : item.durabilityLow ? ' — low' : ''
+                      }`}
+                    >
+                      <span
+                        data-testid={`durability-fill-${item.id}`}
+                        className={`block h-full ${
+                          item.durabilityBroken
+                            ? 'bg-red-500'
+                            : item.durabilityLow
+                              ? 'bg-amber-400'
+                              : 'bg-emerald-500'
+                        }`}
+                        style={{
+                          width: `${Math.round(
+                            ((item.durabilityCurrent ?? 0) / (item.durabilityMax || 1)) * 100,
+                          )}%`,
+                        }}
+                      />
+                    </span>
+                  )}
+                  {item.durabilityBroken && (
+                    <span className="absolute top-0.5 left-0.5 text-[7px] bg-red-600 text-white px-1 rounded font-bold">
+                      !
+                    </span>
+                  )}
                 </button>
 
                 {/* Tooltip */}
@@ -317,6 +438,24 @@ export default function InventoryPanel({
                   >
                     <p className="text-xs font-semibold text-white">{item.name}</p>
                     <p className="text-[10px] text-gray-400 mt-0.5">{item.description}</p>
+                    {typeof item.durabilityMax === 'number' && item.durabilityMax > 0 && (
+                      <p
+                        className={`text-[9px] mt-1 font-medium ${
+                          item.durabilityBroken
+                            ? 'text-red-400'
+                            : item.durabilityLow
+                              ? 'text-amber-400'
+                              : 'text-emerald-400'
+                        }`}
+                      >
+                        Durability: {item.durabilityCurrent}/{item.durabilityMax}
+                        {item.durabilityBroken
+                          ? ' — BROKEN (no bonus until repaired)'
+                          : item.durabilityLow
+                            ? ' — low'
+                            : ''}
+                      </p>
+                    )}
                     {item.stats && (
                       <div className="mt-1 border-t border-white/5 pt-1">
                         {Object.entries(item.stats).map(([k, v]) => (
@@ -373,6 +512,36 @@ export default function InventoryPanel({
           </div>
         )}
       </div>
+
+      {/* Repair All — gold sink. Only shown when something needs repair. */}
+      {repairCostTotal > 0 && (
+        <div className="px-3 py-2 border-t border-white/5">
+          <button
+            onClick={handleRepairAll}
+            disabled={repairing}
+            data-testid="repair-all-button"
+            className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[11px] font-medium transition-colors ${
+              brokenCount > 0
+                ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
+                : 'bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            <Wrench className="w-3.5 h-3.5" />
+            {repairing ? 'Repairing…' : `Repair All (${repairCostTotal} cc)`}
+          </button>
+          {brokenCount > 0 && (
+            <p className="text-[9px] text-red-400 mt-1 text-center">
+              {brokenCount} broken {brokenCount === 1 ? 'item gives' : 'items give'} no bonus until
+              repaired.
+            </p>
+          )}
+          {repairError && (
+            <p className="text-[9px] text-red-400 mt-1 text-center" role="alert">
+              {repairError}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Storage link */}
       <div className="px-3 py-2 border-t border-white/5">

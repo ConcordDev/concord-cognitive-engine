@@ -1,0 +1,26 @@
+{
+  "macro_id": "linguistics.frequencyAnalysis",
+  "domain": "linguistics",
+  "name": "frequencyAnalysis",
+  "inputs": {
+    "text": { "type": "string", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalWords)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.uniqueWords)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.hapaxLegomena)",
+    "output.ok === false || output.result.message !== undefined || (Array.isArray(output.result.topContentWords) && output.result.topContentWords.every(function(w){ return typeof w.word === 'string' && Number.isFinite(w.count) && Number.isFinite(w.frequency); }))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "text": "" }, "expect": { "ok": true } },
+    { "input": { "text": "the cat the cat the dog runs fast and the cat sleeps" }, "expect": { "ok": true } },
+    { "input": { "text": 12345 }, "expect": { "ok": true } },
+    { "input": { "text": "Infinity NaN" }, "expect": { "ok": true } },
+    { "input": { "text": { "a": 1 } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'linguistics.frequencyAnalysis'. Reads artifact.data.text (String-coerced — hardened). Returns {totalWords,uniqueWords,topContentWords:[{word,count,frequency}],hapaxLegomena,zipfCompliance}; stop-words excluded from topContentWords. Every count/frequency stays FINITE on poisoned input. Pinned by server/tests/linguistics-lens-macros.test.js."
+}

@@ -30,8 +30,14 @@ interface Threat { threat: string; category: string; likelihood: number; impact:
 interface ThreatResult { threats: Threat[]; critical: number; total: number; overallThreatLevel: string; topThreat?: string }
 interface ReadyResult { personnelReadiness: number; equipmentReadiness: number; trainingCompletion: number; supplyLevel: number; overallReadiness: number; status: string; gaps: string[] }
 interface IncResult { incidentType?: string; severity?: string; responseTime?: string; escalationLevel?: string; immediateActions?: string[] }
-interface DodAward { awardId?: string; recipient?: string; amount?: number; agency?: string; description?: string; placeOfPerformance?: string; naics?: string; psc?: string; periodStart?: string; periodEnd?: string }
-interface SpendResult { results?: DodAward[]; totalResults?: number; pageInfo?: { page: number; hasNext: boolean } }
+// Field names align EXACTLY with what defense.usaspending-dod-contracts returns
+// (server/domains/defense.js: placeOfPerformanceState / naicsCode / pscCode /
+// startDate / endDate, and top-level count / totalAmount / totalPages). The
+// prior placeOfPerformance / naics / psc / periodStart / periodEnd / totalResults
+// / pageInfo names were never returned by the handler — the rendered row read
+// undefined (fixed 2026-06-28, matching the live ContractSearch.tsx contract).
+interface DodAward { awardId?: string; recipient?: string; amount?: number; agency?: string; subAgency?: string; description?: string; placeOfPerformanceState?: string; naicsCode?: string; pscCode?: string; startDate?: string; endDate?: string }
+interface SpendResult { keyword?: string; awardType?: string; results?: DodAward[]; count?: number; totalAmount?: number; totalPages?: number; source?: string }
 
 // No seeded data — every input starts empty.
 export function DefenseActionPanel() {
@@ -248,7 +254,7 @@ export function DefenseActionPanel() {
         {spendResult?.results && (
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-60 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">DoD contracts · {contractKeyword}</div>
-            {spendResult.results.slice(0, 5).map((a, i) => <div key={i} className="text-[10px] text-zinc-300 mt-1 pb-1 border-b border-zinc-800 last:border-0"><strong className="text-blue-200">{a.recipient}</strong> · <span className="font-mono text-emerald-300">${a.amount?.toLocaleString()}</span><div className="text-zinc-400 line-clamp-1">{a.description}</div><div className="text-zinc-400">{a.agency} · {a.placeOfPerformance}</div></div>)}
+            {spendResult.results.slice(0, 5).map((a, i) => <div key={i} className="text-[10px] text-zinc-300 mt-1 pb-1 border-b border-zinc-800 last:border-0"><strong className="text-blue-200">{a.recipient}</strong> · <span className="font-mono text-emerald-300">${a.amount?.toLocaleString()}</span><div className="text-zinc-400 line-clamp-1">{a.description}</div><div className="text-zinc-400">{a.subAgency || a.agency}{a.placeOfPerformanceState ? ` · ${a.placeOfPerformanceState}` : ''}</div></div>)}
           </div>
         )}
       </div>

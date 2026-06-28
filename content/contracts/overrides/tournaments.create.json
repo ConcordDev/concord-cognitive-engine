@@ -1,0 +1,30 @@
+{
+  "macro_id": "tournaments.create",
+  "domain": "tournaments",
+  "name": "create",
+  "inputs": {
+    "title": { "type": "string", "maxLength": 120 },
+    "game": { "type": "string", "maxLength": 60 },
+    "format": { "type": "string", "enum": ["single_elimination", "double_elimination", "round_robin", "swiss"] },
+    "maxEntrants": { "type": "number", "min": 2, "max": 128 },
+    "prizePoolCc": { "type": "number", "min": 0, "max": 1000000 },
+    "teamSize": { "type": "number", "min": 1, "max": 10 },
+    "swissRounds": { "type": "number", "min": 1, "max": 12 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.tournament && typeof output.result.tournament.id === 'string')",
+    "output.ok === false || output.result.tournament.status === 'upcoming'",
+    "output.ok === false || (typeof output.result.tournament.prizePoolCc === 'number' && output.result.tournament.prizePoolCc >= 0 && output.result.tournament.prizePoolCc <= 1000000)",
+    "output.ok === false || Array.isArray(output.result.tournament.entrants)",
+    "output.ok === false || typeof output.result.tournament.shareSlug === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "title": "Spring Cup", "format": "round_robin", "maxEntrants": 4, "prizePoolCc": 1000 }, "expect": { "ok": true } },
+    { "input": { "title": "Free entry", "format": "single_elimination" }, "expect": { "ok": true } },
+    { "input": { "title": "Poisoned pool", "prizePoolCc": 1e308 }, "expect": { "ok": false, "error": "invalid_prize_pool" } },
+    { "input": { "title": "Poisoned split", "payoutSplit": [60, 1e308, 15] }, "expect": { "ok": false, "error": "invalid_payout_split" } }
+  ],
+  "_note": "tournaments.create spins up an in-memory bracket tournament in globalThis._concordSTATE.tournamentsLens scoped to the caller. There is NO wallet/CC write anywhere in this domain — prizePoolCc is a stored display number that the payouts macro distributes PROPORTIONALLY (sum of payouts <= pool, always). Empty/missing fields default (title 'Untitled Tournament', format single_elimination, maxEntrants 8, pool 0). prizePoolCc and every payoutSplit weight are fail-CLOSED via isSaneCc BEFORE any state write: a poisoned value (NaN/Infinity/-1/1e308/>1e6) returns ok:false ('invalid_prize_pool' / 'invalid_payout_split') and writes nothing. status starts 'upcoming'."
+}

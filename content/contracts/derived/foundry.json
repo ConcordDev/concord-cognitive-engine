@@ -1,0 +1,646 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.analytics",
+      "name": "analytics"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.asset_import",
+      "name": "asset_import"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.asset_kinds",
+      "name": "asset_kinds"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.asset_list",
+      "name": "asset_list"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.asset_remove",
+      "name": "asset_remove"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.blueprint_get",
+      "name": "blueprint_get"
+    },
+    {
+      "_derived": false,
+      "domain": "foundry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        }
+      ],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "Array.isArray(output.nodeKinds)",
+        "Array.isArray(output.eventTypes)",
+        "Array.isArray(output.actionTypes)"
+      ],
+      "macro_id": "foundry.blueprint_kinds",
+      "name": "blueprint_kinds"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.blueprint_save",
+      "name": "blueprint_save"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.collab_add",
+      "name": "collab_add"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.collab_list",
+      "name": "collab_list"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.collab_ping",
+      "name": "collab_ping"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.collab_remove",
+      "name": "collab_remove"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.collab_roles",
+      "name": "collab_roles"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.compose_rule",
+      "name": "compose_rule"
+    },
+    {
+      "_derived": false,
+      "domain": "foundry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_name"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "name": "Assassin Test World"
+          }
+        }
+      ],
+      "inputs": {
+        "description": {
+          "required": false,
+          "type": "string"
+        },
+        "name": {
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.world && typeof output.world.id === 'string')",
+        "output.ok === false || output.world.status === 'draft'",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "foundry.create",
+      "name": "create"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.delete",
+      "name": "delete"
+    },
+    {
+      "_derived": false,
+      "domain": "foundry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "id": "fw_does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (output.world && typeof output.world.id === 'string')"
+      ],
+      "macro_id": "foundry.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "foundry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 10
+          }
+        }
+      ],
+      "inputs": {
+        "limit": {
+          "required": false,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.worlds)",
+        "output.ok === false || typeof output.count === 'number'",
+        "output.ok === false || output.worlds.length === output.count"
+      ],
+      "macro_id": "foundry.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.marketplace",
+      "name": "marketplace"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.matchmaking_modes",
+      "name": "matchmaking_modes"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.multiplayer_get",
+      "name": "multiplayer_get"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.multiplayer_set",
+      "name": "multiplayer_set"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.playtest_end",
+      "name": "playtest_end"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.playtest_reload",
+      "name": "playtest_reload"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.playtest_start",
+      "name": "playtest_start"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.preview",
+      "name": "preview"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.preview_end",
+      "name": "preview_end"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.publish",
+      "name": "publish"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.rate",
+      "name": "rate"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.ratings",
+      "name": "ratings"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.recent_mine",
+      "name": "recent_mine"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.system_schema",
+      "name": "system_schema"
+    },
+    {
+      "_derived": false,
+      "domain": "foundry",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "category": "world"
+          }
+        }
+      ],
+      "inputs": {
+        "category": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.systems)",
+        "output.ok === false || typeof output.total === 'number'",
+        "output.ok === false || output.systems.length === output.count",
+        "output.ok === false || output.systems.every(s => typeof s.id === 'string' && s.id.length > 0)"
+      ],
+      "macro_id": "foundry.systems",
+      "name": "systems"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.templates",
+      "name": "templates"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.track_play",
+      "name": "track_play"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.unpublish",
+      "name": "unpublish"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.update",
+      "name": "update"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.validate",
+      "name": "validate"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "foundry.validate_systems",
+      "name": "validate_systems"
+    }
+  ],
+  "domain": "foundry",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 40
+}

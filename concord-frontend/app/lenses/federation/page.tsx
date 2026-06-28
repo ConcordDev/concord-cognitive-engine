@@ -103,15 +103,26 @@ export default function FederationPage() {
   const [status, setStatus] = useState<FederationStatus | null>(null);
   const [peers, setPeers] = useState<Peer[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [s, pInst, pTrust] = await Promise.all([
         fetch('/api/federation/status', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
         fetch('/api/federation/instances', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
         fetch('/api/federation/peers',     { credentials: 'include' }).then((r) => r.json()).catch(() => null),
       ]);
+      // If the status endpoint itself is unreachable, surface a real error
+      // (with a Retry) rather than a silently-empty page.
+      if (s == null) {
+        setError('Federation service unreachable. Check the node is up and try again.');
+        setStatus(null);
+        setPeers([]);
+        return;
+      }
       setStatus(s as FederationStatus | null);
       const all: Peer[] = [];
       if (Array.isArray(pInst?.peers))   all.push(...(pInst.peers as Peer[]));
@@ -125,8 +136,11 @@ export default function FederationPage() {
         return true;
       });
       setPeers(deduped);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load federation status.');
     } finally {
       setLoading(false);
+      setLoaded(true);
     }
   }, []);
 
@@ -157,10 +171,43 @@ export default function FederationPage() {
           </button>
         </header>
 
-        {/* Status strip */}
-        <StatusStrip status={status} peerCount={peers.length} />
+        {/* Initial load status — accessible live region */}
+        {loading && !loaded && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center gap-2 text-sm text-gray-400 mb-2"
+          >
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading federation status…
+          </div>
+        )}
 
-        {/* Tabs */}
+        {/* Error surface — accessible alert with a working Retry */}
+        {error && !loading && (
+          <div
+            role="alert"
+            className="mb-3 rounded-lg border border-rose-500/40 bg-rose-950/40 px-3 py-2 text-sm text-rose-200 flex items-center justify-between gap-3 flex-wrap"
+          >
+            <span className="inline-flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" /> {error}
+            </span>
+            <button
+              type="button"
+              onClick={refresh}
+              className="px-2 py-1 rounded bg-rose-700/60 hover:bg-rose-700 text-white text-xs inline-flex items-center gap-1"
+            >
+              <RefreshCw className="w-3 h-3" /> Try again
+            </button>
+          </div>
+        )}
+
+        {/* Status strip */}
+        {!error && <StatusStrip status={status} peerCount={peers.length} />}
+
+        {/* Tabs + content — hidden while the initial status fetch is failing
+            so the error surface above reads cleanly. */}
+        {!error && (<>
         <nav className="flex gap-2 mt-5 mb-5 border-b border-white/10 pb-3 overflow-x-auto">
           <TabButton current={tab} value="network"    label="Network"      onClick={() => setTab('network')}    icon={<Globe         className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="search"     label="Search"       onClick={() => setTab('search')}     icon={<Search        className="w-3.5 h-3.5" />} />
@@ -195,6 +242,7 @@ export default function FederationPage() {
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <FediverseFeed />
         </section>
+        </>)}
       </div>
 
       {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}

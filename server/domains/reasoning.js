@@ -720,3 +720,75 @@ export default function registerReasoningActions(registerLensAction) {
     }
   });
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// HLR reasoning-trace macro surface (the /lenses/reasoning/traces watcher).
+//
+// The trace browser at app/lenses/reasoning/traces/page.tsx is a READER /
+// DASHBOARD over the High-Level-Reasoning engine (server/emergent/hlr-engine.js):
+// it lists recent reasoning traces, opens one for detail, and can kick a new
+// constraint-check pass. These macros are thin delegations to the real engine —
+// NO duplicated reasoning logic. They give the manifest real macros to point at
+// (list / get / run) instead of the prior phantom `lens.reasoning.*` ids, and
+// give the runMacro path parity with the existing REST routes
+// (`/api/reasoning/traces`, `/api/reasoning/trace/:id`, `/api/reasoning/run`).
+//
+// By design this surface has NO create/update/delete/export: a trace is an
+// immutable record of a reasoning pass produced by `run` (or by the autonomous
+// HLR cycle / drift-scan), not an authorable artifact. There is nothing to edit
+// or hand-curate, so those bits are honestly absent rather than faked.
+//
+// `register` is the runMacro registrar: register(domain, name, async (ctx, input) => {...}, opts).
+
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
+// silently clamp through Math.min/max bounds. An absent field is fine (default
+// is used). Returns null when clean, or the offending key.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
+export function registerReasoningTraceMacros(register) {
+  /**
+   * reasoning.traces — list recent HLR reasoning traces (summaries).
+   * input: { limit? }  (clamped 1..100 by listTraces)
+   * Read-only; safe for publicReadDomains.
+   */
+  register("reasoning", "traces", async (_ctx, input = {}) => {
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
+    const { listTraces, REASONING_MODES } = await import("../emergent/hlr-engine.js");
+    const limit = Math.min(Math.max(Number(input.limit) || 50, 1), 100);
+    return { ok: true, traces: listTraces(limit), modes: Object.values(REASONING_MODES) };
+  }, { public: true, note: "list recent HLR reasoning traces" });
+
+  /**
+   * reasoning.trace — fetch one full HLR reasoning trace by id.
+   * input: { traceId }
+   * Read-only; safe for publicReadDomains.
+   */
+  register("reasoning", "trace", async (_ctx, input = {}) => {
+    const traceId = String(input.traceId || input.id || "");
+    if (!traceId) return { ok: false, error: "traceId_required" };
+    const { getReasoningTrace } = await import("../emergent/hlr-engine.js");
+    const trace = getReasoningTrace(traceId);
+    if (!trace) return { ok: false, error: "no_trace" };
+    return { ok: true, trace };
+  }, { public: true, note: "fetch one HLR reasoning trace by id" });
+
+  /**
+   * reasoning.run — execute one High-Level-Reasoning pass, recording a trace.
+   * input: { topic?, question?, mode?, depth? }  (topic OR question required)
+   * Returns the engine result (includes traceId so a caller can immediately
+   * open it via reasoning.trace). Writes a real trace into the engine store.
+   */
+  register("reasoning", "run", async (_ctx, input = {}) => {
+    const { runHLR, REASONING_MODES } = await import("../emergent/hlr-engine.js");
+    const result = runHLR(input || {});
+    return { ...result, modes: Object.values(REASONING_MODES) };
+  }, { note: "run one HLR reasoning pass and record a trace" });
+}

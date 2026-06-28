@@ -1,0 +1,16 @@
+{
+  "macro_id": "staking.list_receipts",
+  "domain": "staking",
+  "name": "list_receipts",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (Array.isArray(output.result.receipts) && output.result.count === output.result.receipts.length)",
+    "output.ok === false || (typeof output.result.liveFaceValueCc === 'number' && output.result.liveFaceValueCc >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "list_receipts is a user-scoped READ of liquid-staking receipt tokens. Internal owner actor → {} returns ok:true with an empty receipts[] for a fresh user; never no_actor / no_db (in-memory globalThis._concordSTATE.stakingReceipts). liveFaceValueCc sums only active receipts."
+}

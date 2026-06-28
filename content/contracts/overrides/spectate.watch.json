@@ -1,0 +1,21 @@
+{
+  "macro_id": "spectate.watch",
+  "domain": "spectate",
+  "name": "watch",
+  "inputs": {
+    "worldId": { "type": "string", "required": true, "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.sessionToken === 'string' && output.sessionToken.length > 0)",
+    "output.ok === false || typeof output.worldId === 'string'",
+    "output.ok === false || typeof output.wsHint === 'string'",
+    "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false, "reason": "missing_worldId" } }
+  ],
+  "_note": "Open a read-only spectator session on a world. Delegates to spectator.startSession: persists a spectator_sessions row + returns a unique session token and a WS hint. Anonymous watching is allowed (viewer_user_id stays null); a missing worldId yields reason:missing_worldId."
+}

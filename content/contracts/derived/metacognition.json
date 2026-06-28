@@ -1,0 +1,163 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.adapt_strategy",
+      "name": "adapt_strategy"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.adjust_confidence",
+      "name": "adjust_confidence"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.analyze_failure",
+      "name": "analyze_failure"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.assess",
+      "name": "assess"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.blind_spots",
+      "name": "blind_spots"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.calibration",
+      "name": "calibration"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.introspect",
+      "name": "introspect"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.introspection_status",
+      "name": "introspection_status"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.predict",
+      "name": "predict"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.resolve_prediction",
+      "name": "resolve_prediction"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.select_strategy",
+      "name": "select_strategy"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.status",
+      "name": "status"
+    }
+  ],
+  "domain": "metacognition",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 12
+}

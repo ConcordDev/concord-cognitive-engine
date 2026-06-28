@@ -1,0 +1,21 @@
+{
+  "macro_id": "reasoning.traces",
+  "domain": "reasoning",
+  "name": "traces",
+  "inputs": {
+    "limit": { "type": "number", "min": 1, "max": 100 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "Array.isArray(output.traces)",
+    "output.traces.length <= 100",
+    "Array.isArray(output.modes) && output.modes.length === 7"
+  ],
+  "fuzz_cases": [
+    { "input": { "limit": 10 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 9999 }, "expect": { "ok": true } }
+  ],
+  "_note": "reasoning.traces is a read-only list of recent HLR trace summaries (server/emergent/hlr-engine.js#listTraces). limit clamps to [1,100]. It never throws and always returns ok:true with a traces array (possibly empty) plus the 7-mode list for the filter UI."
+}

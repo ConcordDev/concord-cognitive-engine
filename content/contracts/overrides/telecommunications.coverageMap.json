@@ -1,0 +1,23 @@
+{
+  "macro_id": "telecommunications.coverageMap",
+  "domain": "telecommunications",
+  "name": "coverageMap",
+  "reads_artifact_data": true,
+  "inputs": {
+    "towers": { "type": "array", "required": false, "maxLength": 5000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (typeof output.result.message === 'string') || (Number.isFinite(output.result.towers) && Number.isFinite(output.result.activeTowers) && Number.isFinite(output.result.totalCoverageKm2) && Array.isArray(output.result.technologies))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "towers": [{ "name": "A", "lat": 40.7, "lon": -74, "rangeKm": 5, "technology": "5G", "status": "active" }, { "name": "B", "lat": 40.8, "lon": -74.1, "rangeKm": 10, "technology": "4G", "status": "planned" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "towers": [] } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "towers": [{ "name": "Bad", "rangeKm": "1e999" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). COMPONENT-EXACT shape: panel sends {artifact:{data:{towers}}}; dispatch peels the wrapper. RETURNS either {message} (empty towers) or {towers,activeTowers,totalCoverageKm2,technologies} — the exact keys the CovResult card renders. totalCoverageKm2 = Σ π·rangeKm²; technologies is the de-duped set. POISON: per-tower rangeKm via num() so 'Infinity'/'1e999' collapse to the finite default (5); totalCoverageKm2 stays FINITE. Pure compute, no STATE. Pinned by server/tests/telecommunications-lens-macros.test.js."
+}

@@ -1,5 +1,20 @@
 import { fetchJsonWithTimeout } from "../lib/external-fetch.js";
 
+// secFin — fail-CLOSED numeric coercion for the threat/incident scoring
+// calculators. A poisoned input ("Infinity"/"1e999"/NaN/"abc") must NEVER leak
+// a non-finite number into a rendered risk score. parseFloat("Infinity") is
+// Infinity and `Infinity || fallback` keeps Infinity, so the bare `|| 3`
+// patterns the scorers used were poisonable. This clamps to the 1..5 rating
+// band the UI inputs are bounded to, falling back to `def` for anything
+// non-finite or out of range.
+function secFin(v, def, lo = 1, hi = 5) {
+  const n = typeof v === "number" ? v : parseFloat(v);
+  if (!Number.isFinite(n)) return def;
+  if (n < lo) return lo;
+  if (n > hi) return hi;
+  return n;
+}
+
 export default function registerSecurityActions(registerLensAction) {
   registerLensAction("security", "incidentTrend", (ctx, artifact, _params) => {
     const incidents = artifact.data?.incidents || [artifact.data];
@@ -29,8 +44,8 @@ export default function registerSecurityActions(registerLensAction) {
   registerLensAction("security", "threatMatrix", (ctx, artifact, _params) => {
     const threats = artifact.data?.threats || [artifact.data];
     const matrix = threats.map(t => {
-      const severity = t.severity || 3;
-      const likelihood = t.probability || t.likelihood || 3;
+      const severity = secFin(t.severity, 3);
+      const likelihood = secFin(t.probability != null ? t.probability : t.likelihood, 3);
       const riskScore = severity * likelihood;
       return {
         name: t.name || artifact.title,
@@ -48,7 +63,14 @@ export default function registerSecurityActions(registerLensAction) {
   registerLensAction("security", "incidentEscalate", (ctx, artifact, params) => {
   try {
     const incident = artifact.data || {};
-    const severity = incident.severity || params.severity || 3;
+    // severity may arrive as a P1..P5 string (page artifact) or a 1..5 number
+    // (escalate panel). Map the P-scale to a numeric 1..5 (P1 = highest = 5),
+    // then fail-closed so a poisoned "Infinity"/NaN can't leak into the score.
+    const P_SCALE = { P1: 5, P2: 4, P3: 3, P4: 2, P5: 1 };
+    const rawSeverity = incident.severity != null ? incident.severity : params.severity;
+    const severity = typeof rawSeverity === "string" && P_SCALE[rawSeverity] != null
+      ? P_SCALE[rawSeverity]
+      : secFin(rawSeverity, 3);
     const impact = incident.impact || params.impact || 'medium';
     const type = incident.type || params.type || 'unknown';
 
@@ -102,8 +124,8 @@ export default function registerSecurityActions(registerLensAction) {
   try {
     const threats = artifact.data?.threats || [artifact.data];
     const assessments = threats.map(t => {
-      const probability = parseFloat(t.probability || t.likelihood) || 3;
-      const impact = parseFloat(t.impact || t.severity) || 3;
+      const probability = secFin(t.probability != null ? t.probability : t.likelihood, 3);
+      const impact = secFin(t.impact != null ? t.impact : t.severity, 3);
       const riskScore = Math.round(probability * impact * 100) / 100;
       const vulnerabilities = t.vulnerabilities || [];
       const existingControls = t.controls || t.mitigations || [];
@@ -213,18 +235,33 @@ export default function registerSecurityActions(registerLensAction) {
 
     findings.sort((a, b) => {
       const sev = { critical: 0, high: 1, medium: 2, low: 3 };
-      return (sev[a.severity] || 4) - (sev[b.severity] || 4);
+      // `sev[x] ?? 4` — NOT `|| 4`: critical's rank is 0, and `0 || 4` collapses
+      // to 4, which sorted criticals LAST. Use nullish coalescing so rank 0 is
+      // honored and criticals sort first (the order the findings card renders).
+      return (sev[a.severity] ?? 4) - (sev[b.severity] ?? 4);
     });
 
+    const criticalCount = findings.filter(f => f.severity === 'critical').length;
+    const highCount = findings.filter(f => f.severity === 'high').length;
+    const mediumCount = findings.filter(f => f.severity === 'medium').length;
+    const lowCount = findings.filter(f => f.severity === 'low').length;
     return {
       ok: true,
       result: {
         scannedAt: new Date().toISOString(),
         systemsScanned: systems.length,
         totalFindings: findings.length,
-        criticalCount: findings.filter(f => f.severity === 'critical').length,
-        highCount: findings.filter(f => f.severity === 'high').length,
-        mediumCount: findings.filter(f => f.severity === 'medium').length,
+        criticalCount,
+        highCount,
+        mediumCount,
+        // bySeverity — the ThreatVulnPanel "Vulnerability findings" card renders
+        // Object.entries(scanResult.bySeverity) as severity-count chips. Without
+        // this object the chips silently render nothing (the dead-card class).
+        // Only non-zero buckets are surfaced so the chip row stays uncluttered.
+        bySeverity: Object.fromEntries(
+          Object.entries({ critical: criticalCount, high: highCount, medium: mediumCount, low: lowCount })
+            .filter(([, n]) => n > 0),
+        ),
         findings,
       },
     };

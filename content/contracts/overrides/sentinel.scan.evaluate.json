@@ -1,0 +1,21 @@
+{
+  "macro_id": "sentinel.scan.evaluate",
+  "domain": "sentinel",
+  "name": "scan.evaluate",
+  "inputs": {
+    "content": { "type": "string", "maxLength": 20000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.matches)",
+    "output.ok === false || (typeof output.result.matchCount === 'number' && output.result.matchCount >= 0)",
+    "output.ok === false || (typeof output.result.rulesEvaluated === 'number' && output.result.rulesEvaluated >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "content required" } },
+    { "input": { "content": "" }, "expect": { "ok": false, "error": "content required" } },
+    { "input": { "content": "const x = eval('1+1');" }, "expect": { "ok": true } }
+  ],
+  "_note": "Evaluates the per-user custom scan rules (from STATE keyed by ctx.actor.userId) against supplied content. The assassin's owner actor has no rules → ok:true with matchCount 0 and rulesEvaluated 0 (NEVER no_db: the config store is read, simply empty for a fresh actor). Empty/absent content fails-closed. Each rule pattern is tried as a case-insensitive RegExp; an invalid pattern degrades to a substring test (never throws)."
+}

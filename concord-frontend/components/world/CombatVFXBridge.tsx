@@ -12,7 +12,7 @@
  * can attach effects to the live THREE.Scene without prop-drilling.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
 import type { ElementKind, ElementVfxAPI } from '@/lib/world-lens/element-vfx';
 import type { BloodDecalAPI } from '@/lib/world-lens/blood-decal';
@@ -95,6 +95,11 @@ export default function CombatVFXBridge() {
   const decalRef = useRef<BloodDecalAPI | null>(null);
   const sceneReadyRef = useRef(false);
   const rafRef = useRef<number | null>(null);
+  // Perfect-defense (parry / perfect-dodge) screen flash — the reward feel.
+  // The dispatch on line ~213 below now has this real consumer: a brief
+  // cyan/white ring flash that reads as "you nailed the timing".
+  const [parryFlash, setParryFlash] = useState(false);
+  const parryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -126,6 +131,19 @@ export default function CombatVFXBridge() {
       };
       rafRef.current = requestAnimationFrame(tick);
     };
+
+    // Real consumer for the perfect-defense beat dispatched below — render a
+    // brief parry flash overlay. (Self-consumed CustomEvent so any other VFX
+    // bridge or HUD can also subscribe to the same window event.)
+    const onParryFlash = () => {
+      if (disposed) return;
+      setParryFlash(true);
+      if (parryTimerRef.current) clearTimeout(parryTimerRef.current);
+      parryTimerRef.current = setTimeout(() => {
+        if (!disposed) setParryFlash(false);
+      }, 220);
+    };
+    window.addEventListener('concordia:perfect-defense', onParryFlash as EventListener);
 
     window.addEventListener('concordia:scene-ready', sceneReady as EventListener);
     if ((window as unknown as { __concordiaScene?: unknown }).__concordiaScene) {
@@ -217,6 +235,8 @@ export default function CombatVFXBridge() {
     return () => {
       disposed = true;
       window.removeEventListener('concordia:scene-ready', sceneReady as EventListener);
+      window.removeEventListener('concordia:perfect-defense', onParryFlash as EventListener);
+      if (parryTimerRef.current) clearTimeout(parryTimerRef.current);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       try { off1?.(); } catch { /* idempotent */ }
       try { off2?.(); } catch { /* idempotent */ }
@@ -231,5 +251,17 @@ export default function CombatVFXBridge() {
     };
   }, []);
 
-  return null;
+  // Perfect-defense flash: a quick cyan/white radial bloom on a clean parry.
+  if (!parryFlash) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[8] pointer-events-none"
+      style={{
+        background:
+          'radial-gradient(circle at 50% 48%, rgba(186,230,253,0.28) 0%, rgba(255,255,255,0.10) 28%, transparent 60%)',
+        animation: 'none',
+        opacity: 0.9,
+      }}
+    />
+  );
 }

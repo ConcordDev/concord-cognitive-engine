@@ -1,0 +1,26 @@
+{
+  "macro_id": "supplychain.scenarioSimulate",
+  "domain": "supplychain",
+  "name": "scenarioSimulate",
+  "inputs": {
+    "name": { "type": "string", "required": false, "maxLength": 240 },
+    "disruption": { "type": "string", "required": false, "maxLength": 40 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result === 'object' && output.result !== null",
+    "Array.isArray(output.result.options) && output.result.options.length >= 1",
+    "typeof output.result.recommendation === 'string'",
+    "typeof output.result.resilient === 'boolean'",
+    "output.result.options.every(function(o){ return Number.isFinite(o.effectiveLeadTimeDays) && Number.isFinite(o.effectiveUnitCost) && Number.isFinite(o.demandDuringLead) && Number.isFinite(o.projectedStockoutUnits) && Number.isFinite(o.replenishCost) && Number.isFinite(o.daysToStockout); })",
+    "output.result.options.every(function(o){ return typeof o.source === 'string' && typeof o.stocksOut === 'boolean'; })"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "name": "Port test", "disruption": "port_closure", "baseDailyDemand": 100, "baseLeadTimeDays": 14, "baseUnitCost": 10, "currentStock": 500, "altLeadTimeDays": 10, "altUnitCost": 14 }, "expect": { "ok": true } },
+    { "input": { "disruption": "supplier_failure", "baseDailyDemand": 100, "baseLeadTimeDays": 14, "baseUnitCost": 10, "currentStock": 500, "altLeadTimeDays": 0, "altUnitCost": 0 }, "expect": { "ok": true } },
+    { "input": { "disruption": "port_closure", "baseDailyDemand": "NaN", "baseLeadTimeDays": "Infinity", "baseUnitCost": "bad", "currentStock": "-Infinity", "altLeadTimeDays": "NaN", "altUnitCost": "NaN" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler; reads flat params (SupplyChainPlanner.ScenarioPanel sends flat). REGRESSION-GUARD: altLeadTimeDays default is Math.max(0, …) NOT Math.max(1, …) so an absent alternate source (0) is correctly SKIPPED (the alt is only pushed when altLeadTime > 0) — the prior floor minted a phantom 1-day alternate that always won the ranking (a previously-fixed source bug). Disruption multipliers inflate lead/demand/cost. POISON: scNum collapses garbage to defaults so every option numeric stays FINITE. Component renders options[].source/effectiveLeadTimeDays/effectiveUnitCost/daysToStockout/projectedStockoutUnits/replenishCost/stocksOut + recommendation + resilient. Not assassin-driven; pinned by server/tests/supplychain-lens-macros.test.js."
+}

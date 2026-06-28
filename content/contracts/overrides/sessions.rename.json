@@ -1,0 +1,20 @@
+{
+  "macro_id": "sessions.rename",
+  "domain": "sessions",
+  "name": "rename",
+  "inputs": {
+    "sessionId": { "type": "string", "maxLength": 64 },
+    "title": { "type": "string", "maxLength": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.title === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_session_id" } },
+    { "input": { "sessionId": "x" }, "expect": { "ok": false, "reason": "missing_title" } },
+    { "input": { "sessionId": "does-not-exist", "title": "New name" }, "expect": { "ok": false, "reason": "not_found" } }
+  ],
+  "_note": "sessions.rename changes a caller-owned session's title and appends an 'annotated' rename event. Requires sessionId + a non-empty title; a foreign/unknown id → not_found. A write {} returns a real validation reason, NEVER no_db."
+}

@@ -1,0 +1,247 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "garage",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "garage.create",
+      "name": "create"
+    },
+    {
+      "_derived": true,
+      "domain": "garage",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "garage.dismount",
+      "name": "dismount"
+    },
+    {
+      "_derived": false,
+      "domain": "garage",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "vehicle_not_found"
+          },
+          "input": {
+            "vehicleId": "veh_does_not_exist"
+          }
+        }
+      ],
+      "inputs": {
+        "vehicleId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === true || typeof output.reason === 'string'",
+        "output.ok === false || (output.vehicle && typeof output.vehicle.id === 'string')",
+        "output.ok === false || ['cart','boat','canal_taxi'].includes(output.vehicle.kind)",
+        "output.ok === false || (typeof output.occupants === 'number' && output.occupants >= 0)"
+      ],
+      "macro_id": "garage.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "garage",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "kind": {
+          "maxLength": 32,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.vehicles)",
+        "output.ok === false || output.vehicles.every(v => typeof v.id === 'string' && v.id.length > 0)",
+        "output.ok === false || output.vehicles.every(v => ['cart','boat','canal_taxi'].includes(v.kind))",
+        "output.ok === false || output.vehicles.every(v => typeof v.capacity === 'number' && v.capacity >= 1 && v.capacity <= 12)"
+      ],
+      "macro_id": "garage.list",
+      "name": "list"
+    },
+    {
+      "_derived": false,
+      "domain": "garage",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "kind": {
+          "maxLength": 32,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.vehicles)",
+        "output.ok === false || output.vehicles.every(v => v.owner_kind === 'player')"
+      ],
+      "macro_id": "garage.mine",
+      "name": "mine"
+    },
+    {
+      "_derived": true,
+      "domain": "garage",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "garage.mount",
+      "name": "mount"
+    },
+    {
+      "_derived": true,
+      "domain": "garage",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "garage.move",
+      "name": "move"
+    },
+    {
+      "_derived": false,
+      "domain": "garage",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "kind": "cart",
+            "ownerKind": "none",
+            "worldId": "concordia-hub"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "kind": "spaceship",
+            "ownerKind": "none",
+            "worldId": "concordia-hub"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "kind": "canal_taxi",
+            "ownerKind": "none",
+            "worldId": "concordia-hub"
+          }
+        }
+      ],
+      "inputs": {
+        "kind": {
+          "maxLength": 32,
+          "type": "string"
+        },
+        "ownerId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "ownerKind": {
+          "enum": [
+            "player",
+            "realm",
+            "npc",
+            "none"
+          ],
+          "type": "string"
+        },
+        "route_id": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "worldId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.vehicleId === 'string' && output.vehicleId.length > 0)",
+        "output.ok === false || ['cart','boat','canal_taxi'].includes(output.kind)",
+        "output.ok === false || (typeof output.capacity === 'number' && output.capacity >= 1 && output.capacity <= 12)",
+        "output.ok === false || (typeof output.fare_cc === 'number' && output.fare_cc >= 0)"
+      ],
+      "macro_id": "garage.spawn",
+      "name": "spawn"
+    }
+  ],
+  "domain": "garage",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 8
+}

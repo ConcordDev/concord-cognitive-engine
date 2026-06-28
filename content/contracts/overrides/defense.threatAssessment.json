@@ -1,0 +1,25 @@
+{
+  "macro_id": "defense.threatAssessment",
+  "domain": "defense",
+  "name": "threatAssessment",
+  "inputs": {
+    "threats": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.threats === undefined || Array.isArray(output.result.threats)",
+    "output.ok === false || output.result.threats === undefined || output.result.threats.every(t => Number.isFinite(t.riskScore))",
+    "output.ok === false || output.result.threats === undefined || output.result.threats.every(t => Number.isFinite(t.likelihood) && Number.isFinite(t.impact))",
+    "output.ok === false || output.result.threats === undefined || ['low','medium','high','critical'].includes(output.result.overallThreatLevel)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "threats": [ { "name": "Insider exfil", "category": "insider", "likelihood": 0.8, "impact": 0.9 } ] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "threats": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "threats": [ { "name": "Poisoned", "likelihood": "Infinity", "impact": "NaN" }, null, "junk", 42 ] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data.threats[]. riskScore = round(likelihood × impact × 100); severity: >=60 critical, >=40 high, >=20 medium, else low; sorted desc by riskScore. Fail-closed: each threat's likelihood/impact goes through finiteNum (clamped 0..1, rejects NaN/Infinity); non-array threats → CTA message; non-object entries filtered. Result card renders threats[]{threat,category,likelihood,impact,riskScore,severity,mitigation} + critical/total/overallThreatLevel/topThreat EXACTLY."
+}

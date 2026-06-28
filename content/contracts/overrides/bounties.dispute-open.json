@@ -1,0 +1,21 @@
+{
+  "macro_id": "bounties.dispute-open",
+  "domain": "bounties",
+  "name": "dispute-open",
+  "inputs": {
+    "bountyId": { "type": "string", "required": true, "maxLength": 64 },
+    "reason": { "type": "string", "required": true, "maxLength": 1500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.dispute && output.result.dispute.status === 'open')",
+    "output.ok === false || output.result.bounty.status === 'disputed'",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "bounty not found" } },
+    { "input": { "bountyId": "__nope__", "reason": "a long enough reason to file" }, "expect": { "ok": false, "error": "bounty not found" } }
+  ],
+  "_note": "bounties.dispute-open files a dispute on a bounty. Unknown bounty → 'bounty not found'. Only the owner or a claimant who submitted may open one ('only the owner or a claimant can open a dispute' for outsiders). reason must be >= 10 chars. A second open while one is already open rejects. Sets the bounty to status 'disputed'. No money moves."
+}

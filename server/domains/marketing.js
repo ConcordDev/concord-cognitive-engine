@@ -1,11 +1,20 @@
 // server/domains/marketing.js
 export default function registerMarketingActions(registerLensAction) {
+  // Fail-CLOSED numeric coercion for the pure calculators: any non-finite input
+  // (NaN / Infinity / "Infinity" / "1e999" / "abc") collapses to the default so
+  // no NaN/Infinity ever leaks into a rendered metric. parseFloat/parseInt alone
+  // do NOT guard Infinity — `parseFloat("Infinity")` is `Infinity` (truthy), so
+  // `parseFloat(x) || 0` passed it straight through to roi / totalSpend, and the
+  // rendered card then showed "Infinity%"/"null". Number.isFinite is the gate.
+  const finFloat = (v, d = 0) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
+  const finInt = (v, d = 0) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : d; };
+
   registerLensAction("marketing", "campaignROI", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const spend = parseFloat(data.spend) || 0;
-    const revenue = parseFloat(data.revenue) || 0;
-    const leads = parseInt(data.leads) || 0;
-    const conversions = parseInt(data.conversions) || 0;
+    const spend = Math.max(0, finFloat(data.spend));
+    const revenue = Math.max(0, finFloat(data.revenue));
+    const leads = Math.max(0, finInt(data.leads));
+    const conversions = Math.max(0, finInt(data.conversions));
     const roi = spend > 0 ? Math.round(((revenue - spend) / spend) * 100) : 0;
     const cpl = leads > 0 ? Math.round(spend / leads * 100) / 100 : 0;
     const cpa = conversions > 0 ? Math.round(spend / conversions * 100) / 100 : 0;
@@ -15,7 +24,7 @@ export default function registerMarketingActions(registerLensAction) {
   registerLensAction("marketing", "abTestAnalysis", (ctx, artifact, _params) => {
     const variants = artifact.data?.variants || [];
     if (variants.length < 2) return { ok: true, result: { message: "Add at least 2 variants with visitors and conversions." } };
-    const analyzed = variants.map(v => { const visitors = parseInt(v.visitors) || 1; const conversions = parseInt(v.conversions) || 0; return { name: v.name, visitors, conversions, conversionRate: Math.round((conversions / visitors) * 10000) / 100 }; });
+    const analyzed = variants.map(v => { const visitors = Math.max(1, finInt(v.visitors, 1)); const conversions = Math.max(0, finInt(v.conversions)); return { name: String(v?.name ?? ""), visitors, conversions, conversionRate: Math.round((conversions / visitors) * 10000) / 100 }; });
     const winner = analyzed.sort((a, b) => b.conversionRate - a.conversionRate)[0];
     const loser = analyzed[analyzed.length - 1];
     const lift = loser.conversionRate > 0 ? Math.round(((winner.conversionRate - loser.conversionRate) / loser.conversionRate) * 100) : 0;
@@ -26,7 +35,17 @@ export default function registerMarketingActions(registerLensAction) {
   registerLensAction("marketing", "funnelOptimize", (ctx, artifact, _params) => {
     const stages = artifact.data?.stages || [];
     if (stages.length < 2) return { ok: true, result: { message: "Add funnel stages with visitor counts." } };
-    const analyzed = stages.map((s, i) => { const count = parseInt(s.count) || 0; const prev = i > 0 ? (parseInt(stages[i-1].count) || 1) : count; return { stage: s.name, visitors: count, dropoff: i > 0 ? Math.round((1 - count / prev) * 100) : 0, convFromTop: parseInt(stages[0].count) > 0 ? Math.round((count / parseInt(stages[0].count)) * 100) : 0 }; });
+    const top = Math.max(0, finInt(stages[0]?.count));
+    const analyzed = stages.map((s, i) => {
+      const count = Math.max(0, finInt(s?.count));
+      const prev = i > 0 ? Math.max(1, finInt(stages[i - 1]?.count, 1)) : count;
+      // dropoff is the % lost from the prior stage, clamped to [0,100] — a stage
+      // that grows (count > prev) or has a 0/garbage prior never emits a negative
+      // or out-of-range leak.
+      const dropoff = i > 0 ? Math.max(0, Math.min(100, Math.round((1 - count / prev) * 100))) : 0;
+      const convFromTop = top > 0 ? Math.round((count / top) * 100) : 0;
+      return { stage: String(s?.name ?? ""), visitors: count, dropoff, convFromTop };
+    });
     const worstDropoff = analyzed.slice(1).sort((a, b) => b.dropoff - a.dropoff)[0];
     return { ok: true, result: { stages: analyzed, overallConversion: analyzed[analyzed.length - 1]?.convFromTop || 0, biggestLeakage: worstDropoff?.stage, leakageRate: worstDropoff?.dropoff, quickWin: worstDropoff ? `Improving ${worstDropoff.stage} could recover ${worstDropoff.dropoff}% of visitors` : "Funnel is healthy" } };
   });
@@ -34,7 +53,7 @@ export default function registerMarketingActions(registerLensAction) {
     const users = artifact.data?.users || [];
     if (users.length === 0) return { ok: true, result: { message: "Add user data to segment audience." } };
     const segments = {};
-    for (const u of users) { const seg = u.segment || u.tier || "general"; if (!segments[seg]) segments[seg] = { count: 0, totalSpend: 0 }; segments[seg].count++; segments[seg].totalSpend += parseFloat(u.spend || u.ltv) || 0; }
+    for (const u of users) { const seg = String(u?.segment || u?.tier || "general"); if (!segments[seg]) segments[seg] = { count: 0, totalSpend: 0 }; segments[seg].count++; segments[seg].totalSpend += Math.max(0, finFloat(u?.spend ?? u?.ltv)); }
     const ranked = Object.entries(segments).map(([name, data]) => ({ segment: name, users: data.count, totalSpend: Math.round(data.totalSpend), avgSpend: Math.round(data.totalSpend / data.count * 100) / 100, share: Math.round((data.count / users.length) * 100) })).sort((a, b) => b.avgSpend - a.avgSpend);
     return { ok: true, result: { totalUsers: users.length, segments: ranked, highValue: ranked[0]?.segment, pareto: ranked[0] && ranked[0].totalSpend / ranked.reduce((s, r) => s + r.totalSpend, 0) > 0.5 ? "Top segment drives >50% of revenue" : "Revenue is distributed across segments" } };
   });

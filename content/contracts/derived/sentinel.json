@@ -1,0 +1,689 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.alerts.acknowledge",
+      "name": "alerts.acknowledge"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.alerts.list",
+      "name": "alerts.list"
+    },
+    {
+      "_derived": false,
+      "domain": "sentinel",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "caseId required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "case not found",
+            "ok": false
+          },
+          "input": {
+            "caseId": "ghost",
+            "intelDomain": "d",
+            "summary": "s"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "caseId": "ghost",
+            "intelDomain": "d",
+            "relevance": 1e+308,
+            "summary": "s"
+          }
+        }
+      ],
+      "inputs": {
+        "caseId": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "intelDomain": {
+          "maxLength": 60,
+          "type": "string"
+        },
+        "relevance": {
+          "max": 1,
+          "min": 0,
+          "type": "number"
+        },
+        "summary": {
+          "maxLength": 400,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.link && typeof output.result.link.id === 'string')",
+        "output.ok === false || (output.result.link.relevance >= 0 && output.result.link.relevance <= 1)"
+      ],
+      "macro_id": "sentinel.intel.correlate",
+      "name": "intel.correlate"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.intel.uncorrelate",
+      "name": "intel.uncorrelate"
+    },
+    {
+      "_derived": false,
+      "domain": "sentinel",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "invalid_days",
+            "ok": false
+          },
+          "input": {
+            "days": -1
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_days",
+            "ok": false
+          },
+          "input": {
+            "days": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "days": 7
+          }
+        }
+      ],
+      "inputs": {
+        "days": {
+          "max": 90,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.chart)",
+        "output.ok === false || Array.isArray(output.result.severityBreakdown)",
+        "output.ok === false || (typeof output.result.openCases === 'number' && output.result.openCases >= 0)"
+      ],
+      "macro_id": "sentinel.metrics.series",
+      "name": "metrics.series"
+    },
+    {
+      "_derived": false,
+      "domain": "sentinel",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "invalid_intervalMinutes",
+            "ok": false
+          },
+          "input": {
+            "intervalMinutes": -1
+          }
+        },
+        {
+          "expect": {
+            "error": "invalid_intervalMinutes",
+            "ok": false
+          },
+          "input": {
+            "intervalMinutes": 1e+308
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "intervalMinutes": 30,
+            "minSeverity": "high",
+            "name": "Crit watch"
+          }
+        }
+      ],
+      "inputs": {
+        "intervalMinutes": {
+          "max": 1440,
+          "min": 5,
+          "type": "number"
+        },
+        "minSeverity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low",
+            "info",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 80,
+          "type": "string"
+        },
+        "scope": {
+          "maxLength": 40,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.monitor && typeof output.result.monitor.monitorId === 'string')",
+        "output.ok === false || (output.result.monitor.intervalMinutes >= 5 && output.result.monitor.intervalMinutes <= 1440)"
+      ],
+      "macro_id": "sentinel.monitor.create",
+      "name": "monitor.create"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.monitor.delete",
+      "name": "monitor.delete"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.monitor.list",
+      "name": "monitor.list"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.monitor.run",
+      "name": "monitor.run"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.monitor.toggle",
+      "name": "monitor.toggle"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.query.delete",
+      "name": "query.delete"
+    },
+    {
+      "_derived": false,
+      "domain": "sentinel",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "results array required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "results array required",
+            "ok": false
+          },
+          "input": {
+            "results": []
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "format": "json",
+            "results": [
+              {
+                "id": "r1",
+                "title": "alpha"
+              }
+            ]
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "format": "csv",
+            "results": [
+              {
+                "id": "r1",
+                "title": "beta, comma"
+              }
+            ]
+          }
+        }
+      ],
+      "inputs": {
+        "format": {
+          "enum": [
+            "json",
+            "csv"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && typeof output.result.payload === 'string')",
+        "output.ok === false || (output.result.format === 'json' || output.result.format === 'csv')",
+        "output.ok === false || (typeof output.result.rowCount === 'number' && output.result.rowCount >= 1)"
+      ],
+      "macro_id": "sentinel.query.export",
+      "name": "query.export"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.query.list",
+      "name": "query.list"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.query.save",
+      "name": "query.save"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.query.touch",
+      "name": "query.touch"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.scan.config.get",
+      "name": "scan.config.get"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.scan.config.set",
+      "name": "scan.config.set"
+    },
+    {
+      "_derived": false,
+      "domain": "sentinel",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "content required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "content required",
+            "ok": false
+          },
+          "input": {
+            "content": ""
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "content": "const x = eval('1+1');"
+          }
+        }
+      ],
+      "inputs": {
+        "content": {
+          "maxLength": 20000,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.matches)",
+        "output.ok === false || (typeof output.result.matchCount === 'number' && output.result.matchCount >= 0)",
+        "output.ok === false || (typeof output.result.rulesEvaluated === 'number' && output.result.rulesEvaluated >= 0)"
+      ],
+      "macro_id": "sentinel.scan.evaluate",
+      "name": "scan.evaluate"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.scan.rule.add",
+      "name": "scan.rule.add"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.scan.rule.remove",
+      "name": "scan.rule.remove"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.timeline.list",
+      "name": "timeline.list"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.timeline.record",
+      "name": "timeline.record"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.triage.detail",
+      "name": "triage.detail"
+    },
+    {
+      "_derived": false,
+      "domain": "sentinel",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "state": "resolved"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "state": "not-a-state"
+          }
+        }
+      ],
+      "inputs": {
+        "state": {
+          "enum": [
+            "open",
+            "investigating",
+            "contained",
+            "resolved",
+            "dismissed"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.result.cases)",
+        "output.ok === false || (typeof output.result.total === 'number' && output.result.total >= 0)",
+        "output.ok === false || (output.result.byState && typeof output.result.byState.open === 'number')"
+      ],
+      "macro_id": "sentinel.triage.list",
+      "name": "triage.list"
+    },
+    {
+      "_derived": false,
+      "domain": "sentinel",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "error": "threatId required",
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "error": "threatId required",
+            "ok": false
+          },
+          "input": {
+            "title": "no id"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "severity": "critical",
+            "threatId": "t-assassin-1",
+            "title": "C2 beacon"
+          }
+        }
+      ],
+      "inputs": {
+        "severity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low",
+            "info",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "threatId": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.result && output.result.case && typeof output.result.case.caseId === 'string')",
+        "output.ok === false || output.result.case.state === 'open'",
+        "output.ok === false || typeof output.result.created === 'boolean'"
+      ],
+      "macro_id": "sentinel.triage.open",
+      "name": "triage.open"
+    },
+    {
+      "_derived": true,
+      "domain": "sentinel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sentinel.triage.update",
+      "name": "triage.update"
+    }
+  ],
+  "domain": "sentinel",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 26
+}

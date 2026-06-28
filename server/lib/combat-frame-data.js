@@ -66,30 +66,70 @@ export function getSkillFrameData(skill = {}) {
   };
 }
 
+// Built-in weapon kinds that have a real frame envelope but are not stored
+// as per-user skill DTU rows. A combat HUD / training room can ask for the
+// canonical frame data of e.g. "sword" or "fist" directly. This is real
+// derivation off KIND_FRAME_BASE — not a placeholder — so default skills
+// resolve instead of 404-ing (PLAYTEST #21 `no_skill` defect).
+export const BUILTIN_SKILL_KINDS = Object.freeze(
+  Object.keys(KIND_FRAME_BASE).filter((k) => k !== "default"),
+);
+
+/** Title-case a kind id for display ("sword" → "Sword"). */
+function titleCaseKind(kind) {
+  return kind.charAt(0).toUpperCase() + kind.slice(1);
+}
+
+/**
+ * Frame data for a built-in weapon kind (no DB row required). Returns null
+ * if `kind` is not a recognised built-in kind.
+ */
+export function getFrameDataForKind(kind) {
+  const k = String(kind || "").toLowerCase();
+  if (!Object.prototype.hasOwnProperty.call(KIND_FRAME_BASE, k) || k === "default") {
+    return null;
+  }
+  return getSkillFrameData({ id: k, name: titleCaseKind(k), kind: k, level: 1 });
+}
+
 /**
  * Look up a skill in the DTU substrate and derive its frame data.
- * Returns null if the skill isn't found.
+ *
+ * Resolution order (all real, none fabricated):
+ *   1. A persisted skill DTU row (`type='skill'`). Metadata lives in the
+ *      `data` column (skill-progression writers) with `body_json` as a
+ *      legacy fallback; the `skill_level` column carries the live level.
+ *   2. A built-in weapon kind id (e.g. "sword", "fist") — canonical frame
+ *      envelope from KIND_FRAME_BASE, so default skills never 404.
+ *
+ * Returns null only when the id matches neither — the caller surfaces an
+ * honest empty/not-found state, never a fake frame table.
  */
 export function getFrameDataForSkillId(db, skillId) {
-  if (!db || !skillId) return null;
-  try {
-    const row = db.prepare(`
-      SELECT id, title AS name, body_json
-      FROM dtus
-      WHERE id = ? AND type = 'skill'
-    `).get(skillId);
-    if (!row) return null;
-    let meta = {};
-    try { meta = JSON.parse(row.body_json || "{}"); } catch { /* malformed */ }
-    return getSkillFrameData({
-      id: row.id,
-      name: row.name,
-      kind: meta.kind || meta.weapon || "default",
-      level: meta.level || meta.skill_level || 1,
-      max_damage: meta.max_damage,
-      combo_followups: meta.combo_followups,
-    });
-  } catch { return null; }
+  if (!skillId) return null;
+  if (db) {
+    try {
+      const row = db.prepare(`
+        SELECT id, title AS name, data, body_json, skill_level
+        FROM dtus
+        WHERE id = ? AND type = 'skill'
+      `).get(skillId);
+      if (row) {
+        let meta = {};
+        try { meta = JSON.parse(row.data || row.body_json || "{}"); } catch { /* malformed */ }
+        return getSkillFrameData({
+          id: row.id,
+          name: row.name,
+          kind: meta.kind || meta.weapon || meta.action || "default",
+          level: meta.level || meta.skill_level || Math.floor(Number(row.skill_level) || 1),
+          max_damage: meta.max_damage,
+          combo_followups: meta.combo_followups,
+        });
+      }
+    } catch { /* fall through to built-in resolution */ }
+  }
+  // No DTU row — try a built-in weapon kind so default skills resolve.
+  return getFrameDataForKind(skillId);
 }
 
 /**

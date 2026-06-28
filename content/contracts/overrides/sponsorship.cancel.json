@@ -1,0 +1,19 @@
+{
+  "macro_id": "sponsorship.cancel",
+  "domain": "sponsorship",
+  "name": "cancel",
+  "inputs": {
+    "sponsorshipId": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || typeof output.cancelled === 'boolean'",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_id" } },
+    { "input": { "sponsorshipId": "ghost_999" }, "expect": { "ok": false, "cancelled": false } }
+  ],
+  "_note": "sponsorship.cancel (server.js:76541, MACROS/runMacro path) marks the caller's ACTIVE npc_sponsorships row cancelled via a guarded UPDATE (WHERE id=? AND sponsor_user_id=? AND status='active'). A missing id rejects with reason:'missing_id'. A non-existent / not-owned id returns ok:false cancelled:false (changes==0) — the row is never another user's. The assassin runs with an internal owner actor against a real migrated DB (never no_db). The lens resolves cancel to the LENS_ACTIONS in-memory handler (LENS_ACTIONS wins in /api/lens/run); this DB-backed macro is reached only via runMacro/MCP. No CC is moved on cancel."
+}

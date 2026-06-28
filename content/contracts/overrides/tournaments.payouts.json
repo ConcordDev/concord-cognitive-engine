@@ -1,0 +1,23 @@
+{
+  "macro_id": "tournaments.payouts",
+  "domain": "tournaments",
+  "name": "payouts",
+  "inputs": {
+    "id": { "type": "string", "required": true, "maxLength": 64 },
+    "payoutSplit": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string'",
+    "output.ok === false || (typeof output.result.prizePoolCc === 'number' && Array.isArray(output.result.payouts))",
+    "output.ok === false || (typeof output.result.unallocated === 'number' && output.result.unallocated >= 0)",
+    "output.ok === false || (output.result.payouts.reduce((a, x) => a + x.amountCc, 0) + output.result.unallocated === output.result.prizePoolCc)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "tournament_not_found" } },
+    { "input": { "id": "__nope__" }, "expect": { "ok": false, "error": "tournament_not_found" } },
+    { "input": { "id": "__nope__", "payoutSplit": [60, 1e308, 15] }, "expect": { "ok": false, "error": "tournament_not_found" } }
+  ],
+  "_note": "tournaments.payouts computes (or re-reads) the prize distribution on a completed tournament. Unknown id → 'tournament_not_found'; not completed → 'tournament_not_completed'. MONEY CONSERVATION is a hard invariant: distributed (sum of payout amountCc) + unallocated === prizePoolCc exactly — the pool is never over-allocated and never minted beyond the declared amount. A re-split with a poisoned weight (NaN/Infinity/1e308) is fail-CLOSED → 'invalid_payout_split' and the stored split is NOT mutated. (The not-found cases short-circuit before reaching split validation, hence the third fuzz case still returns 'tournament_not_found'.)"
+}

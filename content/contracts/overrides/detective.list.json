@@ -1,0 +1,19 @@
+{
+  "macro_id": "detective.list",
+  "domain": "detective",
+  "name": "list",
+  "inputs": {
+    "worldId": { "type": "string", "required": true, "maxLength": 80 },
+    "limit": { "type": "number", "min": 1, "max": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.crimes)",
+    "output.ok === false || output.crimes.every(c => c.criminal_id === undefined)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_world" } },
+    { "input": { "worldId": "nowhere_world" }, "expect": { "ok": true } }
+  ]
+}

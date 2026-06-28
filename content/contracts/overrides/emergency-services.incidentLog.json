@@ -1,0 +1,25 @@
+{
+  "macro_id": "emergency-services.incidentLog",
+  "domain": "emergency-services",
+  "name": "incidentLog",
+  "inputs": {
+    "incidents": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.total24h)",
+    "output.ok === false || Number.isFinite(output.result.totalAllTime)",
+    "output.ok === false || Number.isFinite(output.result.avgResponseMinutes)",
+    "output.ok === false || typeof output.result.mostCommon === 'string'",
+    "output.ok === false || typeof output.result.trend === 'string'",
+    "output.ok === false || (output.result.byType && typeof output.result.byType === 'object')"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "incidents": [{ "type": "medical", "timestamp": "2026-06-28T05:00:00.000Z", "responseMinutes": 8 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "incidents": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "incidents": [{ "type": "fire", "timestamp": "2026-06-28T05:00:00.000Z", "responseMinutes": "1e999" }] } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler — dispatch key 'emergency-services.incidentLog'. Component sends { artifact: { data: <parsed incident-log JSON {incidents}> } }; peeler unwraps so handler reads artifact.data.incidents. POISON: responseMinutes coerced via finOr so 'Infinity'/'1e999' collapse to the 10-min default — avgResponseMinutes stays FINITE. Render contract (total24h/trend/avgResponseMinutes/mostCommon + byType map) pinned by server/tests/emergency-services-lens-macros.test.js. Authored spec, not assassin-driven."
+}

@@ -1,0 +1,17 @@
+{
+  "macro_id": "calendar.expandRecurring",
+  "domain": "calendar",
+  "name": "expandRecurring",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || (Array.isArray(output.result.occurrences) && output.result.occurrences.length <= 52)",
+    "output.ok !== true || Number.isFinite(output.result.totalOccurrences)",
+    "output.ok !== true || output.result.occurrences.every(o => typeof o.date === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(o.date))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "calendar.expandRecurring is a LENS_ACTIONS (PATH 3) handler reading the recurrence/startDate/count from artifact.data. It maps freq→interval days (daily 1, weekly 7, biweekly 14, monthly 30, quarterly 91, yearly 365; unknown→7) and emits dated occurrences. FAIL-CLOSED: count is clamped to a 52 safety cap via Math.min(parseInt(count)||10, 52), so an absurd/poisoned count (1e9, Infinity) can never produce an unbounded array. Every occurrence date is a YYYY-MM-DD string. Pure-compute, no STATE/DB/network. macro-assassin drives runMacro (no LENS_ACTIONS resolution); this is the spec for the lens path, with the behavioral suite as the driver."
+}

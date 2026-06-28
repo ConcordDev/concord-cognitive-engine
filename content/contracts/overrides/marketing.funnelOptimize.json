@@ -1,0 +1,24 @@
+{
+  "macro_id": "marketing.funnelOptimize",
+  "domain": "marketing",
+  "name": "funnelOptimize",
+  "inputs": {
+    "stages": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.message === 'string' || Array.isArray(output.result.stages)",
+    "output.ok === false || !output.result.stages || output.result.stages.every(function(s){ return Number.isFinite(s.visitors) && Number.isFinite(s.dropoff) && s.dropoff >= 0 && s.dropoff <= 100 && Number.isFinite(s.convFromTop); })",
+    "output.ok === false || output.result.overallConversion === undefined || Number.isFinite(output.result.overallConversion)",
+    "output.ok === false || output.result.leakageRate === undefined || Number.isFinite(output.result.leakageRate)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "stages": [{ "name": "Visit", "count": 1000 }, { "name": "Cart", "count": 300 }, { "name": "Buy", "count": 60 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "stages": [{ "name": "Only one", "count": 500 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "stages": [{ "name": "A", "count": "Infinity" }, { "name": "B", "count": "abc" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS calculator. reads artifact.data.stages (array of {name,count} pasted as JSON). <2 stages → {message} guidance. per-stage: visitors=count; dropoff=% lost from prior stage clamped [0,100]; convFromTop=count/topCount×100. biggestLeakage/leakageRate = worst-dropoff stage. POISON: count via finInt floored at 0, prior floored at 1 → no negative/Infinity dropoff leak (prior `parseInt(0)||1` with a 0 prior emitted dropoff:-29900). Card renders stages[].stage+convFromTop+visitors+dropoff/overallConversion/biggestLeakage/quickWin EXACTLY. Pinned by server/tests/marketing-lens-macros.test.js."
+}

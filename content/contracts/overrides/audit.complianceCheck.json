@@ -1,0 +1,29 @@
+{
+  "macro_id": "audit.complianceCheck",
+  "domain": "audit",
+  "name": "complianceCheck",
+  "inputs": {
+    "framework": { "type": "string", "maxLength": 60 },
+    "records": { "type": "array" },
+    "rules": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.framework === 'string'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.complianceRate)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalRequirements)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.metRequirements)",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.status === 'string'",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.gaps)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "framework": "SOC2", "records": [{ "id": "r1", "fields": { "email": "a@b.com" } }, { "id": "r2", "fields": { "email": "bad" } }], "rules": [{ "id": "u", "name": "Valid email", "field": "email", "type": "pattern", "pattern": "^[^@]+@[^@]+$" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "rules": [{ "id": "u", "name": "x", "field": "x", "type": "required" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "framework": "SOC2", "records": [{ "id": "r1", "fields": { "age": "not-a-number" } }], "rules": [{ "id": "u", "name": "Age range", "field": "age", "type": "range", "min": 0, "max": 120 }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data (AuditActionPanel.callMacro channel: runDomain('audit','complianceCheck',{input:{artifact:{data}}}) peeled at dispatch). Validates records[].fields against rules[] (required/pattern/range/crossRef/enum). overallComplianceRate = mean of per-record rates. Result card renders framework/complianceRate/totalRequirements/metRequirements/status/gaps[].{requirement,severity,remediation} EXACTLY (the prior overallComplianceRate/totalRules/totalViolations/fieldGaps/ruleEffectiveness/recordResults fields were NOT what the card read → every compliance card was blank; fixed 2026-06-28; the originals are retained for the parity test + provenance). metRequirements = rules with zero violations; status = >=95 compliant / >=80 partial / else non-compliant; framework defaults to 'Custom'. No fake data — empty records/rules return an honest empty-shape message."
+}

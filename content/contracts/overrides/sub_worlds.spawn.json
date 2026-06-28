@@ -1,0 +1,29 @@
+{
+  "macro_id": "sub_worlds.spawn",
+  "domain": "sub_worlds",
+  "name": "spawn",
+  "inputs": {
+    "name": { "type": "string", "maxLength": 120 },
+    "description": { "type": "string", "maxLength": 1000 },
+    "forgeAppDtuId": { "type": "string", "maxLength": 80 },
+    "thumbnail": { "type": "string", "maxLength": 600 },
+    "kind": { "type": "string", "enum": ["physics_simulator", "research_zone", "concord_substrate"] },
+    "privacy": { "type": "string", "enum": ["public", "unlisted", "private"] },
+    "capacity": { "type": "number", "min": 1, "max": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.world && typeof output.result.world.world_id === 'string')",
+    "output.ok === false || output.result.world.name.length >= 3",
+    "output.ok === false || (output.result.world.capacity >= 1 && output.result.world.capacity <= 200)",
+    "output.ok === false || ['physics_simulator','research_zone','concord_substrate'].includes(output.result.world.kind)",
+    "output.ok === false || ['public','unlisted','private'].includes(output.result.world.privacy)"
+  ],
+  "fuzz_cases": [
+    { "input": { "name": "Gravity Lab", "kind": "physics_simulator" }, "expect": { "ok": true } },
+    { "input": { "name": "Ok", "kind": "physics_simulator" }, "expect": { "ok": false } },
+    { "input": { "name": "Bad Capacity", "capacity": "NaN" }, "expect": { "ok": false, "error": "bad_numeric_field" } }
+  ],
+  "_note": "sub_worlds.spawn registers a user-spawned world in the in-memory creator-platform STATE (globalThis._concordSTATE.subWorldsLens), scoped to the assassin/owner actor. name must be >=3 chars (else ok:false). capacity is fail-CLOSED via badNumericField — a poisoned NaN/Infinity/-1/1e308 returns ok:false bad_numeric_field, never a silent default. The macro is reachable on BOTH the LENS_ACTIONS bus (frontend /api/lens/run) and the MACROS bus (runMacro/assassin) via the dual-bus mirror in domains/sub-worlds.js. Live STATE + actor reality — never no_db."
+}

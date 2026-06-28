@@ -1,0 +1,21 @@
+{
+  "macro_id": "gallery.collection-create",
+  "domain": "gallery",
+  "name": "collection-create",
+  "inputs": {
+    "name": { "type": "string", "required": true, "maxLength": 100 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.collection && typeof output.result.collection.id === 'string')",
+    "output.ok === false || (typeof output.result.collection.name === 'string' && output.result.collection.name.length > 0)",
+    "output.ok === false || Array.isArray(output.result.collection.artworks)"
+  ],
+  "fuzz_cases": [
+    { "input": { "name": "Dutch Masters" }, "expect": { "ok": true } },
+    { "input": { "name": "   " }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "gallery.collection-create makes a per-user saved-artwork collection in the live STATE.galleryLens store. A blank/whitespace name rejects 'collection name required'. The id is a real handle artworks save into and that collection-detail/collection-delete resolve."
+}

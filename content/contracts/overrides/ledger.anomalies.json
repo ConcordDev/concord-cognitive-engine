@@ -1,0 +1,23 @@
+{
+  "macro_id": "ledger.anomalies",
+  "domain": "ledger",
+  "name": "anomalies",
+  "inputs": {
+    "worldId": { "type": "string", "required": false, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.worldId === 'string'",
+    "output.ok === false || Array.isArray(output.managedParity)",
+    "output.ok === false || Array.isArray(output.extractionLiens)",
+    "output.ok === false || output.total === output.managedParity.length + output.extractionLiens.length",
+    "output.ok === false || output.managedParity.every(p => typeof p.funder === 'string' && Array.isArray(p.fundsBothSidesOf))",
+    "output.ok === false || output.extractionLiens.every(l => typeof l.creditor === 'string' && l.debtor && typeof l.debtor.id === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "worldId": "sere" }, "expect": { "ok": true } },
+    { "input": { "worldId": "__no_such_world__" }, "expect": { "ok": true } }
+  ]
+}

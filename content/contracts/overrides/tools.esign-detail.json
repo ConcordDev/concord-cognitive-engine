@@ -1,0 +1,18 @@
+{
+  "macro_id": "tools.esign-detail",
+  "domain": "tools",
+  "name": "esign-detail",
+  "inputs": {
+    "envelopeId": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.envelope && typeof output.result.envelope.id === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "envelope not found" } },
+    { "input": { "envelopeId": "nope" }, "expect": { "ok": false, "error": "envelope not found" } }
+  ],
+  "_note": "tools.esign-detail reads a single envelope (full signers + audit trail) from globalThis._concordSTATE.toolsLens.envelopes (per-user via ctx.actor.userId). STATE-backed with an internal owner actor — an empty {} returns the real reason 'envelope not found' (NEVER no_db)."
+}

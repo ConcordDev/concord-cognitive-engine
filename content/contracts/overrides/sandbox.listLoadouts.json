@@ -1,0 +1,16 @@
+{
+  "macro_id": "sandbox.listLoadouts",
+  "domain": "sandbox",
+  "name": "listLoadouts",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.loadouts))",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.loadouts.length)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Reads the caller's saved loadouts (newest first) from per-user STATE. The assassin's internal owner actor has none yet → ok:true with an empty array and count 0 (NEVER no_db)."
+}

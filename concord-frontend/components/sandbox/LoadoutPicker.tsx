@@ -31,23 +31,36 @@ export function LoadoutPicker({ onApply }: { onApply: (l: ActiveLoadout) => void
   const [name, setName] = useState('');
   const [saved, setSaved] = useState<Loadout[]>([]);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await lensRun('sandbox', 'listLoadouts', {});
     if (r.data?.ok && r.data.result) setSaved(r.data.result.loadouts as Loadout[]);
+    else throw new Error(r.data?.error || 'list_failed');
   }, []);
 
   useEffect(() => {
     (async () => {
-      const c = await lensRun('sandbox', 'catalog', {});
-      if (c.data?.ok && c.data.result) {
-        const ws = c.data.result.weapons as WeaponDef[];
-        const ks = c.data.result.skills as SkillDef[];
-        setWeapons(ws);
-        setSkills(ks);
-        if (ws[0]) { setWeaponId(ws[0].id); setLight(ws[0].baseLight); setHeavy(ws[0].baseHeavy); }
+      setLoading(true);
+      setError(null);
+      try {
+        const c = await lensRun('sandbox', 'catalog', {});
+        if (c.data?.ok && c.data.result) {
+          const ws = c.data.result.weapons as WeaponDef[];
+          const ks = c.data.result.skills as SkillDef[];
+          setWeapons(ws);
+          setSkills(ks);
+          if (ws[0]) { setWeaponId(ws[0].id); setLight(ws[0].baseLight); setHeavy(ws[0].baseHeavy); }
+        } else {
+          throw new Error(c.data?.error || 'catalog_failed');
+        }
+        await refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to load loadouts');
+      } finally {
+        setLoading(false);
       }
-      await refresh();
     })();
   }, [refresh]);
 
@@ -63,11 +76,15 @@ export function LoadoutPicker({ onApply }: { onApply: (l: ActiveLoadout) => void
 
   const save = async () => {
     setBusy(true);
+    setError(null);
     try {
       const r = await lensRun('sandbox', 'saveLoadout', {
         weaponId, skillId, lightDamage: light, heavyDamage: heavy, name: name.trim(),
       });
       if (r.data?.ok) { setName(''); await refresh(); }
+      else setError(r.data?.error || 'Save failed');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed');
     } finally { setBusy(false); }
   };
 
@@ -154,7 +171,17 @@ export function LoadoutPicker({ onApply }: { onApply: (l: ActiveLoadout) => void
         </button>
       </div>
 
-      {saved.length === 0 ? (
+      {error && (
+        <div role="alert" className="mb-2 rounded border border-rose-700/60 bg-rose-950/40 px-2 py-1.5 text-[10px] text-rose-300">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center gap-1.5 rounded border border-dashed border-slate-700 px-2 py-2 text-[10px] text-slate-400" aria-busy="true" aria-live="polite">
+          <Loader2 className="h-3 w-3 animate-spin" /> Loading loadouts…
+        </div>
+      ) : saved.length === 0 ? (
         <div className="rounded border border-dashed border-slate-700 px-2 py-2 text-center text-[10px] text-slate-400">
           No saved loadouts yet.
         </div>

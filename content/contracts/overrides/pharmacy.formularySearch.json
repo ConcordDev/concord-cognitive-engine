@@ -1,0 +1,25 @@
+{
+  "macro_id": "pharmacy.formularySearch",
+  "domain": "pharmacy",
+  "name": "formularySearch",
+  "reads_artifact_data": true,
+  "inputs": {
+    "query": { "type": "string" },
+    "drugName": { "type": "string" },
+    "formulary": { "type": "array", "maxLength": 50000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.matches === undefined || Array.isArray(output.result.matches)",
+    "output.ok === false || output.result.found === undefined || (Number.isFinite(output.result.found) && output.result.found >= 0)",
+    "output.ok === false || output.result.formularySize === undefined || (Number.isFinite(output.result.formularySize) && output.result.formularySize >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "query": "atorva", "formulary": [{ "genericName": "atorvastatin", "brandName": "Lipitor", "tier": 1, "covered": true }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "query": "", "formulary": [{ "genericName": "x", "tier": 1 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "formulary": [] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Reads query (or drugName) + formulary[] from artifact.data (page Formulary Search card sends {input: data}). Case-insensitive substring match against genericName/name/brandName. matches[] carries the EXACT card fields {generic,brand,tier,covered,priorAuth} with covered defaulting true (covered !== false) and priorAuth defaulting false. found = matches.length; formularySize = formulary.length. Empty query returns the honest 'Provide a drug name' prompt — never dumps the whole formulary. Pure compute, no STATE."
+}

@@ -1,0 +1,27 @@
+{
+  "macro_id": "mentorship.feedbackSummary",
+  "domain": "mentorship",
+  "name": "feedbackSummary",
+  "inputs": {
+    "feedback": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.avgRating)",
+    "output.ok === false || output.result.message !== undefined || (output.result.avgRating >= 0 && output.result.avgRating <= 5)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.sessions)",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.topThemes)",
+    "output.ok === false || output.result.message !== undefined || ['high','moderate','needs-attention'].includes(output.result.satisfaction)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "feedback": [] }, "expect": { "ok": true } },
+    { "input": { "feedback": [{ "rating": 5, "tags": ["helpful"] }, { "rating": 4, "tags": ["helpful", "clear"] }] }, "expect": { "ok": true } },
+    { "input": { "feedback": [{ "rating": "Infinity", "tags": ["x"] }, { "rating": "1e999" }, { "rating": "NaN" }] }, "expect": { "ok": true } },
+    { "input": { "feedback": "nope" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'mentorship.feedbackSummary'. Deterministic pure compute. Empty/non-array feedback returns { message } (honest empty cue). With feedback: avgRating bounded 0..5 via finNum (poisoned rating → 3 default), topThemes is tag histogram top-5. POISON: avgRating always FINITE. Authored spec pinned by server/tests/mentorship-lens-macros.test.js."
+}

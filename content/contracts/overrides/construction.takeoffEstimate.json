@@ -1,0 +1,31 @@
+{
+  "macro_id": "construction.takeoffEstimate",
+  "domain": "construction",
+  "name": "takeoffEstimate",
+  "inputs": {
+    "lineItems": { "type": "array", "required": false },
+    "laborPercent": { "type": "number", "required": false },
+    "squareFootage": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.subtotalMaterials)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.laborCost)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overhead)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.profit)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.grandTotal)",
+    "output.ok === false || output.result.message !== undefined || output.result.costPerSqFt === null || Number.isFinite(output.result.costPerSqFt)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "lineItems": [] }, "expect": { "ok": true } },
+    { "input": { "lineItems": [{ "description": "Concrete", "quantity": 100, "unit": "cy", "unitCost": 150, "wastePercent": 10 }], "laborPercent": 40, "squareFootage": 2000 }, "expect": { "ok": true } },
+    { "input": { "lineItems": [{ "description": "poison", "quantity": "Infinity", "unit": "ea", "unitCost": "1e999", "wastePercent": "NaN" }], "laborPercent": "Infinity", "squareFootage": "-1e999" }, "expect": { "ok": true } },
+    { "input": { "lineItems": [{ "description": "neg", "quantity": -5, "unit": "ea", "unitCost": 1e308, "wastePercent": 0 }] }, "expect": { "ok": true } },
+    { "input": { "lineItems": "boom" }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/construction.js, registerLensAction('construction','takeoffEstimate',...)) — reached only via /api/lens/run on the EXACT key 'construction.takeoffEstimate' (3-arg handler(ctx, virtualArtifact, input), virtualArtifact.data === the unwrapped input). DETERMINISTIC pure compute (no LLM/network). Material takeoff: adjQty = qty × (1 + wastePercent/100), Math.ceil for ordering; lineCost = round(rawAdjQty × unitCost). Roll-up: labor = subtotal × laborPercent/100, overhead = (sub+labor) × 0.15, profit = (sub+labor+oh) × 0.10. POISON: every numeric coerced via finNum — non-finite ('Infinity'/'1e999'/'NaN') or |value|≥1e15 collapses to 0; laborPercent/wastePercent fall back to their 40/10 defaults when non-finite, so subtotal/labor/overhead/profit/grandTotal stay FINITE and costPerSqFt is null when squareFootage ≤ 0 (no divide-by-zero). Empty/absent/non-array lineItems degrade graceful (guidance message or caught handler_error), never throws. The GC-bench panel double-wraps ({ input: { artifact: { data } } }) — calcData() peels the redundant layer so the panel computes identically. NOT macro-assassin-driven (lives in LENS_ACTIONS, not MACROS — enumerateMacros(MACROS) does not reach it); authored spec pinned by server/tests/construction-lens-macros.test.js."
+}

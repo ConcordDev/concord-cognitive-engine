@@ -1,0 +1,5181 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.activation.activate",
+      "name": "activation.activate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.activation.decay",
+      "name": "activation.decay"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.activation.global",
+      "name": "activation.global"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.activation.metrics",
+      "name": "activation.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.activation.spread",
+      "name": "activation.spread"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.activation.workingSet",
+      "name": "activation.workingSet"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.bridge.beacon",
+      "name": "bridge.beacon"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.bridge.dedupGate",
+      "name": "bridge.dedupGate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.bridge.dedupScan",
+      "name": "bridge.dedupScan"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.bridge.heartbeatTick",
+      "name": "bridge.heartbeatTick"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.bridge.hypothesisFromConflicts",
+      "name": "bridge.hypothesisFromConflicts"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.bridge.info",
+      "name": "bridge.info"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.bridge.lensScope",
+      "name": "bridge.lensScope"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.bridge.lensValidate",
+      "name": "bridge.lensValidate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.bridge.recordOutcome",
+      "name": "bridge.recordOutcome"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.bridge.strategyHints",
+      "name": "bridge.strategyHints"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.bundle.get",
+      "name": "bundle.get"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.cascade.log",
+      "name": "cascade.log"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.cascade.metrics",
+      "name": "cascade.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.cascade.trigger",
+      "name": "cascade.trigger"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.comms.acknowledge",
+      "name": "comms.acknowledge"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.comms.broadcast",
+      "name": "comms.broadcast"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.comms.cleanup",
+      "name": "comms.cleanup"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.comms.inbox",
+      "name": "comms.inbox"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.comms.metrics",
+      "name": "comms.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.comms.send",
+      "name": "comms.send"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.consent.check",
+      "name": "consent.check"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.constitution.addRule",
+      "name": "constitution.addRule"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.constitution.amend",
+      "name": "constitution.amend"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.constitution.amendments",
+      "name": "constitution.amendments"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.constitution.check",
+      "name": "constitution.check"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.constitution.deactivate",
+      "name": "constitution.deactivate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.constitution.metrics",
+      "name": "constitution.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.constitution.rule",
+      "name": "constitution.rule"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.constitution.rules",
+      "name": "constitution.rules"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.constitution.violations",
+      "name": "constitution.violations"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.content.advice",
+      "name": "content.advice"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.content.config",
+      "name": "content.config"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.content.copyright",
+      "name": "content.copyright"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.content.disclaimers",
+      "name": "content.disclaimers"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.content.metrics",
+      "name": "content.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.content.pii",
+      "name": "content.pii"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.content.scan",
+      "name": "content.scan"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.content.setDisclaimer",
+      "name": "content.setDisclaimer"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.context.autogen",
+      "name": "context.autogen"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.context.complete",
+      "name": "context.complete"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.context.decay",
+      "name": "context.decay"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.context.metrics",
+      "name": "context.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.context.panel",
+      "name": "context.panel"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.context.profiles",
+      "name": "context.profiles"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.context.query",
+      "name": "context.query"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.context.updateProfile",
+      "name": "context.updateProfile"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.context.userProfile",
+      "name": "context.userProfile"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.context.workingSet",
+      "name": "context.workingSet"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.deactivate",
+      "name": "deactivate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.district.census",
+      "name": "district.census"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.district.history",
+      "name": "district.history"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.district.move",
+      "name": "district.move"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.district.suggest",
+      "name": "district.suggest"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.drift.alerts",
+      "name": "drift.alerts"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.drift.metrics",
+      "name": "drift.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.drift.scan",
+      "name": "drift.scan"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.drift.snapshots",
+      "name": "drift.snapshots"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.drift.thresholds",
+      "name": "drift.thresholds"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.edge.create",
+      "name": "edge.create"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.edge.get",
+      "name": "edge.get"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.edge.metrics",
+      "name": "edge.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.edge.neighborhood",
+      "name": "edge.neighborhood"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.edge.paths",
+      "name": "edge.paths"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.edge.query",
+      "name": "edge.query"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.edge.remove",
+      "name": "edge.remove"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.edge.update",
+      "name": "edge.update"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.empirical.checkUnits",
+      "name": "empirical.checkUnits"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.empirical.constants",
+      "name": "empirical.constants"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.empirical.convertUnits",
+      "name": "empirical.convertUnits"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.empirical.info",
+      "name": "empirical.info"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.empirical.invarianceCheck",
+      "name": "empirical.invarianceCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.empirical.math",
+      "name": "empirical.math"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.empirical.parseUnits",
+      "name": "empirical.parseUnits"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.empirical.scanCandidate",
+      "name": "empirical.scanCandidate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.empirical.scanText",
+      "name": "empirical.scanText"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.entity.detect",
+      "name": "entity.detect"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.entity.list",
+      "name": "entity.list"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.entity.metrics",
+      "name": "entity.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.entity.scan",
+      "name": "entity.scan"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.entity.thresholds",
+      "name": "entity.thresholds"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.evidence.attach",
+      "name": "evidence.attach"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.evidence.byStatus",
+      "name": "evidence.byStatus"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.evidence.confidence",
+      "name": "evidence.confidence"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.evidence.deprecate",
+      "name": "evidence.deprecate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.evidence.forDtu",
+      "name": "evidence.forDtu"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.evidence.history",
+      "name": "evidence.history"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.evidence.metrics",
+      "name": "evidence.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.evidence.recompute",
+      "name": "evidence.recompute"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.evidence.retract",
+      "name": "evidence.retract"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.evidence.supersede",
+      "name": "evidence.supersede"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.federation.buildSync",
+      "name": "federation.buildSync"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.federation.heartbeat",
+      "name": "federation.heartbeat"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.federation.metrics",
+      "name": "federation.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.federation.receiveSync",
+      "name": "federation.receiveSync"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.federation.registerPeer",
+      "name": "federation.registerPeer"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.federation.stalePeers",
+      "name": "federation.stalePeers"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.feedback.dismissReview",
+      "name": "feedback.dismissReview"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.feedback.get",
+      "name": "feedback.get"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.feedback.lowestQuality",
+      "name": "feedback.lowestQuality"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.feedback.metrics",
+      "name": "feedback.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.feedback.record",
+      "name": "feedback.record"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.feedback.reviewQueue",
+      "name": "feedback.reviewQueue"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.gate.trace",
+      "name": "gate.trace"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.get",
+      "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.global.query",
+      "name": "global.query"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.goal.active",
+      "name": "goal.active"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.goal.complete",
+      "name": "goal.complete"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.goal.dismiss",
+      "name": "goal.dismiss"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.goal.metrics",
+      "name": "goal.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.goal.scan",
+      "name": "goal.scan"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.goal.schedule",
+      "name": "goal.schedule"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.goal.thresholds",
+      "name": "goal.thresholds"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.growth.contradiction",
+      "name": "growth.contradiction"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.growth.distill",
+      "name": "growth.distill"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.growth.patterns",
+      "name": "growth.patterns"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.growth.prediction",
+      "name": "growth.prediction"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.growth.reputation",
+      "name": "growth.reputation"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.health.deep",
+      "name": "health.deep"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.health.degradations",
+      "name": "health.degradations"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.health.history",
+      "name": "health.history"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.health.metrics",
+      "name": "health.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.health.thresholds",
+      "name": "health.thresholds"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.ingest.loadSeeds",
+      "name": "ingest.loadSeeds"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.ingest.metrics",
+      "name": "ingest.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.ingest.run",
+      "name": "ingest.run"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.injection.addPattern",
+      "name": "injection.addPattern"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.injection.crossLens",
+      "name": "injection.crossLens"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.injection.incidents",
+      "name": "injection.incidents"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.injection.metrics",
+      "name": "injection.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.injection.scan",
+      "name": "injection.scan"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.injection.scanDtu",
+      "name": "injection.scanDtu"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.journal.append",
+      "name": "journal.append"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.journal.byEntity",
+      "name": "journal.byEntity"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.journal.bySession",
+      "name": "journal.bySession"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.journal.byType",
+      "name": "journal.byType"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.journal.compact",
+      "name": "journal.compact"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.journal.explain",
+      "name": "journal.explain"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.journal.metrics",
+      "name": "journal.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.journal.recent",
+      "name": "journal.recent"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lattice.commit",
+      "name": "lattice.commit"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lattice.metrics",
+      "name": "lattice.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lattice.proposals",
+      "name": "lattice.proposals"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lattice.proposeDTU",
+      "name": "lattice.proposeDTU"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lattice.proposeEdge",
+      "name": "lattice.proposeEdge"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lattice.proposeEdit",
+      "name": "lattice.proposeEdit"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lattice.query",
+      "name": "lattice.query"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lattice.read",
+      "name": "lattice.read"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lattice.readStaging",
+      "name": "lattice.readStaging"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lattice.reject",
+      "name": "lattice.reject"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lens.artifactDTUs",
+      "name": "lens.artifactDTUs"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lens.checkAccess",
+      "name": "lens.checkAccess"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lens.dtuArtifact",
+      "name": "lens.dtuArtifact"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lens.dtuContext",
+      "name": "lens.dtuContext"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lens.emergentAction",
+      "name": "lens.emergentAction"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.lens.integrationMetrics",
+      "name": "lens.integrationMetrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.list",
+      "name": "list"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.listGlobal",
+      "name": "listGlobal"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.memory.advisory.acknowledge",
+      "name": "memory.advisory.acknowledge"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.memory.advisory.active",
+      "name": "memory.advisory.active"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.memory.advisory.create",
+      "name": "memory.advisory.create"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.memory.advisory.dismiss",
+      "name": "memory.advisory.dismiss"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.memory.failureRates",
+      "name": "memory.failureRates"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.memory.metrics",
+      "name": "memory.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.memory.query",
+      "name": "memory.query"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.memory.record",
+      "name": "memory.record"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.memory.recordFailure",
+      "name": "memory.recordFailure"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.memory.recordSuccess",
+      "name": "memory.recordSuccess"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.memory.recurrences",
+      "name": "memory.recurrences"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.memory.stability",
+      "name": "memory.stability"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.merge.apply",
+      "name": "merge.apply"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.merge.conflicts",
+      "name": "merge.conflicts"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.merge.metrics",
+      "name": "merge.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.merge.resolve",
+      "name": "merge.resolve"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.merge.timestamps",
+      "name": "merge.timestamps"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.meta.commit",
+      "name": "meta.commit"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.meta.convergenceCheck",
+      "name": "meta.convergenceCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.meta.convergences",
+      "name": "meta.convergences"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.meta.dreamInput",
+      "name": "meta.dreamInput"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.meta.extractPool",
+      "name": "meta.extractPool"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.meta.metrics",
+      "name": "meta.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.meta.pendingPredictions",
+      "name": "meta.pendingPredictions"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.meta.runSession",
+      "name": "meta.runSession"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.meta.selectDistant",
+      "name": "meta.selectDistant"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.meta.triggerCycle",
+      "name": "meta.triggerCycle"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.meta.validate",
+      "name": "meta.validate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.outcome.forAllocation",
+      "name": "outcome.forAllocation"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.outcome.forEmergent",
+      "name": "outcome.forEmergent"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.outcome.forWorkItem",
+      "name": "outcome.forWorkItem"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.outcome.learn",
+      "name": "outcome.learn"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.outcome.recommendations",
+      "name": "outcome.recommendations"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.outcome.record",
+      "name": "outcome.record"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.outcome.stats",
+      "name": "outcome.stats"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.outcome.weightHistory",
+      "name": "outcome.weightHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.outreach",
+      "name": "outreach"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.patterns",
+      "name": "patterns"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.persist.load",
+      "name": "persist.load"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.persist.metrics",
+      "name": "persist.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.persist.save",
+      "name": "persist.save"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.persist.startAuto",
+      "name": "persist.startAuto"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.persist.stopAuto",
+      "name": "persist.stopAuto"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.pipeline.builder",
+      "name": "pipeline.builder"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.pipeline.critic",
+      "name": "pipeline.critic"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.pipeline.formatGRC",
+      "name": "pipeline.formatGRC"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.pipeline.metrics",
+      "name": "pipeline.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.pipeline.noveltyCheck",
+      "name": "pipeline.noveltyCheck"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.pipeline.retrievalPack",
+      "name": "pipeline.retrievalPack"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.pipeline.run",
+      "name": "pipeline.run"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.pipeline.selectIntent",
+      "name": "pipeline.selectIntent"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.pipeline.synthesizer",
+      "name": "pipeline.synthesizer"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.pipeline.writePolicy",
+      "name": "pipeline.writePolicy"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.plugin.activateApproved",
+      "name": "plugin.activateApproved"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.plugin.compileEmergent",
+      "name": "plugin.compileEmergent"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.plugin.get",
+      "name": "plugin.get"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.plugin.hotReload",
+      "name": "plugin.hotReload"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.plugin.list",
+      "name": "plugin.list"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.plugin.metrics",
+      "name": "plugin.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.plugin.pendingGovernance",
+      "name": "plugin.pendingGovernance"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.plugin.register",
+      "name": "plugin.register"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.plugin.unload",
+      "name": "plugin.unload"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.project.addNode",
+      "name": "project.addNode"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.project.cancel",
+      "name": "project.cancel"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.project.completeNode",
+      "name": "project.completeNode"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.project.create",
+      "name": "project.create"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.project.failNode",
+      "name": "project.failNode"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.project.get",
+      "name": "project.get"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.project.list",
+      "name": "project.list"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.project.metrics",
+      "name": "project.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.project.pause",
+      "name": "project.pause"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.project.readyNodes",
+      "name": "project.readyNodes"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.project.resume",
+      "name": "project.resume"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.project.schedule",
+      "name": "project.schedule"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.project.start",
+      "name": "project.start"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.purpose.assess",
+      "name": "purpose.assess"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.purpose.assignWork",
+      "name": "purpose.assignWork"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.purpose.completeWork",
+      "name": "purpose.completeWork"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.purpose.effectiveness",
+      "name": "purpose.effectiveness"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.purpose.metrics",
+      "name": "purpose.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.purpose.openNeeds",
+      "name": "purpose.openNeeds"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.purpose.recordNeed",
+      "name": "purpose.recordNeed"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.purpose.recurrence",
+      "name": "purpose.recurrence"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.purpose.scan",
+      "name": "purpose.scan"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reality.belonging",
+      "name": "reality.belonging"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reality.cascadeContradiction",
+      "name": "reality.cascadeContradiction"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reality.consequences",
+      "name": "reality.consequences"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reality.continuity",
+      "name": "reality.continuity"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reality.cost",
+      "name": "reality.cost"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reality.explainProposal",
+      "name": "reality.explainProposal"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reality.explainTrust",
+      "name": "reality.explainTrust"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reality.needs",
+      "name": "reality.needs"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reality.recordWork",
+      "name": "reality.recordWork"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reality.sociality",
+      "name": "reality.sociality"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reality.suggest",
+      "name": "reality.suggest"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reality.transitiveTrust",
+      "name": "reality.transitiveTrust"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reality.workHistory",
+      "name": "reality.workHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.register",
+      "name": "register"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.repair.agent.config",
+      "name": "repair.agent.config"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.repair.agent.tick",
+      "name": "repair.agent.tick"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.repair.guardian.check",
+      "name": "repair.guardian.check"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.repair.guardian.status",
+      "name": "repair.guardian.status"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.repair.history",
+      "name": "repair.history"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.repair.memory",
+      "name": "repair.memory"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.repair.patterns",
+      "name": "repair.patterns"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.repair.prophet",
+      "name": "repair.prophet"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.repair.status",
+      "name": "repair.status"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reproduce",
+      "name": "reproduce"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.reputation",
+      "name": "reputation"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.review",
+      "name": "review"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.active",
+      "name": "scheduler.active"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.allocate",
+      "name": "scheduler.allocate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.allocation",
+      "name": "scheduler.allocation"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.budget",
+      "name": "scheduler.budget"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.checkBudget",
+      "name": "scheduler.checkBudget"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.complete",
+      "name": "scheduler.complete"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.completed",
+      "name": "scheduler.completed"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.createItem",
+      "name": "scheduler.createItem"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.dequeue",
+      "name": "scheduler.dequeue"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.expire",
+      "name": "scheduler.expire"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.metrics",
+      "name": "scheduler.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.queue",
+      "name": "scheduler.queue"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.recordProposal",
+      "name": "scheduler.recordProposal"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.recordTurn",
+      "name": "scheduler.recordTurn"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.rescore",
+      "name": "scheduler.rescore"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.scan",
+      "name": "scheduler.scan"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.updateBudget",
+      "name": "scheduler.updateBudget"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scheduler.updateWeights",
+      "name": "scheduler.updateWeights"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.schema",
+      "name": "schema"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.schema.metrics",
+      "name": "schema.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.schema.migrate",
+      "name": "schema.migrate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.schema.recordTimestamp",
+      "name": "schema.recordTimestamp"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.schema.scanMigrations",
+      "name": "schema.scanMigrations"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.schema.validate",
+      "name": "schema.validate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.schema.validateMerge",
+      "name": "schema.validateMerge"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.schema.verifyOrdering",
+      "name": "schema.verifyOrdering"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.assign",
+      "name": "scope.assign"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.checkInfluence",
+      "name": "scope.checkInfluence"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.gateCreate",
+      "name": "scope.gateCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.gateHeartbeat",
+      "name": "scope.gateHeartbeat"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.gateMarketplace",
+      "name": "scope.gateMarketplace"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.get",
+      "name": "scope.get"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.globalTick",
+      "name": "scope.globalTick"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.listByScope",
+      "name": "scope.listByScope"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.marketplaceAnalytics",
+      "name": "scope.marketplaceAnalytics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.metrics",
+      "name": "scope.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.overrideLog",
+      "name": "scope.overrideLog"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.promote",
+      "name": "scope.promote"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.promotionHistory",
+      "name": "scope.promotionHistory"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.recordAnalytics",
+      "name": "scope.recordAnalytics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.selectGlobalCandidates",
+      "name": "scope.selectGlobalCandidates"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.validate",
+      "name": "scope.validate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.validateGlobal",
+      "name": "scope.validateGlobal"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.scope.validateMarketplace",
+      "name": "scope.validateMarketplace"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.sector.access",
+      "name": "sector.access"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.sector.assignDTU",
+      "name": "sector.assignDTU"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.sector.distribution",
+      "name": "sector.distribution"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.sector.dtusInSector",
+      "name": "sector.dtusInSector"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.sector.get",
+      "name": "sector.get"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.sector.health",
+      "name": "sector.health"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.sector.home",
+      "name": "sector.home"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.sector.list",
+      "name": "sector.list"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.sector.metrics",
+      "name": "sector.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.sector.moduleMap",
+      "name": "sector.moduleMap"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.sector.noiseFloor",
+      "name": "sector.noiseFloor"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.sector.route",
+      "name": "sector.route"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.session.complete",
+      "name": "session.complete"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.session.create",
+      "name": "session.create"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.session.get",
+      "name": "session.get"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.session.run",
+      "name": "session.run"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.session.turn",
+      "name": "session.turn"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.shadow.activate",
+      "name": "shadow.activate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.shadow.allDTUs",
+      "name": "shadow.allDTUs"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.shadow.context",
+      "name": "shadow.context"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.shadow.conversationRecord",
+      "name": "shadow.conversationRecord"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.shadow.getDTU",
+      "name": "shadow.getDTU"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.shadow.hasDTU",
+      "name": "shadow.hasDTU"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.shadow.interact",
+      "name": "shadow.interact"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.shadow.metrics",
+      "name": "shadow.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.shadow.promotionCandidates",
+      "name": "shadow.promotionCandidates"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.shadow.richness",
+      "name": "shadow.richness"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.skill.createPlaybook",
+      "name": "skill.createPlaybook"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.skill.createTemplate",
+      "name": "skill.createTemplate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.skill.createTestBundle",
+      "name": "skill.createTestBundle"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.skill.deprecate",
+      "name": "skill.deprecate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.skill.distill",
+      "name": "skill.distill"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.skill.findMatching",
+      "name": "skill.findMatching"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.skill.get",
+      "name": "skill.get"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.skill.metrics",
+      "name": "skill.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.skill.query",
+      "name": "skill.query"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.skill.recordApplication",
+      "name": "skill.recordApplication"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.slots.all",
+      "name": "slots.all"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.slots.coverage",
+      "name": "slots.coverage"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.slots.distribution",
+      "name": "slots.distribution"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.slots.failureRates",
+      "name": "slots.failureRates"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.slots.get",
+      "name": "slots.get"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.slots.invocations",
+      "name": "slots.invocations"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.slots.invoke",
+      "name": "slots.invoke"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.slots.label",
+      "name": "slots.label"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.slots.metrics",
+      "name": "slots.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.slots.register",
+      "name": "slots.register"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.slots.result",
+      "name": "slots.result"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.slots.unregister",
+      "name": "slots.unregister"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.specialize",
+      "name": "specialize"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.threat.analyze",
+      "name": "threat.analyze"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.threat.audit",
+      "name": "threat.audit"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.threat.block",
+      "name": "threat.block"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.threat.checkCost",
+      "name": "threat.checkCost"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.threat.checkRate",
+      "name": "threat.checkRate"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.threat.config",
+      "name": "threat.config"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.threat.metrics",
+      "name": "threat.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.threat.registerCost",
+      "name": "threat.registerCost"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.threat.registerCosts",
+      "name": "threat.registerCosts"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.threat.unblock",
+      "name": "threat.unblock"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.time.age",
+      "name": "time.age"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.time.checkThreshold",
+      "name": "time.checkThreshold"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.time.compare",
+      "name": "time.compare"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.time.metrics",
+      "name": "time.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.time.recordCycle",
+      "name": "time.recordCycle"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.time.recordEpoch",
+      "name": "time.recordEpoch"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.time.recordTick",
+      "name": "time.recordTick"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.trust.decay",
+      "name": "trust.decay"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.trust.extractFromSession",
+      "name": "trust.extractFromSession"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.trust.get",
+      "name": "trust.get"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.trust.metrics",
+      "name": "trust.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.trust.network",
+      "name": "trust.network"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.trust.record",
+      "name": "trust.record"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.verify.createPipeline",
+      "name": "verify.createPipeline"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.verify.dtu",
+      "name": "verify.dtu"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.verify.getPipeline",
+      "name": "verify.getPipeline"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.verify.history",
+      "name": "verify.history"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.verify.listPipelines",
+      "name": "verify.listPipelines"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.verify.metrics",
+      "name": "verify.metrics"
+    },
+    {
+      "_derived": true,
+      "domain": "emergent",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergent.verify.run",
+      "name": "verify.run"
+    }
+  ],
+  "domain": "emergent",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 398
+}

@@ -1,0 +1,19 @@
+{
+  "macro_id": "garage.get",
+  "domain": "garage",
+  "name": "get",
+  "inputs": {
+    "vehicleId": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || (output.vehicle && typeof output.vehicle.id === 'string')",
+    "output.ok === false || ['cart','boat','canal_taxi'].includes(output.vehicle.kind)",
+    "output.ok === false || (typeof output.occupants === 'number' && output.occupants >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": { "vehicleId": "veh_does_not_exist" }, "expect": { "ok": false, "reason": "vehicle_not_found" } }
+  ]
+}

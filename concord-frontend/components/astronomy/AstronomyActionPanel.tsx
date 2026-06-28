@@ -89,7 +89,9 @@ export function AstronomyActionPanel() {
     if (!Number.isFinite(la) || !Number.isFinite(ln)) { err('Observer lat + lng required.'); return; }
     setBusy('pos'); setFeedback(null);
     try {
-      const r = await callMacro<PosResult>('celestialPosition', { artifact: { data: { body, observerLat: la, observerLng: ln, date: new Date().toISOString() } } });
+      // Field names below are the handler's exact reads: body | observerLat |
+      // observerLng | date (server/domains/astronomy.js#celestialPosition).
+      const r = await callMacro<PosResult>('celestialPosition', { body, observerLat: la, observerLng: ln, date: new Date().toISOString() });
       if (r.ok && r.result) { setPosResult(r.result); pipe.publish('astro.pos', r.result, { label: `${r.result.body} alt ${r.result.alt}°` }); ok(`${r.result.body} @ ${r.result.alt}° alt.`); } else err(r.error ?? 'pos failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

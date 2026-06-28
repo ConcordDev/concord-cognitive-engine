@@ -1,0 +1,743 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "sessions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_session_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_to_step"
+          },
+          "input": {
+            "sessionId": "x"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "sessionId": "does-not-exist",
+            "toStep": "plan"
+          }
+        }
+      ],
+      "inputs": {
+        "note": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "sessionId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "stateMerge": {
+          "type": "object"
+        },
+        "toStep": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.session && typeof output.session.currentStep === 'string')",
+        "output.ok === false || output.session.stepCount >= 1"
+      ],
+      "macro_id": "sessions.advance",
+      "name": "advance"
+    },
+    {
+      "_derived": false,
+      "domain": "sessions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_session_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_note"
+          },
+          "input": {
+            "sessionId": "x"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "note": "remember this",
+            "sessionId": "does-not-exist"
+          }
+        }
+      ],
+      "inputs": {
+        "note": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "sessionId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.eventId === 'number'",
+        "output.ok === false || typeof output.note === 'string'"
+      ],
+      "macro_id": "sessions.annotate",
+      "name": "annotate"
+    },
+    {
+      "_derived": false,
+      "domain": "sessions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_outcome"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "no_targets"
+          },
+          "input": {
+            "outcome": "completed"
+          }
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "idleDays": 30,
+            "outcome": "completed",
+            "scope": "stale"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_idleDays"
+          },
+          "input": {
+            "idleDays": -1,
+            "outcome": "completed",
+            "scope": "stale"
+          }
+        }
+      ],
+      "inputs": {
+        "idleDays": {
+          "max": 365,
+          "min": 1,
+          "type": "number"
+        },
+        "note": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "completed",
+            "abandoned"
+          ],
+          "type": "string"
+        },
+        "scope": {
+          "enum": [
+            "stale"
+          ],
+          "type": "string"
+        },
+        "sessionIds": {
+          "type": "array"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (typeof output.closed === 'number' && output.closed >= 0)",
+        "output.ok === false || Array.isArray(output.sessionIds)"
+      ],
+      "macro_id": "sessions.bulk_close",
+      "name": "bulk_close"
+    },
+    {
+      "_derived": false,
+      "domain": "sessions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_session_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_outcome"
+          },
+          "input": {
+            "sessionId": "x"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "outcome": "completed",
+            "sessionId": "does-not-exist"
+          }
+        }
+      ],
+      "inputs": {
+        "note": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "completed",
+            "abandoned"
+          ],
+          "type": "string"
+        },
+        "sessionId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.status === 'completed' || output.status === 'abandoned'",
+        "output.ok === false || typeof output.closedAt === 'number'"
+      ],
+      "macro_id": "sessions.close",
+      "name": "close"
+    },
+    {
+      "_derived": false,
+      "domain": "sessions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_session_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "sessionId": "does-not-exist"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_eventLimit"
+          },
+          "input": {
+            "eventLimit": -1,
+            "sessionId": "does-not-exist"
+          }
+        }
+      ],
+      "inputs": {
+        "eventLimit": {
+          "max": 200,
+          "min": 1,
+          "type": "number"
+        },
+        "sessionId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.session && typeof output.session.id === 'string')",
+        "output.ok === false || Array.isArray(output.events)"
+      ],
+      "macro_id": "sessions.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "sessions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 10,
+            "status": "open"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_limit"
+          },
+          "input": {
+            "limit": -1
+          }
+        }
+      ],
+      "inputs": {
+        "lensId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "limit": {
+          "max": 100,
+          "min": 1,
+          "type": "number"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "paused",
+            "completed",
+            "abandoned"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.sessions)",
+        "output.ok === false || (typeof output.total === 'number' && output.total >= 0)",
+        "output.ok === false || output.sessions.length === output.total"
+      ],
+      "macro_id": "sessions.list_mine",
+      "name": "list_mine"
+    },
+    {
+      "_derived": false,
+      "domain": "sessions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_session_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "sessionId": "does-not-exist"
+          }
+        }
+      ],
+      "inputs": {
+        "note": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "sessionId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.status === 'paused'"
+      ],
+      "macro_id": "sessions.pause",
+      "name": "pause"
+    },
+    {
+      "_derived": false,
+      "domain": "sessions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_session_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_title"
+          },
+          "input": {
+            "sessionId": "x"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "sessionId": "does-not-exist",
+            "title": "New name"
+          }
+        }
+      ],
+      "inputs": {
+        "sessionId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || typeof output.title === 'string'"
+      ],
+      "macro_id": "sessions.rename",
+      "name": "rename"
+    },
+    {
+      "_derived": false,
+      "domain": "sessions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_session_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "sessionId": "does-not-exist"
+          }
+        }
+      ],
+      "inputs": {
+        "note": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "sessionId": {
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || output.status === 'open'"
+      ],
+      "macro_id": "sessions.resume",
+      "name": "resume"
+    },
+    {
+      "_derived": false,
+      "domain": "sessions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "limit": 25,
+            "query": "war",
+            "sort": "steps"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_limit"
+          },
+          "input": {
+            "limit": -1
+          }
+        }
+      ],
+      "inputs": {
+        "lensId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "limit": {
+          "max": 100,
+          "min": 1,
+          "type": "number"
+        },
+        "query": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "sort": {
+          "enum": [
+            "recent",
+            "oldest",
+            "title",
+            "lens",
+            "steps"
+          ],
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "paused",
+            "completed",
+            "abandoned"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.sessions)",
+        "output.ok === false || (typeof output.total === 'number' && output.total >= 0)",
+        "output.ok === false || typeof output.sort === 'string'"
+      ],
+      "macro_id": "sessions.search",
+      "name": "search"
+    },
+    {
+      "_derived": false,
+      "domain": "sessions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "idleDays": 30
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "invalid_idleDays"
+          },
+          "input": {
+            "idleDays": -1
+          }
+        }
+      ],
+      "inputs": {
+        "idleDays": {
+          "max": 365,
+          "min": 1,
+          "type": "number"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.sessions)",
+        "output.ok === false || (typeof output.idleDays === 'number' && output.idleDays >= 1)",
+        "output.ok === false || (typeof output.total === 'number' && output.total >= 0)"
+      ],
+      "macro_id": "sessions.stale",
+      "name": "stale"
+    },
+    {
+      "_derived": false,
+      "domain": "sessions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_lens_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "lensId": "kingdoms",
+            "title": "War campaign"
+          }
+        }
+      ],
+      "inputs": {
+        "initialState": {
+          "type": "object"
+        },
+        "initialStep": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "lensId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.session && typeof output.session.id === 'string')",
+        "output.ok === false || output.session.status === 'open'",
+        "output.ok === false || output.session.stepCount === 0"
+      ],
+      "macro_id": "sessions.start",
+      "name": "start"
+    },
+    {
+      "_derived": false,
+      "domain": "sessions",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_session_id"
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "missing_state_patch"
+          },
+          "input": {
+            "sessionId": "x"
+          }
+        },
+        {
+          "expect": {
+            "ok": false,
+            "reason": "not_found"
+          },
+          "input": {
+            "sessionId": "does-not-exist",
+            "statePatch": {
+              "k": 1
+            }
+          }
+        }
+      ],
+      "inputs": {
+        "sessionId": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "statePatch": {
+          "type": "object"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.state && typeof output.state === 'object')",
+        "output.ok === false || typeof output.updatedAt === 'number'"
+      ],
+      "macro_id": "sessions.update_state",
+      "name": "update_state"
+    }
+  ],
+  "domain": "sessions",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 13
+}

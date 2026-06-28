@@ -1,0 +1,27 @@
+{
+  "macro_id": "supplychain.multiEchelonOptimize",
+  "domain": "supplychain",
+  "name": "multiEchelonOptimize",
+  "inputs": {
+    "echelons": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result === 'object' && output.result !== null",
+    "output.result.message !== undefined || Array.isArray(output.result.echelons)",
+    "output.result.message !== undefined || Number.isFinite(output.result.totalSafetyStock)",
+    "output.result.message !== undefined || Number.isFinite(output.result.totalTargetStock)",
+    "output.result.message !== undefined || Number.isFinite(output.result.needsReplenish)",
+    "output.result.message !== undefined || Array.isArray(output.result.rebalanceTransfers)",
+    "output.result.message !== undefined || output.result.echelons.every(function(e){ return Number.isFinite(e.safetyStock) && Number.isFinite(e.reorderPoint) && Number.isFinite(e.cycleStock) && Number.isFinite(e.targetStock) && Number.isFinite(e.daysOfStock) && Number.isFinite(e.imbalance); })",
+    "output.result.message !== undefined || output.result.rebalanceTransfers.every(function(t){ return typeof t.from === 'string' && typeof t.to === 'string' && Number.isFinite(t.units); })"
+  ],
+  "fuzz_cases": [
+    { "input": { "echelons": [] }, "expect": { "ok": true } },
+    { "input": { "echelons": [{ "location": "LA DC", "tier": "regional", "dailyDemand": 100, "leadTimeDays": 7, "currentStock": 2000, "demandStdDev": 30 }, { "location": "Dallas DC", "tier": "regional", "dailyDemand": 100, "leadTimeDays": 7, "currentStock": 100, "demandStdDev": 30 }], "serviceLevelZ": 1.65 }, "expect": { "ok": true } },
+    { "input": { "echelons": [{ "location": "X", "tier": "regional", "dailyDemand": "NaN", "leadTimeDays": "Infinity", "currentStock": "no", "demandStdDev": "NaN" }], "serviceLevelZ": "NaN" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler; reads flat params (SupplyChainPlanner.EchelonPanel sends flat). Echelon safety stock = ceil(Z * sigma * sqrt(leadTime)); reorderPoint = ceil(demand*leadTime + safetyStock); targetStock = cycleStock + safetyStock; imbalance = current - targetStock; greedy surplus→deficit rebalance transfers. POISON: scNum + Math.max clamps collapse garbage to safe defaults (demand>=0, leadTime>=1) so every numeric stays FINITE. Component renders echelons[].location/tier/currentStock/reorderPoint/safetyStock/targetStock/daysOfStock/imbalance + totals + rebalanceTransfers. Not assassin-driven; pinned by server/tests/supplychain-lens-macros.test.js."
+}

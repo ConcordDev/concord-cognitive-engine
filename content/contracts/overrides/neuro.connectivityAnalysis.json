@@ -1,0 +1,26 @@
+{
+  "macro_id": "neuro.connectivityAnalysis",
+  "domain": "neuro",
+  "name": "connectivityAnalysis",
+  "inputs": {
+    "channels": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.channelCount)",
+    "output.ok === false || Array.isArray(output.result.significantConnections)",
+    "output.ok === false || output.result.significantConnections.every(c => typeof c.from === 'string' && typeof c.to === 'string' && Number.isFinite(c.correlation) && Math.abs(c.correlation) <= 1.0001)",
+    "output.ok === false || (output.result.networkMetrics && Number.isFinite(output.result.networkMetrics.density) && Number.isFinite(output.result.networkMetrics.averageConnectivity))",
+    "output.ok === false || (output.result.correlationMatrix && Array.isArray(output.result.correlationMatrix.labels) && Array.isArray(output.result.correlationMatrix.matrix))",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "channels": [{ "name": "Fz", "samples": [0,1,0,-1,0,1,0,-1], "sampleRate": 8 }, { "name": "Pz", "samples": [0,0.8,0,-0.8,0,0.8,0,-0.8], "sampleRate": 8 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "channels": [{ "name": "Fz", "samples": [0,1,0,-1], "sampleRate": 8 }] } } }, "expect": { "ok": false } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": false } },
+    { "input": { "artifact": { "data": { "channels": [{ "name": "A", "samples": ["abc", null, 1, "Infinity", 0.5], "sampleRate": 8 }, { "name": "B", "samples": [0.4, "NaN", -1, 0.2, "x"], "sampleRate": 8 }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. Pearson cross-correlation per channel pair + cross-correlation peak-lag directionality + hub detection. THE DEAD-SURFACE FIX: NeuroActionPanel rendered r.result.connections, which the handler never returns — the real field is significantConnections[] (fixed 2026-06-28: card + DM body + agent task + render all read significantConnections, and the density footer reads networkMetrics.density). correlationMatrix is { labels, matrix }, not a bare number[][]. Needs ≥2 channels (validation-rejection)."
+}

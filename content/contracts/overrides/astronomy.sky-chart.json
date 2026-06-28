@@ -1,0 +1,27 @@
+{
+  "macro_id": "astronomy.sky-chart",
+  "domain": "astronomy",
+  "name": "sky-chart",
+  "inputs": {
+    "latitude": { "type": "number" },
+    "longitude": { "type": "number" },
+    "when": { "type": "string" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || (output.result.observer.latitude >= -90 && output.result.observer.latitude <= 90)",
+    "output.ok !== true || (output.result.observer.longitude >= -180 && output.result.observer.longitude <= 180)",
+    "output.ok !== true || (output.result.siderealTimeDeg >= 0 && output.result.siderealTimeDeg < 360)",
+    "output.ok !== true || output.result.stars.every(s => Number.isFinite(s.altitude) && Number.isFinite(s.azimuth))",
+    "output.ok !== true || (output.result.moon.illumination >= 0 && output.result.moon.illumination <= 1)",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "latitude": 40.7, "longitude": -74.0, "when": "2026-06-21T22:00:00Z" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "latitude": 1e308, "longitude": 1e308 }, "expect": { "ok": true } },
+    { "input": { "latitude": "abc", "longitude": "def" }, "expect": { "ok": false } }
+  ],
+  "_note": "astronomy.sky-chart is a pure-ephemeris LENS_ACTIONS handler (Meeus GMST + equatorial→horizontal for 30 catalogued bright stars + Sun + Moon). The handler body is wrapped in try/catch and returns {ok:false,error:'handler_error'} rather than throwing. parseObserver() clamps latitude to [-90,90] and longitude to [-180,180], so even poisoned 1e308 coords yield a finite, in-range observer and never a NaN altitude — the invariants above pin that all star alt/az stay finite and moon illumination stays in [0,1]. A missing or non-numeric observer is rejected with 'latitude and longitude required'. LENS_ACTIONS-only registration; SkyChartWorkbench drives it via /api/lens/run."
+}

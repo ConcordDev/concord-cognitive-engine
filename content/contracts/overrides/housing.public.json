@@ -1,0 +1,19 @@
+{
+  "macro_id": "housing.public",
+  "domain": "housing",
+  "name": "public",
+  "inputs": {
+    "worldId": { "type": "string", "required": true, "maxLength": 120 },
+    "limit": { "type": "number", "min": 1, "max": 100 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.houses)",
+    "output.ok === false || output.houses.every(h => h.visibility === 'public' || h.visibility === undefined)",
+    "output.ok === false || output.houses.length <= 100"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } }
+  ]
+}

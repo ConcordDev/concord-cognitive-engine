@@ -1,0 +1,26 @@
+{
+  "macro_id": "spectate.get",
+  "domain": "spectate",
+  "name": "get",
+  "inputs": {
+    "worldId": { "type": "string", "required": true, "maxLength": 120 },
+    "limit": { "type": "number", "min": 1, "max": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.worldId === 'string'",
+    "output.ok === false || (typeof output.spectacle === 'object' && output.spectacle !== null)",
+    "output.ok === false || typeof output.spectacle.watching === 'number'",
+    "output.ok === false || Array.isArray(output.spectacle.openMarkets)",
+    "output.ok === false || output.spectacle.openMarkets.every(m => typeof m.id === 'string')",
+    "output.ok === false || output.spectacle.openMarkets.every(m => typeof m.impliedYes === 'number' && m.impliedYes >= 0 && m.impliedYes <= 1)",
+    "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "worldId": "concordia-hub" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false, "reason": "missing_worldId" } },
+    { "input": { "worldId": "concordia-hub", "limit": 1e+308 }, "expect": { "ok": false } }
+  ],
+  "_note": "One world's spectacle — watcher count, open markets (with parimutuel implied odds), recent goddess dispatches. A missing worldId yields reason:missing_worldId."
+}

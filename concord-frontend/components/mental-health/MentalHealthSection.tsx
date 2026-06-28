@@ -50,14 +50,38 @@ export function MentalHealthSection() {
   const [tab, setTab] = useState<TabId>('practice');
   const [dash, setDash] = useState<Dash | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refreshDash = useCallback(async () => {
-    const r = await lensRun('mental-health', 'wellness-dashboard', {});
-    setDash((r.data?.result as Dash | null) || null);
-    setLoading(false);
+    setLoading(true);
+    setError(null);
+    try {
+      // wellness-dashboard returns ok:true even for an empty user (all-zero
+      // stats), so a thrown request is the only real failure path — surface it
+      // instead of swallowing it into a silent empty (the sibling-lens defect).
+      const r = await lensRun('mental-health', 'wellness-dashboard', {});
+      const result = r.data?.result as Dash | null | undefined;
+      if (r.data?.ok === false) {
+        setError(String(r.data?.error || 'Failed to load wellness dashboard.'));
+        setDash(null);
+      } else {
+        setDash(result || null);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load wellness dashboard.');
+      setDash(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { void refreshDash(); }, [refreshDash]);
+
+  // An all-zero dashboard (no sessions, no moods, no courses) is the genuine
+  // "empty" state — prompt the user toward their first check-in.
+  const isEmptyDash = !!dash && dash.streak === 0 && dash.sessionsThisWeek === 0
+    && dash.minutesThisWeek === 0 && dash.latestMood == null
+    && dash.avgSleepHours == null && dash.activeCourses === 0 && dash.gratitudeEntries === 0;
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
@@ -68,7 +92,26 @@ export function MentalHealthSection() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div role="status" aria-live="polite" className="flex items-center justify-center gap-2 py-6 text-zinc-400">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>Loading your wellness dashboard…</span>
+        </div>
+      ) : error ? (
+        <div role="alert" className="flex flex-col items-center gap-3 py-6 px-4 text-center">
+          <p className="text-sm text-red-300">{error}</p>
+          <button
+            type="button"
+            onClick={() => void refreshDash()}
+            className="px-3 py-1.5 text-xs rounded-lg border border-sky-500/40 bg-sky-500/10 text-sky-200 hover:bg-sky-500/20 focus:outline-none focus:ring-2 focus:ring-sky-500"
+          >
+            Retry
+          </button>
+        </div>
+      ) : isEmptyDash ? (
+        <div className="flex flex-col items-center gap-2 py-6 px-4 text-center">
+          <p className="text-sm text-zinc-300">No check-ins yet.</p>
+          <p className="text-xs text-zinc-400">Log a mood, breathe, or start a practice session below to begin tracking your wellbeing.</p>
+        </div>
       ) : dash && (
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 px-4 py-3 border-b border-zinc-800">
           <Stat label="Day streak" value={dash.streak} />

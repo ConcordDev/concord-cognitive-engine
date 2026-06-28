@@ -1,0 +1,22 @@
+{
+  "macro_id": "tournaments.reportMatch",
+  "domain": "tournaments",
+  "name": "reportMatch",
+  "inputs": {
+    "id": { "type": "string", "required": true, "maxLength": 64 },
+    "matchId": { "type": "string", "required": true, "maxLength": 64 },
+    "scoreA": { "type": "number", "min": 0, "max": 1000000 },
+    "scoreB": { "type": "number", "min": 0, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string'",
+    "output.ok === false || (output.result && output.result.tournament && Array.isArray(output.result.tournament.matches))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "tournament_not_found" } },
+    { "input": { "id": "__nope__", "matchId": "m_x", "scoreA": 2, "scoreB": 1 }, "expect": { "ok": false, "error": "tournament_not_found" } }
+  ],
+  "_note": "tournaments.reportMatch submits a result and auto-advances the bracket. Unknown id → 'tournament_not_found'; not in_progress → 'tournament_not_running'; unknown matchId → 'match_not_found'; already reported → 'match_already_reported'; a bye → 'match_is_bye'; equal scores → 'draws_not_allowed'. Scores are floored at 0 via num(); the higher score wins, the loser is marked eliminated in single-elim. Recomputes standings and may finalize. No CC is minted — completion triggers proportional payout COMPUTATION only."
+}

@@ -2,6 +2,14 @@
 // Domain actions for education: grading, attendance, progress tracking, schedule conflicts.
 
 export default function registerEducationActions(registerLensAction) {
+  // FAIL-CLOSED numeric coercion: any NaN/Infinity/garbage → a finite fallback,
+  // so a poisoned score/maxScore/unit can never leak Infinity/NaN into a
+  // computed grade %, completion %, or GPA. The calculator never lies.
+  function eduFinite(v, fallback = 0) {
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
   /**
    * gradeCalculation
    * Compute weighted grades from assignment categories and scores.
@@ -29,7 +37,7 @@ export default function registerEducationActions(registerLensAction) {
     // Build weight map, defaulting to equal weights if not provided
     const weightMap = {};
     if (weightScheme.length > 0) {
-      for (const w of weightScheme) weightMap[w.category] = parseFloat(w.weight) || 0;
+      for (const w of weightScheme) weightMap[w.category] = Math.max(0, eduFinite(w.weight, 0));
     } else {
       const categories = [...new Set(subset.flatMap((s) => (s.grades || []).map((g) => g.category)))];
       const equalWeight = categories.length > 0 ? 100 / categories.length : 100;
@@ -50,8 +58,8 @@ export default function registerEducationActions(registerLensAction) {
       for (const grade of grades) {
         const cat = grade.category || "uncategorized";
         if (!byCategory[cat]) byCategory[cat] = { scores: [], maxScores: [] };
-        byCategory[cat].scores.push(parseFloat(grade.score) || 0);
-        byCategory[cat].maxScores.push(parseFloat(grade.maxScore) || 100);
+        byCategory[cat].scores.push(Math.max(0, eduFinite(grade.score, 0)));
+        byCategory[cat].maxScores.push(Math.max(0, eduFinite(grade.maxScore, 100)));
       }
 
       let weightedTotal = 0;
@@ -218,15 +226,15 @@ export default function registerEducationActions(registerLensAction) {
     const completionMap = {};
     for (const c of completions) {
       if (!completionMap[c.requirementId]) completionMap[c.requirementId] = 0;
-      completionMap[c.requirementId] += parseFloat(c.completedUnits) || 0;
+      completionMap[c.requirementId] += Math.max(0, eduFinite(c.completedUnits, 0));
     }
 
     let totalRequired = 0;
     let totalCompleted = 0;
 
     const details = requirements.map((req) => {
-      const required = parseFloat(req.requiredUnits) || 1;
-      const completed = Math.min(completionMap[req.requirementId] || 0, required);
+      const required = Math.max(0.0001, eduFinite(req.requiredUnits, 1) || 1);
+      const completed = Math.max(0, Math.min(completionMap[req.requirementId] || 0, required));
       const pct = Math.round((completed / required) * 10000) / 100;
 
       totalRequired += required;
@@ -306,10 +314,10 @@ export default function registerEducationActions(registerLensAction) {
     for (const g of grades) {
       const subj = g.subject || "General";
       if (!bySubject[subj]) bySubject[subj] = { earned: 0, possible: 0, credits: g.credits || 1, count: 0 };
-      bySubject[subj].earned += parseFloat(g.score) || 0;
-      bySubject[subj].possible += parseFloat(g.maxScore) || 100;
+      bySubject[subj].earned += Math.max(0, eduFinite(g.score, 0));
+      bySubject[subj].possible += Math.max(0, eduFinite(g.maxScore, 100));
       bySubject[subj].count++;
-      if (g.credits != null) bySubject[subj].credits = parseFloat(g.credits) || 1;
+      if (g.credits != null) bySubject[subj].credits = Math.max(0, eduFinite(g.credits, 1)) || 1;
     }
 
     let totalGpaPoints = 0;

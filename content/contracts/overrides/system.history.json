@@ -1,0 +1,23 @@
+{
+  "macro_id": "system.history",
+  "domain": "system",
+  "name": "history",
+  "inputs": {
+    "limit": { "type": "number", "minimum": 1, "maximum": 365 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.snapshots))",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count === output.result.snapshots.length)",
+    "output.ok === false || (output.result.trend === null || typeof output.result.trend === 'object')",
+    "output.ok === false || (typeof output.result.capacity === 'number' && output.result.capacity === 365)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 30 }, "expect": { "ok": true } },
+    { "input": { "limit": "Infinity" }, "expect": { "ok": false, "error": "invalid_limit" } },
+    { "input": { "limit": -1 }, "expect": { "ok": false, "error": "invalid_limit" } }
+  ],
+  "_note": "Reads the accumulated coverage/drift snapshot timeline from shared STATE (populated by system.history-snapshot). With no snapshots recorded yet the call still returns ok:true with an empty snapshots[] and trend:null (NEVER no_db). A poisoned numeric limit fails CLOSED with invalid_limit."
+}

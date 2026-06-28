@@ -1,0 +1,29 @@
+{
+  "macro_id": "welding.heatInput",
+  "domain": "welding",
+  "name": "heatInput",
+  "inputs": {
+    "voltage": { "type": "number" },
+    "amperage": { "type": "number" },
+    "travelSpeed": { "type": "number" },
+    "efficiency": { "type": "number" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.heatInput === 'string'",
+    "output.ok === false || Number.isFinite(output.result.heatInputJoules)",
+    "output.ok === false || typeof output.result.maxInterpassTemp === 'string'",
+    "output.ok === false || ['low','moderate','high'].includes(output.result.distortionRisk)",
+    "output.ok === false || Array.isArray(output.result.recommendations)",
+    "output.ok === false || Number.isFinite(parseFloat(output.result.heatInput))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "voltage": 28, "amperage": 200, "travelSpeed": 4, "efficiency": 0.85 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "voltage": 30, "amperage": 250, "travelSpeed": 2, "efficiency": 0.9 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "voltage": "abc", "amperage": "NaN", "travelSpeed": 0, "efficiency": "Infinity" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. heatInput = (V × I × η) / travelSpeed, in kJ/mm (2dp). Distortion risk: >3.0 high, >1.5 moderate, else low. Accepts `current` as an amperage alias. Non-finite V/I/η fall to defaults 25/150/0.8; a zero/negative travelSpeed floors to 5 so the division never emits Infinity (wFinite + positive-guard). Result card renders heatInput/heatInputJoules/maxInterpassTemp/distortionRisk/recommendations EXACTLY (the prior heatInputJmm/heatInputKjPerInch/classification/hazRisk fields were never returned — fixed 2026-06-28)."
+}

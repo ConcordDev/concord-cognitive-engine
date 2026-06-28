@@ -54,6 +54,20 @@ function uid(prefix) {
   return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// Fail-CLOSED money guard. Returns true when `v` is NOT a usable CC amount so
+// the caller can reject BEFORE the value lands in a value column (asset value,
+// escrow price). The old `Math.max(0, Number(v) || 0)` pattern was fail-OPEN:
+// Number(Infinity)||0 === Infinity and Number(1e308) is a finite absurdity that
+// `Math.max(0, …)` happily passes through into estate-value / escrow sums.
+// MAX_CC bounds a single CC amount at 1e6 (one million) — the same ceiling the
+// sibling economy lenses (bounties.create) reject above.
+const MAX_CC = 1e6;
+function badCc(v) {
+  if (v === undefined || v === null) return false; // omitted → caller defaults to 0
+  const n = Number(v);
+  return !Number.isFinite(n) || n < 0 || n > MAX_CC;
+}
+
 function actorId(ctx) {
   return ctx?.actor?.userId || ctx?.userId || null;
 }
@@ -250,6 +264,7 @@ export default function registerInheritanceActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const label = String(params.label || "").trim();
       if (!label) return { ok: false, error: "missing_label" };
+      if (badCc(params.valueCc)) return { ok: false, error: "invalid numeric field: valueCc" };
       const e = getEstate(userId);
       const asset = {
         id: uid("ast"),
@@ -397,6 +412,7 @@ export default function registerInheritanceActions(registerLensAction) {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_actor" };
+      if (badCc(params.priceCc)) return { ok: false, error: "invalid numeric field: priceCc" };
       const e = getEstate(userId);
       const lock = {
         id: uid("lck"),
@@ -423,6 +439,7 @@ export default function registerInheritanceActions(registerLensAction) {
       if (lock.status === "revoked" || lock.status === "resolved") {
         return { ok: false, error: "lock_not_amendable" };
       }
+      if (badCc(params.priceCc)) return { ok: false, error: "invalid numeric field: priceCc" };
       if (params.priceCc !== undefined) lock.priceCc = Math.max(0, Number(params.priceCc) || 0);
       if (params.npcName !== undefined) lock.npcName = String(params.npcName).trim() || lock.npcName;
       lock.status = "amended";

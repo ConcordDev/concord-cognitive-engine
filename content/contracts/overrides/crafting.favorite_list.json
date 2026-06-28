@@ -1,0 +1,19 @@
+{
+  "macro_id": "crafting.favorite_list",
+  "domain": "crafting",
+  "name": "favorite_list",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "output.result && Array.isArray(output.result.favorites)",
+    "typeof output.result.count === 'number' && output.result.count >= 0",
+    "output.result.count === output.result.favorites.length",
+    "output.result.favorites.every(f => typeof f.recipeId === 'string' && f.recipeId.length > 0)",
+    "output.result.favorites.every(f => typeof f.favoritedAt === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "favorite_list returns the caller's pinned recipes newest-first from the per-user STATE favorites map (keyed by ctx.actor.id). Always ok:true; favorites is empty for a caller who has pinned nothing. count === favorites.length. Each entry carries recipeId + recipeName + recipeType + favoritedAt. The MineTab builds a Set from favorites[].recipeId. Live actor reality, never no_db."
+}

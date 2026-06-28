@@ -26,7 +26,7 @@ import { DynastyRealmManager } from '@/components/kingdoms/DynastyRealmManager';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { PipingProvider } from '@/components/panel-polish';
-import { Crown, Flag, Hammer, Users, Plus, ChevronRight, AlertTriangle, List, Eye } from 'lucide-react';
+import { Crown, Flag, Hammer, Users, Plus, ChevronRight, AlertTriangle, List, Eye, Loader2 } from 'lucide-react';
 
 interface Kingdom {
   id: string;
@@ -76,13 +76,28 @@ export default function KingdomsPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detail, setDetail] = useState<{ kingdom: Kingdom; decrees: Decree[]; residents: Resident[] } | null>(null);
   const [decreeKinds, setDecreeKinds] = useState<Record<string, DecreeKindMeta>>({});
+  const [listLoading, setListLoading] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
+  const [listLoaded, setListLoaded] = useState(false);
 
   const fetchList = useCallback(async () => {
+    setListLoading(true);
+    setListError(null);
     try {
       const r = await fetch('/api/kingdoms', { credentials: 'same-origin' });
       const j = await r.json();
-      if (j?.ok) setKingdoms(j.kingdoms);
-    } catch { /* ok */ }
+      if (j?.ok) {
+        setKingdoms(Array.isArray(j.kingdoms) ? j.kingdoms : []);
+        setListLoaded(true);
+      } else {
+        setListError(j?.error || `request failed (${r.status})`);
+      }
+    } catch (e) {
+      // Do NOT swallow into a silently-empty page — surface a real error.
+      setListError(e instanceof Error ? e.message : 'network error');
+    } finally {
+      setListLoading(false);
+    }
   }, []);
 
   const fetchDetail = useCallback(async (id: string) => {
@@ -135,7 +150,15 @@ export default function KingdomsPage() {
           </div>
         </header>
 
-        {view === 'list' && <KingdomList kingdoms={kingdoms} onPick={(id) => { setActiveId(id); setView('detail'); }} />}
+        {view === 'list' && (
+          <KingdomList
+            kingdoms={kingdoms}
+            loading={listLoading && !listLoaded}
+            error={listError}
+            onRetry={fetchList}
+            onPick={(id) => { setActiveId(id); setView('detail'); }}
+          />
+        )}
         {view === 'detail' && detail && <KingdomDetail detail={detail} decreeKinds={decreeKinds} onRefresh={() => activeId && fetchDetail(activeId)} />}
         {view === 'create' && <KingdomCreate onCreated={(id) => { setActiveId(id); setView('detail'); fetchList(); }} />}
         {/* Phase 5 — open war-campaign / decree sessions belonging to this lens. */}
@@ -178,7 +201,48 @@ export default function KingdomsPage() {
   );
 }
 
-function KingdomList({ kingdoms, onPick }: { kingdoms: Kingdom[]; onPick: (id: string) => void }) {
+function KingdomList({
+  kingdoms,
+  loading = false,
+  error = null,
+  onRetry,
+  onPick,
+}: {
+  kingdoms: Kingdom[];
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
+  onPick: (id: string) => void;
+}) {
+  if (loading) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex items-center justify-center gap-3 rounded-lg border border-slate-800 bg-slate-900 p-12 text-slate-400"
+      >
+        <Loader2 className="h-5 w-5 animate-spin text-amber-300" />
+        <span>Loading kingdoms…</span>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div
+        role="alert"
+        className="rounded-lg border border-rose-800 bg-rose-950/40 p-8 text-center text-rose-200"
+      >
+        <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-rose-400" />
+        <p className="mb-4 text-sm">Could not load kingdoms: {error}</p>
+        <button
+          onClick={() => onRetry?.()}
+          className="rounded bg-rose-700 px-4 py-1.5 text-sm font-medium hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-amber-500"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
   if (kingdoms.length === 0) {
     return (
       <div className="rounded-lg border border-slate-800 bg-slate-900 p-12 text-center text-slate-400">

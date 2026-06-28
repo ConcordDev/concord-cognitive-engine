@@ -1,0 +1,21 @@
+{
+  "macro_id": "society.wb-chart-series",
+  "domain": "society",
+  "name": "wb-chart-series",
+  "inputs": {
+    "country": { "type": "string", "maxLength": 3 },
+    "indicator": { "type": "string", "maxLength": 80 },
+    "perCapita": { "type": "boolean" },
+    "inflationAdjust": { "type": "boolean" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "country must be 3-letter ISO code" } },
+    { "input": { "country": "USA" }, "expect": { "ok": false, "error": "indicator required" } },
+    { "input": { "country": "USA", "indicator": "<script>alert(1)</script>" }, "expect": { "ok": false, "error": "indicator must be a World Bank code or alias" } }
+  ],
+  "_note": "Chart-ready ascending series for one country/indicator with optional per-capita / inflation transforms. Fuzz_cases land on PRE-NETWORK validation (ISO-3, missing indicator, non-code indicator), so NO outbound call is made. NEVER no_db (no DB)."
+}

@@ -38,21 +38,29 @@ function activeWorldId(): string {
   return window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub';
 }
 
+// Mirror the server-side fail-CLOSED numeric guard (server/lib/civic-bonds.js
+// rejects bad amounts) so the client never POSTs a NaN/Infinity/negative pledge.
+function badAmount(n: number, denomination: number): boolean {
+  return !Number.isFinite(n) || n <= 0 || n > 1e9 || n % denomination !== 0;
+}
+
 export default function CivicBondsLens() {
   const [worldId] = useState(activeWorldId);
   const [bonds, setBonds] = useState<Bond[]>([]);
   const [loading, setLoading] = useState(true);
   const [disabled, setDisabled] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [amounts, setAmounts] = useState<Record<string, number>>({});
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const r = (await lensRun<{ ok: boolean; reason?: string; bonds?: Bond[] }>('civic_bonds', 'list', { worldId })).data.result;
       if (r?.reason === 'disabled') { setDisabled(true); setBonds([]); }
       else { setDisabled(false); setBonds(r?.bonds || []); }
-    } catch { setNote('Failed to load bonds.'); }
+    } catch { setError('Failed to load civic bonds. Check your connection and retry.'); }
     finally { setLoading(false); }
   }, [worldId]);
 
@@ -73,27 +81,42 @@ export default function CivicBondsLens() {
     <div className="max-w-3xl mx-auto p-6 text-gray-100">
       <header className="flex items-center justify-between mb-4">
         <h1 className="flex items-center gap-2 text-xl font-semibold text-amber-200">
-          <Landmark className="w-5 h-5" /> Civic Bonds
+          <Landmark className="w-5 h-5" aria-hidden="true" /> Civic Bonds
           <span className="text-xs text-gray-400 font-normal">· {worldId}</span>
         </h1>
-        <button onClick={() => void refresh()} className="text-gray-400 hover:text-white" aria-label="Refresh">
-          <RefreshCw className="w-4 h-4" />
+        <button onClick={() => void refresh()} className="text-gray-400 hover:text-white" aria-label="Refresh civic bonds">
+          <RefreshCw className="w-4 h-4" aria-hidden="true" />
         </button>
       </header>
 
-      {note && <div className="mb-3 text-sm text-amber-300">{note}</div>}
-      {disabled && (
-        <div className="rounded border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-200">
+      {note && <div role="status" aria-live="polite" className="mb-3 text-sm text-amber-300">{note}</div>}
+
+      {/* STATE 1 — error */}
+      {error && (
+        <div role="alert" className="rounded border border-rose-500/30 bg-rose-500/5 p-4 text-sm text-rose-200">
+          {error}{' '}
+          <button onClick={() => void refresh()} className="underline hover:text-white">Retry</button>
+        </div>
+      )}
+
+      {/* by-design coming-soon (kill-switch off) */}
+      {!error && disabled && (
+        <div role="status" className="rounded border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-200">
           Civic Bonds are coming soon — the engine is wired but the feature is currently disabled
           (<code>CONCORD_CIVIC_BONDS</code>).
         </div>
       )}
-      {loading && <div className="text-gray-400 text-sm">Loading…</div>}
-      {!loading && !disabled && bonds.length === 0 && (
-        <div className="text-gray-400 text-sm">No civic bonds in this world yet. A realm ruler can open a drive to fund a project.</div>
+
+      {/* STATE 2 — loading */}
+      {!error && loading && <div role="status" aria-live="polite" className="text-gray-400 text-sm">Loading…</div>}
+
+      {/* STATE 3 — empty */}
+      {!error && !loading && !disabled && bonds.length === 0 && (
+        <div role="status" className="text-gray-400 text-sm">No civic bonds in this world yet. A realm ruler can open a drive to fund a project.</div>
       )}
 
-      <ul className="space-y-4">
+      {/* STATE 4 — data */}
+      <ul className="space-y-4" aria-label="Active civic bonds">
         {bonds.map((b) => {
           const pct = Math.min(100, Math.round((b.current_pledged / b.target_amount) * 100));
           const gatePct = Math.round(b.funding_gate_pct * 100);
@@ -124,7 +147,14 @@ export default function CivicBondsLens() {
                   className="w-24 px-2 py-1 rounded bg-black/30 border border-white/10 text-sm"
                   aria-label="Pledge amount (sparks)"
                 />
-                <button onClick={() => void act('pledge', { bondId: b.id, amount })} className="px-3 py-1 rounded bg-amber-500/20 text-amber-200 text-sm hover:bg-amber-500/30">Pledge</button>
+                <button
+                  onClick={() => {
+                    if (badAmount(amount, b.denomination)) { setNote(`pledge: amount must be a positive multiple of ${b.denomination}`); return; }
+                    void act('pledge', { bondId: b.id, amount });
+                  }}
+                  disabled={badAmount(amount, b.denomination)}
+                  className="px-3 py-1 rounded bg-amber-500/20 text-amber-200 text-sm hover:bg-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                >Pledge</button>
                 {b.status === 'voting' && (
                   <>
                     <button onClick={() => void act('vote', { bondId: b.id, vote: 'for' })} className="px-3 py-1 rounded bg-emerald-500/20 text-emerald-200 text-sm">Vote for</button>

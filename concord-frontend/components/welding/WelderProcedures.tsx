@@ -37,12 +37,30 @@ async function callWeld<T>(action: string, data: Record<string, unknown>): Promi
   } catch { return null; }
 }
 
-interface JointResult { weldType?: string; material?: string; thickness?: string; length?: string; effectiveArea?: number; tensileLoadKN?: number; shearLoadKN?: number; classification?: string; recommendation?: string }
-interface RodOption { electrode: string; awsClass: string; suitability: string; amperage: string; positions: string[]; tensileKsi: number; note?: string }
-interface RodResult { baseMetal?: string; position?: string; recommendations?: RodOption[] }
-interface HeatInputResult { voltage?: number; amperage?: number; travelSpeed?: number; efficiency?: number; heatInputJmm?: number; heatInputKjPerInch?: number; classification?: string; hazRisk?: string; recommendation?: string }
-interface InspectionItem { item: string; category: string; required: boolean; passed: boolean }
-interface InspectionResult { weldType?: string; code?: string; items?: InspectionItem[]; passed?: number; failed?: number; criticalFailed?: number; verdict?: string; ndtRequired?: boolean; ndtRecommendations?: string[] }
+// Field names below mirror server/domains/welding.js EXACTLY — every field
+// rendered is one the handler genuinely returns (no fabricated fields).
+interface JointResult {
+  weldType?: string; material?: string; thickness?: string; length?: string;
+  throatSize?: string; tensileStrength?: string; theoreticalCapacity?: string;
+  safeWorkingLoad?: string; safetyFactor?: number; rating?: string;
+}
+interface RecommendedRod { rod: string; process: string; diameter: string; amperageRange: string; notes: string }
+interface AltRod { rod: string; process: string; notes: string }
+interface RodResult {
+  baseMetal?: string; position?: string; jointType?: string; materialThickness?: string;
+  recommended?: RecommendedRod; alternatives?: AltRod[]; tips?: string[];
+}
+interface HeatInputResult {
+  voltage?: string; amperage?: string; travelSpeed?: string; efficiency?: number;
+  heatInput?: string; heatInputJoules?: number; maxInterpassTemp?: string;
+  distortionRisk?: string; recommendations?: string[];
+}
+interface ChecklistItem { item: string; category: string; required: boolean; status: 'pass' | 'fail' | 'pending' }
+interface InspectionResult {
+  weldType?: string; code?: string; totalItems?: number; passed?: number;
+  failed?: number; pending?: number; passRate?: number;
+  checklist?: ChecklistItem[]; verdict?: string;
+}
 
 const MATERIALS = ['mild-steel', 'stainless-steel', 'aluminum', 'high-strength', 'cast-iron'] as const;
 const WELD_TYPES = ['fillet', 'groove', 'butt', 'lap', 'corner', 'edge'] as const;
@@ -74,8 +92,8 @@ function JointStrengthCalc() {
         </div>
         {result && (
           <SaveAsDtuButton compact apiSource="concord-welding-joint"
-            title={`${result.weldType} weld in ${result.material} — ${result.tensileLoadKN} kN tensile`}
-            content={`Weld: ${result.weldType}\nMaterial: ${result.material}\nThickness: ${result.thickness}\nLength: ${result.length}\nEffective area: ${result.effectiveArea} mm²\nTensile load: ${result.tensileLoadKN} kN\nShear load: ${result.shearLoadKN} kN\nClass: ${result.classification}\n${result.recommendation || ''}`}
+            title={`${result.weldType} weld in ${result.material} — ${result.safeWorkingLoad} safe working load`}
+            content={`Weld: ${result.weldType}\nMaterial: ${result.material}\nThickness: ${result.thickness}\nLength: ${result.length}\nThroat size: ${result.throatSize}\nTensile strength: ${result.tensileStrength}\nTheoretical capacity: ${result.theoreticalCapacity}\nSafe working load: ${result.safeWorkingLoad}\nSafety factor: ${result.safetyFactor}\nRating: ${result.rating}`}
             extraTags={['welding', 'joint-strength', weldType, material]} rawData={{ weldType, material, thickness, length, result }} />
         )}
       </header>
@@ -109,19 +127,26 @@ function JointStrengthCalc() {
             <>
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-lg border-2 border-orange-500/40 bg-orange-500/10 p-3">
-                  <div className="text-[10px] uppercase tracking-wider text-orange-300">Tensile load</div>
-                  <div className="font-mono text-2xl text-orange-100">{result.tensileLoadKN} <span className="text-sm text-zinc-400">kN</span></div>
+                  <div className="text-[10px] uppercase tracking-wider text-orange-300">Safe working load</div>
+                  <div className="font-mono text-2xl text-orange-100">{result.safeWorkingLoad}</div>
                 </div>
                 <div className="rounded-lg border-2 border-amber-500/40 bg-amber-500/10 p-3">
-                  <div className="text-[10px] uppercase tracking-wider text-amber-300">Shear load</div>
-                  <div className="font-mono text-2xl text-amber-100">{result.shearLoadKN} <span className="text-sm text-zinc-400">kN</span></div>
+                  <div className="text-[10px] uppercase tracking-wider text-amber-300">Theoretical capacity</div>
+                  <div className="font-mono text-2xl text-amber-100">{result.theoreticalCapacity}</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
+                  <span className="text-zinc-400">Throat size:</span> <span className="font-mono text-orange-200">{result.throatSize}</span>
+                </div>
+                <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
+                  <span className="text-zinc-400">Tensile:</span> <span className="font-mono text-orange-200">{result.tensileStrength}</span>
                 </div>
               </div>
               <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5 text-[11px]">
-                <span className="text-zinc-400">Effective area:</span> <span className="font-mono text-orange-200">{result.effectiveArea} mm²</span>
+                <span className="text-zinc-400">Safety factor:</span> <span className="font-mono text-orange-200">{result.safetyFactor}×</span>
               </div>
-              {result.classification && <div className="rounded border border-orange-500/30 bg-orange-500/5 px-2 py-1 text-[11px] text-orange-200">{result.classification}</div>}
-              {result.recommendation && <div className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">{result.recommendation}</div>}
+              {result.rating && <div className="rounded border border-orange-500/30 bg-orange-500/5 px-2 py-1 text-[11px] text-orange-200">Rating: <span className="font-semibold capitalize">{result.rating}</span></div>}
             </>
           )}
         </div>
@@ -153,10 +178,10 @@ function RodSelector() {
           <span className="text-sm font-semibold text-white">Rod / electrode selector</span>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">welding.rodSelection</span>
         </div>
-        {result?.recommendations && (
+        {result?.recommended && (
           <SaveAsDtuButton compact apiSource="concord-welding-rod"
             title={`Rod selection for ${result.baseMetal} ${result.position}`}
-            content={`Base metal: ${result.baseMetal}\nPosition: ${result.position}\n\nRods:\n${result.recommendations.map((r, i) => `${i + 1}. ${r.electrode} (AWS ${r.awsClass}) — ${r.suitability}\n   amperage: ${r.amperage}\n   positions: ${r.positions.join(', ')}\n   tensile: ${r.tensileKsi} ksi${r.note ? `\n   ${r.note}` : ''}`).join('\n')}`}
+            content={`Base metal: ${result.baseMetal}\nPosition: ${result.position}\nThickness: ${result.materialThickness}\n\nRecommended: ${result.recommended.rod} (${result.recommended.process}) ${result.recommended.diameter}\n   amperage: ${result.recommended.amperageRange}\n   ${result.recommended.notes}\n\nAlternatives:\n${(result.alternatives || []).map((r, i) => `${i + 1}. ${r.rod} (${r.process}) — ${r.notes}`).join('\n')}\n\nTips:\n${(result.tips || []).map((t) => `  - ${t}`).join('\n')}`}
             extraTags={['welding', 'rod-selection', baseMetal]} rawData={{ baseMetal, position, jointType, thickness, result }} />
         )}
       </header>
@@ -180,25 +205,40 @@ function RodSelector() {
           </div>
         </div>
 
-        {result?.recommendations && (
+        {result?.recommended && (
           <div className="space-y-1.5">
-            {result.recommendations.map((r, i) => (
-              <div key={i} className={`rounded-lg border p-3 ${i === 0 ? 'border-zinc-400/40 bg-zinc-500/10' : 'border-zinc-500/15 bg-zinc-950/40'}`}>
+            <div className="rounded-lg border border-zinc-400/40 bg-zinc-500/10 p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-lg font-semibold text-white">{result.recommended.rod}</span>
+                  <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">{result.recommended.process}</span>
+                </div>
+                <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-200">recommended</span>
+              </div>
+              <div className="mt-1 grid grid-cols-2 gap-1 text-[10px]">
+                <span className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-zinc-300">amps: <span className="font-mono text-zinc-100">{result.recommended.amperageRange}</span></span>
+                <span className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-zinc-300">diameter: <span className="font-mono text-zinc-100">{result.recommended.diameter}</span></span>
+              </div>
+              {result.recommended.notes && <div className="mt-1 text-[10px] text-amber-300">{result.recommended.notes}</div>}
+            </div>
+            {(result.alternatives || []).map((r, i) => (
+              <div key={i} className="rounded-lg border border-zinc-500/15 bg-zinc-950/40 p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-lg font-semibold text-white">{r.electrode}</span>
-                    <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">AWS {r.awsClass}</span>
+                    <span className="font-mono text-lg font-semibold text-white">{r.rod}</span>
+                    <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">{r.process}</span>
                   </div>
-                  <span className={`rounded px-2 py-0.5 text-[10px] ${r.suitability === 'excellent' ? 'bg-emerald-500/20 text-emerald-200' : r.suitability === 'good' ? 'bg-amber-500/20 text-amber-200' : 'bg-zinc-700 text-zinc-300'}`}>{r.suitability}</span>
+                  <span className="rounded bg-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300">alternative</span>
                 </div>
-                <div className="mt-1 grid grid-cols-3 gap-1 text-[10px]">
-                  <span className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-zinc-300">amps: <span className="font-mono text-zinc-100">{r.amperage}</span></span>
-                  <span className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-zinc-300">tensile: <span className="font-mono text-zinc-100">{r.tensileKsi} ksi</span></span>
-                  <span className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-zinc-300">positions: <span className="font-mono text-zinc-100">{r.positions.join(',')}</span></span>
-                </div>
-                {r.note && <div className="mt-1 text-[10px] text-amber-300">{r.note}</div>}
+                {r.notes && <div className="mt-1 text-[10px] text-amber-300">{r.notes}</div>}
               </div>
             ))}
+            {(result.tips || []).length > 0 && (
+              <div className="rounded border border-amber-500/20 bg-amber-500/5 px-2 py-1.5 text-[10px] text-amber-200">
+                <div className="mb-0.5 uppercase tracking-wider text-amber-300">Tips</div>
+                <ul className="list-disc space-y-0.5 pl-4">{(result.tips || []).map((t, i) => <li key={i}>{t}</li>)}</ul>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -231,8 +271,8 @@ function HeatInputCalc() {
         </div>
         {result && (
           <SaveAsDtuButton compact apiSource="concord-welding-heat"
-            title={`Heat input — ${result.heatInputJmm} J/mm (${result.classification})`}
-            content={`V=${result.voltage} I=${result.amperage}A v=${result.travelSpeed} mm/s η=${result.efficiency}\nHeat input: ${result.heatInputJmm} J/mm (${result.heatInputKjPerInch} kJ/in)\nClass: ${result.classification}\nHAZ risk: ${result.hazRisk}\n${result.recommendation || ''}`}
+            title={`Heat input — ${result.heatInput} (${result.distortionRisk} distortion risk)`}
+            content={`V=${result.voltage} I=${result.amperage} v=${result.travelSpeed} η=${result.efficiency}\nHeat input: ${result.heatInput} (${result.heatInputJoules} J/mm)\nMax interpass temp: ${result.maxInterpassTemp}\nDistortion risk: ${result.distortionRisk}\n${(result.recommendations || []).map((r) => `  - ${r}`).join('\n')}`}
             extraTags={['welding', 'heat-input']} rawData={{ voltage, amperage, travelSpeed, efficiency, result }} />
         )}
       </header>
@@ -264,19 +304,22 @@ function HeatInputCalc() {
               <div className="rounded-lg border-2 border-red-500/40 bg-red-500/10 p-3">
                 <div className="text-[10px] uppercase tracking-wider text-red-300">Heat input</div>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <span className="font-mono text-3xl text-red-100">{result.heatInputJmm}</span>
-                  <span className="text-sm text-zinc-400">J/mm</span>
+                  <span className="font-mono text-3xl text-red-100">{result.heatInput}</span>
                 </div>
-                <div className="text-[10px] text-zinc-400">({result.heatInputKjPerInch} kJ/in)</div>
+                <div className="text-[10px] text-zinc-400">({result.heatInputJoules} J/mm absolute)</div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Classification</div><div className="font-mono text-red-200">{result.classification}</div></div>
-                <div className={`rounded border px-2 py-1.5 ${result.hazRisk === 'low' ? 'border-emerald-500/30 bg-emerald-500/10' : result.hazRisk === 'high' ? 'border-rose-500/30 bg-rose-500/10' : 'border-amber-500/30 bg-amber-500/10'}`}>
-                  <div className={`text-[9px] ${result.hazRisk === 'low' ? 'text-emerald-300' : result.hazRisk === 'high' ? 'text-rose-300' : 'text-amber-300'}`}>HAZ risk</div>
-                  <div className="font-mono">{result.hazRisk}</div>
+                <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Max interpass</div><div className="font-mono text-red-200">{result.maxInterpassTemp}</div></div>
+                <div className={`rounded border px-2 py-1.5 ${result.distortionRisk === 'low' ? 'border-emerald-500/30 bg-emerald-500/10' : result.distortionRisk === 'high' ? 'border-rose-500/30 bg-rose-500/10' : 'border-amber-500/30 bg-amber-500/10'}`}>
+                  <div className={`text-[9px] ${result.distortionRisk === 'low' ? 'text-emerald-300' : result.distortionRisk === 'high' ? 'text-rose-300' : 'text-amber-300'}`}>Distortion risk</div>
+                  <div className="font-mono">{result.distortionRisk}</div>
                 </div>
               </div>
-              {result.recommendation && <div className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-200">{result.recommendation}</div>}
+              {(result.recommendations || []).length > 0 && (
+                <div className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-200">
+                  <ul className="list-disc space-y-0.5 pl-4">{(result.recommendations || []).map((r, i) => <li key={i}>{r}</li>)}</ul>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -310,8 +353,8 @@ function WeldInspection() {
         </div>
         {result && (
           <SaveAsDtuButton compact apiSource="concord-welding-inspect"
-            title={`Inspection — ${result.passed}/${(result.passed || 0) + (result.failed || 0)} passed (${result.verdict})`}
-            content={`Code: ${result.code}\nWeld type: ${result.weldType}\nPassed: ${result.passed}\nFailed: ${result.failed}\nCritical failed: ${result.criticalFailed}\nVerdict: ${result.verdict}\nNDT required: ${result.ndtRequired ? 'YES' : 'no'}\n${(result.ndtRecommendations || []).map((r) => `  - ${r}`).join('\n')}\n\nItems:\n${(result.items || []).map((it) => `  ${it.passed ? '✓' : '✗'} [${it.category}] ${it.item}${it.required ? ' (required)' : ''}`).join('\n')}`}
+            title={`Inspection — ${result.passed}/${result.totalItems} passed (${result.verdict})`}
+            content={`Code: ${result.code}\nWeld type: ${result.weldType}\nTotal items: ${result.totalItems}\nPassed: ${result.passed}\nFailed: ${result.failed}\nPending: ${result.pending}\nPass rate: ${result.passRate}%\nVerdict: ${result.verdict}\n\nChecklist:\n${(result.checklist || []).map((it) => `  ${it.status === 'pass' ? '✓' : it.status === 'fail' ? '✗' : '○'} [${it.category}] ${it.item}${it.required ? ' (required)' : ''}`).join('\n')}`}
             extraTags={['welding', 'inspection', code, weldType]} rawData={{ weldType, code, items, result }} />
         )}
       </header>
@@ -343,37 +386,41 @@ function WeldInspection() {
           <button type="button" onClick={() => setItems((is) => [...is, { item: '', passed: true }])} className="inline-flex items-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:border-emerald-500/40"><Plus className="h-3 w-3" />Add finding</button>
         </div>
 
-        {result && (
-          <>
-            <div className={`rounded-lg border-2 p-3 text-center ${result.verdict?.includes('PASS') ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-rose-500/40 bg-rose-500/10'}`}>
-              {result.verdict?.includes('PASS') ? <ShieldCheck className="mx-auto h-5 w-5 text-emerald-300" /> : <AlertTriangle className="mx-auto h-5 w-5 text-rose-300" />}
-              <div className="mt-1 font-mono text-xl font-bold text-white">{result.verdict}</div>
-              <div className="mt-0.5 text-[11px] text-zinc-300">{result.passed}/{(result.passed || 0) + (result.failed || 0)} items passed{result.criticalFailed ? ` · ${result.criticalFailed} critical` : ''}</div>
-            </div>
-            {result.ndtRequired && result.ndtRecommendations && (
-              <div className="rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
-                <div className="font-semibold">NDT required</div>
-                <ul className="mt-1 list-disc space-y-0.5 pl-4">
-                  {result.ndtRecommendations.map((r, i) => <li key={i}>{r}</li>)}
-                </ul>
+        {result && (() => {
+          const checklist = result.checklist || [];
+          const ndtItems = checklist.filter((c) => c.category === 'ndt');
+          return (
+            <>
+              <div className={`rounded-lg border-2 p-3 text-center ${result.verdict?.includes('PASS') ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-rose-500/40 bg-rose-500/10'}`}>
+                {result.verdict?.includes('PASS') ? <ShieldCheck className="mx-auto h-5 w-5 text-emerald-300" /> : <AlertTriangle className="mx-auto h-5 w-5 text-rose-300" />}
+                <div className="mt-1 font-mono text-xl font-bold text-white">{result.verdict}</div>
+                <div className="mt-0.5 text-[11px] text-zinc-300">{result.passed}/{result.totalItems} items passed · {result.passRate}% pass rate{result.failed ? ` · ${result.failed} failed` : ''}{result.pending ? ` · ${result.pending} pending` : ''}</div>
               </div>
-            )}
-            {result.items && (
-              <div className="space-y-1">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Full checklist</div>
-                {result.items.map((it, i) => (
-                  <div key={i} className={`flex items-center justify-between rounded border px-2 py-1 ${it.passed ? 'border-emerald-500/15 bg-emerald-500/5' : 'border-rose-500/30 bg-rose-500/10'} text-[10px]`}>
-                    <span className="text-zinc-100">{it.passed ? '✓' : '✗'} {it.item}</span>
-                    <span className="flex items-center gap-1">
-                      <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-400">{it.category}</span>
-                      {it.required && <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-rose-200">required</span>}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+              {ndtItems.length > 0 && (
+                <div className="rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+                  <div className="font-semibold">NDT required by {result.code}</div>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                    {ndtItems.map((r, i) => <li key={i}>{r.item}{r.status === 'fail' ? ' — FAILED' : r.status === 'pending' ? ' — pending' : ' — passed'}</li>)}
+                  </ul>
+                </div>
+              )}
+              {checklist.length > 0 && (
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-400">Full checklist</div>
+                  {checklist.map((it, i) => (
+                    <div key={i} className={`flex items-center justify-between rounded border px-2 py-1 ${it.status === 'pass' ? 'border-emerald-500/15 bg-emerald-500/5' : it.status === 'fail' ? 'border-rose-500/30 bg-rose-500/10' : 'border-zinc-700 bg-zinc-900/40'} text-[10px]`}>
+                      <span className="text-zinc-100">{it.status === 'pass' ? '✓' : it.status === 'fail' ? '✗' : '○'} {it.item}</span>
+                      <span className="flex items-center gap-1">
+                        <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-400">{it.category}</span>
+                        {it.required && <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-rose-200">required</span>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
     </div>
   );

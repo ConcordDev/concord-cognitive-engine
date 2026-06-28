@@ -1,0 +1,27 @@
+{
+  "macro_id": "hvac.maintenanceSchedule",
+  "domain": "hvac",
+  "name": "maintenanceSchedule",
+  "inputs": {
+    "systemType": { "type": "string", "maxLength": 40 },
+    "lastServiceDate": { "type": "string", "maxLength": 20 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.systemType === 'string'",
+    "output.ok === false || Number.isFinite(output.result.overdueCount)",
+    "output.ok === false || (output.result.lastServiceDate === null || typeof output.result.lastServiceDate === 'string')",
+    "output.ok === false || typeof output.result.recommendation === 'string'",
+    "output.ok === false || (Array.isArray(output.result.tasks) && output.result.tasks.every(t => typeof t.task === 'string' && typeof t.nextDue === 'string' && typeof t.diy === 'boolean'))",
+    "output.ok === false || Number.isFinite(output.result.daysSinceService)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "systemType": "heat-pump", "lastServiceDate": "2020-01-01" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "systemType": "furnace", "lastServiceDate": "" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "systemType": "central-ac", "lastServiceDate": "not-a-date" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. Returns 8 fixed maintenance tasks, each enriched with overdue + nextDue (cadence→days: 1-3 month 90 / 6 month 182 / 2 year 730 / else 365; nextDue = lastService + cadence, or 'due now' when no valid date). overdueCount = tasks past cadence; daysSinceService = days since a VALID lastServiceDate (999 sentinel when absent/garbage — an invalid Date is rejected via Number.isNaN(getTime()), so daysSinceService is never NaN). Result card renders tasks[].nextDue/systemType/overdueCount/lastServiceDate/recommendation EXACTLY (the prior overdue(bool)/lastService/nextServiceDue were not what the card read — fixed 2026-06-28; retained as aliases)."
+}

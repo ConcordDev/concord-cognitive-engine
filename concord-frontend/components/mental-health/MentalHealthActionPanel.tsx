@@ -85,14 +85,14 @@ export function MentalHealthActionPanel() {
     if (entries.length === 0) { err('Mood entries required.'); return; }
     setBusy('mood'); setFeedback(null);
     try {
-      const r = await callMacro<MoodResult>('moodTracker', { artifact: { data: { entries } } });
+      const r = await callMacro<MoodResult>('moodTracker', { entries });
       if (r.ok && r.result) { setMoodResult(r.result); pipe.publish('mh.mood', r.result, { label: `Mood ${r.result.avgMood} (${r.result.trend})` }); ok(`Avg ${r.result.avgMood} (${r.result.trend}).`); } else err(r.error ?? 'mood failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actPrompt() {
     setBusy('prompt'); setFeedback(null);
     try {
-      const r = await callMacro<PromptResult>('journalPrompt', { artifact: { data: { currentMood } } });
+      const r = await callMacro<PromptResult>('journalPrompt', { currentMood });
       if (r.ok && r.result) { setPromptResult(r.result); pipe.publish('mh.prompt', r.result, { label: `Prompts (${currentMood})` }); ok(`${r.result.prompts.length} prompts for ${currentMood}.`); } else err(r.error ?? 'prompt failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

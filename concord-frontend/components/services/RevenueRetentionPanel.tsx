@@ -22,7 +22,7 @@ import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 interface Appt { provider: string; date: string; price: string; status: 'completed' | 'paid' | 'scheduled' | 'cancelled' }
 interface Client { name: string; visits: string; totalRevenue: string; lastVisit: string }
 interface RevenueResult { period?: number; summary?: Array<{ provider: string; appointments: number; revenue: number }>; totalRevenue?: number }
-interface RetentionResult { totalClients?: number; repeatRate?: number; avgLifetimeValue?: number; totalRevenue?: number; atRiskCount?: number; atRiskClients?: Array<{ name: string; daysSinceVisit: number; churnRisk: string; lifetimeValue: number }> }
+interface RetentionResult { totalClients?: number; repeatRate?: number; averageLifetimeValue?: number; totalRevenue?: number; atRiskCount?: number; atRiskClients?: Array<{ name: string; daysSinceVisit: number; churnRisk: string; lifetimeValue: number }> }
 
 async function callSvc<T>(action: string, input: Record<string, unknown>): Promise<T | null> {
   try {
@@ -52,11 +52,24 @@ export function RevenueRetentionPanel() {
       const apptList = appts.filter((a) => a.provider.trim()).map((a) => ({ provider: a.provider, date: a.date, price: parseFloat(a.price) || 0, status: a.status }));
       const clientList = clients.filter((c) => c.name.trim()).map((c) => ({ name: c.name, visits: parseInt(c.visits) || 0, totalRevenue: parseFloat(c.totalRevenue) || 0, lastVisit: c.lastVisit }));
       const [r, t] = await Promise.all([
-        callSvc<RevenueResult>('revenueByProvider', { artifact: { data: { appointments: apptList } }, period }),
+        // NOTE: `period` lives INSIDE artifact.data so the body stays a sole-key
+        // `{ artifact: { data: {...} } }` shape the dispatch peel unwraps to
+        // `{ appointments, period }` — feeding BOTH the handler's
+        // `artifact.data.appointments` read AND its `params.period` read. A 2-key
+        // `{ artifact:{data}, period }` body is deliberately NOT peeled, which
+        // would strand `appointments` inside the un-unwrapped wrapper (dead).
+        callSvc<RevenueResult>('revenueByProvider', { artifact: { data: { appointments: apptList, period } } }),
         callSvc<RetentionResult>('clientRetentionReport', { artifact: { data: { clients: clientList } } }),
       ]);
       setRevenue(r);
       setRetention(t);
+      // callSvc swallows transport errors to null. If we asked the backend to
+      // compute (non-empty input) but BOTH calculators came back null, surface
+      // an honest failure instead of silently dropping back to the pre-analyze
+      // placeholder (the swallowed-fetch → silent-empty trap).
+      if ((apptList.length > 0 || clientList.length > 0) && r === null && t === null) {
+        throw new Error('Analysis failed — the services backend did not respond.');
+      }
       return { r, t };
     },
   });
@@ -90,7 +103,7 @@ export function RevenueRetentionPanel() {
             compact
             apiSource="concord-services-revenue-retention"
             title={`Services — $${revenue?.totalRevenue ?? 0} · ${retention?.repeatRate ?? 0}% repeat`}
-            content={`Period: ${period}d\nTotal revenue: $${revenue?.totalRevenue ?? 0}\nBy provider:\n${(revenue?.summary || []).map((s) => `  ${s.provider}: $${s.revenue} (${s.appointments} appts)`).join('\n')}\n\nRetention:\n  Clients: ${retention?.totalClients} | Repeat: ${retention?.repeatRate}% | Avg LTV: $${retention?.avgLifetimeValue}\n  At-risk: ${retention?.atRiskCount}\n${(retention?.atRiskClients || []).map((c) => `    ${c.name} — ${c.daysSinceVisit}d ago (${c.churnRisk}, $${c.lifetimeValue} LTV)`).join('\n')}`}
+            content={`Period: ${period}d\nTotal revenue: $${revenue?.totalRevenue ?? 0}\nBy provider:\n${(revenue?.summary || []).map((s) => `  ${s.provider}: $${s.revenue} (${s.appointments} appts)`).join('\n')}\n\nRetention:\n  Clients: ${retention?.totalClients} | Repeat: ${retention?.repeatRate}% | Avg LTV: $${retention?.averageLifetimeValue}\n  At-risk: ${retention?.atRiskCount}\n${(retention?.atRiskClients || []).map((c) => `    ${c.name} — ${c.daysSinceVisit}d ago (${c.churnRisk}, $${c.lifetimeValue} LTV)`).join('\n')}`}
             extraTags={['services', 'revenue', 'retention']}
             rawData={{ appts, clients, period, revenue, retention }}
           />
@@ -183,7 +196,7 @@ export function RevenueRetentionPanel() {
             <div className="space-y-2 text-[11px]">
               <div className="grid grid-cols-2 gap-1.5">
                 <div className="rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Repeat rate</div><div className="font-mono text-xl text-sky-200">{retention.repeatRate}%</div></div>
-                <div className="rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Avg LTV</div><div className="font-mono text-xl text-sky-200">${retention.avgLifetimeValue}</div></div>
+                <div className="rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Avg LTV</div><div className="font-mono text-xl text-sky-200">${retention.averageLifetimeValue}</div></div>
               </div>
               <div className="text-[10px] text-zinc-400">{retention.totalClients} clients · <span className="text-rose-300">{retention.atRiskCount} at risk</span></div>
               {retention.atRiskClients && retention.atRiskClients.length > 0 && (

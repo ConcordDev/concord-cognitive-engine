@@ -1,0 +1,20 @@
+{
+  "macro_id": "tournaments.start",
+  "domain": "tournaments",
+  "name": "start",
+  "inputs": {
+    "id": { "type": "string", "required": true, "maxLength": 64 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string'",
+    "output.ok === false || output.result.tournament.status === 'in_progress' || output.result.tournament.status === 'completed'",
+    "output.ok === false || typeof output.result.forfeited === 'number'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "tournament_not_found" } },
+    { "input": { "id": "__nope__" }, "expect": { "ok": false, "error": "tournament_not_found" } }
+  ],
+  "_note": "tournaments.start closes registration/check-in, auto-forfeits any entrant who never checked in (only if the check-in window was opened), generates the bracket for the format, and flips status to in_progress. Unknown id → 'tournament_not_found'; wrong status → 'wrong_status'; fewer than 2 eligible entrants → 'need_2_checked_in_entrants'. Returns forfeited (count of no-shows dropped). No money moves."
+}

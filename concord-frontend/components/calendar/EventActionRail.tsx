@@ -218,8 +218,10 @@ export function EventActionRail({ event }: { event: EventLite }) {
         action: 'resolve_conflicts',
         params: {},
       });
-      const result = r?.result as { conflicts?: unknown[] } | undefined;
-      const conflicts = result?.conflicts ?? [];
+      // calendar.resolve_conflicts (server.js inline) returns { ok, conflicts, count }
+      // at the TOP LEVEL — it does NOT wrap in a `result` envelope.
+      const rr = r as { conflicts?: unknown[] } | undefined;
+      const conflicts = rr?.conflicts ?? [];
       if (Array.isArray(conflicts) && conflicts.length === 0) {
         ok('No conflicts detected.');
       } else {

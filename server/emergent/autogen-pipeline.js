@@ -559,7 +559,7 @@ export function synthesizerPhase(candidate, criticResult, runners = DEFAULT_RUNN
   const originalClaimsMeta = revised.meta.claims || [];
 
   for (let i = 0; i < originalClaims.length; i++) {
-    const normalized = originalClaims[i].toLowerCase().trim();
+    const normalized = String(originalClaims[i] ?? "").toLowerCase().trim();
     if (!seenClaims.has(normalized)) {
       seenClaims.add(normalized);
       dedupedClaims.push(originalClaims[i]);
@@ -737,7 +737,7 @@ export function noveltyCheck(STATE, candidate, opts = {}) {
   const dtus = canonical.concat(shadows);
   const candidateTags = new Set(candidate.tags || []);
   const candidateTitle = (candidate.title || "").toLowerCase();
-  const candidateClaimTexts = (candidate.core?.claims || []).map(c => c.toLowerCase());
+  const candidateClaimTexts = (candidate.core?.claims || []).map(c => String(c ?? "").toLowerCase());
 
   let bestMatch = null;
   let bestScore = 0;
@@ -754,7 +754,7 @@ export function noveltyCheck(STATE, candidate, opts = {}) {
     const titleSim = wordOverlap(candidateTitle, dTitle);
 
     // Claim overlap
-    const dClaims = (d.core?.claims || []).map(c => c.toLowerCase());
+    const dClaims = (d.core?.claims || []).map(c => String(c ?? "").toLowerCase());
     let claimOverlap = 0;
     for (const cc of candidateClaimTexts) {
       for (const dc of dClaims) {
@@ -1276,7 +1276,7 @@ function findConflictPairs(dtus) {
     const invariants = d.core?.invariants || [];
 
     for (const claim of [...claims, ...invariants]) {
-      const normalized = claim.toLowerCase().trim();
+      const normalized = String(claim ?? "").toLowerCase().trim();
       // Check for negation conflicts
       const negated = negateNormalized(normalized);
 

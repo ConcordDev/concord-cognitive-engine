@@ -119,7 +119,7 @@ export default function AuditLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8" role="status" aria-live="polite">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm text-gray-400">Loading...</p>
@@ -129,9 +129,11 @@ export default function AuditLensPage() {
   }
 
   if (isError) {
+    // role=alert surfaces a failed /api/events feed loudly with a WORKING Retry —
+    // never a swallowed-fetch silent-empty page.
     return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message} onRetry={refetch} />
+      <div className="flex items-center justify-center h-full p-8" role="alert">
+        <ErrorState error={(error as Error)?.message} onRetry={refetch} />
       </div>
     );
   }
@@ -300,35 +302,40 @@ export default function AuditLensPage() {
           Immutable DTU Chain
         </h2>
 
-        {/* DTU Chain Visualization */}
-        <div className="relative">
-          <div className="absolute left-4 top-0 bottom-0 w-px bg-gradient-to-b from-neon-cyan via-neon-purple to-neon-green" />
-          <div className="space-y-4 pl-10">
-            {(filteredEntries.length > 0 ? filteredEntries.slice(0, 5) : [
-              { id: 'genesis', action: 'Genesis Block', type: 'dtu', status: 'success' as const, timestamp: new Date().toISOString(), details: '{}', entityId: undefined },
-            ]).map((entry, idx) => (
-              <div key={entry.id || idx} className="relative">
-                <div className="absolute -left-[26px] top-3 w-3 h-3 rounded-full border-2 border-neon-cyan bg-lattice-deep" />
-                <div className="bg-lattice-deep rounded-lg p-3 border border-white/5">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`text-xs font-mono ${typeColors[entry.type as keyof typeof typeColors] || 'text-gray-400'}`}>
-                      {entry.action}
-                    </span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusColors[entry.status]}`}>
-                      {entry.status}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] text-gray-500">
-                    <Hash className="w-3 h-3" />
-                    <span className="font-mono">{entry.id?.slice(0, 12) || 'N/A'}...</span>
-                    <ArrowRight className="w-3 h-3" />
-                    <span>{new Date(entry.timestamp).toLocaleString()}</span>
+        {/* DTU Chain Visualization — real events only. An empty chain shows an
+            honest empty state (no fabricated "Genesis Block" placeholder). */}
+        {filteredEntries.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 text-sm">
+            No DTU chain entries yet — system events will populate the immutable chain as they occur.
+          </div>
+        ) : (
+          <div className="relative">
+            <div className="absolute left-4 top-0 bottom-0 w-px bg-gradient-to-b from-neon-cyan via-neon-purple to-neon-green" />
+            <div className="space-y-4 pl-10">
+              {filteredEntries.slice(0, 5).map((entry, idx) => (
+                <div key={entry.id || idx} className="relative">
+                  <div className="absolute -left-[26px] top-3 w-3 h-3 rounded-full border-2 border-neon-cyan bg-lattice-deep" />
+                  <div className="bg-lattice-deep rounded-lg p-3 border border-white/5">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-xs font-mono ${typeColors[entry.type as keyof typeof typeColors] || 'text-gray-400'}`}>
+                        {entry.action}
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusColors[entry.status]}`}>
+                        {entry.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                      <Hash className="w-3 h-3" />
+                      <span className="font-mono">{entry.id?.slice(0, 12) || 'N/A'}...</span>
+                      <ArrowRight className="w-3 h-3" />
+                      <span>{new Date(entry.timestamp).toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Recent Audit Entries (live system event stream) */}

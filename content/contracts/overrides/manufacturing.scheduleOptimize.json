@@ -1,0 +1,22 @@
+{
+  "macro_id": "manufacturing.scheduleOptimize",
+  "domain": "manufacturing",
+  "name": "scheduleOptimize",
+  "reads_artifact_data": true,
+  "inputs": {
+    "workOrders": { "type": "array", "maxLength": 5000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "Array.isArray(output.result.sequence)",
+    "Number.isInteger(output.result.count) && output.result.count === output.result.sequence.length",
+    "output.result.sequence.every((s, i) => s.position === i + 1)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "workOrders": [{ "id": "WO-A", "priority": 3, "dueDate": "2026-07-10" }, { "id": "WO-C", "priority": 1, "dueDate": "2026-07-05" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "workOrders": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "workOrders": [{ "id": "no-prio" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "ManufacturingActionPanel actSched() sends {artifact:{data:{workOrders:[{id,priority,dueDate}]}}}. Handler reads artifact.data.workOrders (NOT jobs), orders by priority asc then dueDate asc, returns sequence[].position/id/priority/dueDate + count. position is 1-indexed and contiguous; missing priority defaults to 3."
+}

@@ -32,6 +32,13 @@ export default function registerMlActions(registerLensAction) {
     }
     const preds = predictions.slice(0, n).map(Number);
     const acts = actuals.slice(0, n).map(Number);
+    // Fail-CLOSED: a single non-finite prediction/actual (NaN/Infinity/"abc")
+    // would otherwise leak NaN through the round() and serialize as `null`,
+    // rendering "MSE null" in the result card. Reject before any math runs.
+    const finitePairs = preds.every(Number.isFinite) && acts.every(Number.isFinite);
+    if (!finitePairs) {
+      return { ok: false, error: "predictions and actuals must all be finite numbers for regression evaluation" };
+    }
     const mse = preds.reduce((s, p, i) => s + Math.pow(p - acts[i], 2), 0) / n;
     const mae = preds.reduce((s, p, i) => s + Math.abs(p - acts[i]), 0) / n;
     const actMean = acts.reduce((s, a) => s + a, 0) / n;
@@ -46,15 +53,20 @@ export default function registerMlActions(registerLensAction) {
     const target = artifact.data?.target || artifact.data?.targetField || null;
     if (data.length < 3) return { ok: true, result: { message: "Provide 3+ data rows with features to analyze." } };
     const fields = Object.keys(data[0]).filter(k => k !== target);
-    const numericFields = fields.filter(f => data.every(r => !isNaN(parseFloat(r[f]))));
+    // A field is numeric only if every cell parses to a FINITE number — an
+    // "Infinity"/"NaN" cell would otherwise pass !isNaN(parseFloat()) (parseFloat
+    // returns the JS number) and poison variance/stdDev/importance with NaN that
+    // serializes as `null` in the rendered bar width. Excluded → no leak.
+    const finiteCell = (x) => { const v = parseFloat(x); return Number.isFinite(v); };
+    const numericFields = fields.filter(f => data.every(r => finiteCell(r[f])));
     const ranked = numericFields.map(field => {
-      const values = data.map(r => parseFloat(r[field]) || 0);
+      const values = data.map(r => { const v = parseFloat(r[field]); return Number.isFinite(v) ? v : 0; });
       const mean = values.reduce((s, v) => s + v, 0) / values.length;
       const variance = values.reduce((s, v) => s + Math.pow(v - mean, 2), 0) / values.length;
       const stdDev = Math.sqrt(variance);
       let correlation = 0;
       if (target && data[0][target] !== undefined) {
-        const targets = data.map(r => parseFloat(r[target]) || 0);
+        const targets = data.map(r => { const v = parseFloat(r[target]); return Number.isFinite(v) ? v : 0; });
         const tMean = targets.reduce((s, v) => s + v, 0) / targets.length;
         const cov = values.reduce((s, v, i) => s + (v - mean) * (targets[i] - tMean), 0) / values.length;
         const tStd = Math.sqrt(targets.reduce((s, v) => s + Math.pow(v - tMean, 2), 0) / values.length);

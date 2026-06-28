@@ -49,6 +49,14 @@ export async function ollamaChat(brainName, messages, opts = {}) {
     body.tools = opts.tools;
   }
 
+  // Structured output (Ollama JSON-schema constrained decoding). Pass a JSON
+  // schema object (or the string "json") to force the model to emit a JSON
+  // document matching the schema — the load-bearing primitive for the
+  // sandwich parse-gate (NL → strict {domain,name,input}).
+  if (opts.format) {
+    body.format = opts.format;
+  }
+
   const signal = opts.signal ?? AbortSignal.timeout(timeoutMs);
   noteEndpointStart(endpoint);
 

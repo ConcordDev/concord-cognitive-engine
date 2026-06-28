@@ -36,7 +36,7 @@ async function callMason<T>(action: string, data: Record<string, unknown>): Prom
   } catch { return null; }
 }
 
-interface MaterialResult { squareFootage?: number; material?: string; units?: number; mortarBags?: number; materialCost?: number; recommendation?: string }
+interface MaterialResult { squareFootage?: number; material?: string; unitsNeeded?: number; mortarBags80lb?: number; materialCost?: number; mortarCost?: number; totalMaterialCost?: number; laborEstimate?: number; grandTotal?: number; recommendation?: string }
 interface MortarResult { application?: string; type?: string; ratio?: string; strength?: string; use?: string; waterRatio?: string; cureTime?: string; temperature?: string }
 interface WallResult { heightFeet?: number; thicknessInches?: number; slendernessRatio?: number; maxAllowedRatio?: number; passesSlenderness?: boolean; reinforced?: boolean; loadBearing?: boolean; recommendation?: string }
 interface JobItem { name: string; hours: string; rate: string; materialCost: string }
@@ -68,8 +68,8 @@ function MaterialEstimator() {
         </div>
         {result && (
           <SaveAsDtuButton compact apiSource="concord-masonry-materials"
-            title={`${sqft} sf ${material} — ${result.units} units, $${result.materialCost}`}
-            content={`Square footage: ${result.squareFootage}\nMaterial: ${result.material}\nUnits needed (+5% waste): ${result.units}\nMortar bags: ${result.mortarBags}\nMaterial cost: $${result.materialCost}\n${result.recommendation || ''}`}
+            title={`${sqft} sf ${material} — ${result.unitsNeeded} units, $${result.grandTotal}`}
+            content={`Square footage: ${result.squareFootage}\nMaterial: ${result.material}\nUnits needed (+5% waste): ${result.unitsNeeded}\nMortar bags: ${result.mortarBags80lb}\nMaterial cost: $${result.materialCost}\nMortar cost: $${result.mortarCost}\nTotal material: $${result.totalMaterialCost}\nLabor estimate: $${result.laborEstimate}\nGrand total: $${result.grandTotal}\n${result.recommendation || ''}`}
             extraTags={['masonry', 'material-estimate', material]} rawData={{ sqft, material, result }} />
         )}
       </header>
@@ -113,9 +113,14 @@ function MaterialEstimator() {
                 </svg>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-lg border-2 border-red-500/40 bg-red-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-red-300">Units</div><div className="font-mono text-2xl text-red-100">{result.units?.toLocaleString()}</div><div className="text-[9px] text-zinc-400">incl. 5% waste</div></div>
-                <div className="rounded-lg border-2 border-amber-500/40 bg-amber-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-amber-300">Mortar bags</div><div className="font-mono text-2xl text-amber-100">{result.mortarBags}</div></div>
-                <div className="rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-emerald-300">Cost</div><div className="font-mono text-2xl text-emerald-100">${result.materialCost?.toLocaleString()}</div></div>
+                <div className="rounded-lg border-2 border-red-500/40 bg-red-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-red-300">Units</div><div className="font-mono text-2xl text-red-100">{result.unitsNeeded?.toLocaleString()}</div><div className="text-[9px] text-zinc-400">incl. 5% waste</div></div>
+                <div className="rounded-lg border-2 border-amber-500/40 bg-amber-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-amber-300">Mortar bags</div><div className="font-mono text-2xl text-amber-100">{result.mortarBags80lb}</div><div className="text-[9px] text-zinc-400">80 lb</div></div>
+                <div className="rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-emerald-300">Material $</div><div className="font-mono text-2xl text-emerald-100">${result.materialCost?.toLocaleString()}</div></div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-lg border border-zinc-700 bg-zinc-900/40 p-2"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Total material</div><div className="font-mono text-lg text-zinc-100">${result.totalMaterialCost?.toLocaleString()}</div></div>
+                <div className="rounded-lg border border-zinc-700 bg-zinc-900/40 p-2"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Labor est.</div><div className="font-mono text-lg text-zinc-100">${result.laborEstimate?.toLocaleString()}</div></div>
+                <div className="rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 p-2"><div className="text-[10px] uppercase tracking-wider text-emerald-300">Grand total</div><div className="font-mono text-lg text-emerald-100">${result.grandTotal?.toLocaleString()}</div></div>
               </div>
               {result.recommendation && <div className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-200">{result.recommendation}</div>}
             </>

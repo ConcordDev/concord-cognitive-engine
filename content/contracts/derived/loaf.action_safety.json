@@ -1,0 +1,189 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.action_safety",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.action_safety.audit_decision",
+      "name": "audit_decision"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.action_safety",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.action_safety.check_envelope",
+      "name": "check_envelope"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.action_safety",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.action_safety.check_throttle",
+      "name": "check_throttle"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.action_safety",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.action_safety.create_experiment",
+      "name": "create_experiment"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.action_safety",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.action_safety.define_abstention_rule",
+      "name": "define_abstention_rule"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.action_safety",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.action_safety.define_envelope",
+      "name": "define_envelope"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.action_safety",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.action_safety.define_throttle",
+      "name": "define_throttle"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.action_safety",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.action_safety.enforce_abstention",
+      "name": "enforce_abstention"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.action_safety",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.action_safety.list_decisions",
+      "name": "list_decisions"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.action_safety",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.action_safety.points_of_no_return",
+      "name": "points_of_no_return"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.action_safety",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.action_safety.record_observation",
+      "name": "record_observation"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.action_safety",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.action_safety.register_decision",
+      "name": "register_decision"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.action_safety",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.action_safety.status",
+      "name": "status"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.action_safety",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.action_safety.trace_consequence",
+      "name": "trace_consequence"
+    }
+  ],
+  "domain": "loaf.action_safety",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 14
+}

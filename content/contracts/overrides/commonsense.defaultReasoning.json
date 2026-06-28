@@ -1,0 +1,29 @@
+{
+  "macro_id": "commonsense.defaultReasoning",
+  "domain": "commonsense",
+  "name": "defaultReasoning",
+  "inputs": {
+    "classes": { "type": "array", "required": false },
+    "instance": { "type": "object", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.instanceClass === 'string'",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.inheritanceChain)",
+    "output.ok === false || output.result.message !== undefined || (output.result.resolvedProperties && typeof output.result.resolvedProperties === 'object')",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalProperties)",
+    "output.ok === false || output.result.message !== undefined || (output.result.conflicts && Number.isFinite(output.result.conflicts.inheritanceOverrides) && Number.isFinite(output.result.conflicts.siblingConflicts))",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.warnings)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "classes": [{ "name": "animal", "defaults": { "legs": 4, "canFly": false } }, { "name": "bird", "parent": "animal", "defaults": { "canFly": true, "legs": 2 } }, { "name": "penguin", "parent": "bird", "overrides": { "canFly": false } }], "instance": { "class": "penguin" } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "classes": [{ "name": "vehicle", "defaults": {} }, { "name": "car", "parent": "vehicle", "defaults": { "wheels": 4 } }, { "name": "motorcycle", "parent": "vehicle", "defaults": { "wheels": 2 } }], "instance": { "class": "car" } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "classes": [{ "name": "a", "parent": "b", "defaults": {} }, { "name": "b", "parent": "a", "defaults": {} }], "instance": { "class": "a" } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "classes": "nope" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (registerLensAction). Dispatch key 'commonsense.defaultReasoning'. The page.tsx inline 'Commonsense Actions' panel drives this via useRunArtifact (stored-artifact path); its render reads {instanceClass,inheritanceChain,resolvedProperties,propertySources,totalProperties,conflicts:{inheritanceOverrides,siblingConflicts},warnings,cycles} — verified aligned both directions (no rename needed). Non-monotonic default-inheritance: walks chain most-general→most-specific so the most specific value wins (bird legs:2 over animal legs:4), overrides beat defaults, instance props beat all; diamond/sibling conflict detection + cycle detection (no infinite loop). Empty hierarchy → {message}. Not assassin-driven (no derived contract for this LENS_ACTION); authored spec pinned by server/tests/commonsense-lens-macros.test.js."
+}

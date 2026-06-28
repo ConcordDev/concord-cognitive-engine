@@ -1,0 +1,28 @@
+{
+  "macro_id": "services.clientRetentionReport",
+  "domain": "services",
+  "name": "clientRetentionReport",
+  "reads_artifact_data": true,
+  "inputs": {
+    "clients": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.totalClients)",
+    "output.ok === false || Number.isFinite(output.result.repeatRate)",
+    "output.ok === false || Number.isFinite(output.result.averageLifetimeValue)",
+    "output.ok === false || Number.isFinite(output.result.totalRevenue)",
+    "output.ok === false || Number.isFinite(output.result.atRiskCount)",
+    "output.ok === false || Array.isArray(output.result.atRiskClients)",
+    "output.ok === false || output.result.atRiskClients.every(function(c){return ['high','medium'].indexOf(c.churnRisk) >= 0 && Number.isFinite(c.lifetimeValue);})",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "clients": [{ "name": "Mia", "visits": 4, "totalRevenue": 800, "lastVisit": "2020-01-01" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "clients": [] } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "clients": [{ "name": "Mia", "visits": 4, "totalRevenue": "1e999", "lastVisit": "2020-01-01" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). COMPONENT-EXACT shape: RevenueRetentionPanel sends a sole-key {artifact:{data:{clients}}} body that the dispatch peel unwraps to {clients}; handler reads artifact.data.clients. RETURNS {totalClients,repeatClients,repeatRate,averageLifetimeValue,totalRevenue,atRiskCount,atRiskClients:[{name,daysSinceVisit,churnRisk,lifetimeValue}]} — the EXACT keys the panel renders (NOTE: the field is averageLifetimeValue, NOT avgLifetimeValue — the panel was reading the wrong key, fixed 2026-06-28). churnRisk high>180d / medium>90d since lastVisit; atRisk = high|medium only. POISON: lifetime value via parseFloat+Number.isFinite so '1e999'/'Infinity'/'NaN' collapse to 0; totalRevenue/averageLifetimeValue stay finite. try/catch wrapped. Pinned by server/tests/services-lens-macros.test.js."
+}

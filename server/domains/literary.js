@@ -23,6 +23,19 @@ import { rerankHits } from "../lib/literary-rerank.js";
 const RRF_K = 60; // standard Reciprocal Rank Fusion constant
 const DENSE_SCAN_CAP = Number(process.env.LRL_DENSE_SCAN_CAP || 4000); // bound the MVP full-scan; sqlite-vec is the scale path
 
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
+// silently clamp through the Math.min/max bounds. A caller that PASSES a numeric
+// field at all must pass a finite, non-negative one — an absent field is fine
+// (the macro uses its default). Returns null when clean, or the offending key.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e6) return k;
+  }
+  return null;
+}
+
 // Turn free text into a safe FTS5 MATCH expression: alnum tokens OR'd together,
 // each quoted so punctuation/operators can't break the query.
 function ftsQuery(q) {
@@ -68,6 +81,8 @@ function rrf(...lists) {
 
 // Core hybrid search, shared by the `search` and `semantic_graph` macros.
 async function searchLiterary(db, input = {}) {
+  const bad = badNumericField(input, ["limit", "candidateK"]);
+  if (bad) return { ok: false, reason: `invalid_${bad}`, count: 0, results: [] };
   const query = String(input.query || "").trim();
   if (!query) return { ok: true, results: [], semantic: false, count: 0 };
   const limit = Math.min(Math.max(Number(input.limit) || 10, 1), 50);
@@ -215,6 +230,8 @@ export default function registerLiteraryMacros(register) {
   register("literary", "semantic_graph", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     const limit = Math.min(Math.max(Number(input.limit) || 24, 2), 60);
     const res = await searchLiterary(db, { query: input.query, limit });
     const hits = (res && res.results) || [];
@@ -242,6 +259,8 @@ export default function registerLiteraryMacros(register) {
   register("literary", "resonance", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     let dtuId = input.dtuId || null;
     if (!dtuId && input.chunkId) {
       const row = db.prepare("SELECT dtu_id FROM literary_chunks WHERE id = ?").get(String(input.chunkId));
@@ -333,6 +352,8 @@ export default function registerLiteraryMacros(register) {
   register("literary", "resonance_graph", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
+    const badNum = badNumericField(input, ["limit"]);
+    if (badNum) return { ok: false, reason: `invalid_${badNum}` };
     const limit = Math.min(Math.max(Number(input.limit) || 120, 10), 500);
     const focus = input.dtuId ? String(input.dtuId) : null;
     const edges = [];

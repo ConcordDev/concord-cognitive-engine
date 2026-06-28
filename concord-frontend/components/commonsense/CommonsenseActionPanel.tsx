@@ -37,8 +37,41 @@ function pickMessage(e: unknown): string { const ax = e as { response?: { data?:
 interface Edge { relation?: string; start?: string; end?: string; weight?: number; surfaceText?: string }
 interface EdgesResult { concept: string; edges: Edge[]; count: number }
 interface RelResult { concept1: string; concept2: string; relatedness: number; interpretation: string }
-interface PlausResult { statement?: string; plausibilityScore?: number; reasoning?: string; verdict?: string }
-interface AnalogResult { source?: string; target?: string; mappings?: { sourceConcept: string; targetConcept: string; similarity?: number }[]; coherence?: number }
+// Aligned to server/domains/commonsense.js#plausibilityCheck return shape.
+interface PlausViolation { type: string; description: string; severity: string }
+interface PlausResult {
+  plausibilityScore?: number;
+  plausibilityLabel?: string;
+  violations?: { count: number; items: PlausViolation[] };
+  constraintsSatisfied?: number;
+  totalChecksPerformed?: number;
+  eventsAnalyzed?: number;
+}
+// Aligned to server/domains/commonsense.js#analogyMapping return shape.
+interface AnalogResult {
+  sourceDomain?: string;
+  targetDomain?: string;
+  entityMapping?: { source: string; target: string; similarity: number }[];
+  systematicityScore?: number;
+  systematicityLabel?: string;
+  candidateInferences?: { predictedRelation: string; from: string; to: string; confidence?: number }[];
+  coverage?: { entitiesMapped: number; totalSourceEntities: number; relationsMapped: number; totalSourceRelations: number };
+}
+
+// Parse an analogy-domain text field. Accepts either a JSON structure
+// `{ domain, entities:[{name,type}], relations:[{type,from,to}] }` (what the
+// handler reads) OR a plain free-text label, which degrades to a single named
+// entity so the greedy mapper still produces a 1:1 alignment.
+function parseAnalogDomain(raw: string): { domain: string; entities: { name: string; type?: string }[]; relations: { type: string; from: string; to: string }[] } {
+  const text = raw.trim();
+  try {
+    const obj = JSON.parse(text);
+    if (obj && typeof obj === 'object' && Array.isArray(obj.entities)) {
+      return { domain: String(obj.domain ?? text), entities: obj.entities, relations: Array.isArray(obj.relations) ? obj.relations : [] };
+    }
+  } catch { /* not JSON — fall through to free-text label */ }
+  return { domain: text, entities: [{ name: text, type: 'entity' }], relations: [] };
+}
 
 export function CommonsenseActionPanel() {
   const pipe = usePipe();
@@ -100,11 +133,13 @@ export function CommonsenseActionPanel() {
     if (!statement.trim()) { err('Statement required.'); return; }
     setBusy('plaus'); setFeedback(null);
     try {
-      const r = await callMacro<PlausResult>('plausibilityCheck', { artifact: { data: { statement: statement.trim() } } });
+      // Handler reads artifact.data.statement as an OBJECT { text, events?, entities? };
+      // a bare string lands as statement.text === undefined → empty analysis.
+      const r = await callMacro<PlausResult>('plausibilityCheck', { artifact: { data: { statement: { text: statement.trim() } } } });
       if (r.ok && r.result) {
         setPlausResult(r.result);
-        pipe.publish('commonsense.plaus', r.result, { label: `Plausibility: ${r.result.verdict ?? '?'}` });
-        ok(`${r.result.verdict ?? '-'}.`);
+        pipe.publish('commonsense.plaus', r.result, { label: `Plausibility: ${r.result.plausibilityLabel ?? '?'} (${r.result.plausibilityScore ?? '-'})` });
+        ok(`${r.result.plausibilityLabel ?? '-'} · ${r.result.plausibilityScore ?? 0}%.`);
       } else err(r.error ?? 'plaus failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -112,11 +147,15 @@ export function CommonsenseActionPanel() {
     if (!analogSource.trim() || !analogTarget.trim()) { err('Source + target required.'); return; }
     setBusy('analog'); setFeedback(null);
     try {
-      const r = await callMacro<AnalogResult>('analogyMapping', { artifact: { data: { source: analogSource.trim(), target: analogTarget.trim() } } });
+      // Handler reads source/target as STRUCTURED { domain, entities, relations };
+      // parse JSON when given, else degrade a free-text label to a single entity.
+      const source = parseAnalogDomain(analogSource);
+      const target = parseAnalogDomain(analogTarget);
+      const r = await callMacro<AnalogResult>('analogyMapping', { artifact: { data: { source, target } } });
       if (r.ok && r.result) {
         setAnalogResult(r.result);
-        pipe.publish('commonsense.analog', r.result, { label: `${r.result.source} → ${r.result.target}` });
-        ok(`${r.result.mappings?.length ?? 0} mappings.`);
+        pipe.publish('commonsense.analog', r.result, { label: `${r.result.sourceDomain} → ${r.result.targetDomain}` });
+        ok(`${r.result.entityMapping?.length ?? 0} entity mappings · systematicity ${r.result.systematicityScore ?? 0}%.`);
       } else err(r.error ?? 'analogy failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -134,8 +173,8 @@ export function CommonsenseActionPanel() {
     const body = [`🧠 Commonsense brief`, '',
       edgesResult ? `${edgesResult.concept}: ${edgesResult.count} edges (top: ${edgesResult.edges[0]?.surfaceText || edgesResult.edges[0]?.relation})` : '',
       relResult ? `${relResult.concept1} ↔ ${relResult.concept2}: ${relResult.relatedness.toFixed(2)} (${relResult.interpretation})` : '',
-      plausResult ? `Plausibility: ${plausResult.verdict} (${plausResult.plausibilityScore})` : '',
-      analogResult ? `Analogy ${analogResult.source} → ${analogResult.target}: ${analogResult.mappings?.length} mappings · coherence ${analogResult.coherence}` : '',
+      plausResult ? `Plausibility: ${plausResult.plausibilityLabel} (${plausResult.plausibilityScore}%)` : '',
+      analogResult ? `Analogy ${analogResult.sourceDomain} → ${analogResult.targetDomain}: ${analogResult.entityMapping?.length} entity mappings · systematicity ${analogResult.systematicityScore}%` : '',
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
@@ -165,7 +204,7 @@ export function CommonsenseActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Commonsense reasoning brief. ${edgesResult ? `Concept "${edgesResult.concept}": ${edgesResult.count} edges, top: ${edgesResult.edges.slice(0, 3).map(e => e.surfaceText || `${e.relation}: ${e.end}`).join('; ')}.` : ''} ${relResult ? `Relatedness ${relResult.concept1} ↔ ${relResult.concept2}: ${relResult.relatedness.toFixed(2)} (${relResult.interpretation}).` : ''} ${plausResult ? `Statement plausibility: ${plausResult.verdict}.` : ''} Synthesize the most interesting commonsense observation + one follow-up query. Plain text, 3 sentences max.`;
+      const task = `Commonsense reasoning brief. ${edgesResult ? `Concept "${edgesResult.concept}": ${edgesResult.count} edges, top: ${edgesResult.edges.slice(0, 3).map(e => e.surfaceText || `${e.relation}: ${e.end}`).join('; ')}.` : ''} ${relResult ? `Relatedness ${relResult.concept1} ↔ ${relResult.concept2}: ${relResult.relatedness.toFixed(2)} (${relResult.interpretation}).` : ''} ${plausResult ? `Statement plausibility: ${plausResult.plausibilityLabel} (${plausResult.plausibilityScore}%).` : ''} Synthesize the most interesting commonsense observation + one follow-up query. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) {
@@ -252,16 +291,37 @@ export function CommonsenseActionPanel() {
         )}
         {plausResult && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Plausibility · {plausResult.verdict}</div>
-            {plausResult.plausibilityScore != null && <div className="text-2xl font-bold text-amber-300">{plausResult.plausibilityScore}</div>}
-            {plausResult.reasoning && <div className="text-[10px] text-zinc-300 italic">{plausResult.reasoning}</div>}
+            <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold capitalize">Plausibility · {plausResult.plausibilityLabel}</div>
+            {plausResult.plausibilityScore != null && <div className="text-2xl font-bold text-amber-300">{plausResult.plausibilityScore}%</div>}
+            <div className="flex items-center gap-3 text-[10px] text-zinc-400 mt-1">
+              <span>events <span className="font-mono text-zinc-200">{plausResult.eventsAnalyzed ?? 0}</span></span>
+              <span>satisfied <span className="font-mono text-emerald-300">{plausResult.constraintsSatisfied ?? 0}</span></span>
+              <span>violations <span className={cn('font-mono', (plausResult.violations?.count ?? 0) > 0 ? 'text-red-300' : 'text-emerald-300')}>{plausResult.violations?.count ?? 0}</span></span>
+            </div>
+            {(plausResult.violations?.items ?? []).slice(0, 4).map((v, i) => (
+              <div key={i} className="text-[10px] text-zinc-300 mt-1 flex items-start gap-1.5">
+                <span className={cn('shrink-0 px-1 rounded text-[9px] uppercase', v.severity === 'high' ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300')}>{v.severity}</span>
+                <span className="text-zinc-500">[{v.type}]</span>
+                <span>{v.description}</span>
+              </div>
+            ))}
           </div>
         )}
         {analogResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-60 overflow-y-auto md:col-span-2">
-            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">{analogResult.source} → {analogResult.target}</div>
-            {analogResult.coherence != null && <div className="text-[11px] text-zinc-300">coherence: <span className="font-mono text-purple-200">{analogResult.coherence}</span></div>}
-            {(analogResult.mappings ?? []).slice(0, 5).map((m, i) => <div key={i} className="text-[11px] text-zinc-300 mt-1"><span className="font-mono text-purple-200">{m.sourceConcept}</span> ↔ <span className="font-mono text-purple-200">{m.targetConcept}</span>{m.similarity != null && <span className="text-[10px] text-zinc-400 ml-2">sim {m.similarity}</span>}</div>)}
+            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">{analogResult.sourceDomain} → {analogResult.targetDomain}</div>
+            {analogResult.systematicityScore != null && (
+              <div className="text-[11px] text-zinc-300">systematicity: <span className="font-mono text-purple-200">{analogResult.systematicityScore}%</span> <span className="capitalize text-zinc-400">({analogResult.systematicityLabel})</span></div>
+            )}
+            {(analogResult.entityMapping ?? []).slice(0, 6).map((m, i) => <div key={i} className="text-[11px] text-zinc-300 mt-1"><span className="font-mono text-purple-200">{m.source}</span> ↔ <span className="font-mono text-purple-200">{m.target}</span>{m.similarity != null && <span className="text-[10px] text-zinc-400 ml-2">sim {m.similarity}</span>}</div>)}
+            {(analogResult.candidateInferences ?? []).length > 0 && (
+              <div className="mt-2 pt-2 border-t border-purple-500/20">
+                <div className="text-[9px] uppercase tracking-wider text-purple-300/70">Candidate inferences</div>
+                {(analogResult.candidateInferences ?? []).slice(0, 4).map((inf, i) => (
+                  <div key={i} className="text-[10px] text-zinc-300 mt-0.5"><span className="text-amber-300">{inf.predictedRelation}</span>: <span className="font-mono text-purple-200">{inf.from}</span> → <span className="font-mono text-purple-200">{inf.to}</span></div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

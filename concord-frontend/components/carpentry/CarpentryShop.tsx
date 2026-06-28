@@ -26,7 +26,13 @@ import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 async function callCarp<T>(action: string, data: Record<string, unknown>): Promise<T | null> {
   try {
-    const r = await apiHelpers.lens.runDomain('carpentry', action, { input: { artifact: { data } } });
+    // The /api/lens/run route sets BOTH the virtual artifact.data AND the 3rd
+    // `params` arg to `body.input`. The carpentry pure calculators read from
+    // `artifact.data?.…`, so the payload must be the data object itself —
+    // posting it double-wrapped under `{ artifact: { data } }` left the
+    // backend reading `artifact.data.pieces === undefined` and silently
+    // returning the empty-state default (the calculator rendered nothing).
+    const r = await apiHelpers.lens.runDomain('carpentry', action, { input: data });
     const env = (r as { data?: { ok: boolean; result?: T } }).data;
     if (!env?.ok) return null;
     const raw = env.result as unknown as { ok?: boolean; result?: T } | T;
@@ -38,12 +44,19 @@ async function callCarp<T>(action: string, data: Record<string, unknown>): Promi
 }
 
 interface Piece { thickness: string; width: string; length: string; pricePerBF: string; species: string }
-interface BoardFootResult { pieces?: Array<{ thickness: number; width: number; length: number; boardFeet: number; species: string; cost: number }>; totalBoardFeet?: number; totalPieces?: number; totalCost?: number }
-interface JointResult { jointType?: string; species?: string; baseStrength?: number; adjustedStrength?: number; speciesMultiplier?: number; classification?: string; recommendation?: string }
-interface WoodOption { species: string; cost: string; hardness: string; rotResistant: boolean; workability: string; appearance: string; score: number; reason: string }
-interface WoodSelectionResult { application?: string; budget?: string; indoor?: boolean; recommendations?: WoodOption[] }
-interface FinishOption { name: string; type: string; cureTime: string; durability: string; appearance: string; difficulty: string; recommendation?: string }
-interface FinishResult { species?: string; application?: string; recommendations?: FinishOption[] }
+// Shapes below mirror EXACTLY what server/domains/carpentry.js returns — the
+// fields the calculators actually emit, not invented ones. (A prior version
+// read adjustedStrength/classification/score/cureTime that the backend never
+// returns, so every result card rendered blank even once wired.)
+interface BoardFootResult {
+  pieces?: Array<{ species: string; dimensions: string; quantity: number; boardFeetEach: number; totalBoardFeet: number; cost: number | null }>;
+  totalBoardFeet?: number; wasteAllowance?: number; totalWithWaste?: number; totalCost?: number | string;
+}
+interface JointResult { jointType?: string; species?: string; baseStrength?: number; effectiveStrength?: number; speciesMultiplier?: number; glueBonus?: string; rating?: string; recommendation?: string }
+interface WoodOption { name: string; cost: string; hardness: string; workability: string; bestFor: string }
+interface WoodSelectionResult { application?: string; budget?: string; environment?: string; recommendations?: WoodOption[]; topPick?: string }
+interface FinishOption { name: string; durability: string; easeOfApplication: string; appearance: string; toxicity: string; dryTime: string; coatsNeeded: number }
+interface FinishResult { wood?: string; application?: string; environment?: string; topRecommendation?: string; options?: FinishOption[] }
 
 const SPECIES_LIST = ['pine', 'oak', 'maple', 'walnut', 'cherry', 'cedar', 'mahogany', 'birch', 'ash', 'poplar'];
 const JOINT_TYPES = ['butt', 'pocket-hole', 'dowel', 'biscuit', 'mortise-tenon', 'dovetail', 'box-joint', 'dado', 'rabbet', 'half-lap', 'bridle', 'tongue-groove'];
@@ -56,7 +69,8 @@ function BoardFootCalc() {
     mutationFn: async () => {
       const cleanPieces = pieces.filter((p) => p.thickness && p.width && p.length).map((p) => ({
         thickness: parseFloat(p.thickness), width: parseFloat(p.width), length: parseFloat(p.length),
-        pricePerBoardFoot: parseFloat(p.pricePerBF) || 0, species: p.species,
+        // backend boardFootCalc reads p.pricePerBF (not pricePerBoardFoot) — send the field it reads
+        pricePerBF: parseFloat(p.pricePerBF) || 0, species: p.species,
       }));
       const r = await callCarp<BoardFootResult>('boardFootCalc', { pieces: cleanPieces });
       setResult(r);
@@ -74,8 +88,8 @@ function BoardFootCalc() {
         </div>
         {result && result.totalBoardFeet != null && (
           <SaveAsDtuButton compact apiSource="concord-carpentry-bf"
-            title={`Board feet — ${result.totalBoardFeet} BF across ${result.totalPieces} pieces ($${result.totalCost})`}
-            content={`Total: ${result.totalBoardFeet} BF, $${result.totalCost}\nPieces: ${result.totalPieces}\n\n${(result.pieces || []).map((p, i) => `${i + 1}. ${p.thickness}" × ${p.width}" × ${p.length}" ${p.species} — ${p.boardFeet} BF ($${p.cost})`).join('\n')}`}
+            title={`Board feet — ${result.totalBoardFeet} BF across ${(result.pieces || []).length} pieces ($${result.totalCost})`}
+            content={`Total: ${result.totalBoardFeet} BF, $${result.totalCost}\nPieces: ${(result.pieces || []).length}\n\n${(result.pieces || []).map((p, i) => `${i + 1}. ${p.dimensions} ${p.species} ×${p.quantity} — ${p.totalBoardFeet} BF ($${p.cost ?? '—'})`).join('\n')}`}
             extraTags={['carpentry', 'board-feet', 'lumber']} rawData={{ pieces, result }} />
         )}
       </header>
@@ -106,8 +120,8 @@ function BoardFootCalc() {
         {result && result.totalBoardFeet != null && (
           <div className="grid grid-cols-3 gap-2 pt-2">
             <div className="rounded-lg border-2 border-amber-500/40 bg-amber-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-amber-300">Total BF</div><div className="font-mono text-2xl text-amber-100">{result.totalBoardFeet}</div></div>
-            <div className="rounded border border-amber-700/30 bg-zinc-950/40 p-3"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Pieces</div><div className="font-mono text-2xl text-amber-200">{result.totalPieces}</div></div>
-            <div className="rounded border border-emerald-500/30 bg-emerald-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-emerald-300">Total cost</div><div className="font-mono text-2xl text-emerald-100">${result.totalCost}</div></div>
+            <div className="rounded border border-amber-700/30 bg-zinc-950/40 p-3"><div className="text-[10px] uppercase tracking-wider text-zinc-400">+15% waste</div><div className="font-mono text-2xl text-amber-200">{result.totalWithWaste}</div></div>
+            <div className="rounded border border-emerald-500/30 bg-emerald-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-emerald-300">Total cost</div><div className="font-mono text-2xl text-emerald-100">{typeof result.totalCost === 'number' ? `$${result.totalCost}` : result.totalCost}</div></div>
           </div>
         )}
       </div>
@@ -138,8 +152,8 @@ function JointStrengthGuide() {
         </div>
         {result && (
           <SaveAsDtuButton compact apiSource="concord-carpentry-joint"
-            title={`${result.jointType} in ${result.species} — ${result.adjustedStrength} strength (${result.classification})`}
-            content={`Joint: ${result.jointType}\nWood: ${result.species}\nBase strength: ${result.baseStrength}\nSpecies multiplier: ${result.speciesMultiplier}×\nAdjusted strength: ${result.adjustedStrength}\nClassification: ${result.classification}\n${result.recommendation || ''}`}
+            title={`${result.jointType} in ${result.species} — ${result.effectiveStrength} strength (${result.rating})`}
+            content={`Joint: ${result.jointType}\nWood: ${result.species}\nBase strength: ${result.baseStrength}\nSpecies multiplier: ${result.speciesMultiplier}×\nGlue bonus: ${result.glueBonus}\nEffective strength: ${result.effectiveStrength}\nRating: ${result.rating}\n${result.recommendation || ''}`}
             extraTags={['carpentry', 'joinery', jointType, species]} rawData={{ jointType, species, result }} />
         )}
       </header>
@@ -170,13 +184,13 @@ function JointStrengthGuide() {
               <div className="rounded-lg border-2 border-stone-500/40 bg-stone-500/10 p-3">
                 <div className="flex items-baseline justify-between">
                   <div className="text-[11px] text-stone-300">{result.jointType} in {result.species}</div>
-                  <div className={`rounded px-2 py-0.5 text-[10px] font-semibold ${result.classification?.includes('strong') || result.classification?.includes('Excellent') ? 'bg-emerald-500/20 text-emerald-200' : result.classification?.includes('weak') ? 'bg-rose-500/20 text-rose-200' : 'bg-amber-500/20 text-amber-200'}`}>{result.classification}</div>
+                  <div className={`rounded px-2 py-0.5 text-[10px] font-semibold ${result.rating === 'excellent' ? 'bg-emerald-500/20 text-emerald-200' : result.rating === 'weak' ? 'bg-rose-500/20 text-rose-200' : 'bg-amber-500/20 text-amber-200'}`}>{result.rating}</div>
                 </div>
-                <div className="mt-2 font-mono text-3xl text-stone-100">{result.adjustedStrength}<span className="text-sm text-zinc-400"> / 100</span></div>
+                <div className="mt-2 font-mono text-3xl text-stone-100">{result.effectiveStrength}<span className="text-sm text-zinc-400"> / 100</span></div>
                 <div className="mt-1 h-2 overflow-hidden rounded-full bg-zinc-800">
-                  <div className={`h-full ${result.adjustedStrength && result.adjustedStrength > 70 ? 'bg-emerald-500' : result.adjustedStrength && result.adjustedStrength > 40 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, result.adjustedStrength || 0)}%` }} />
+                  <div className={`h-full ${result.effectiveStrength && result.effectiveStrength > 70 ? 'bg-emerald-500' : result.effectiveStrength && result.effectiveStrength > 40 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, result.effectiveStrength || 0)}%` }} />
                 </div>
-                <div className="mt-1 text-[10px] text-zinc-400">Base {result.baseStrength} × {result.speciesMultiplier} species multiplier</div>
+                <div className="mt-1 text-[10px] text-zinc-400">Base {result.baseStrength} × {result.speciesMultiplier} species multiplier · glue {result.glueBonus}</div>
               </div>
               {result.recommendation && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-2 py-1.5 text-[11px] text-amber-200">{result.recommendation}</div>}
             </>
@@ -211,8 +225,8 @@ function WoodSelectionGuide() {
         </div>
         {result?.recommendations && (
           <SaveAsDtuButton compact apiSource="concord-carpentry-wood"
-            title={`Wood selection — ${result.application} (${result.budget} budget, ${result.indoor ? 'indoor' : 'outdoor'})`}
-            content={`Application: ${result.application}\nBudget: ${result.budget}\nIndoor: ${result.indoor}\n\nRecommendations:\n${result.recommendations.map((w, i) => `${i + 1}. ${w.species} (score ${w.score}) — ${w.reason}\n   cost: ${w.cost} / hardness: ${w.hardness} / rot: ${w.rotResistant ? 'resistant' : 'not'}`).join('\n')}`}
+            title={`Wood selection — ${result.application} (${result.budget} budget, ${result.environment})`}
+            content={`Application: ${result.application}\nBudget: ${result.budget}\nEnvironment: ${result.environment}\nTop pick: ${result.topPick}\n\nRecommendations:\n${result.recommendations.map((w, i) => `${i + 1}. ${w.name} — cost: ${w.cost} / hardness: ${w.hardness} / workability: ${w.workability}\n   best for: ${w.bestFor}`).join('\n')}`}
             extraTags={['carpentry', 'wood-selection', application]} rawData={{ application, budget, indoor, result }} />
         )}
       </header>
@@ -247,18 +261,15 @@ function WoodSelectionGuide() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {i === 0 && <Trophy className="h-3.5 w-3.5 text-amber-400" />}
-                    <span className="font-mono text-sm font-semibold text-white capitalize">{w.species}</span>
+                    <span className="font-mono text-sm font-semibold text-white capitalize">{w.name}</span>
                   </div>
-                  <span className="font-mono text-xs text-emerald-300">{w.score}/100</span>
+                  <span className="font-mono text-xs text-emerald-300">{w.cost}</span>
                 </div>
                 <div className="mt-1 flex flex-wrap gap-1 text-[10px]">
-                  <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-300">{w.cost}</span>
                   <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-300">{w.hardness}</span>
                   <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-300">workability: {w.workability}</span>
-                  {w.rotResistant && <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-200">rot-resistant</span>}
                 </div>
-                <div className="mt-1 text-[11px] text-zinc-400">{w.appearance}</div>
-                <div className="mt-1 text-[10px] text-amber-300">{w.reason}</div>
+                <div className="mt-1 text-[10px] text-amber-300">best for: {w.bestFor}</div>
               </div>
             ))}
           </div>
@@ -290,10 +301,10 @@ function FinishRecommender() {
           <span className="text-sm font-semibold text-white">Finish recommender</span>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">carpentry.finishRecommendation</span>
         </div>
-        {result?.recommendations && (
+        {result?.options && (
           <SaveAsDtuButton compact apiSource="concord-carpentry-finish"
-            title={`Finish for ${result.species} ${result.application}`}
-            content={`Species: ${result.species}\nApplication: ${result.application}\n\nFinishes:\n${result.recommendations.map((f, i) => `${i + 1}. ${f.name} (${f.type}) — cure ${f.cureTime}, durability ${f.durability}, ${f.appearance}, difficulty ${f.difficulty}${f.recommendation ? `\n   ${f.recommendation}` : ''}`).join('\n')}`}
+            title={`Finish for ${result.wood} ${result.application} — ${result.topRecommendation}`}
+            content={`Wood: ${result.wood}\nApplication: ${result.application}\nEnvironment: ${result.environment}\nTop: ${result.topRecommendation}\n\nFinishes:\n${result.options.map((f, i) => `${i + 1}. ${f.name} — durability ${f.durability}, ease ${f.easeOfApplication}, ${f.appearance}, toxicity ${f.toxicity}, dry ${f.dryTime}, ${f.coatsNeeded} coats`).join('\n')}`}
             extraTags={['carpentry', 'finish', species]} rawData={{ species, application, indoor, result }} />
         )}
       </header>
@@ -318,24 +329,23 @@ function FinishRecommender() {
           </button>
         </div>
 
-        {result?.recommendations && (
+        {result?.options && (
           <div className="space-y-2">
-            {result.recommendations.map((f, i) => (
-              <div key={i} className={`rounded-lg border p-3 ${i === 0 ? 'border-orange-500/40 bg-orange-500/10' : 'border-orange-700/20 bg-zinc-950/40'}`}>
+            {result.options.map((f, i) => (
+              <div key={i} className={`rounded-lg border p-3 ${f.name === result.topRecommendation ? 'border-orange-500/40 bg-orange-500/10' : 'border-orange-700/20 bg-zinc-950/40'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Droplet className={`h-3.5 w-3.5 ${i === 0 ? 'text-orange-300' : 'text-zinc-400'}`} />
+                    <Droplet className={`h-3.5 w-3.5 ${f.name === result.topRecommendation ? 'text-orange-300' : 'text-zinc-400'}`} />
                     <span className="font-mono text-sm font-semibold text-white">{f.name}</span>
-                    <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">{f.type}</span>
                   </div>
-                  <span className={`rounded px-2 py-0.5 text-[10px] ${f.difficulty === 'easy' ? 'bg-emerald-500/20 text-emerald-200' : f.difficulty === 'medium' ? 'bg-amber-500/20 text-amber-200' : 'bg-rose-500/20 text-rose-200'}`}>{f.difficulty}</span>
+                  <span className={`rounded px-2 py-0.5 text-[10px] ${f.toxicity === 'none' || f.toxicity === 'very-low' ? 'bg-emerald-500/20 text-emerald-200' : f.toxicity === 'high' ? 'bg-rose-500/20 text-rose-200' : 'bg-amber-500/20 text-amber-200'}`}>toxicity: {f.toxicity}</span>
                 </div>
-                <div className="mt-1 grid grid-cols-3 gap-1 text-[10px]">
-                  <span className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-zinc-300">cure: <span className="font-mono text-orange-200">{f.cureTime}</span></span>
+                <div className="mt-1 grid grid-cols-2 gap-1 text-[10px] sm:grid-cols-4">
                   <span className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-zinc-300">durability: <span className="font-mono text-orange-200">{f.durability}</span></span>
+                  <span className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-zinc-300">ease: <span className="font-mono text-orange-200">{f.easeOfApplication}</span></span>
+                  <span className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-zinc-300">dry: <span className="font-mono text-orange-200">{f.dryTime}</span></span>
                   <span className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-zinc-300">{f.appearance}</span>
                 </div>
-                {f.recommendation && <div className="mt-1 text-[11px] text-amber-300">{f.recommendation}</div>}
               </div>
             ))}
           </div>

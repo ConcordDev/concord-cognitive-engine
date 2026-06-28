@@ -1,0 +1,28 @@
+{
+  "macro_id": "automotive.repairEstimate",
+  "domain": "automotive",
+  "name": "repairEstimate",
+  "reads_artifact_data": true,
+  "inputs": {
+    "repairs": { "type": "array", "required": false, "maxLength": 5000 },
+    "shopRate": { "type": "number", "required": false, "min": 0, "max": 100000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.repairs)",
+    "output.ok === false || Number.isFinite(output.result.grandTotal)",
+    "output.ok === false || (Number.isFinite(output.result.tax) && output.result.tax >= 0)",
+    "output.ok === false || (Number.isFinite(output.result.totalWithTax) && output.result.totalWithTax >= output.result.grandTotal)",
+    "output.ok === false || output.result.repairs.every(function(r){ return Number.isFinite(r.laborCost) && Number.isFinite(r.total); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "shopRate": 150, "repairs": [{ "name": "Brake pads", "partsCost": 100, "laborHours": 2 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "repairs": [{ "name": "Alignment", "partsCost": 0, "laborHours": 1 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "repairs": [] } } }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "artifact": { "data": { "shopRate": "1e999", "repairs": [{ "name": "x", "partsCost": "NaN", "laborHours": "Infinity" }] } } }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). DOUBLE-WRAP wiring via CalcPanel; resolveData() peels the wrapper. labor = laborHours × (laborRate || shopRate || 120); total = parts + labor; grandTotal = sum; tax = grandTotal×0.08; totalWithTax = grandTotal×1.08 (>= grandTotal). Empty repair list REJECTED. Poisoned numerics (partsCost 'NaN' → parseFloat||0, laborHours 'Infinity' → parseFloat||1) never NaN-leak; every line + total stays FINITE. Pure compute, no STATE. Pinned by server/tests/automotive-lens-macros.test.js."
+}

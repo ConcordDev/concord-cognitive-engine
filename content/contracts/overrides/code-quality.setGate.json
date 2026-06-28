@@ -1,0 +1,24 @@
+{
+  "macro_id": "code-quality.setGate",
+  "domain": "code-quality",
+  "name": "setGate",
+  "inputs": {
+    "maxCritical": { "type": "number", "min": 0, "max": 1000 },
+    "maxHigh": { "type": "number", "min": 0, "max": 1000 },
+    "maxBlockerDebtHours": { "type": "number", "min": 0, "max": 100000 },
+    "minMaintainability": { "type": "number", "min": 0, "max": 100 },
+    "maxDuplicationPct": { "type": "number", "min": 0, "max": 100 },
+    "blockOnNewCritical": { "type": "boolean" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.gate && typeof output.result.gate.maxCritical === 'number')"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "maxCritical": -1 }, "expect": { "ok": false, "error": "invalid_maxCritical" } },
+    { "input": { "minMaintainability": 80 }, "expect": { "ok": true } }
+  ],
+  "_note": "Updates the caller's quality-gate thresholds in per-user STATE. {} is a no-op write returning the current gate → ok:true (NEVER no_db). Every numeric threshold is a fail-CLOSED guard: a poisoned NaN/Infinity/-1/1e308 → invalid_<field>, never a silently-ignored ok:true (the prior Number.isFinite path quietly dropped bad values)."
+}

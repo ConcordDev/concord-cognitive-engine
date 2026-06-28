@@ -18,16 +18,37 @@ interface Billing {
 
 export function BillingDashboard({ refreshKey }: { refreshKey: number }) {
   const [b, setB] = useState<Billing | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
+    setLoading(true);
+    setError(null);
     const r = await lensRun('sponsorship', 'billing', {});
+    setLoading(false);
     if (r.data?.ok && r.data.result) setB(r.data.result as Billing);
+    else setError(r.data?.error || 'Could not load billing.');
   };
 
   useEffect(() => { void load(); }, [refreshKey]);
 
+  if (loading && !b) {
+    return <div role="status" aria-live="polite" className="text-center text-zinc-400 italic py-6 border border-zinc-800 rounded-xl">Loading billing…</div>;
+  }
+  if (error && !b) {
+    return (
+      <div role="alert" className="text-center py-6 border border-rose-800/60 bg-rose-950/30 rounded-xl">
+        <p className="text-rose-300 text-sm">{error}</p>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="mt-2 bg-rose-800 hover:bg-rose-700 text-white text-xs px-4 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+        >Retry</button>
+      </div>
+    );
+  }
   if (!b) {
-    return <div className="text-center text-zinc-400 italic py-6 border border-zinc-800 rounded-xl">Loading billing…</div>;
+    return <div className="text-center text-zinc-400 italic py-6 border border-zinc-800 rounded-xl">No billing data yet.</div>;
   }
 
   const chartData = b.trend.map((t) => ({

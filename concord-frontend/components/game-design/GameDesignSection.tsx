@@ -53,11 +53,21 @@ export function GameDesignSection() {
   const [form, setForm] = useState({ title: '', genre: 'platformer' });
 
   const refreshGames = useCallback(async () => {
-    const r = await lensRun('game-design', 'game-list', {});
-    const list: Game[] = r.data?.result?.games || [];
-    setGames(list);
-    setActiveGame((prev) => (list.some((g) => g.id === prev) ? prev : list[0]?.id || ''));
-    setLoading(false);
+    setLoading(true);
+    try {
+      const r = await lensRun('game-design', 'game-list', {});
+      if (r.data?.ok === false) throw new Error(r.data?.error || 'Failed to load games.');
+      const list: Game[] = r.data?.result?.games || [];
+      setGames(list);
+      setActiveGame((prev) => (list.some((g) => g.id === prev) ? prev : list[0]?.id || ''));
+      setError(null);
+    } catch (e) {
+      // Previously a thrown game-list left the section stuck on the spinner
+      // forever (no catch → setLoading(false) never ran). Surface it instead.
+      setError(e instanceof Error ? e.message : 'Failed to load games.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const refreshDash = useCallback(async () => {
@@ -91,10 +101,24 @@ export function GameDesignSection() {
         <span className="text-[11px] text-zinc-400">Tiled + LDtk + Nuclino shape · GDD + level editor</span>
       </header>
 
-      {error && <div className="mx-4 mt-3 text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
+      {error && (
+        <div role="alert" className="mx-4 mt-3 flex items-center justify-between gap-3 text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => { setError(null); void refreshGames(); }}
+            className="shrink-0 px-2 py-1 rounded-md bg-rose-900/40 border border-rose-800/60 text-rose-200 hover:bg-rose-900/60"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div role="status" aria-live="polite" className="flex items-center justify-center gap-2 py-6 text-zinc-400">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>Loading game projects…</span>
+        </div>
       ) : (
         <>
           <div className="px-4 py-3 border-b border-zinc-800 space-y-2">

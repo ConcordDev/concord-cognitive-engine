@@ -1,0 +1,37 @@
+{
+  "macro_id": "crisis.acknowledge_alert",
+  "domain": "crisis",
+  "name": "acknowledge_alert",
+  "inputs": {
+    "alertId": {
+      "type": "string",
+      "required": true,
+      "maxLength": 160
+    }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.result.acknowledged === true",
+    "output.ok === false || output.result.alertId === input.alertId",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    {
+      "input": {},
+      "expect": {
+        "ok": false,
+        "error": "missing_alert_id"
+      }
+    },
+    {
+      "input": {
+        "alertId": "alert:cr_x"
+      },
+      "expect": {
+        "ok": true
+      }
+    }
+  ],
+  "_note": "Marks an alert acknowledged for the caller (per-user ack set). Missing alertId \u2192 missing_alert_id. After ack, crisis.alerts reports the alert as acknowledged:true."
+}

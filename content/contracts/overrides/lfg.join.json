@@ -1,0 +1,18 @@
+{
+  "macro_id": "lfg.join",
+  "domain": "lfg",
+  "name": "join",
+  "inputs": {
+    "lfgId": { "type": "string", "required": true, "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.partyId === 'string' && output.partyId.length > 0)",
+    "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "join invites the LFG poster into the caller's party (creating one if absent) and marks the request matched. A caller cannot join their own request (error:cannot_invite_self); an already-matched/cancelled request yields error:not_open."
+}

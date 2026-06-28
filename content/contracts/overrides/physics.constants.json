@@ -1,0 +1,18 @@
+{
+  "macro_id": "physics.constants",
+  "domain": "physics",
+  "name": "constants",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "output.result && typeof output.result.constants === 'object'",
+    "Object.values(output.result.constants).every(function(c){ return Number.isFinite(c.value) && typeof c.units === 'string' && typeof c.name === 'string'; })",
+    "output.result.constants.c.value === 299792458"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "junk": "1e999" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (dispatch key 'physics.constants'; 3-arg). Deterministic static catalog of 15 CODATA physical constants, each { value, units, name }. Drives PhysicsActionPanel.actConst + PhysicsWorkbench.ConstantsTab; component renders constants[sym].value.toExponential(...) + .units + .name. Ignores input entirely (degrade-graceful). Not assassin-driven (LENS_ACTIONS); authored spec pinned by server/tests/physics-lens-macros.test.js."
+}

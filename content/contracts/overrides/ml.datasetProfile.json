@@ -1,0 +1,26 @@
+{
+  "macro_id": "ml.datasetProfile",
+  "domain": "ml",
+  "name": "datasetProfile",
+  "inputs": {
+    "dataset": { "type": "array" },
+    "rows": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message != null || (Number.isFinite(output.result.rows) && Number.isFinite(output.result.columns) && Array.isArray(output.result.profile))",
+    "output.ok === false || output.result.message != null || (output.result.qualityScore >= 0 && output.result.qualityScore <= 100)",
+    "output.ok === false || !Array.isArray(output.result.profile) || output.result.profile.every(p => typeof p.field === 'string' && ['numeric','categorical','text'].includes(p.type) && Number.isFinite(p.nullRate) && Number.isFinite(p.cardinality))",
+    "output.ok === false || !Array.isArray(output.result.profile) || output.result.profile.every(p => !p.stats || (Number.isFinite(p.stats.mean) && Number.isFinite(p.stats.median)))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "dataset": [{ "age": 20, "city": "a" }, { "age": 30, "city": "b" }, { "age": 40, "city": "a" }, { "age": 50, "city": "c" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "dataset": [{ "age": 20 }, { "age": "" }, { "age": 40 }, { "age": 50 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "dataset": [{ "v": "Infinity" }, { "v": 5 }, { "v": "NaN" }, { "v": 10 }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. Component sends { dataset }. Returns rows/columns/qualityScore/profile[].{field,type,nullCount,nullRate,cardinality,stats?{min,max,mean,median,q1,q3,outliers}} — the EXACT fields MlActionPanel's EDA card renders (field/type/nullRate/cardinality + stats.mean μ). Empty dataset → honest {message}. A column with a non-finite cell drops below the 80% finite-numeric threshold → classified categorical (no stats), so no NaN stats leak (fixed 2026-06-28)."
+}

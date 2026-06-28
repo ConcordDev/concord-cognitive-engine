@@ -1,0 +1,138 @@
+{
+  "contracts": [
+    {
+      "_derived": false,
+      "domain": "achievements",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "id": "first_blood"
+          }
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": false
+          },
+          "input": {
+            "id": "__no_such_achievement__"
+          }
+        }
+      ],
+      "inputs": {
+        "id": {
+          "maxLength": 80,
+          "required": true,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || (output.achievement && typeof output.achievement.id === 'string')",
+        "output.ok === true || typeof output.reason === 'string'"
+      ],
+      "macro_id": "achievements.get",
+      "name": "get"
+    },
+    {
+      "_derived": false,
+      "domain": "achievements",
+      "fuzz_cases": [
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {}
+        },
+        {
+          "expect": {
+            "ok": true
+          },
+          "input": {
+            "category": "combat"
+          }
+        }
+      ],
+      "inputs": {
+        "category": {
+          "enum": [
+            "all",
+            "combat",
+            "economy",
+            "exploration",
+            "social",
+            "mastery",
+            "general"
+          ],
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "output.ok === true",
+        "Array.isArray(output.catalog)",
+        "output.catalog.every(a => typeof a.id === 'string' && a.id.length > 0)",
+        "output.catalog.every(a => ['bronze','silver','gold','legendary'].includes(a.rarity))",
+        "output.catalog.every(a => typeof a.rewardSparks === 'number' && a.rewardSparks >= 0)",
+        "output.catalog.every(a => typeof a.hidden === 'boolean')",
+        "(!input || !input.category || input.category === 'all') || output.catalog.every(a => a.category === input.category)"
+      ],
+      "macro_id": "achievements.list",
+      "name": "list"
+    },
+    {
+      "_derived": false,
+      "domain": "achievements",
+      "fuzz_cases": [],
+      "inputs": {
+        "userId": {
+          "maxLength": 80,
+          "type": "string"
+        }
+      },
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')",
+        "typeof output === 'object' && output !== null",
+        "typeof output.ok === 'boolean'",
+        "output.ok === false || Array.isArray(output.earned)",
+        "output.ok === false || output.earned.every(e => typeof e.achievement_id === 'string')",
+        "output.ok === false || output.earned.every(e => typeof e.earned_at === 'number' && e.earned_at >= 0)"
+      ],
+      "macro_id": "achievements.mine",
+      "name": "mine"
+    },
+    {
+      "_derived": true,
+      "domain": "achievements",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "achievements.recent",
+      "name": "recent"
+    }
+  ],
+  "domain": "achievements",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 4
+}

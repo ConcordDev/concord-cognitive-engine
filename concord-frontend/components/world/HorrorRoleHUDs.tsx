@@ -6,9 +6,10 @@
 // exclusive — a session has one ghost and N investigators, server
 // enforces.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useClientConfig } from '@/hooks/useClientConfig';
+import { useActiveWorldId } from '@/hooks/useActiveWorldId';
 import { Ghost, Flashlight, Camera, X, Trophy, Skull } from 'lucide-react';
 
 interface Session {
@@ -26,17 +27,14 @@ interface Session {
 
 export function HorrorRoleHUDs() {
   const POLL_MS = useClientConfig().poll.horrorRoleMs; // E0 — server-tunable
-  const [worldId, setWorldId] = useState<string | null>(null);
+  // Same-tab-reactive active world (updates on world travel via
+  // concordia:active-world-changed) — replaces the one-shot mount read.
+  const worldId = useActiveWorldId('');
   const [session, setSession] = useState<Session | null>(null);
   const [endedAck, setEndedAck] = useState<Session | null>(null);
   const [evidenceForm, setEvidenceForm] = useState(false);
   const [evidenceKind, setEvidenceKind] = useState('footprint');
   const [downing, setDowning] = useState<string | null>(null);
-
-  useEffect(() => {
-    const id = typeof window !== 'undefined' ? localStorage.getItem('concordia:activeWorldId') : null;
-    setWorldId(id);
-  }, []);
 
   const refresh = useCallback(async () => {
     if (!worldId) return;
@@ -50,18 +48,11 @@ export function HorrorRoleHUDs() {
 
   useRealtimeRefresh(['horror:state'], refresh, { backstopMs: POLL_MS, enabled: !!worldId });
 
-  // Shader hooks for both roles.
-  useEffect(() => {
-    if (!session) return;
-    if (session.role === 'ghost') {
-      window.dispatchEvent(new CustomEvent('concordia:visibility-shader', { detail: { mode: 'ghost' } }));
-    } else {
-      window.dispatchEvent(new CustomEvent('concordia:visibility-shader', { detail: { mode: 'flashlight' } }));
-    }
-    return () => {
-      window.dispatchEvent(new CustomEvent('concordia:visibility-shader', { detail: { mode: 'off' } }));
-    };
-  }, [session]);
+  // Visibility shader for both roles is applied DIRECTLY via the DOM vignette
+  // overlays in the JSX below (ghost = pale spectral darkening; investigator =
+  // a flashlight-cone radial tunnel). The former `concordia:visibility-shader`
+  // CustomEvent dispatch was dead (no listener anywhere) and redundant with
+  // those overlays, so it was removed rather than wired to a phantom shader.
 
   const submitEvidence = useCallback(async () => {
     if (!session) return;
@@ -108,7 +99,7 @@ export function HorrorRoleHUDs() {
     const targets = investigators.filter((u) => !downed.includes(u));
     return (
       <>
-        {/* Full-overlay ghost shader hint (DOM proxy; real shader uses event) */}
+        {/* Ghost visibility shader — pale spectral darkening (the real effect). */}
         <div className="pointer-events-none fixed inset-0 z-10 bg-gradient-to-b from-zinc-900/20 via-transparent to-zinc-900/30" />
         <div className="concordia-hud-slide-left pointer-events-auto fixed left-4 top-24 z-25 w-56 rounded-lg border border-red-500/40 bg-zinc-950/95 p-2 shadow-xl backdrop-blur">
           <header className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-red-300/70">

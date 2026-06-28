@@ -8,12 +8,17 @@ import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerSentinelActions from "../domains/sentinel.js";
 
+// The domain is now wired through the canonical `register(domain, name, fn)`
+// (MACROS) registry where `fn` is the 2-arg `(ctx, input)` shape that runMacro /
+// POST /api/lens/run drive. The legacy (ctx, artifact, params) convention is
+// adapted internally by the domain's own shim, so this harness calls the
+// canonical 2-arg way — identical to the live dispatcher.
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
 function call(name, ctx, params = {}) {
   const fn = ACTIONS.get(`sentinel.${name}`);
   if (!fn) throw new Error(`sentinel.${name} not registered`);
-  return fn(ctx, { id: null, data: {}, meta: {} }, params);
+  return fn(ctx, params);
 }
 
 before(() => { registerSentinelActions(register); });
@@ -329,7 +334,7 @@ describe("sentinel — never throws", () => {
     const ctx = freshCtx();
     for (const [key, fn] of ACTIONS) {
       if (!key.startsWith("sentinel.")) continue;
-      const r = fn(ctx, { id: null, data: {}, meta: {} }, { junk: Symbol("x") });
+      const r = fn(ctx, { junk: Symbol("x") });
       assert.equal(typeof r.ok, "boolean", `${key} must return { ok: boolean }`);
     }
   });

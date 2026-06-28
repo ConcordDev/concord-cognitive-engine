@@ -1,0 +1,16 @@
+{
+  "macro_id": "expedition-journal.worlds",
+  "domain": "expedition-journal",
+  "name": "worlds",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.worlds) && output.result.worlds.length >= 6)",
+    "output.ok === false || output.result.worlds.every(w => typeof w.worldId === 'string' && Array.isArray(w.stages) && w.stageCount === w.stages.length)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Returns the fixed canon-world expedition catalog (6 worlds, each an ordered stage list with objective + xp). A pure read of in-module WORLD_STAGES — no STATE, no DB, no actor dependency — so {} always returns ok:true (NEVER no_db)."
+}

@@ -1,0 +1,25 @@
+{
+  "macro_id": "tools.esign-create",
+  "domain": "tools",
+  "name": "esign-create",
+  "inputs": {
+    "title": { "type": "string", "maxLength": 200 },
+    "document": { "type": "string", "maxLength": 100000 },
+    "parties": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.envelope && typeof output.result.envelope.id === 'string')",
+    "output.ok === false || /^[0-9a-f]{64}$/.test(output.result.envelope.documentHash)",
+    "output.ok === false || output.result.envelope.status === 'out_for_signature'",
+    "output.ok === false || Array.isArray(output.result.envelope.parties)"
+  ],
+  "fuzz_cases": [
+    { "input": { "title": "NDA", "document": "binds the parties", "parties": [{ "name": "Alice" }] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false, "error": "title required" } },
+    { "input": { "title": "X" }, "expect": { "ok": false, "error": "document text required" } },
+    { "input": { "title": "X", "document": "y" }, "expect": { "ok": false, "error": "at least one party required" } }
+  ],
+  "_note": "tools.esign-create writes a multi-party signing envelope into globalThis._concordSTATE.toolsLens.envelopes, keyed by ctx.actor.userId, with a real SHA-256 document hash. STATE-backed with an internal owner actor — an empty {} returns the real validation reason 'title required' (NEVER no_db). A missing document or zero parties returns its own validation reason BEFORE the write."
+}

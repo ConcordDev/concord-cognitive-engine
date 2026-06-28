@@ -1,0 +1,26 @@
+{
+  "macro_id": "wellness.recoveryReport",
+  "domain": "wellness",
+  "name": "recoveryReport",
+  "inputs": {
+    "hrvMs": { "type": "number", "min": 0, "max": 1000000 },
+    "rhrBpm": { "type": "number", "min": 0, "max": 1000000 },
+    "baselineHrvMs": { "type": "number", "min": 0, "max": 1000000 },
+    "baselineRhrBpm": { "type": "number", "min": 0, "max": 1000000 },
+    "sleepScore": { "type": "number", "min": 0, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.recoveryPct === 'number')",
+    "output.ok === false || (output.result.recoveryPct >= 0 && output.result.recoveryPct <= 100)",
+    "output.ok === false || ['green','yellow','red'].includes(output.result.band)",
+    "output.ok === false || typeof output.result.recommendation === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "hrvMs and rhrBpm required" } },
+    { "input": { "hrvMs": 70, "baselineHrvMs": 60, "rhrBpm": 50, "baselineRhrBpm": 60, "sleepScore": 90 }, "expect": { "ok": true } },
+    { "input": { "hrvMs": 60, "rhrBpm": -1 }, "expect": { "ok": false, "error": "invalid_rhrBpm" } }
+  ],
+  "_note": "Pure-compute 0-100 recovery from HRV + RHR + sleep. Empty input fails-closed with 'hrvMs and rhrBpm required'. Every numeric input is fail-CLOSED guarded via badNumericField. No DB; runs identically for the assassin's internal owner actor."
+}

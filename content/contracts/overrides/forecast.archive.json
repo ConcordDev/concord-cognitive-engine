@@ -1,0 +1,23 @@
+{
+  "macro_id": "forecast.archive",
+  "domain": "forecast",
+  "name": "archive",
+  "inputs": {
+    "worldId": { "type": "string", "maxLength": 120 },
+    "limit": { "type": "number", "min": 1, "max": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.entries)",
+    "output.ok === false || Array.isArray(output.trend)",
+    "output.ok === false || typeof output.count === 'number'",
+    "output.ok === false || output.entries.length === output.count"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 60 }, "expect": { "ok": true } },
+    { "input": { "limit": -1 }, "expect": { "ok": false, "error": "invalid_limit" } }
+  ],
+  "_note": "forecast.archive lists persisted forecasts (newest first) with extracted trend points (ascending). World-public read — {} returns ok:true with count 0 / empty entries when nothing persisted, never no_db. count equals entries.length. limit is a fail-CLOSED numeric: a poisoned value returns ok:false invalid_limit."
+}

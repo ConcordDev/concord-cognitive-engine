@@ -1,0 +1,27 @@
+{
+  "macro_id": "masonry.mortarMix",
+  "domain": "masonry",
+  "name": "mortarMix",
+  "inputs": {
+    "application": { "type": "string", "maxLength": 40 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.type === 'string'",
+    "output.ok === false || typeof output.result.ratio === 'string'",
+    "output.ok === false || typeof output.result.strength === 'string'",
+    "output.ok === false || typeof output.result.use === 'string'",
+    "output.ok === false || typeof output.result.waterRatio === 'string'",
+    "output.ok === false || typeof output.result.cureTime === 'string'",
+    "output.ok === false || typeof output.result.temperature === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "application": "structural" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "application": "repoint" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "application": "not-a-real-mode" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure reference lookup, reads artifact.data (MasonStuff channel). application → mix table: general/veneer Type N (750 psi), structural Type S (1800 psi), high-strength Type M (2500 psi), repoint Type O (350 psi). Unknown application → general (Type N). Result card renders type/ratio/strength/use/waterRatio/cureTime/temperature EXACTLY."
+}

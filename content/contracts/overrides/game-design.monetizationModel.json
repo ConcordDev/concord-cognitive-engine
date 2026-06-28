@@ -1,0 +1,25 @@
+{
+  "macro_id": "game-design.monetizationModel",
+  "domain": "game-design",
+  "name": "monetizationModel",
+  "inputs": {
+    "model": { "type": "string", "required": false, "maxLength": 40 },
+    "expectedDAU": { "type": "number", "required": false },
+    "conversionRate": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.model === 'string'",
+    "output.ok === false || Number.isFinite(output.result.projectedMonthlyRevenue)",
+    "output.ok === false || output.result.projectedAnnualRevenue === output.result.projectedMonthlyRevenue * 12",
+    "output.ok === false || Array.isArray(output.result.ethicalConsiderations)"
+  ],
+  "fuzz_cases": [
+    { "input": { "model": "subscription", "expectedDAU": 12000 }, "expect": { "ok": true } },
+    { "input": { "model": "premium" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "model": "free-to-play", "expectedDAU": 1e308, "conversionRate": 1e308 }, "expect": { "ok": true } }
+  ],
+  "_note": "game-design.monetizationModel is one of the four PAGE analysis actions driven via useRunArtifact('game-design') → /api/lens/:domain/:id/run; UNLIKE the workbench macros it reads its input from artifact.DATA (not the 3rd params arg), so the harness sets virtualArtifact.data = input. DETERMINISTIC pure compute: picks a revenue model from a fixed table (premium forces conversion 1.0), projects monthly/annual revenue (annual === monthly*12 by construction), and surfaces ethical guardrails for free-to-play. parseInt/parseFloat coerce expectedDAU/conversionRate so a poisoned value degrades to the default and projectedMonthlyRevenue stays finite (Math.round of a finite product). No empty-input branch — defaults to premium, always ok:true. No DB / LLM / network. Not driven by the assassin (LENS_ACTIONS, no derived base); pinned by server/tests/game-design-lens-macros.test.js (revenue projection + premium conversion + f2p ethics + empty-input default)."
+}

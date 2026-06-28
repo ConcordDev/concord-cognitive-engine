@@ -1,0 +1,23 @@
+{
+  "macro_id": "sessions.list_mine",
+  "domain": "sessions",
+  "name": "list_mine",
+  "inputs": {
+    "lensId": { "type": "string", "maxLength": 64 },
+    "status": { "type": "string", "enum": ["open", "paused", "completed", "abandoned"] },
+    "limit": { "type": "number", "min": 1, "max": 100 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.sessions)",
+    "output.ok === false || (typeof output.total === 'number' && output.total >= 0)",
+    "output.ok === false || output.sessions.length === output.total"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "status": "open", "limit": 10 }, "expect": { "ok": true } },
+    { "input": { "limit": -1 }, "expect": { "ok": false, "reason": "invalid_limit" } }
+  ],
+  "_note": "sessions.list_mine lists the caller's own sessions (per-user scoped by ctx.actor.userId — never leaks). With a live migrated DB + the assassin owner actor, {} returns ok:true with an empty list (that internal user owns no sessions). limit is a fail-CLOSED numeric guard — a poisoned value returns ok:false invalid_limit, never a clamped ok:true. Never no_db / no_user under the assassin."
+}

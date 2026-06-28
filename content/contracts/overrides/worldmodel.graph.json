@@ -1,0 +1,22 @@
+{
+  "macro_id": "worldmodel.graph",
+  "domain": "worldmodel",
+  "name": "graph",
+  "inputs": {
+    "type": { "type": "string", "maxLength": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "Array.isArray(output.result.nodes)",
+    "Array.isArray(output.result.edges)",
+    "output.result.nodeCount === output.result.nodes.length",
+    "output.result.edgeCount === output.result.edges.length",
+    "output.result.edges.every(e => output.result.nodes.some(n => n.id === e.from) && output.result.nodes.some(n => n.id === e.to))"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "type": "concept" }, "expect": { "ok": true } }
+  ],
+  "_note": "worldmodel.graph (LENS_ACTIONS handler, server/domains/worldmodel.js). Returns the full per-user entity/relation graph with node degree computed from the real edges; an edge whose endpoint was filtered out is DROPPED (the last invariant pins no dangling edges). Empty STATE → { nodes:[], edges:[], nodeCount:0, edgeCount:0 } with ok:true. Served via /api/lens/run's LENS_ACTIONS-first dispatch, not the server.js MACROS path; exercised behaviorally in server/tests/worldmodel-lens-macros.test.js. Read-only."
+}

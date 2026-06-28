@@ -1,0 +1,22 @@
+{
+  "macro_id": "crafting.favorite_toggle",
+  "domain": "crafting",
+  "name": "favorite_toggle",
+  "inputs": {
+    "recipeId": { "type": "string", "maxLength": 200 },
+    "recipeName": { "type": "string", "maxLength": 400 },
+    "recipeType": { "type": "string", "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.favorited === 'boolean')",
+    "output.ok === false || typeof output.result.recipeId === 'string'",
+    "output.ok === false || (typeof output.result.count === 'number' && output.result.count >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": { "recipeId": "dtu_iron_sword", "recipeName": "Iron Sword", "recipeType": "blueprint" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false, "error": "recipeId required" } }
+  ],
+  "_note": "favorite_toggle pins/unpins a recipe for the caller (per-user STATE Map). A missing recipeId rejects with 'recipeId required'. First toggle on a recipeId returns favorited:true; toggling the same id again returns favorited:false. count is the caller's current favorite total. Live-DB+actor reality: drives the real globalThis._concordSTATE favorites map keyed by ctx.actor.id, never no_db."
+}

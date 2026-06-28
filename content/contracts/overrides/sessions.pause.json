@@ -1,0 +1,19 @@
+{
+  "macro_id": "sessions.pause",
+  "domain": "sessions",
+  "name": "pause",
+  "inputs": {
+    "sessionId": { "type": "string", "maxLength": 64 },
+    "note": { "type": "string", "maxLength": 500 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.status === 'paused'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_session_id" } },
+    { "input": { "sessionId": "does-not-exist" }, "expect": { "ok": false, "reason": "not_found" } }
+  ],
+  "_note": "sessions.pause transitions a caller-owned open session to paused. Requires sessionId; a foreign/unknown id → not_found; an already-paused/closed row → already_paused / session_not_active. A write {} returns a real validation reason, NEVER no_db."
+}

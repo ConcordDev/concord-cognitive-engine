@@ -1,0 +1,23 @@
+{
+  "macro_id": "masonry.jobCosting",
+  "domain": "masonry",
+  "name": "jobCosting",
+  "inputs": {
+    "items": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (Array.isArray(output.result.items) ? typeof output.result.grandTotal === 'number' : typeof output.result.message === 'string')",
+    "output.ok === false || !Array.isArray(output.result.items) || Number.isFinite(output.result.grandTotal)",
+    "output.ok === false || !Array.isArray(output.result.items) || output.result.items.every(function(i){ return Number.isFinite(i.laborCost) && Number.isFinite(i.totalCost); })"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "items": [{ "name": "Pour", "hours": 10, "rate": 55, "materialCost": 200 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "items": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "items": "not-an-array" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "items": [null, "junk", { "name": "X", "hours": "Infinity", "rate": "NaN", "materialCost": "abc" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data (MasonStuff channel). Per item: laborCost = round(hours × rate) [rate default 55], totalCost = laborCost + materialCost. Rollup: overhead = round((labor+materials) × 0.15), profit = round((labor+materials+overhead) × 0.10), grandTotal = labor+materials+overhead+profit. Empty/non-array items → { message }. Non-object entries are filtered; non-finite hours/rate/material floor to 0 (rate keeps its 55 default) — never NaN/Infinity. Result card renders items[].{item,laborHours,laborRate,laborCost,materialCost,totalCost}/subtotalLabor/subtotalMaterials/overhead/profit/grandTotal EXACTLY."
+}

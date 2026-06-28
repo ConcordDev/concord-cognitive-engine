@@ -1,0 +1,23 @@
+{
+  "macro_id": "translation.translate",
+  "domain": "translation",
+  "name": "translate",
+  "inputs": {
+    "text": { "type": "string", "maxLength": 8000 },
+    "targetLanguage": { "type": "string", "maxLength": 60 },
+    "sourceLanguage": { "type": "string", "maxLength": 60 },
+    "formality": { "type": "string", "enum": ["neutral", "formal", "informal"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result.translated === 'string')",
+    "output.ok === false || typeof output.result.targetLanguage === 'string'",
+    "output.ok === false || typeof output.result.chars === 'number'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "text required" } },
+    { "input": { "text": "hello" }, "expect": { "ok": false, "error": "targetLanguage required" } }
+  ],
+  "_note": "translation.translate is an LLM-hint macro (skipped by the assassin's adversarial driver, static contract only). Real translation genuinely requires the local LLM; offline/brain-down it fails HONESTLY with translation_unavailable rather than fabricate a wrong translation (the live_* external-IO discipline). Validation rejects (text required / targetLanguage required) fire BEFORE any LLM call, so they hold with or without a brain."
+}

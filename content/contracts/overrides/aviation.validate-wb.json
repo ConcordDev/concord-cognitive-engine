@@ -1,0 +1,32 @@
+{
+  "macro_id": "aviation.validate-wb",
+  "domain": "aviation",
+  "name": "validate-wb",
+  "inputs": {
+    "emptyWeight": { "type": "number" },
+    "emptyArm": { "type": "number" },
+    "fuelWeight": { "type": "number" },
+    "fuelArm": { "type": "number" },
+    "maxGross": { "type": "number" },
+    "fwdCGLimit": { "type": "number" },
+    "aftCGLimit": { "type": "number" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.grossWeight)",
+    "output.ok === false || Number.isFinite(output.result.cg)",
+    "output.ok === false || typeof output.result.withinEnvelope === 'boolean'",
+    "output.ok === false || ['ok','warning','critical'].includes(output.result.overallSeverity)",
+    "output.ok === false || Array.isArray(output.result.issues)",
+    "output.ok === false || typeof output.result.message === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "emptyWeight": 1500, "emptyArm": 39, "fuelWeight": 180, "fuelArm": 48, "pilotWeight": 170, "pilotArm": 37, "maxGross": 2550, "fwdCGLimit": 35, "aftCGLimit": 47.3 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "emptyWeight": 1500, "emptyArm": 39, "fuelWeight": 600, "fuelArm": 48, "pilotWeight": 300, "pilotArm": 37, "cargoWeight": 400, "cargoArm": 95, "maxGross": 2000, "fwdCGLimit": 35, "aftCGLimit": 47.3 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "emptyWeight": "NaN", "maxGross": "Infinity", "fuelWeight": 1e308, "fuelArm": "x" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "W&B envelope validation. Same flat-vs-structured shape mismatch as calculate-wb (now folded via normalizeWBInput). Returns withinEnvelope/overallSeverity(ok|warning|critical)/issues[]/message; over-gross or out-of-CG-envelope is severity:'critical' with a 'DO NOT FLY' message. Poisoned numerics keep grossWeight/cg finite. Fixed 2026-06-28."
+}

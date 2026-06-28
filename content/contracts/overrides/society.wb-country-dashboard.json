@@ -1,0 +1,18 @@
+{
+  "macro_id": "society.wb-country-dashboard",
+  "domain": "society",
+  "name": "wb-country-dashboard",
+  "inputs": {
+    "country": { "type": "string", "maxLength": 3 },
+    "indicators": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "country must be 3-letter ISO code" } },
+    { "input": { "country": "us" }, "expect": { "ok": false, "error": "country must be 3-letter ISO code" } }
+  ],
+  "_note": "Many headline indicators for one country (latest + sparkline each). Fuzz_cases land on the PRE-NETWORK ISO-3 validation branch so NO outbound call is made. The XSS probe on 'country' also fails the regex pre-network; a hostile alias in the 'indicators' array would be blocked by the per-alias format guard before any fetch. NEVER no_db (no DB)."
+}

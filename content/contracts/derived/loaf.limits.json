@@ -1,0 +1,176 @@
+{
+  "contracts": [
+    {
+      "_derived": true,
+      "domain": "loaf.limits",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.limits.create_uncertainty",
+      "name": "create_uncertainty"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.limits",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.limits.detect_blind_assumptions",
+      "name": "detect_blind_assumptions"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.limits",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.limits.detect_false_certainty",
+      "name": "detect_false_certainty"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.limits",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.limits.detect_overfit",
+      "name": "detect_overfit"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.limits",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.limits.get_boundary",
+      "name": "get_boundary"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.limits",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.limits.growth_rate",
+      "name": "growth_rate"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.limits",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.limits.identify_illegible",
+      "name": "identify_illegible"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.limits",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.limits.list_uncertainties",
+      "name": "list_uncertainties"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.limits",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.limits.map_boundary",
+      "name": "map_boundary"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.limits",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.limits.measure_growth",
+      "name": "measure_growth"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.limits",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.limits.reduce_uncertainty",
+      "name": "reduce_uncertainty"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.limits",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.limits.safety_margins",
+      "name": "safety_margins"
+    },
+    {
+      "_derived": true,
+      "domain": "loaf.limits",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "loaf.limits.status",
+      "name": "status"
+    }
+  ],
+  "domain": "loaf.limits",
+  "generatedBy": "scripts/contracts/derive-contracts.mjs",
+  "macroCount": 13
+}

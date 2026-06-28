@@ -1,0 +1,30 @@
+{
+  "macro_id": "law-enforcement.mapAddIncident",
+  "domain": "law-enforcement",
+  "name": "mapAddIncident",
+  "inputs": {
+    "type": { "type": "string", "required": true, "maxLength": 80 },
+    "lat": { "type": "number", "required": true, "min": -90, "max": 90 },
+    "lon": { "type": "number", "required": true, "min": -180, "max": 180 },
+    "address": { "type": "string", "maxLength": 200 },
+    "severity": { "type": "string", "maxLength": 16 }
+  },
+  "reads_artifact_data": false,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.error === 'string'",
+    "output.ok === false || (output.result.incident && typeof output.result.incident.id === 'string')",
+    "output.ok === false || (Number.isFinite(output.result.incident.lat) && output.result.incident.lat >= -90 && output.result.incident.lat <= 90)",
+    "output.ok === false || (Number.isFinite(output.result.incident.lon) && output.result.incident.lon >= -180 && output.result.incident.lon <= 180)",
+    "output.ok === false || ['low','medium','high'].includes(output.result.incident.severity)"
+  ],
+  "fuzz_cases": [
+    { "input": { "type": "auto theft", "lat": 37.77, "lon": -122.41, "severity": "high" }, "expect": { "ok": true } },
+    { "input": { "type": "robbery", "lat": 40.7, "lon": -73.9 }, "expect": { "ok": true } },
+    { "input": { "type": "x", "lat": "NaN", "lon": -122 }, "expect": { "ok": false } },
+    { "input": { "type": "x", "lat": 999, "lon": 0 }, "expect": { "ok": false } },
+    { "input": { "type": "x", "lat": 37, "lon": "not-a-number" }, "expect": { "ok": false } }
+  ],
+  "_note": "Flat params (RmsCadConsole CrimeMapTab.addIncident: lensRun('law-enforcement','mapAddIncident',{type,lat:Number(lat),lon:Number(lon),address,severity}) — no artifact wrapper, peel is a no-op). FAIL-CLOSED on poisoned numeric coordinates: asNum(p.lat,NaN)/asNum(p.lon,NaN) then a Number.isFinite gate rejects NaN/Infinity/non-numeric with { ok:false, error:'lat and lon are required numbers' }; a second bounds check rejects out-of-range finite values. A poisoned point is NEVER stored — so the crime map / hotspot pipeline can't be poisoned. The map marker renders incident.lat/lon/type/severity EXACTLY."
+}

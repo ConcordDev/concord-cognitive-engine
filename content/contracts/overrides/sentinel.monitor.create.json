@@ -1,0 +1,24 @@
+{
+  "macro_id": "sentinel.monitor.create",
+  "domain": "sentinel",
+  "name": "monitor.create",
+  "inputs": {
+    "name": { "type": "string", "maxLength": 80 },
+    "scope": { "type": "string", "maxLength": 40 },
+    "minSeverity": { "type": "string", "enum": ["critical", "high", "medium", "low", "info", "unknown"] },
+    "intervalMinutes": { "type": "number", "min": 5, "max": 1440 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.monitor && typeof output.result.monitor.monitorId === 'string')",
+    "output.ok === false || (output.result.monitor.intervalMinutes >= 5 && output.result.monitor.intervalMinutes <= 1440)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "intervalMinutes": -1 }, "expect": { "ok": false, "error": "invalid_intervalMinutes" } },
+    { "input": { "intervalMinutes": 1e308 }, "expect": { "ok": false, "error": "invalid_intervalMinutes" } },
+    { "input": { "name": "Crit watch", "minSeverity": "high", "intervalMinutes": 30 }, "expect": { "ok": true } }
+  ],
+  "_note": "Creates a per-user continuous-monitoring config in STATE keyed by ctx.actor.userId. STATE-backed — the assassin's owner actor writes a fresh monitor row (NEVER no_db). intervalMinutes is a fail-CLOSED numeric guard (poisoned NaN/Infinity/-1/1e308 → invalid_intervalMinutes, never a clamped ok:true); an absent intervalMinutes defaults to 60 and is then clamped into [5,1440]."
+}

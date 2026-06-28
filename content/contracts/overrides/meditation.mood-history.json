@@ -1,0 +1,18 @@
+{
+  "macro_id": "meditation.mood-history",
+  "domain": "meditation",
+  "name": "mood-history",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.moods)",
+    "output.ok === false || typeof output.result.count === 'number'",
+    "output.ok === false || output.result.moods.length <= 30",
+    "output.ok === false || output.result.averageMood === null || (output.result.averageMood >= 1 && output.result.averageMood <= 5)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "Most-recent-first slice (<=30) of the caller's mood check-ins from STATE with a 1..5 average (null when empty). Empty ledger → ok:true, averageMood null, never no_db."
+}

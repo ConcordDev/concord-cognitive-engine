@@ -227,14 +227,21 @@ export default function registerEngineeringActions(registerLensAction) {
       if (links.length === 0) {
         return { ok: true, result: { message: 'Add chain links: { name, nominal, tolerance, direction }.' } };
       }
-      const r4 = (v) => Math.round(v * 10000) / 10000;
+      // Normalize away -0 so the component never renders "-0.000", and round.
+      const r4 = (v) => (Math.round(v * 10000) / 10000) + 0;
+      // Coerce a numeric to a finite value or fall back — non-finite (NaN /
+      // Infinity) poisoned input must never reach the computed output.
+      const finiteOr = (v, fb) => {
+        const n = parseFloat(v);
+        return Number.isFinite(n) ? n : fb;
+      };
       let cumNominal = 0;
       let cumWorst = 0;
       let sumSq = 0;
       const chain = links.map((l, i) => {
-        const dir = (parseFloat(l.direction) || 1) >= 0 ? 1 : -1;
-        const nominal = (parseFloat(l.nominal) || 0) * dir;
-        const tol = Math.abs(parseFloat(l.tolerance) || 0.01);
+        const dir = finiteOr(l.direction, 1) >= 0 ? 1 : -1;
+        const nominal = finiteOr(l.nominal, 0) * dir;
+        const tol = Math.abs(finiteOr(l.tolerance, 0.01));
         cumNominal += nominal;
         cumWorst += tol;
         sumSq += tol * tol;
@@ -253,8 +260,10 @@ export default function registerEngineeringActions(registerLensAction) {
       const targetGap = parseFloat(params?.targetGap ?? artifact?.data?.targetGap);
       let fitVerdict = null;
       if (Number.isFinite(targetGap)) {
-        const minGap = cumNominal - cumWorst;
-        const maxGap = cumNominal + cumWorst;
+        // Use rounded bounds so the verdict matches the displayed envelope and
+        // doesn't flicker on floating-point dust when minGap is exactly 0.
+        const minGap = r4(cumNominal - cumWorst);
+        const maxGap = r4(cumNominal + cumWorst);
         fitVerdict = {
           targetGap,
           worstCaseFits: targetGap >= minGap && targetGap <= maxGap,
@@ -427,7 +436,15 @@ export default function registerEngineeringActions(registerLensAction) {
     try {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
       const kind = egClean(data.kind || 'box', 24);
-      const p = data.params || data;
+      // Sanitize geometry params to FINITE positive numbers — a poisoned
+      // dimension (NaN / Infinity) must never reach a Three.js BufferGeometry
+      // vertex, where it would corrupt the mesh / crash the renderer.
+      const rawP = data.params || data;
+      const p = {};
+      for (const [k, v] of Object.entries(rawP || {})) {
+        const n = parseFloat(v);
+        p[k] = Number.isFinite(n) && n > 0 ? n : undefined;
+      }
       const positions = []; // flat [x,y,z, x,y,z, ...]
       const indices = []; // triangle vertex indices
       const pushQuad = (a, b, c, d) => {
@@ -873,13 +890,23 @@ export default function registerEngineeringActions(registerLensAction) {
       if (items.length === 0) {
         return { ok: true, result: { message: 'Add BOM items: { partNumber, quantity, unitCost, supplier, leadTimeDays }.' } };
       }
-      const overheadRate = parseFloat(params?.overheadRate ?? 0.15);
-      const buildQty = Math.max(1, parseInt(params?.buildQty ?? 1));
-      const r2 = (v) => Math.round(v * 100) / 100;
+      // finiteOr coerces poisoned numeric (NaN / Infinity / overflow) input to a
+      // finite fallback so no computed cost is ever a non-finite lie.
+      const finiteOr = (v, fb) => {
+        const n = parseFloat(v);
+        return Number.isFinite(n) ? n : fb;
+      };
+      const intOr = (v, fb) => {
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) ? n : fb;
+      };
+      const overheadRate = finiteOr(params?.overheadRate ?? 0.15, 0.15);
+      const buildQty = Math.max(1, intOr(params?.buildQty ?? 1, 1));
+      const r2 = (v) => (Number.isFinite(v) ? Math.round(v * 100) / 100 : 0);
       const rows = items.map((i) => {
-        const qty = (parseInt(i.quantity) || 1) * buildQty;
-        const unit = parseFloat(i.unitCost) || 0;
-        const lead = parseInt(i.leadTimeDays) || 0;
+        const qty = (intOr(i.quantity, 1) || 1) * buildQty;
+        const unit = finiteOr(i.unitCost, 0);
+        const lead = intOr(i.leadTimeDays, 0);
         const supplier = egClean(i.supplier || 'TBD', 60);
         const ext = qty * unit;
         // Supplier link — search query against common distributors.

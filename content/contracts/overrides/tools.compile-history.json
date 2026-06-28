@@ -1,0 +1,20 @@
+{
+  "macro_id": "tools.compile-history",
+  "domain": "tools",
+  "name": "compile-history",
+  "inputs": {
+    "limit": { "type": "number", "min": 1, "max": 1000000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.history))",
+    "output.ok === false || typeof output.result.total === 'number'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "limit": 5 }, "expect": { "ok": true } },
+    { "input": { "limit": -1 }, "expect": { "ok": false, "error": "invalid_limit" } }
+  ],
+  "_note": "tools.compile-history reads the caller's compile/transpile history from globalThis._concordSTATE.toolsLens.compileHistory, keyed by ctx.actor.userId. STATE-backed, per-user — {} returns ok:true with an empty history (NEVER no_db). Fail-CLOSED: a poisoned numeric limit returns ok:false invalid_limit BEFORE clamping."
+}

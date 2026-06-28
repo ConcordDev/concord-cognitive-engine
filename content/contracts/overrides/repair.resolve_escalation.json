@@ -1,0 +1,21 @@
+{
+  "macro_id": "repair.resolve_escalation",
+  "domain": "repair",
+  "name": "resolve_escalation",
+  "inputs": {
+    "id": { "type": "string", "maxLength": 200 },
+    "resolution": { "type": "string", "enum": ["approved", "dismissed"] }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || ['approved','dismissed'].includes(output.resolution)",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_id" } },
+    { "input": { "id": "does-not-exist", "resolution": "approved" }, "expect": { "ok": false } },
+    { "input": { "id": "does-not-exist", "resolution": "dismissed" }, "expect": { "ok": false } }
+  ],
+  "_note": "repair.resolve_escalation is the operator's approve/dismiss decision on a queued escalation (UPDATE on migration 029 initiatives, scoped to trigger_type='system_repair_escalation'). It requires an actor (no_actor) and an id (missing_id). resolution !== 'approved' is coerced to 'dismissed' — approved → status 'acted', dismissed → status 'dismissed'. ok is true only when a row actually changed; resolving an unknown or non-repair id is ok:false. Against the live DB it never returns no_db. No numeric inputs, so the V2 fuzz vector only exercises the missing-id / unknown-id guards."
+}

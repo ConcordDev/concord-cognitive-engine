@@ -100,6 +100,97 @@ describe("appearance.for_npc", () => {
   });
 });
 
+describe("appearance.options", () => {
+  beforeEach(async () => {
+    for (let i = 0; i < 50; i++) {
+      if (_registry.has("appearance.options")) break;
+      await new Promise((r) => {
+        setTimeout(r, 20);
+      });
+    }
+  });
+
+  const REAL_SLOTS = [
+    "body", "hair", "face", "top", "bottom", "shoes",
+    "hat", "glasses", "back", "hand", "particle",
+  ];
+  // A spot-check of REAL renderable enum values from character-schema.ts.
+  const REAL_VALUES = {
+    body: ["slim", "average", "legend"],
+    hair: ["bald", "undercut", "mohawk"],
+    face: ["round", "soft"],
+    top: ["shirt", "synth-jacket", "robe"],
+    bottom: ["pants", "cargo"],
+    shoes: ["sandal", "boot", "barefoot"],
+    hat: ["circlet", "crown", "visor"],
+  };
+
+  it("returns a real per-slot catalog with every canonical slot", async () => {
+    const handler = _registry.get("appearance.options");
+    const r = await handler({});
+    assert.equal(r.ok, true);
+    assert.ok(r.slots, "expected slots map");
+    for (const s of REAL_SLOTS) {
+      assert.ok(Array.isArray(r.slots[s]), `slot ${s} should be an array`);
+      assert.ok(r.slots[s].length > 0, `slot ${s} should be non-empty`);
+    }
+  });
+
+  it("every option is a real renderable enum value with a humanized name", async () => {
+    const handler = _registry.get("appearance.options");
+    const r = await handler({});
+    for (const [slot, expected] of Object.entries(REAL_VALUES)) {
+      const ids = r.slots[slot].map((o) => o.assetId);
+      for (const v of expected) {
+        assert.ok(ids.includes(v), `slot ${slot} should include real enum '${v}'`);
+      }
+      for (const o of r.slots[slot]) {
+        assert.equal(typeof o.assetId, "string");
+        assert.ok(o.name && typeof o.name === "string", "every option needs a name");
+        // NO fabricated price field anywhere.
+        assert.equal(o.price, undefined, "options must NOT carry a fabricated price");
+      }
+    }
+  });
+
+  it("returns real skin tones + color swatches (genuine hex)", async () => {
+    const handler = _registry.get("appearance.options");
+    const r = await handler({});
+    assert.ok(Array.isArray(r.skinTones) && r.skinTones.length > 0);
+    assert.ok(Array.isArray(r.colors) && r.colors.length > 0);
+    for (const t of r.skinTones) assert.match(t.color, /^#[0-9a-fA-F]{6}$/);
+    for (const c of r.colors) assert.match(c.color, /^#[0-9a-fA-F]{6}$/);
+  });
+
+  it("is deterministic — repeated calls return identical catalogs", async () => {
+    const handler = _registry.get("appearance.options");
+    const a = await handler({});
+    const b = await handler({});
+    assert.deepEqual(a.slots, b.slots);
+    assert.deepEqual(a.skinTones, b.skinTones);
+    assert.deepEqual(a.colors, b.colors);
+  });
+
+  it("works without a db/actor (base set), and surfaces saved outfits when present", async () => {
+    const handler = _registry.get("appearance.options");
+    const base = await handler({});
+    assert.deepEqual(base.savedOutfits, []);
+
+    const db = setupDb();
+    db.exec(`CREATE TABLE saved_outfits (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, name TEXT NOT NULL,
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );`);
+    db.prepare(`INSERT INTO saved_outfits (id, user_id, name) VALUES (?, ?, ?)`)
+      .run("of_1", "u1", "Forge Garb");
+    const r = await handler({ db, actor: { userId: "u1" } });
+    assert.equal(r.ok, true);
+    assert.equal(r.savedOutfits.length, 1);
+    assert.equal(r.savedOutfits[0].assetId, "of_1");
+    assert.equal(r.savedOutfits[0].owned, true);
+  });
+});
+
 describe("appearance.for_world", () => {
   let db;
   beforeEach(async () => {

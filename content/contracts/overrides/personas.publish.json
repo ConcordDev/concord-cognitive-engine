@@ -1,0 +1,18 @@
+{
+  "macro_id": "personas.publish",
+  "domain": "personas",
+  "name": "publish",
+  "inputs": {
+    "personaId": { "type": "string", "maxLength": 120 },
+    "published": { "type": "boolean" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "roadmap" } }
+  ],
+  "_note": "Live boot reality: the reachable personas.publish is the Z4 roadmap stub — it HONESTLY returns { ok:false, reason:'roadmap' } (the lens renders a 'coming soon' badge / Failed flash). It is NOT a fake success. The real publish (toggle marketplace visibility, author-gated) lives in the currently-unwired server/domains/personas.js. DO NOT assert ok:true here until registerPersonasActions(registerLensAction) is imported in server.js — that is the wiring fix that makes this macro real."
+}

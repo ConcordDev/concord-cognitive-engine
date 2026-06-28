@@ -1,0 +1,19 @@
+{
+  "macro_id": "federation.listActorKeys",
+  "domain": "federation",
+  "name": "listActorKeys",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.entries))",
+    "output.ok === false || (typeof output.result.total === 'number' && output.result.total === output.result.entries.length)",
+    "output.ok === false || (typeof output.result.verified === 'number' && output.result.verified <= output.result.total)",
+    "output.ok === false || output.result.entries.every(e => typeof e.fingerprint === 'string')",
+    "output.ok === false || output.result.entries.every(e => e.publicKey === undefined)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "federation.listActorKeys (LENS_ACTIONS, not MACROS) lists the caller's registered signed-actor keys with rotation state. The raw publicKey is NOT included in the listing projection (only the deterministic fingerprint) — defense against leaking key material to the UI. verified counts only entries whose last verifyActorSignature succeeded. Returns ok:true with empty entries for a fresh actor — pure in-memory, per-user, never no_db."
+}

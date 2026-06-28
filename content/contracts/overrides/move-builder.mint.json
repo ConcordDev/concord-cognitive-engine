@@ -1,0 +1,22 @@
+{
+  "macro_id": "move-builder.mint",
+  "domain": "move-builder",
+  "name": "mint",
+  "inputs": {
+    "name": { "type": "string", "required": true, "maxLength": 120 },
+    "skillKind": { "type": "string", "enum": ["fighting_style", "spell", "biopower", "cyber_ability", "psionic", "tech_gadget", "mundane"] },
+    "element": { "type": "string", "maxLength": 32 },
+    "skillLevel": { "type": "number", "min": 1, "max": 300 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof output.reason === 'string'",
+    "output.ok === false || (typeof output.moveId === 'string' && output.moveId.length > 0)",
+    "output.ok === false || (output.motion && typeof output.motion.motionFamily === 'string')",
+    "output.reason !== 'budget_overspent' || (typeof output.spent === 'number' && output.spent > output.budget)"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_name" } }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "macro_id": "insurance.pact-renew",
+  "domain": "insurance",
+  "name": "pact-renew",
+  "inputs": {
+    "pactId": { "type": "string", "maxLength": 120 },
+    "durationDays": { "type": "number", "min": 1, "max": 1000000000 },
+    "autoRenew": { "type": "boolean" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && output.result.pact && typeof output.result.pact.id === 'string')",
+    "output.ok === false || output.result.pact.status === 'active'",
+    "output.ok === false || Number.isFinite(output.result.pact.expiresAt)",
+    "output.ok === false || output.result.pact.renewCount >= 1"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "pact not found" } },
+    { "input": { "pactId": "nope", "durationDays": 14 }, "expect": { "ok": false, "error": "pact not found" } },
+    { "input": { "pactId": "nope", "durationDays": 1e308 }, "expect": { "ok": false } }
+  ],
+  "_note": "insurance.pact-renew extends an inheritance pact's expiry and flips it back to active (renewCount++). Fail-CLOSED: poisoned numeric durationDays (NaN/Infinity/1e308/negative) returns ok:false invalid_durationDays BEFORE the write. Revoked/fired pacts reject. An expired pact re-bases off now; an active pact extends from its current expiry. STATE-backed per-user via the internal owner actor — an unknown/empty pactId returns 'pact not found', NEVER no_db. No CC is touched (sparks-only lens)."
+}

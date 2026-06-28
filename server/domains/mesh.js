@@ -20,8 +20,53 @@
 // real user-entered state (persisted in globalThis._concordSTATE Maps,
 // keyed by userId) or a deterministic computation over the real
 // TRANSPORT_SPECS from the routing substrate. No synthesized telemetry.
+//
+// REGISTRATION (saved-class fix, 2026-06): this file used to register through
+// the legacy `registerLensAction(domain, action, (ctx, artifact, params))`
+// convention AND was NEVER imported by server.js — so every `mesh.*` macro
+// (meshMap / addNode / sendMessage / signalMetrics / …) was invisible to
+// runMacro and to POST /api/lens/run → every call hit `unknown_macro`, leaving
+// the lens components (MeshTopology, MeshMessaging, MeshSignal, MeshQueue,
+// MeshChannels) dead-wired. It is now wired through the canonical `register`
+// (MACROS) registry — `registerMeshActions(register)` in server.js — so the
+// macros are reachable BOTH via POST /api/lens/run AND via runMacro (which the
+// contract engine + macro-assassin + behavior-smoke harness drive).
+//
+// To keep the verified handler bodies below byte-for-byte identical, the
+// default export adapts the canonical 2-arg `(ctx, input)` signature back to
+// the legacy `(ctx, artifact, params)` shape via the `registerLensAction` shim
+// — `params` (and `artifact.data`) carry the input, identical to what
+// `/api/lens/run` would have built. Handlers return a `{ ok, result }` envelope
+// (the dispatcher's `_unwrapLensEnvelope` strips the `result` layer so the
+// frontend reads `r.data.result.<field>`).
+//
+// NAME-COLLISION NOTE: server.js ALSO registers a distinct set of inline
+// `mesh.*` macros (status, topology, channels, send, pending, stats, relay,
+// peers, transfer, sync) that read the SHARED 7-transport routing substrate.
+// This module's macros (meshMap, addNode, listNodes, pingNode, removeNode,
+// sendMessage, conversation, markRead, signalMetrics, coverage, queueList,
+// queueRetry, queuePrioritize, queueDrop, createChannel, listChannels,
+// setChannelKey, deleteChannel, overview) use DISJOINT names — no overlap, no
+// duplicate registration. Verified by grep at fix time.
+//
+// Fail-CLOSED numeric guard: macros that WRITE from a numeric input (hops /
+// quality / limit) call `badNumericField` BEFORE the write, rejecting
+// NaN/Infinity/1e308/negative instead of silently clamping them to an accepted
+// row (the macro-assassin's V2 vector probes exactly this).
 
 import { TRANSPORT_SPECS, TRANSPORT_LIST } from "../lib/concord-mesh.js";
+
+// Reject a poisoned numeric input (NaN/Infinity/1e308/negative) BEFORE writing.
+// An absent/null field is fine (the macro uses its default). Returns null when
+// clean, else the offending key. Copied from server/domains/literary.js.
+function badNumericField(input, keys) {
+  for (const k of keys) {
+    if (input == null || input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e9) return k;
+  }
+  return null;
+}
 
 // ── Per-user persistent state ───────────────────────────────────────────────
 
@@ -76,7 +121,18 @@ function specFor(transport) {
 
 // ── Module registration ─────────────────────────────────────────────────────
 
-export default function registerMeshActions(registerLensAction) {
+export default function registerMeshActions(register) {
+  // Legacy-convention shim: adapt canonical register(ctx, input) → the
+  // verified (ctx, artifact, params) handler bodies below, unchanged.
+  const registerLensAction = (domain, action, handler, spec) =>
+    register(domain, action, (ctx, input = {}) => {
+      const inp = input && typeof input === "object" ? input : {};
+      const artifact = inp.artifact && typeof inp.artifact === "object"
+        ? inp.artifact
+        : { id: null, domain, type: "domain_action", data: inp, meta: {} };
+      return handler(ctx, artifact, inp);
+    }, spec);
+
   /**
    * meshMap — topology graph for visualization. Returns nodes + edges
    * built from the user's named/known nodes. The self node is always
@@ -146,6 +202,8 @@ export default function registerMeshActions(registerLensAction) {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
       const name = String(data.name || "").trim();
       if (!name) return { ok: false, error: "node name required" };
+      const badNum = badNumericField(data, ["hops", "quality"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const transports = Array.isArray(data.transports) && data.transports.length
         ? data.transports.filter((t) => TRANSPORTS.includes(t) || specFor(t))
         : ["internet"];
@@ -296,6 +354,8 @@ export default function registerMeshActions(registerLensAction) {
     try {
       const uid = userId(ctx);
       const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const badNum = badNumericField(data, ["limit"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const peer = data.with || data.nodeId || data.channelId;
       const all = userArr(meshState().meshMessages, uid);
       const thread = peer
@@ -388,6 +448,8 @@ export default function registerMeshActions(registerLensAction) {
   registerLensAction("mesh", "coverage", (ctx, artifact, params) => {
     try {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
+      const badNum = badNumericField(data, ["hops"]);
+      if (badNum) return { ok: false, error: `invalid_${badNum}` };
       const hops = Math.max(1, Math.min(16, +data.hops || 3));
       // Per-hop straight-line range in metres for each transport.
       const perHopMeters = {

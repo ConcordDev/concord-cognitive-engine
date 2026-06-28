@@ -1,0 +1,30 @@
+{
+  "macro_id": "accounting.profitLoss",
+  "domain": "accounting",
+  "name": "profitLoss",
+  "inputs": {
+    "accounts": { "type": "array", "required": false },
+    "startDate": { "type": "string", "required": false, "maxLength": 32 },
+    "endDate": { "type": "string", "required": false, "maxLength": 32 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.revenue.total)",
+    "output.ok === false || Number.isFinite(output.result.costOfGoodsSold.total)",
+    "output.ok === false || Number.isFinite(output.result.grossProfit)",
+    "output.ok === false || Number.isFinite(output.result.netIncome)",
+    "output.ok === false || Number.isFinite(output.result.grossMarginPct)",
+    "output.ok === false || Number.isFinite(output.result.netMarginPct)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "accounts": [{ "accountNumber": "4000", "name": "Sales", "type": "revenue", "entries": [{ "date": "2026-03-01", "debit": 0, "credit": 1000 }] }, { "accountNumber": "5000", "type": "cogs", "entries": [{ "date": "2026-03-02", "debit": 400, "credit": 0 }] }], "startDate": "2026-01-01", "endDate": "2026-12-31" }, "expect": { "ok": true } },
+    { "input": { "accounts": [{ "accountNumber": "6000", "type": "expense", "entries": [{ "date": "2026-03-03", "debit": 200, "credit": 0 }] }] }, "expect": { "ok": true } },
+    { "input": { "accounts": [{ "accountNumber": "4000", "type": "revenue", "entries": [{ "date": "2026-03-01", "debit": 0, "credit": "1e999" }] }] }, "expect": { "ok": true } },
+    { "input": { "accounts": [{ "accountNumber": "4000", "type": "revenue", "entries": [{ "date": "2026-03-01", "debit": "NaN", "credit": "Infinity" }] }] }, "expect": { "ok": true } },
+    { "input": { "accounts": "boom" }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/accounting.js). 3-arg dispatch via /api/lens/run on key 'accounting.profitLoss'. Deterministic pure compute. Zero-revenue → grossMarginPct/netMarginPct are 0 (guarded divide-by-zero, no NaN). POISON: credit/debit coerced via finNum so a 'revenue' of '1e999' collapses to 0 and every margin/total stays FINITE. Not driven by macro-assassin (lives in LENS_ACTIONS, not MACROS); authored spec pinned by server/tests/accounting-lens-macros.test.js."
+}

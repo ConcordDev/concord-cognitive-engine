@@ -1,0 +1,33 @@
+{
+  "macro_id": "voice.transcriptAnalyze",
+  "domain": "voice",
+  "name": "transcriptAnalyze",
+  "inputs": {
+    "transcript": { "type": "string", "maxLength": 40000 },
+    "text": { "type": "string", "maxLength": 40000 },
+    "durationMinutes": { "type": "number" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result === 'object')",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.wordCount)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.sentenceCount)",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.speakingRate === 'string'",
+    "output.ok === false || output.result.message !== undefined || (typeof output.result.fillerWords === 'object' && !Array.isArray(output.result.fillerWords))",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalFillers)",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.fillerRate === 'string'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.vocabularyRichness === 'string'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "transcript": "Good morning. Um, we will ship the great release today.", "durationMinutes": 1 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "transcript": "Just a single sentence here." } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "transcript": "Some words.", "durationMinutes": "Infinity" } } }, "expect": { "ok": false } },
+    { "input": { "artifact": { "data": { "transcript": "Some words.", "durationMinutes": "1e999" } } }, "expect": { "ok": false } },
+    { "input": { "artifact": { "data": { "transcript": { "not": "a string" } } } }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTION (registerLensAction). Dispatch key 'voice.transcriptAnalyze'. Deterministic pure text compute; reads artifact.data (VoiceActionPanel.callMacro channel: runDomain → {input:{artifact:{data}}} peeled at dispatch). FAIL-CLOSED: a non-finite or negative durationMinutes (NaN/Infinity/'1e999') is rejected via Number.isFinite (no NaN WPM leak); a non-string transcript is rejected. Result card renders wordCount/sentenceCount/speakingRate('N words/min')/fillerWords{} (object)/totalFillers/fillerRate('N%')/vocabularyRichness EXACTLY — the page's prior inline panel read wpm/sentences/durationSeconds + fillerWords-as-number which were never returned (fixed 2026-06-28). Not assassin-driven (LENS_ACTION, not in MACROS map); authored spec pinned by server/tests/voice-lens-macros.test.js."
+}

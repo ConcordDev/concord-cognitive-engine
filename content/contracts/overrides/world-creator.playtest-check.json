@@ -1,0 +1,22 @@
+{
+  "macro_id": "world-creator.playtest-check",
+  "domain": "world-creator",
+  "name": "playtest-check",
+  "inputs": {
+    "id": { "type": "string", "required": true, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || typeof output.result.ready === 'boolean'",
+    "output.ok !== true || (Array.isArray(output.result.issues) && Array.isArray(output.result.warnings))",
+    "output.ok !== true || (output.result.worldPayload && typeof output.result.worldPayload.name === 'string' && typeof output.result.worldPayload.rule_modulators === 'object')",
+    "output.ok !== true || (output.result.ready === false || output.result.issues.length === 0)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "id": "ghost_draft" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "world-creator.playtest-check is the gate the DraftEditor 'Playtest' button runs before it POSTs worldPayload to /api/worlds to mint the real world. It is a read-only LENS_ACTIONS handler over the caller's own draft (per-user STATE, no cross-user reach). ready === (issues.length === 0); a missing spawn point is a blocking ISSUE (player has nowhere to land), while empty scene / no NPCs / no zones are non-blocking WARNINGS. worldPayload is shaped { name, universe_type, description, physics_modulators, rule_modulators:{...draft.rules, biome} } so it drops straight into POST /api/worlds. An unknown / not-owned draft id rejects with 'draft not found', never a throw. LENS_ACTIONS (path-3), not in the runMacro MACROS registry. Pinned behaviorally in server/tests/world-creator-lens.test.js."
+}

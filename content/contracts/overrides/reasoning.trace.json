@@ -1,0 +1,19 @@
+{
+  "macro_id": "reasoning.trace",
+  "domain": "reasoning",
+  "name": "trace",
+  "inputs": {
+    "traceId": { "type": "string", "required": true, "maxLength": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.trace === 'object' && output.trace !== null)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "traceId_required" } },
+    { "input": { "traceId": "hlr_trace_definitely_absent_zzz" }, "expect": { "ok": false, "error": "no_trace" } }
+  ],
+  "_note": "reasoning.trace fetches one full HLR trace by id (server/emergent/hlr-engine.js#getReasoningTrace). Missing id -> traceId_required; unknown id -> no_trace. Traces are immutable records of a reasoning pass — there is no edit/delete macro by design."
+}

@@ -1,0 +1,22 @@
+{
+  "macro_id": "lore.get",
+  "domain": "lore",
+  "name": "get",
+  "inputs": {
+    "id": { "type": "string", "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.event && typeof output.event.id === 'string')",
+    "output.ok === false || !('hidden_truth' in output.event)",
+    "output.ok === true || typeof output.reason === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "reason": "missing_id" } },
+    { "input": { "id": "" }, "expect": { "ok": false, "reason": "missing_id" } },
+    { "input": { "id": "lore_founding_compact" }, "expect": { "ok": true } },
+    { "input": { "id": "lore_does_not_exist_xyz" }, "expect": { "ok": false, "reason": "unknown_event" } }
+  ],
+  "_note": "lore.get resolves a single authored event by id from the file-backed canon (lib/authored-lore.js). A missing id → ok:false missing_id; an unknown id → ok:false unknown_event (NOT no_db — the corpus is file-backed). On success the event has hidden_truth stripped (author-only invariant). The empty-input {} case is intentionally ok:false here because id is required — this is a single-record lookup, not a list read."
+}

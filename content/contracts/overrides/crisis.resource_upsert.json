@@ -1,0 +1,26 @@
+{
+  "macro_id": "crisis.resource_upsert",
+  "domain": "crisis",
+  "name": "resource_upsert",
+  "inputs": {
+    "name": { "type": "string", "required": true, "maxLength": 80 },
+    "category": { "type": "string", "maxLength": 40 },
+    "unit": { "type": "string", "maxLength": 20 },
+    "resourceId": { "type": "string", "maxLength": 120 },
+    "quantity": { "type": "number", "min": 0, "max": 1000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.resource.id === 'string'",
+    "output.ok === false || output.result.resource.quantity >= 0",
+    "output.ok === false || output.result.resource.deployed <= output.result.resource.quantity",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false, "error": "missing_name" } },
+    { "input": { "name": "Rescue boat", "quantity": "1e999" }, "expect": { "ok": false, "error": "bad_numeric_field" } },
+    { "input": { "name": "Rescue boat", "category": "vehicles", "quantity": 4, "unit": "boats" }, "expect": { "ok": true } }
+  ],
+  "_note": "Adds/updates a deployable resource. quantity is fail-CLOSED via badNumericField (NaN/Infinity/negative/over-cap → bad_numeric_field). deployed is clamped to the new quantity so it can never exceed it. Missing name → missing_name."
+}

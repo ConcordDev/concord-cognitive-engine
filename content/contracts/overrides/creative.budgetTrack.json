@@ -1,0 +1,29 @@
+{
+  "macro_id": "creative.budgetTrack",
+  "domain": "creative",
+  "name": "budgetTrack",
+  "inputs": {
+    "budget": { "type": "number", "required": false },
+    "expenses": { "type": "array", "required": false },
+    "lines": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.totalBudgeted)",
+    "output.ok === false || Number.isFinite(output.result.totalActual)",
+    "output.ok === false || Number.isFinite(output.result.totalVariance)",
+    "output.ok === false || typeof output.result.overBudget === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.lines)",
+    "output.ok === false || output.result.lines.every(function(l){ return Number.isFinite(l.budgeted) && Number.isFinite(l.actual) && Number.isFinite(l.variance); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "lines": [{ "category": "Talent", "budgeted": 5000, "actual": 4200 }, { "category": "Gear", "budgeted": 2000, "actual": 2600 }] }, "expect": { "ok": true } },
+    { "input": { "budget": 1000, "expenses": [{ "category": "A", "amount": 800 }, { "category": "B", "amount": 700 }] }, "expect": { "ok": true } },
+    { "input": { "lines": [{ "category": "X", "budgeted": "1e999", "actual": "Infinity" }, { "category": "Y", "budgeted": 0, "actual": "NaN" }] }, "expect": { "ok": true } },
+    { "input": { "lines": "nope" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler backing CreativeActionPanel.tsx 'Budget JSON' → Budget. Component renders r.result.{totalBudgeted, totalActual, totalVariance, overBudget, lines[].{category,budgeted,actual,status}}; field-aligned 2026-06. Accepts line-item lines[] OR budget+expenses[] roll-up. POISON: budgeted/actual via cvNum so '1e999'/'Infinity'/'NaN' collapse to 0; every line + total stays FINITE. Deterministic pure compute. Pinned by server/tests/creative-lens-macros.test.js."
+}
