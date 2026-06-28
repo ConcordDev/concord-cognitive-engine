@@ -1,0 +1,28 @@
+{
+  "macro_id": "art.compositionScore",
+  "domain": "art",
+  "name": "compositionScore",
+  "inputs": {
+    "elements": { "type": "array", "required": false },
+    "canvas": { "type": "object", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overall)",
+    "output.ok === false || output.result.message !== undefined || (output.result.overall >= 0 && output.result.overall <= 100)",
+    "output.ok === false || output.result.message !== undefined || ['excellent','good','fair','needs_work'].includes(output.result.rating)",
+    "output.ok === false || output.result.message !== undefined || ['ruleOfThirds','goldenRatio','balance','whitespace','visualFlow'].every(function(k){ return Number.isFinite(output.result.scores[k]); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "elements": [] }, "expect": { "ok": true } },
+    { "input": { "elements": [{ "x": 640, "y": 360, "width": 200, "height": 200, "weight": 2 }, { "x": 1280, "y": 720, "width": 150, "height": 150 }], "canvas": { "width": 1920, "height": 1080 } }, "expect": { "ok": true } },
+    { "input": { "elements": [{ "x": "Infinity", "y": 0, "width": 10, "height": 10 }], "canvas": { "width": 1920, "height": 1080 } }, "expect": { "ok": false } },
+    { "input": { "elements": [{ "x": 1, "y": 1, "width": "1e999", "height": 10 }], "canvas": { "width": 1920, "height": 1080 } }, "expect": { "ok": false } },
+    { "input": { "elements": [{ "x": 1, "y": 1, "width": 10, "height": 10 }], "canvas": { "width": "NaN", "height": 1080 } }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/art.js). Dispatch key 'art.compositionScore'. Pure geometry scoring over artifact.data.elements=[{x,y,width,height,weight?}] + artifact.data.canvas={width,height}. POISON: a non-finite coordinate/dimension/weight or non-positive/non-finite canvas is fail-CLOSED (rejected) before any math, so no NaN/Infinity score leaks under ok:true; empty elements degrade to ok:true {message}. Drives ArtActionPanel 'Composition'. Pinned by server/tests/art-lens-macros.test.js."
+}

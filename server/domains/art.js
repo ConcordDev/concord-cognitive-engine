@@ -52,6 +52,16 @@ export default function registerArtActions(registerLensAction) {
     return { r: parseInt(h.substring(0, 2), 16), g: parseInt(h.substring(2, 4), 16), b: parseInt(h.substring(4, 6), 16) };
   }
 
+  // Strict #RRGGBB / RRGGBB validator. Returns the normalized "#rrggbb" string
+  // or null. Used to fail-CLOSED on malformed hex BEFORE hexToRgb can emit NaN
+  // channels that would otherwise leak into harmonyScore / dominantHue / a
+  // generated palette while the handler still reported ok:true.
+  function normalizeHex(v) {
+    if (typeof v !== "string") return null;
+    const m = /^#?([0-9a-fA-F]{6})$/.exec(v.trim());
+    return m ? `#${m[1].toLowerCase()}` : null;
+  }
+
   function rgbToHsl(r, g, b) {
     r /= 255; g /= 255; b /= 255;
     const max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -94,11 +104,19 @@ export default function registerArtActions(registerLensAction) {
    */
   registerLensAction("art", "colorHarmony", (ctx, artifact, _params) => {
   try {
-    const rawPalette = artifact.data?.palette || [];
+    const rawPalette = Array.isArray(artifact.data?.palette) ? artifact.data.palette : [];
     if (rawPalette.length === 0) return { ok: true, result: { message: "No palette provided." } };
 
-    const colors = rawPalette.map(c => {
-      const hex = typeof c === "string" ? c : c.hex;
+    // Fail-CLOSED on malformed hex: a non-#RRGGBB entry would make hexToRgb emit
+    // NaN channels that silently poison harmonyScore / dominantHue. Reject
+    // instead of leaking NaN under ok:true.
+    const normalized = rawPalette.map(c => normalizeHex(typeof c === "string" ? c : c?.hex));
+    if (normalized.some(h => h === null)) {
+      return { ok: false, error: "palette entries must be #RRGGBB hex colors" };
+    }
+
+    const colors = rawPalette.map((c, idx) => {
+      const hex = normalized[idx];
       const rgb = hexToRgb(hex);
       const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
       const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
@@ -190,11 +208,26 @@ export default function registerArtActions(registerLensAction) {
    */
   registerLensAction("art", "compositionScore", (ctx, artifact, _params) => {
   try {
-    const elements = artifact.data?.elements || [];
+    const elements = Array.isArray(artifact.data?.elements) ? artifact.data.elements : [];
     const canvas = artifact.data?.canvas || { width: 1920, height: 1080 };
     if (elements.length === 0) return { ok: true, result: { message: "No elements to analyze." } };
 
-    const cw = canvas.width, ch = canvas.height;
+    // Fail-CLOSED on poisoned geometry: an Infinity/NaN/1e308 coordinate or a
+    // non-finite canvas dimension would propagate NaN/Infinity into every score
+    // under ok:true. Reject before any math runs.
+    const fin = v => Number.isFinite(Number(v));
+    const cw = Number(canvas.width), ch = Number(canvas.height);
+    if (!fin(cw) || !fin(ch) || cw <= 0 || ch <= 0) {
+      return { ok: false, error: "canvas width and height must be positive finite numbers" };
+    }
+    for (const el of elements) {
+      if (!fin(el?.x) || !fin(el?.y) ||
+          (el?.width != null && !fin(el.width)) ||
+          (el?.height != null && !fin(el.height)) ||
+          (el?.weight != null && !fin(el.weight))) {
+        return { ok: false, error: "element x/y/width/height/weight must be finite numbers" };
+      }
+    }
     const scores = {};
 
     // 1. Rule of thirds: how close elements are to intersection points
@@ -297,9 +330,16 @@ export default function registerArtActions(registerLensAction) {
    */
   registerLensAction("art", "generatePalette", (ctx, artifact, params) => {
   try {
-    const baseHex = params.baseColor || artifact.data?.baseColor || "#3498db";
+    const baseRaw = params.baseColor || artifact.data?.baseColor || "#3498db";
+    const baseHex = normalizeHex(baseRaw);
+    // Fail-CLOSED: a malformed baseColor would drive hexToRgb → NaN hsl → a
+    // palette of NaN-derived "#NaNNaN" swatches under ok:true.
+    if (baseHex === null) return { ok: false, error: "baseColor must be a #RRGGBB hex color" };
     const harmony = params.harmony || "analogous";
-    const count = params.count || 5;
+    // Clamp count to a sane finite integer in [2,24]; a poisoned Infinity/NaN
+    // would otherwise drive an unbounded / NaN loop.
+    const countRaw = Number(params.count);
+    const count = Number.isFinite(countRaw) ? Math.max(2, Math.min(24, Math.floor(countRaw))) : 5;
 
     const rgb = hexToRgb(baseHex);
     const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
@@ -386,15 +426,24 @@ export default function registerArtActions(registerLensAction) {
    */
   registerLensAction("art", "styleClassify", (ctx, artifact, _params) => {
   try {
-    const attrs = artifact.data?.attributes || {};
-    const brushwork = attrs.brushwork ?? 50;
-    const saturation = attrs.colorSaturation ?? 50;
-    const contrast = attrs.contrast ?? 50;
-    const perspective = attrs.perspective ?? 50;
-    const detail = attrs.detail ?? 50;
-    const abstraction = attrs.abstraction ?? 50;
-    const lineWeight = attrs.lineWeight ?? 50;
-    const texture = attrs.texture ?? 50;
+    const attrs = (artifact.data?.attributes && typeof artifact.data.attributes === "object") ? artifact.data.attributes : {};
+    // Each axis defaults to 50 when absent, and is CLAMPED into [0,100] when
+    // present. A poisoned Infinity/NaN/1e308 axis would otherwise leak a
+    // non-finite similarity under ok:true — clamp fails it closed to the scale.
+    const axis = v => {
+      if (v == null) return 50;
+      const n = Number(v);
+      if (!Number.isFinite(n)) return 50;
+      return Math.max(0, Math.min(100, n));
+    };
+    const brushwork = axis(attrs.brushwork);
+    const saturation = axis(attrs.colorSaturation);
+    const contrast = axis(attrs.contrast);
+    const perspective = axis(attrs.perspective);
+    const detail = axis(attrs.detail);
+    const abstraction = axis(attrs.abstraction);
+    const lineWeight = axis(attrs.lineWeight);
+    const texture = axis(attrs.texture);
 
     // Style matching via characteristic profiles
     const styles = [

@@ -1,0 +1,30 @@
+{
+  "macro_id": "art.generatePalette",
+  "domain": "art",
+  "name": "generatePalette",
+  "inputs": {
+    "baseColor": { "type": "string", "required": false, "maxLength": 7 },
+    "harmony": { "type": "string", "required": false, "maxLength": 32 },
+    "count": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || Array.isArray(output.result.palette)",
+    "output.ok === false || output.result.palette.length >= 2",
+    "output.ok === false || output.result.palette.length <= 24",
+    "output.ok === false || output.result.palette.every(function(c){ return /^#[0-9a-f]{6}$/i.test(c.hex); })",
+    "output.ok === false || typeof output.result.harmony === 'string'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "baseColor": "#3498db", "harmony": "complementary", "count": 5 }, "expect": { "ok": true } },
+    { "input": { "baseColor": "#ff0000" }, "expect": { "ok": true } },
+    { "input": { "baseColor": "#3498db", "harmony": "analogous", "count": "1e999" }, "expect": { "ok": true } },
+    { "input": { "baseColor": "not-a-color", "count": 4 }, "expect": { "ok": false } },
+    { "input": { "baseColor": "#zzz", "count": 3 }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/art.js). Dispatch key 'art.generatePalette'. Pure compute from params.baseColor/harmony/count. POISON: a malformed baseColor is fail-CLOSED via normalizeHex (rejected) so no '#NaNNaN' swatch is emitted; count is coerced + clamped to a finite [2,24] so Infinity/NaN can't drive an unbounded/NaN loop. Drives PaletteWorkshop + ArtActionPanel 'Palette'. Pinned by server/tests/art-lens-macros.test.js."
+}

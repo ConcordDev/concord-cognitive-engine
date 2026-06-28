@@ -1,0 +1,20 @@
+{
+  "macro_id": "art.aic-search",
+  "domain": "art",
+  "name": "aic-search",
+  "external_io": true,
+  "inputs": {
+    "query": { "type": "string", "required": false, "maxLength": 200 },
+    "limit": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "query": "   " }, "expect": { "ok": false } }
+  ],
+  "_note": "art.aic-search (server/domains/art.js) hits the Art Institute of Chicago API (api.artic.edu, free/no-key). EXTERNAL-IO — marked external_io:true so it is NEVER driven against the live endpoint by the assassin. Fail-soft: empty query is validate-REJECTED ({ok:false,error:'query required'}) BEFORE any fetch; network failure returns {ok:false,error} and never throws. The /lenses/art ArtExplorer calls it via runDomain('art','aic-search',{input:{query,limit}}). Pinned (validate-reject, no-network) by server/tests/art-lens-macros.test.js."
+}

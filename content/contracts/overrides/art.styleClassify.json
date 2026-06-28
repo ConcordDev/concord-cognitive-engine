@@ -1,0 +1,27 @@
+{
+  "macro_id": "art.styleClassify",
+  "domain": "art",
+  "name": "styleClassify",
+  "inputs": {
+    "attributes": { "type": "object", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (output.result.topMatch && typeof output.result.topMatch.style === 'string')",
+    "output.ok === false || Number.isFinite(output.result.topMatch.similarity)",
+    "output.ok === false || Array.isArray(output.result.allMatches)",
+    "output.ok === false || output.result.allMatches.every(function(m){ return Number.isFinite(m.similarity); })",
+    "output.ok === false || ['high','moderate','low'].includes(output.result.confidence)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "attributes": {} }, "expect": { "ok": true } },
+    { "input": { "attributes": { "brushwork": 80, "colorSaturation": 70, "contrast": 40, "perspective": 40, "detail": 30, "abstraction": 40, "lineWeight": 20, "texture": 70 } }, "expect": { "ok": true } },
+    { "input": { "attributes": { "brushwork": "Infinity", "colorSaturation": "NaN", "contrast": "1e999" } }, "expect": { "ok": true } },
+    { "input": { "attributes": { "detail": -5, "texture": 999 } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/art.js). Dispatch key 'art.styleClassify'. Pure compute: nearest-style match of artifact.data.attributes (8 axes 0-100) against 10 reference profiles via normalized 8D Euclidean distance. POISON: each axis is coerced + clamped into [0,100] (non-finite → default 50) so a poisoned axis can never leak a non-finite similarity under ok:true. Drives ArtActionPanel 'Style'. Pinned by server/tests/art-lens-macros.test.js."
+}

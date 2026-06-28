@@ -374,14 +374,17 @@ export default function ArtLensPage() {
 
   const { data: artAssets, isLoading: assetsLoading, isError: isError, error: error, refetch: refetch,} = useQuery({
     queryKey: ['art-assets', selectedStyle, searchQuery],
+    // Don't swallow the error: a thrown queryFn surfaces isError so the
+    // ErrorState + working Retry actually render (previously a `.catch(()=>[])`
+    // made isError permanently false and the error UI dead-code).
     queryFn: () => apiHelpers.artistry.assets.list({ type: 'artwork', search: searchQuery || undefined })
-    .then(r => r.data?.assets || []).catch((err) => { console.error('Failed to fetch art assets:', err instanceof Error ? err.message : err); return []; }),
+    .then(r => r.data?.assets || []),
     initialData: [],
   });
 
   const { data: artListings, isError: isError2, error: error2, refetch: refetch2,} = useQuery({
     queryKey: ['art-marketplace'],
-    queryFn: () => apiHelpers.artistry.marketplace.art.list().then(r => r.data?.artworks || []).catch((err) => { console.error('Failed to fetch art listings:', err instanceof Error ? err.message : err); return []; }),
+    queryFn: () => apiHelpers.artistry.marketplace.art.list().then(r => r.data?.artworks || []),
     initialData: [],
   });
 
