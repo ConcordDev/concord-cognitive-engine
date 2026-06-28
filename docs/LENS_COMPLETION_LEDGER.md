@@ -461,6 +461,29 @@ widespread caller↔receiver FIELD-NAME drift that naive handler-shape tests mis
 its ENTIRE surface dead. The component-exact-shape audit is mandatory for this family.
 46 lenses now through the non-score gate (batches 1–11). The loop continues.
 
+### Phase-2 batch 12 DONE (2026-06-28): plumbing, hvac, electrical, masonry, neuro
+107 server + 25 UX-state tests — the trade-calculator sweep, improved component-exact-shape prompt.
+The field-mismatch + fail-closed class stayed rampant; two more ENTIRE-surface-dead lenses + a
+safety-critical lying calculator:
+- **hvac**: ENTIRE ManualJCalc surface dead (all 4 calcs rendered fields the handler never returned);
+  aligned handler to the cards' canonical names + climate-enum + invalid-date fixes. 16 server + 5 vitest.
+- **electrical**: 🔴 SAFETY — voltageDropCalc printed "Within acceptable limits" for a 30.7% drop
+  (gauge-upgrade walked the ladder the WRONG way); boxFill fake-PASSed a too-small box; wireSize
+  fabricated a 4/0 spec from garbage. Fields aligned; num() fail-closed sanitizer + the recommendation
+  fix. 31 server + 5 vitest + 7 overrides.
+- **neuro**: 2 dead surfaces (connectivityAnalysis connections→significantConnections; erpAnalysis dead
+  on input shape AND output) + 2 Infinity clamps. 18 server + 5 vitest + 5 overrides.
+- **masonry**: 1 dead calc (MaterialEstimator units→unitsNeeded/mortarBags→mortarBags80lb) + real
+  recommendation + fail-closed. 21 server + 5 vitest + 4 overrides.
+- **plumbing**: fields aligned; 4 fail-closed defects (Infinity rendered as 'Infinity"' + a fixtureCount
+  non-array crash). 21 server + 5 vitest + 4 overrides.
+Assassin ratchet GREEN; 258 WIRED; tsc 0. Running tally of the calculator-family sweep (batches 9-12):
+welding + hvac entirely dead; manufacturing 2 + agriculture 3 + neuro 2 + masonry 1 dead calcs;
++ a lying-dose (pharmacy), a lying voltage-drop (electrical), a renderer-corrupting geometry
+(engineering), 2 empty-state crashes, and a long tail of Infinity/NaN fail-opens. The shared
+*ActionPanel/*Calc template propagated this widely — the component-exact-shape audit is mandatory.
+51 lenses now through the non-score gate (batches 1–12). The loop continues.
+
 **NAMED PHASE-2 BACKLOG CLOSED (2026-06-27):** all 6 batches done (24 lenses through the non-score
 gate across batches 1–6). Real defects fixed across the run: 2 CC money bugs (sponsorship.create,
 inheritance value/open_listing) + 1 in-game-currency treasury fail-open (kingdoms) + ~6 numeric

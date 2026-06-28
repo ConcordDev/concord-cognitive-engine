@@ -1,0 +1,26 @@
+{
+  "macro_id": "electrical.loadCalculation",
+  "domain": "electrical",
+  "name": "loadCalculation",
+  "inputs": {
+    "circuits": { "type": "array", "maxLength": 5000 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.totalAmps === undefined || (Number.isFinite(output.result.totalAmps) && output.result.totalAmps >= 0)",
+    "output.ok === false || output.result.totalWatts === undefined || (Number.isFinite(output.result.totalWatts) && output.result.totalWatts >= 0)",
+    "output.ok === false || output.result.utilization === undefined || Number.isFinite(output.result.utilization)",
+    "output.ok === false || output.result.circuits === undefined || Array.isArray(output.result.circuits)",
+    "output.ok === false || output.result.circuits === undefined || output.result.circuits.every((c) => Number.isFinite(c.amps) && c.amps >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "circuits": [{ "name": "Kitchen", "watts": 1800, "voltage": 120 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "circuits": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "circuits": [{ "name": "junk", "watts": "Infinity", "voltage": 0 }, { "name": "neg", "watts": -500, "voltage": 120 }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data.circuits (NecCodeCalc sends runDomain('electrical','loadCalculation',{input:{artifact:{data}}}) → dispatch peels the redundant wrapper → handler reads artifact.data.circuits). amps = watts/voltage; breaker/wire sized at 125% per NEC 310.16/240.4. Fail-closed: poisoned watts/voltage sanitise via num() — non-finite → 0/120, negatives clamp to 0, so amps/totals never leak NaN/Infinity and a load is never negative (safety-relevant). Empty/missing circuits returns the honest 'Add circuits' prompt, not a fabricated tally. Result cards render circuits[].{name,amps,breakerSize,wireGauge} + totalWatts/totalAmps/panelSizeRecommended/utilization/safetyMargin/nec80PercentRule EXACTLY (field-aligned against PanelLoadCalc 2026-06-28). No STATE, no DB."
+}

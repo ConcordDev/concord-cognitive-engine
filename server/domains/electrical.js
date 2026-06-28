@@ -54,7 +54,21 @@ function breakerForAmps(amps) {
   for (const b of STD_BREAKERS) if (b >= amps) return b;
   return 200;
 }
-function round(n, d = 2) { const f = 10 ** d; return Math.round(n * f) / f; }
+function round(n, d = 2) {
+  if (!Number.isFinite(n)) return 0;
+  const f = 10 ** d; return Math.round(n * f) / f;
+}
+// Fail-closed numeric sanitizer: poisoned values (NaN / Infinity / "abc" /
+// null / undefined) coerce to `fallback`; negatives clamp to 0 unless the
+// caller opts into signed values. A safety calculator must NEVER emit a
+// non-finite or nonsensical-negative ampacity / area / volume.
+function num(v, fallback = 0, { min = 0, allowZero = true } = {}) {
+  let n = typeof v === 'number' ? v : parseFloat(v);
+  if (!Number.isFinite(n)) n = fallback;
+  if (Number.isFinite(min) && n < min) n = min;
+  if (!allowZero && n === 0) n = fallback;
+  return n;
+}
 
 export default function registerElectricalActions(registerLensAction) {
   // ── persistent per-user state ───────────────────────────────────────
@@ -118,8 +132,10 @@ export default function registerElectricalActions(registerLensAction) {
         return { ok: true, result: { message: 'Add circuits with wattage to calculate electrical load.' } };
       }
       const analyzed = circuits.map((c) => {
-        const watts = parseFloat(c.watts) || 0;
-        const voltage = parseFloat(c.voltage) || 120;
+        // Fail-closed: poisoned watts/voltage sanitise to safe finite values.
+        // Watts/amps clamp at 0 — a load is never negative (safety-relevant).
+        const watts = num(c.watts, 0);
+        const voltage = num(c.voltage, 120, { allowZero: false });
         const amps = watts / voltage;
         return {
           name: c.name, watts, voltage, amps: round(amps),
@@ -147,19 +163,34 @@ export default function registerElectricalActions(registerLensAction) {
   registerLensAction('electrical', 'voltageDropCalc', (ctx, artifact, _params) => {
     try {
       const data = artifact?.data || {};
-      const amps = parseFloat(data.amps) || 15;
-      const distanceFeet = parseFloat(data.distanceFeet) || 100;
+      // Fail-closed: non-finite amps/distance/voltage sanitise to safe defaults
+      // (never leak NaN/Infinity into a voltage-drop percentage).
+      const amps = num(data.amps, 15, { allowZero: false });
+      const distanceFeet = num(data.distanceFeet, 100, { allowZero: false });
       const wireGauge = data.wireGauge ?? 12;
-      const voltage = parseFloat(data.voltage) || 120;
+      const voltage = num(data.voltage, 120, { allowZero: false });
       const phase = data.phase === '3' || data.phase === 3 ? 3 : 1;
       const rPer1000 = RES_PER_1000FT[wireGauge] ?? RES_PER_1000FT[12];
       // 1-phase: 2× one-way; 3-phase: ×1.732.
       const factor = phase === 3 ? 1.732 : 2;
       const drop = (rPer1000 / 1000) * distanceFeet * amps * factor;
       const dropPercent = (drop / voltage) * 100;
-      const gauges = [14, 12, 10, 8, 6, 4, 3, 2];
-      const idx = gauges.indexOf(typeof wireGauge === 'number' ? wireGauge : parseInt(wireGauge));
-      const upgrade = idx > 0 ? gauges[idx + 1] : null;
+      // Upgrade = the next HEAVIER conductor (lower AWG number = thicker = less
+      // resistance = less drop). The ladder runs thin→thick; the next entry is
+      // the heavier gauge. Earlier code walked the WRONG way (toward thinner
+      // wire) and never advised an upgrade for the smallest gauges, so a 30%
+      // drop printed "within acceptable limits" — a dangerous lie for a safety
+      // calculator. Fixed: honest advice whenever drop > 3%.
+      const ladder = [14, 12, 10, 8, 6, 4, 3, 2, 1];
+      const curG = typeof wireGauge === 'number' ? wireGauge : parseInt(wireGauge);
+      const ladderIdx = ladder.indexOf(curG);
+      const heavier = ladderIdx >= 0 && ladderIdx + 1 < ladder.length
+        ? ladder[ladderIdx + 1] : null;
+      const recommendation = dropPercent <= 3
+        ? 'Within acceptable limits'
+        : heavier
+          ? `Upgrade to ${heavier} AWG to reduce drop`
+          : 'Excessive drop — shorten the run or raise the system voltage';
       return {
         ok: true,
         result: {
@@ -169,9 +200,7 @@ export default function registerElectricalActions(registerLensAction) {
           dropPercentValue: round(dropPercent),
           acceptable: dropPercent <= 3,
           necLimit: '3% for branch circuits, 5% total feeder+branch',
-          recommendation: dropPercent > 3 && upgrade
-            ? `Upgrade to ${upgrade} AWG to reduce drop`
-            : 'Within acceptable limits',
+          recommendation,
         },
       };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -184,7 +213,8 @@ export default function registerElectricalActions(registerLensAction) {
       const mapped = circuits.map((c) => ({
         circuit: c.name || c.number, panel: c.panel || 'Main',
         breaker: c.breaker || '20A', room: c.room || c.location,
-        devices: c.devices || [], wireRun: c.wireRunFeet || 0,
+        devices: Array.isArray(c.devices) ? c.devices : [],
+        wireRun: num(c.wireRunFeet, 0, { min: 0 }),
       }));
       return {
         ok: true,
@@ -240,7 +270,8 @@ export default function registerElectricalActions(registerLensAction) {
       let totalCount = 0;
       const detail = conductors.map((c) => {
         const awg = c.awg ?? c.gauge ?? 12;
-        const count = parseInt(c.count) || 1;
+        // Count is a physical conductor tally — never negative, never NaN.
+        const count = Math.max(1, Math.round(num(c.count, 1, { min: 0 })) || 1);
         const each = THHN_AREA[awg] ?? THHN_AREA[12];
         const a = each * count;
         totalArea += a;
@@ -293,12 +324,15 @@ export default function registerElectricalActions(registerLensAction) {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
       const largestAwg = data.largestAwg ?? data.awg ?? 14;
       const vol = BOX_FILL_VOL[largestAwg] ?? BOX_FILL_VOL[14];
-      const hots = parseInt(data.currentCarrying) || 0;   // counts as 1 each
-      const grounds = parseInt(data.groundConductors) > 0 ? 1 : 0; // all grounds = 1
+      // Fail-closed: every count clamps to a non-negative finite integer; box
+      // volume clamps to a non-negative finite value (an Infinity volume must
+      // never produce a fake PASS verdict on a too-small box).
+      const hots = Math.round(num(data.currentCarrying, 0, { min: 0 }));   // counts as 1 each
+      const grounds = num(data.groundConductors, 0, { min: 0 }) > 0 ? 1 : 0; // all grounds = 1
       const clamps = data.internalClamps ? 1 : 0;          // all clamps = 1
-      const devices = parseInt(data.devices) || 0;          // each device = 2
-      const supportFittings = parseInt(data.supportFittings) || 0; // each = 1
-      const boxVolume = parseFloat(data.boxVolumeCubicInches) || 0;
+      const devices = Math.round(num(data.devices, 0, { min: 0 }));          // each device = 2
+      const supportFittings = Math.round(num(data.supportFittings, 0, { min: 0 })); // each = 1
+      const boxVolume = num(data.boxVolumeCubicInches, 0, { min: 0 });
       const conductorEquivalents = hots + grounds + clamps + (devices * 2) + supportFittings;
       const requiredVolume = round(conductorEquivalents * vol, 2);
       const breakdown = [
@@ -331,10 +365,12 @@ export default function registerElectricalActions(registerLensAction) {
   registerLensAction('electrical', 'wireSize', (ctx, artifact, params) => {
     try {
       const data = { ...(artifact?.data || {}), ...(params || {}) };
-      const loadAmps = parseFloat(data.loadAmps) || 0;
+      // Fail-closed: a poisoned (NaN/Infinity/"abc") or non-positive load must
+      // NOT fabricate a wire recommendation — it returns the honest prompt.
+      const loadAmps = num(data.loadAmps, 0, { min: 0 });
       const continuous = data.continuous !== false;
-      const distanceFeet = parseFloat(data.distanceFeet) || 50;
-      const voltage = parseFloat(data.voltage) || 120;
+      const distanceFeet = num(data.distanceFeet, 50, { allowZero: false });
+      const voltage = num(data.voltage, 120, { allowZero: false });
       if (loadAmps <= 0) {
         return { ok: true, result: { message: 'Enter the circuit load in amps.' } };
       }

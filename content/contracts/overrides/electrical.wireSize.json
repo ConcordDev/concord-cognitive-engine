@@ -1,0 +1,29 @@
+{
+  "macro_id": "electrical.wireSize",
+  "domain": "electrical",
+  "name": "wireSize",
+  "inputs": {
+    "loadAmps": { "type": "number" },
+    "distanceFeet": { "type": "number" },
+    "voltage": { "type": "number" },
+    "continuous": { "type": "boolean" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.designAmps) && output.result.designAmps > 0)",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.recommendedWire === 'string'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.minBreaker === 'string'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.recommendedAmpacity)",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.upsizedForVoltageDrop === 'boolean'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.basis === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "loadAmps": 40, "continuous": true, "distanceFeet": 50, "voltage": 240 }, "expect": { "ok": true } },
+    { "input": { "loadAmps": 20, "continuous": true, "distanceFeet": 300, "voltage": 120 }, "expect": { "ok": true } },
+    { "input": { "loadAmps": 0, "distanceFeet": 50, "voltage": 120 }, "expect": { "ok": true } },
+    { "input": { "loadAmps": "Infinity", "distanceFeet": "NaN", "voltage": "abc" }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute. NecCalculators sends lensRun('electrical','wireSize',{loadAmps,continuous,distanceFeet,voltage}) → body.input flat → handler reads artifact.data (== params). designAmps = load × (continuous ? 1.25 : 1); ampacity wire per NEC 310.16 @ 75°C copper; then walks UP gauges until voltage drop ≤ 3%. Fail-closed: loadAmps sanitises via num() (non-finite/negative → 0) and a non-positive load returns the honest 'Enter the circuit load' prompt — a poisoned load NEVER fabricates a wire/breaker recommendation (the dangerous failure mode where garbage prints a confident 4/0 spec). Cards render recommendedWire/minBreaker/voltageDropAtRecommended/designAmps/ampacityRequiredWire/recommendedAmpacity/upsizedForVoltageDrop/basis EXACTLY (field-aligned against WireSizeCalc). No STATE, no DB."
+}

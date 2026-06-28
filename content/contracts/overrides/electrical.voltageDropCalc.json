@@ -1,0 +1,30 @@
+{
+  "macro_id": "electrical.voltageDropCalc",
+  "domain": "electrical",
+  "name": "voltageDropCalc",
+  "inputs": {
+    "amps": { "type": "number" },
+    "distanceFeet": { "type": "number" },
+    "wireGauge": { "type": "number" },
+    "voltage": { "type": "number" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.voltageDrop === 'string'",
+    "output.ok === false || typeof output.result.dropPercent === 'string'",
+    "output.ok === false || Number.isFinite(output.result.dropPercentValue)",
+    "output.ok === false || typeof output.result.acceptable === 'boolean'",
+    "output.ok === false || typeof output.result.necLimit === 'string'",
+    "output.ok === false || typeof output.result.recommendation === 'string'",
+    "output.ok === false || Number.isFinite(parseFloat(output.result.voltageDrop))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "amps": 20, "distanceFeet": 100, "wireGauge": 10, "voltage": 240 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "amps": 30, "distanceFeet": 200, "wireGauge": 14, "voltage": 120 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "amps": "Infinity", "distanceFeet": "NaN", "wireGauge": 12, "voltage": 0 } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data (NecCodeCalc runDomain wrapper, peeled at dispatch). 1-phase drop = (R/1000)×ft×A×2 (3-phase ×1.732); % = drop/voltage×100. Fail-closed: non-finite amps/distance/voltage sanitise to safe defaults via num() (15/100/120, never zero) so dropPercentValue is always finite. acceptable = drop ≤ 3% (NEC branch-circuit limit). RECOMMENDATION FIX (2026-06-28): the upgrade now points at the next HEAVIER gauge (lower AWG = thicker = less drop) and gives honest advice whenever drop > 3% — the prior code walked toward THINNER wire and printed 'within acceptable limits' on a 30% drop, a dangerous lie for a safety calc. Cards render voltageDrop/dropPercent/acceptable/wireGauge/recommendation/necLimit/distance/current/voltage EXACTLY (field-aligned against VoltageDropChart). No STATE, no DB."
+}

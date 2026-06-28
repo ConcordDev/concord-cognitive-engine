@@ -1,0 +1,26 @@
+{
+  "macro_id": "electrical.circuitTrace",
+  "domain": "electrical",
+  "name": "circuitTrace",
+  "inputs": {
+    "circuits": { "type": "array", "maxLength": 5000 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (Number.isFinite(output.result.panels) && output.result.panels >= 0)",
+    "output.ok === false || (Number.isFinite(output.result.totalCircuits) && output.result.totalCircuits >= 0)",
+    "output.ok === false || (Number.isFinite(output.result.unassigned) && output.result.unassigned >= 0)",
+    "output.ok === false || Number.isFinite(output.result.avgDevicesPerCircuit)",
+    "output.ok === false || Array.isArray(output.result.circuitMap)",
+    "output.ok === false || output.result.circuitMap.every((c) => Array.isArray(c.devices) && Number.isFinite(c.wireRun) && c.wireRun >= 0)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "circuits": [{ "name": "C1", "panel": "Main", "breaker": "20A", "room": "Kitchen", "devices": ["recept", "lights"], "wireRunFeet": 40 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "circuits": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "circuits": [{ "name": "bad", "devices": "not-an-array", "wireRunFeet": "Infinity" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data.circuits (NecCodeCalc runDomain wrapper, peeled at dispatch). Maps circuits → {circuit,panel,breaker,room,devices,wireRun}; unassigned = room-less count; avgDevicesPerCircuit = mean device count. NecCodeCalc never sends `panels`, so the handler defaults panels.length || 1 → 1. Fail-closed: a non-array `devices` coerces to [] and a poisoned wireRunFeet sanitises via num() (non-finite → 0, negatives clamp) so avgDevicesPerCircuit + wireRun never leak NaN. Cards render panels/totalCircuits/unassigned/avgDevicesPerCircuit EXACTLY (field-aligned against CircuitMap). No STATE, no DB."
+}
