@@ -1,0 +1,27 @@
+{
+  "macro_id": "ethics.decisionMatrix",
+  "domain": "ethics",
+  "name": "decisionMatrix",
+  "inputs": {
+    "title": { "type": "string", "required": false },
+    "criteria": { "type": "array", "required": true },
+    "options": { "type": "array", "required": true }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.criteria.every(c => Number.isFinite(c.weight))",
+    "output.ok === false || output.result.options.every(o => Number.isFinite(o.total) && Number.isFinite(o.percent))",
+    "output.ok === false || output.result.options.every(o => o.breakdown.every(b => Number.isFinite(b.raw) && Number.isFinite(b.weighted)))",
+    "output.ok === false || typeof output.result.winner === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "title": "Vendor", "criteria": [{ "name": "fairness", "weight": 0.6 }, { "name": "cost", "weight": 0.4 }], "options": [{ "name": "A", "scores": { "fairness": 8, "cost": 4 } }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "title": "P", "criteria": [{ "name": "a", "weight": "1e999" }, { "name": "b", "weight": 1 }], "options": [{ "name": "X", "scores": { "a": "Infinity", "b": 5 } }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "criteria": [{ "name": 5, "weight": "abc" }], "options": [{ "name": null, "scores": { "a": "NaN" } }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "options": [{ "name": "A" }] } } }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS (path-3) handler; dispatch key 'ethics.decisionMatrix'. DecisionMatrixPanel sends {input:{title, criteria:[{name,weight}], options:[{name,scores:{[criterion]:0-10}}]}}; dispatch peels a sole-key {artifact:{data}} wrapper. Returns {id,title,criteria:[{name,weight}],options:[{name,breakdown:[{criterion,raw,weighted}],total,percent}],winner,createdAt}. POISON CONTRACT (the real defect fixed this pass): a poisoned ('1e999'/'Infinity') weight was passed through Number()||0 = Infinity, making weightSum=Infinity and every normalized weight Infinity/Infinity = NaN, leaking NaN total/percent (JSON null) into the rendered record. The fix clamps each weight via fnum() (Number.isFinite, default 0) and Math.max(0,...) BEFORE summing, and clamps each score via fnum() ∈[0,10]. Missing criteria or options is rejected fail-closed. Pinned by server/tests/ethics-lens-macros.test.js."
+}

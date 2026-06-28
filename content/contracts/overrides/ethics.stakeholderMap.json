@@ -1,0 +1,27 @@
+{
+  "macro_id": "ethics.stakeholderMap",
+  "domain": "ethics",
+  "name": "stakeholderMap",
+  "inputs": {
+    "title": { "type": "string", "required": false },
+    "options": { "type": "array", "required": true },
+    "stakeholders": { "type": "array", "required": true }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.stakeholders.every(s => Number.isFinite(s.vulnerability) && Number.isFinite(s.netExposure))",
+    "output.ok === false || output.result.stakeholders.every(s => Object.values(s.impacts).every(i => Number.isFinite(i.raw) && Number.isFinite(i.weighted)))",
+    "output.ok === false || output.result.optionTotals.every(o => Number.isFinite(o.netImpact) && Number.isInteger(o.harmed) && Number.isInteger(o.benefited) && Number.isInteger(o.vulnerableHarmed))",
+    "output.ok === false || typeof output.result.bestOption === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "title": "Closure", "options": ["keep", "cut"], "stakeholders": [{ "name": "Workers", "vulnerability": 80, "impacts": { "keep": 50, "cut": -60 } }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "title": "P", "options": ["x"], "stakeholders": [{ "name": "V", "vulnerability": "1e999", "impacts": { "x": "-Infinity" } }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "options": ["x"], "stakeholders": [{ "name": "Z", "vulnerability": "NaN", "impacts": { "x": "abc" } }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "stakeholders": [{ "name": "x" }] } } }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS (path-3) handler; dispatch key 'ethics.stakeholderMap'. StakeholderMapPanel sends {input:{title, options:[string], stakeholders:[{name,group,vulnerability,impacts:{[option]:-100..100}}]}}; dispatch peels a sole-key {artifact:{data}} wrapper. Returns {id,title,options,stakeholders:[{name,group,vulnerability,impacts:{[opt]:{raw,weighted}},netExposure}],optionTotals:[{option,netImpact,harmed,benefited,vulnerableHarmed}],bestOption,createdAt}. POISON CONTRACT: vulnerability and each impact are coerced via fnum() (Number.isFinite, default 0) then clamped — vuln∈[0,100], impact∈[-100,100] — so a poisoned ('1e999'/'-Infinity'/'NaN') input can NEVER produce Infinity/NaN weighted impact or netExposure. Vulnerability amplifies negative impact only (×(1+vuln/100)). Missing options or stakeholders is rejected fail-closed. Pinned by server/tests/ethics-lens-macros.test.js."
+}

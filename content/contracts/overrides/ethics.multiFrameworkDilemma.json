@@ -1,0 +1,26 @@
+{
+  "macro_id": "ethics.multiFrameworkDilemma",
+  "domain": "ethics",
+  "name": "multiFrameworkDilemma",
+  "inputs": {
+    "dilemma": { "type": "string", "required": true },
+    "options": { "type": "array", "required": true }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || Array.isArray(output.result.options)",
+    "output.ok === false || output.result.options.every(o => Number.isFinite(o.composite) && Number.isFinite(o.benefit) && Number.isFinite(o.harm))",
+    "output.ok === false || output.result.options.every(o => Number.isFinite(o.scores.utilitarian) && Number.isFinite(o.scores.deontological) && Number.isFinite(o.scores.virtue))",
+    "output.ok === false || Array.isArray(output.result.conflicted)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "dilemma": "Layoffs", "options": [{ "name": "Honest", "description": "honest consent respect", "benefitScore": 60, "harmScore": 20 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "dilemma": "d", "options": [{ "name": "A", "description": "help care", "benefitScore": "1e999", "harmScore": "Infinity" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "dilemma": "d", "options": [{ "name": "A", "benefitScore": "NaN", "harmScore": -50 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "dilemma": "", "options": [] } } }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS (path-3) handler; dispatch key 'ethics.multiFrameworkDilemma'. MultiFrameworkPanel sends {input:{dilemma, options:[{name,description,harmScore?,benefitScore?}]}}; the dispatch peels a sole-key {artifact:{data}} wrapper. Returns {id,dilemma,options:[{name,description,scores{utilitarian,deontological,virtue},composite,agreement,benefit,harm}],recommended,conflicted,createdAt}. POISON CONTRACT: benefitScore/harmScore are guarded by Number.isFinite and fall back to keyword-derived scores, so a poisoned ('1e999'/'Infinity'/'NaN') input can NEVER produce Infinity/NaN scores/composite (which JSON-serialize to null). Empty dilemma or zero options is rejected fail-closed. Pinned by server/tests/ethics-lens-macros.test.js. NOTE: ethics is path-3-only, so the macro-assassin does not drive it — the node:test is the real enforcement; this override is the documented contract."
+}
