@@ -530,6 +530,35 @@ The calculator-family sweep is now essentially complete. Remaining queue: the no
 many are CRUD/visualization surfaces rather than compute panels, so lower dead-calculator risk.
 ~92 lenses through the non-score gate. The loop continues.
 
+### Phase-2 batch 21 DONE (2026-06-28): forum, household, geology, forestry
+143 server + 24 UX-state tests; per-domain assassin clean; 258 WIRED; tsc 0. The dead-`*ActionPanel`-surface
++ fail-open-numeric class persists into the knowledge/utility tail, plus two new systemic findings:
+- **forum**: 4 dead "Community Analytics" surfaces (threadAnalysis/moderationQueue/communityHealth/
+  topicClustering) — buttons posted a single-Post artifact + no params to handlers reading forum-wide
+  arrays → always rendered the empty-guidance message. Fixed via `deriveForumParams()` deriving real
+  inputs from live posts/comments + `params.X ?? artifact.data.X` handler fallback; `fmInt` fail-closed
+  guards (trending's `Math.max(0.01, NaN)` propagated NaN into hotScore); FmTopicsPanel distinguishable
+  load-error. 30 server + 5 vitest + 4 overrides.
+- **household**: 2 fully dead surfaces (ChoreRotation — a 2-key `{artifact:{data},strategy,weeks}` body
+  the dispatch never peels → handler saw undefined; HouseholdActionPanel's 4 actions sent wrong fields +
+  rendered fields the handler never returns) + board-style empty page actions (`deriveActionParams`) + 7
+  fail-open numerics incl. an `Infinity` expense that would poison `expense-balances`. 38 server + 5 vitest + 6 ov.
+- **geology**: SYSTEMIC error-detection bug — `/api/lens/run` unwraps one `{ok,result}` layer so the
+  transport `r.data.ok` is ALWAYS true; every geology write path checked only `r.data.ok` → handler
+  rejections silently swallowed (form reset, no error). Fixed across 7 components to read `result.ok!==false`;
+  + fail-closed physics numerics (rockClassify/seismicRisk/mineralId/stratigraphicColumn leaked Infinity)
+  + 2 silent-empty list panels. 32 server + 8 vitest + 5 ov.
+- **forestry**: 4 dead calculators (timberVolume/fireRisk/harvestPlan/carbonSequestration ignored the
+  panel input + returned unread field names, one returned a STRING where the panel rendered a number) +
+  fail-closed `frFinite` + StandManager silent-empty. 43 server + 6 vitest + 5 ov.
+**VERIFICATION-ENGINE GAP FLAGGED (not yet fixed):** the macro-assassin harness (`scripts/contracts/harness.mjs#enumerateMacros`)
+enumerates only the path-2 `MACROS` registry, NOT path-3 `LENS_ACTIONS`. So path-3-only lenses
+(forestry exclusively; geology/forum/household partially) get a trivially-true "0 violations" (the assassin
+drove 0–2 of their macros) and their override files are documented-but-unenforced. The behavioral node:test
+is the real enforcement for those. Fix = teach `enumerateMacros` to also walk `LENS_ACTIONS` — a shared-harness
+change that shifts the ratchet baseline for ALL path-3 lenses, so it's queued as its own deliberate pass.
+**106 lenses now carry the UX-states gate marker** (batches 1–21). The loop continues into the rest of the tail.
+
 ### Phase-2 batch 20 DONE (2026-06-28): atlas, board, classroom, council, debate
 First batch of the non-calculator long tail. 147 server + 23 UX-state tests; assassin 0 violations across
 all 5 domains; 258 WIRED; tsc 0. The dead-surface (`*ActionPanel` field-mismatch) + fail-open numeric
