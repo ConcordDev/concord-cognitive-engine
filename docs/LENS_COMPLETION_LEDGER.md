@@ -530,6 +530,26 @@ The calculator-family sweep is now essentially complete. Remaining queue: the no
 many are CRUD/visualization surfaces rather than compute panels, so lower dead-calculator risk.
 ~92 lenses through the non-score gate. The loop continues.
 
+### Phase-2 batch 23 (2026-06-28): ethics (re-queue) + fishing DONE — finance reverted, food not started
+2 banked; finance reverted (incomplete/broken), food not started. tsc 0; tree clean.
+- **ethics** (re-queue, now DONE): the prior revert's lesson held — this pass WIRED the shared `LoadGate`
+  into all 6 DecisionToolkit panels (rendered at lines 358/537/714/842/917/1141, cited), gave each list-load
+  real loading/error/empty/populated + a working retry, and fixed a REAL `decisionMatrix` poisoned-weight
+  NaN leak (`weight:"1e999"`→`weightSum=Infinity`→`Infinity/Infinity=NaN`→`null` cells; now `fnum()`-clamped
+  before summing). 24 server + 5 vitest + 4 overrides. (path-3-only → node:test is enforcement.)
+- **fishing** (DONE): game lens (cast→bite→reel→mint), already well-built; ONE real silent-empty fix —
+  catalog `{ok:false}` collapsed into EMPTY instead of ERROR; now throws → distinguishable error+retry.
+  Lib already fail-closed (poisoned reactionMs/tension clamp; qualityScore stays finite). 18 server + 9 vitest;
+  overrides already existed. (path-2 `registerFishingMacros`; assassin drove 10, 0 violations.)
+- **finance**: REVERTED. The agent was session-/coordinator-stopped mid-pass — it had modified
+  `finance.js` + `FinanceActionPanel.tsx` (left 22 tsc errors) + `NetWorthTracker.tsx` but had NOT written
+  its behavioral test, states test, or overrides yet ("now let me write the test file…"). Per "don't bank
+  partial work," all 3 modified files reverted to clean HEAD. RE-QUEUE: finance is money-sensitive (~73
+  macros — loan/mortgage/compound-interest/retirement/tax/ROI/NPV); fail-closed numerics are critical
+  (a `$Infinity`/`NaN` payment is a real defect). Watch division-by-zero on term/rate.
+- **food**: NOT STARTED (batch was trimmed to 3 agents for budget). RE-QUEUE (~68 macros).
+**111 lenses now carry the UX-states gate marker** (batches 1–23). PR #839 opened against `main`.
+
 ### Phase-2 batch 22 (2026-06-28): energy, eco, fitness DONE — ethics DEFERRED (reverted)
 3 of 4 banked; ethics reverted (honest). 109 server + 29 UX-state tests across the 3 done lenses; tsc 0.
 - **energy**: largely aligned already; 4 fail-OPEN calculators (consumptionAnalysis/solarEstimate/
