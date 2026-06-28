@@ -1,0 +1,30 @@
+{
+  "macro_id": "services.dailyCloseReport",
+  "domain": "services",
+  "name": "dailyCloseReport",
+  "reads_artifact_data": true,
+  "inputs": {
+    "appointments": { "type": "array", "required": false },
+    "productsSold": { "type": "array", "required": false },
+    "date": { "type": "string", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.date === 'string'",
+    "output.ok === false || Number.isFinite(output.result.totalAppointments)",
+    "output.ok === false || Number.isFinite(output.result.completedCount)",
+    "output.ok === false || Number.isFinite(output.result.serviceRevenue)",
+    "output.ok === false || Number.isFinite(output.result.productRevenue)",
+    "output.ok === false || Number.isFinite(output.result.totalRevenue)",
+    "output.ok === false || Array.isArray(output.result.byProvider)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "appointments": [{ "provider": "Ana", "price": 120, "status": "completed", "date": "2026-06-28" }], "date": "2026-06-28" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "appointments": [] } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "appointments": [{ "provider": "Ana", "price": "Infinity", "status": "completed", "date": "2026-06-28" }], "date": "2026-06-28" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). The page drives this via the artifact-bound /:id/run path; this override exercises the /api/lens/run peel shape. Reads artifact.data.appointments + artifact.data.productsSold + params.date. RETURNS {date,totalAppointments,completedCount,noShowCount,cancelledCount,serviceRevenue,productsSold,productRevenue,totalRevenue,byProvider:[{provider,appointments,revenue}]} — the EXACT keys EndOfDayClose renders. POISON: price/amount via finiteNum (parseFloat+Number.isFinite) so 'Infinity'/'NaN' collapse to 0; all money fields stay finite. try/catch wrapped. Pinned by server/tests/services-lens-macros.test.js."
+}

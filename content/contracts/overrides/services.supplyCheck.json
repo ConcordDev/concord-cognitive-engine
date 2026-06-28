@@ -1,0 +1,26 @@
+{
+  "macro_id": "services.supplyCheck",
+  "domain": "services",
+  "name": "supplyCheck",
+  "reads_artifact_data": true,
+  "inputs": {
+    "materials": { "type": "array", "required": false },
+    "supplies": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.lowStock)",
+    "output.ok === false || Number.isFinite(output.result.count)",
+    "output.ok === false || Number.isFinite(output.result.totalItems)",
+    "output.ok === false || typeof output.result.needsOrder === 'boolean'",
+    "output.ok === false || output.result.lowStock.every(function(s){return Number.isFinite(s.currentStock) && Number.isFinite(s.reorderPoint);})",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "supplies": [{ "name": "Dye", "currentStock": 2, "reorderPoint": 5, "supplier": "Acme" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "materials": [] } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). The page drives this via the artifact-bound /:id/run path; this override exercises the /api/lens/run peel shape. Reads artifact.data.materials OR artifact.data.supplies. RETURNS {lowStock:[{name,currentStock,reorderPoint,supplier}],count,totalItems,needsOrder} — the EXACT keys the Action Result panel (supplyCheck branch) renders. lowStock = currentStock<=reorderPoint (defaults: stock 0, reorder 5). Pure compute, no STATE. Pinned by server/tests/services-lens-macros.test.js."
+}

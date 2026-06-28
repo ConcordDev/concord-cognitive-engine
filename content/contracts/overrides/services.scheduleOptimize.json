@@ -1,0 +1,23 @@
+{
+  "macro_id": "services.scheduleOptimize",
+  "domain": "services",
+  "name": "scheduleOptimize",
+  "reads_artifact_data": true,
+  "inputs": {
+    "appointments": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.optimizedOrder)",
+    "output.ok === false || Number.isFinite(output.result.totalGapMinutes)",
+    "output.ok === false || Array.isArray(output.result.gaps)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "appointments": [{ "client": "A", "time": "2026-06-28T10:00:00Z", "endTime": "2026-06-28T10:30:00Z", "serviceType": "Cut" }, { "client": "B", "time": "2026-06-28T11:00:00Z", "serviceType": "Color" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "appointments": [] } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (path-3; NOT assassin-enumerated). Reads artifact.data.appointments (falls back to [artifact.data] when no .appointments key). RETURNS {optimizedOrder:[{client,time,service}],totalGapMinutes,gaps:[{after,before,gapMinutes}]} — the EXACT keys the Action Result panel (scheduleOptimize branch) renders. Sorts by time/date string; sums positive inter-appointment gaps. totalGapMinutes is a sum of finite (next-prev) deltas. Pure compute, no STATE. Pinned by server/tests/services-lens-macros.test.js."
+}
