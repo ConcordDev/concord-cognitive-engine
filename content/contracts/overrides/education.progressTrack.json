@@ -1,0 +1,26 @@
+{
+  "macro_id": "education.progressTrack",
+  "domain": "education",
+  "name": "progressTrack",
+  "inputs": {
+    "requirements": { "type": "array", "required": false, "maxLength": 5000 },
+    "completions": { "type": "array", "required": false, "maxLength": 50000 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (Number.isFinite(output.result.overallCompletionPct) && output.result.overallCompletionPct >= 0 && output.result.overallCompletionPct <= 100)",
+    "output.ok === false || (Number.isFinite(output.result.totalRequirements) && Number.isFinite(output.result.completedRequirements) && Number.isFinite(output.result.remainingRequirements))",
+    "output.ok === false || (Array.isArray(output.result.details) && output.result.details.every(d => Number.isFinite(d.completionPct) && d.completionPct <= 100 && typeof d.complete === 'boolean'))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "requirements": [{ "requirementId": "A", "name": "Core", "requiredUnits": 10 }, { "requirementId": "B", "name": "Elec", "requiredUnits": 10 }], "completions": [{ "requirementId": "A", "completedUnits": 8 }, { "requirementId": "B", "completedUnits": 10 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "requirements": [], "completions": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "requirements": [{ "requirementId": "A", "name": "X", "requiredUnits": "ten" }], "completions": [{ "requirementId": "A", "completedUnits": "Infinity" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "requirements": "nope" } } }, "expect": { "ok": false } }
+  ],
+  "_note": "education.progressTrack is a LENS_ACTIONS handler (registerLensAction('education','progressTrack',...)) reached via /api/lens/run (artifact.data === unwrapped input). DETERMINISTIC pure compute. Returns program/cert completion — overallCompletionPct, totalRequirements, completedRequirements, remainingRequirements, estimatedCompletionDate, details[].{requirementId,name,completionPct,complete}. The component + inline page panel render these EXACT fields. POISON: requiredUnits/completedUnits coerced via eduFinite + clamped — non-finite collapse to a finite fallback, completed clamped to [0,required], requiredUnits floored at 0.0001 so completionPct can never exceed 100 nor be NaN; a non-array requirements throws → caught {ok:false,error:'handler_error'}. Pinned by server/tests/education-lens-macros.test.js."
+}
