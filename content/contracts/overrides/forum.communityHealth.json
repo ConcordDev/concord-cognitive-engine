@@ -1,0 +1,28 @@
+{
+  "macro_id": "forum.communityHealth",
+  "domain": "forum",
+  "name": "communityHealth",
+  "inputs": {
+    "activeUsers": { "type": "number", "required": false },
+    "totalUsers": { "type": "number", "required": false },
+    "postsThisWeek": { "type": "number", "required": false },
+    "postsLastWeek": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (Number.isFinite(output.result.activeUsers) && Number.isFinite(output.result.totalUsers) && Number.isFinite(output.result.activityRate) && Number.isFinite(output.result.postsThisWeek) && Number.isFinite(output.result.growthRate))",
+    "output.ok === false || ['thriving','healthy','declining','dormant'].indexOf(output.result.health) !== -1",
+    "output.ok === false || Array.isArray(output.result.recommendations)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "activeUsers": 40, "totalUsers": 100, "postsThisWeek": 60, "postsLastWeek": 50 }, "expect": { "ok": true } },
+    { "input": { "activeUsers": "Infinity", "totalUsers": "1e999", "postsThisWeek": "NaN", "postsLastWeek": "not-a-number" }, "expect": { "ok": true } },
+    { "input": { "activeUsers": 10, "totalUsers": 0, "postsThisWeek": 5, "postsLastWeek": 0 }, "expect": { "ok": true } },
+    { "input": { "activeUsers": -5, "totalUsers": -100, "postsThisWeek": -1, "postsLastWeek": -1 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'forum.communityHealth'. The /lenses/forum inline buttons DERIVE {activeUsers,totalUsers,postsThisWeek,postsLastWeek} from REAL on-page state (distinct post authors, community member sums, posts bucketed by createdAt week) and pass them as run-action params; the ForumActionPanel sends {artifact:{data:{...}}} single-wrap. Handler reads params.X ?? artifact.data.X. Returns {activeUsers,totalUsers,activityRate,postsThisWeek,growthRate,health,recommendations} (health ∈ thriving|healthy|declining|dormant). POISON: fmInt collapses Infinity / -Infinity / NaN / '1e999' / 'Infinity' / '' to finite fallbacks; totalUsers/postsLastWeek floor at 1 so no div-by-zero; EVERY numeric output is FINITE. Pinned by server/tests/forum-lens-macros.test.js."
+}

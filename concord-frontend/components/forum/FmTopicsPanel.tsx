@@ -64,6 +64,8 @@ export function FmTopicsPanel({
     setSavedIds(ids);
   }, []);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const refresh = useCallback(async () => {
     setLoading(true);
     const [c, sf, t] = await Promise.all([
@@ -75,6 +77,16 @@ export function FmTopicsPanel({
         sort,
       }),
     ]);
+    // Distinguish a genuine empty forum from a swallowed fetch failure: the
+    // topic-list call is the load-bearing one. ok===false (or a thrown/caught
+    // request → result:null + error) surfaces a real error with a retry,
+    // never an identical-looking empty list (the silent-empty defect).
+    if (t.data?.ok === false) {
+      setLoadError(t.data?.error || 'Failed to load topics.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
     setCategories(c.data?.result?.categories || []);
     setSubforums(sf.data?.result?.subforums || []);
     setTopics(t.data?.result?.topics || []);
@@ -197,6 +209,20 @@ export function FmTopicsPanel({
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+
+  if (loadError) {
+    return (
+      <div role="alert" className="flex flex-col items-center gap-3 py-10 text-center">
+        <p className="text-xs text-rose-300 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">
+          {loadError}
+        </p>
+        <button type="button" onClick={() => { void refresh(); }}
+          className="px-3 py-1.5 text-xs font-medium bg-orange-600 hover:bg-orange-500 text-white rounded-lg">
+          Retry
+        </button>
+      </div>
+    );
   }
 
   // ── Thread view ──────────────────────────────────────────────────────

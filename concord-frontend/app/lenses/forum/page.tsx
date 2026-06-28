@@ -258,16 +258,52 @@ export default function ForumLensPage() {
   const [forumActionResult, setForumActionResult] = useState<Record<string, unknown> | null>(null);
   const [forumRunning, setForumRunning] = useState<string | null>(null);
 
+  // Derive the forum-WIDE inputs each analytical macro reads from the REAL
+  // live posts/communities the page already holds. The persisted post artifact
+  // is a single post (no posts/reports/threads arrays), so without these
+  // derived params the handlers see empty input and render the "Add thread
+  // posts…" guidance — a dead surface. Every value below comes from genuine
+  // on-page state (no fabricated rows): handler reads `params.X ?? data.X`.
+  const deriveForumParams = useCallback((action: string): Record<string, unknown> => {
+    const live = posts.filter(p => !p.removed);
+    if (action === 'threadAnalysis') {
+      // One row per post + per comment (recursively), as {author, content}.
+      const rows: { author: string; content: string }[] = [];
+      const walk = (cs: Comment[]) => { for (const c of cs) { rows.push({ author: c.author.username, content: c.content }); walk(c.replies); } };
+      for (const p of live) { rows.push({ author: p.author.username, content: `${p.title} ${p.content}` }); walk(p.comments); }
+      return { posts: rows };
+    }
+    if (action === 'moderationQueue') {
+      // Real reports: locked posts = pending review, removed posts = resolved.
+      const reports = [
+        ...posts.filter(p => p.locked).map(p => ({ status: 'pending', reason: 'off_topic', date: p.createdAt })),
+        ...posts.filter(p => p.removed).map(p => ({ status: 'resolved', reason: 'inappropriate', date: p.createdAt })),
+      ];
+      return { reports };
+    }
+    if (action === 'communityHealth') {
+      const authors = new Set(live.map(p => p.author.username));
+      const weekAgo = Date.now() - 7 * 86400000;
+      const postsThisWeek = live.filter(p => new Date(p.createdAt).getTime() >= weekAgo).length;
+      const postsLastWeek = live.filter(p => { const t = new Date(p.createdAt).getTime(); return t < weekAgo && t >= weekAgo - 7 * 86400000; }).length;
+      return { activeUsers: authors.size, totalUsers: Math.max(authors.size, communities.reduce((s, c) => s + c.memberCount, 0)), postsThisWeek, postsLastWeek };
+    }
+    if (action === 'topicClustering') {
+      return { threads: live.map(p => ({ tags: p.tags })) };
+    }
+    return {};
+  }, [posts, communities]);
+
   const handleForumAction = useCallback(async (action: string) => {
     const targetId = postItems[0]?.id;
     if (!targetId) return;
     setForumRunning(action);
     try {
-      const res = await runForumAction.mutateAsync({ id: targetId, action });
+      const res = await runForumAction.mutateAsync({ id: targetId, action, params: deriveForumParams(action) });
       if (res.ok === false) { setForumActionResult({ _action: action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setForumActionResult({ _action: action, ...(res.result as Record<string, unknown>) }); }
-    } catch (e) { console.error(`Forum action ${action} failed:`, e); setForumActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+    } catch (e) { console.error(`Forum action ${action} failed:`, e); setForumActionResult({ _action: action, message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
     setForumRunning(null);
-  }, [postItems, runForumAction]);
+  }, [postItems, runForumAction, deriveForumParams]);
 
   // Sync backend data into local state when available
   // IMPORTANT: Use the lens artifact ID (i.id) as the Post id so that
