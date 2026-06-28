@@ -1,24 +1,60 @@
 // server/domains/hvac.js
 export default function registerHVACActions(registerLensAction) {
+  // Fail-CLOSED numeric coercion: Number(v) rejects "12abc"/"Infinity"/"NaN"
+  // (unlike parseFloat, which would accept the prefix or yield Infinity). A
+  // non-finite or non-positive value falls to the default so no NaN/Infinity
+  // ever leaks into a rendered number.
+  const num = (v, d) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : d; };
+  const intNum = (v, d) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.floor(n) : d; };
+
   registerLensAction("hvac", "loadCalculation", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const sqft = parseFloat(data.squareFootage) || 1000;
-    const stories = parseInt(data.stories) || 1;
-    const insulation = (data.insulation || "average").toLowerCase();
-    const climate = (data.climate || "temperate").toLowerCase();
+    const sqft = num(data.squareFootage, 1000);
+    const stories = intNum(data.stories, 1);
+    const insulation = String(data.insulation || "average").toLowerCase();
+    const climate = String(data.climate || "temperate").toLowerCase();
     const baseBTU = sqft * 25;
     const insMultiplier = insulation === "excellent" ? 0.8 : insulation === "good" ? 0.9 : insulation === "average" ? 1.0 : 1.2;
-    const climateMultiplier = climate === "hot" ? 1.3 : climate === "cold" ? 1.2 : climate === "humid" ? 1.25 : 1.0;
+    // Accept both the bare keywords AND the component's region enum values
+    // (hot-humid / hot-dry / temperate / cold / very-cold).
+    const isHot = climate.includes("hot");
+    const isCold = climate.includes("cold");
+    const isHumid = climate.includes("humid");
+    const climateMultiplier = climate.includes("very-cold") ? 1.35 : isHumid ? 1.25 : isHot ? 1.3 : isCold ? 1.2 : 1.0;
     const storyMultiplier = stories > 1 ? 1 + (stories - 1) * 0.1 : 1;
     const totalBTU = Math.round(baseBTU * insMultiplier * climateMultiplier * storyMultiplier);
-    const tons = Math.round(totalBTU / 12000 * 10) / 10;
-    return { ok: true, result: { squareFootage: sqft, requiredBTU: totalBTU, tonnage: tons, unitSize: `${Math.ceil(tons * 2) / 2} ton system`, insulation, climate, estimatedCost: Math.round(tons * 3500), energyEstimate: `${Math.round(totalBTU / 3412 * 8)} kWh/day at peak`, seerRecommendation: climate === "hot" ? "SEER 16+" : "SEER 14+" } };
+    // Cooling load is the design driver here; heating runs ~15% lighter for a
+    // comparably-insulated envelope in the same climate band.
+    const coolingBTU = totalBTU;
+    const heatingBTU = Math.round(totalBTU * (isCold ? 1.1 : 0.85));
+    const tons = Math.round(coolingBTU / 12000 * 10) / 10;
+    const equipmentSize = `${Math.ceil(tons * 2) / 2} ton system`;
+    return { ok: true, result: {
+      squareFootage: sqft,
+      heatingBTU,
+      coolingBTU,
+      requiredBTU: totalBTU,
+      tonnage: tons,
+      tonnageRecommended: `${tons} ton`,
+      unitSize: equipmentSize,
+      equipmentSize,
+      insulation,
+      climate,
+      estimatedCost: Math.round(tons * 3500),
+      energyEstimate: `${Math.round(totalBTU / 3412 * 8)} kWh/day at peak`,
+      seerRecommendation: isHot ? "SEER 16+" : "SEER 14+",
+      recommendation: isHot
+        ? "Hot climate — prioritise SEER 16+ and verify duct sealing to hold the cooling load."
+        : isCold
+          ? "Cold climate — size for the heating load and consider a cold-climate heat pump or dual-fuel."
+          : "Temperate climate — a properly-sealed SEER 14+ system meets this load.",
+    } };
   });
   registerLensAction("hvac", "energyAudit", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const monthlyBill = parseFloat(data.monthlyBill) || 0;
-    const sqft = parseFloat(data.squareFootage) || 1000;
-    const systemAge = parseInt(data.systemAge) || 0;
+    const monthlyBill = num(data.monthlyBill, 0);
+    const sqft = num(data.squareFootage, 1000);
+    const systemAge = intNum(data.systemAge, 0);
     const costPerSqFt = sqft > 0 ? Math.round((monthlyBill * 12 / sqft) * 100) / 100 : 0;
     const efficiencyLoss = Math.min(50, systemAge * 2);
     const potentialSavings = Math.round(monthlyBill * efficiencyLoss / 100);
@@ -26,7 +62,32 @@ export default function registerHVACActions(registerLensAction) {
     if (systemAge > 15) issues.push("System past expected lifespan — consider replacement");
     if (costPerSqFt > 3) issues.push("Energy cost per sqft is above average");
     if (systemAge > 10) issues.push("Refrigerant may need checking");
-    return { ok: true, result: { monthlyBill, annualCost: monthlyBill * 12, costPerSqFt, systemAge, efficiencyLoss: `${efficiencyLoss}%`, potentialMonthlySavings: potentialSavings, potentialAnnualSavings: potentialSavings * 12, issues, grade: costPerSqFt < 1.5 ? "A" : costPerSqFt < 2.5 ? "B" : costPerSqFt < 3.5 ? "C" : "D" } };
+    if (issues.length === 0) issues.push("No major efficiency red flags detected");
+    const grade = costPerSqFt < 1.5 ? "A" : costPerSqFt < 2.5 ? "B" : costPerSqFt < 3.5 ? "C" : "D";
+    const annualCost = Math.round(monthlyBill * 12 * 100) / 100;
+    const estimatedAnnualSavings = potentialSavings * 12;
+    // ROI score: higher when there's more recoverable spend (efficiency loss)
+    // against the current bill — 0–100, simple bounded heuristic.
+    const roiScore = Math.min(100, Math.round(efficiencyLoss * 2));
+    return { ok: true, result: {
+      monthlyBill,
+      annualCost,
+      costPerSqFt,
+      systemAge,
+      efficiencyLoss: `${efficiencyLoss}%`,
+      systemEfficiency: `${Math.max(0, 100 - efficiencyLoss)}% of rated`,
+      expectedLifespan: systemAge >= 15 ? "Past typical 15–20 yr lifespan" : `~${Math.max(0, 18 - systemAge)} yr remaining`,
+      potentialMonthlySavings: potentialSavings,
+      potentialAnnualSavings: estimatedAnnualSavings,
+      estimatedAnnualSavings,
+      savingsOpportunities: issues,
+      roiScore,
+      issues,
+      grade,
+      recommendation: grade === "A" || grade === "B"
+        ? "System is operating efficiently — keep up routine maintenance."
+        : "Above-average cost per sqft — schedule a tune-up and check insulation/ductwork for recoverable savings.",
+    } };
   });
   registerLensAction("hvac", "maintenanceSchedule", (ctx, artifact, _params) => {
     const data = artifact.data || {};
@@ -42,16 +103,62 @@ export default function registerHVACActions(registerLensAction) {
       { task: "Flush drain line", frequency: "Every 6 months", priority: "medium", diy: true },
       { task: "Check electrical connections", frequency: "Annually", priority: "high", diy: false },
     ];
-    const daysSinceService = lastService ? Math.round((Date.now() - lastService.getTime()) / 86400000) : 999;
-    return { ok: true, result: { systemType, lastService: lastService?.toISOString().split("T")[0] || "unknown", daysSinceService, overdue: daysSinceService > 365, tasks, diyTasks: tasks.filter(t => t.diy).length, proTasks: tasks.filter(t => !t.diy).length, nextServiceDue: daysSinceService > 180 ? "Schedule service soon" : "On track" } };
+    const validDate = lastService && !Number.isNaN(lastService.getTime()) ? lastService : null;
+    const daysSinceService = validDate ? Math.round((Date.now() - validDate.getTime()) / 86400000) : 999;
+    const lastServiceDate = validDate ? validDate.toISOString().split("T")[0] : null;
+    // An overdue task is one whose cadence has lapsed since the last service.
+    // With no known service date we treat every annual-or-more-frequent task as
+    // due. Filter cadence → days then compare against daysSinceService.
+    const cadenceDays = (f) => /1-3 month/i.test(f) ? 90 : /6 month/i.test(f) ? 182 : /2 year/i.test(f) ? 730 : 365;
+    const enrichedTasks = tasks.map((t) => {
+      const due = cadenceDays(t.frequency);
+      const overdue = daysSinceService >= due;
+      const nextDate = validDate ? new Date(validDate.getTime() + due * 86400000) : null;
+      return { ...t, overdue, nextDue: nextDate ? nextDate.toISOString().split("T")[0] : "due now" };
+    });
+    const overdueCount = enrichedTasks.filter((t) => t.overdue).length;
+    return { ok: true, result: {
+      systemType,
+      lastService: lastServiceDate || "unknown",
+      lastServiceDate,
+      daysSinceService,
+      overdue: daysSinceService > 365,
+      overdueCount,
+      tasks: enrichedTasks,
+      diyTasks: enrichedTasks.filter(t => t.diy).length,
+      proTasks: enrichedTasks.filter(t => !t.diy).length,
+      nextServiceDue: daysSinceService > 180 ? "Schedule service soon" : "On track",
+      recommendation: overdueCount > 0
+        ? `${overdueCount} task${overdueCount === 1 ? "" : "s"} overdue — schedule a ${systemType} service visit.`
+        : "On schedule — keep replacing the air filter every 1–3 months.",
+    } };
   });
   registerLensAction("hvac", "zoneBalance", (ctx, artifact, _params) => {
-    const zones = artifact.data?.zones || [];
-    if (zones.length === 0) return { ok: true, result: { message: "Add zones with temperatures to check balance." } };
-    const temps = zones.map(z => ({ zone: z.name || z.room, current: parseFloat(z.currentTemp) || 72, target: parseFloat(z.targetTemp) || 72, deviation: Math.abs((parseFloat(z.currentTemp) || 72) - (parseFloat(z.targetTemp) || 72)) }));
+    const zones = Array.isArray(artifact.data?.zones) ? artifact.data.zones : [];
+    if (zones.length === 0) return { ok: true, result: { zones: [], maxDeviation: 0, avgDeviation: 0, balanced: true, verdict: "no zones", balanceScore: 100, recommendation: "Add zones with current + target temperatures to check balance.", message: "Add zones with temperatures to check balance." } };
+    const temps = zones.map(z => {
+      const cur = num(z.currentTemp, 72);
+      const tgt = num(z.targetTemp, 72);
+      return { zone: String(z.name || z.room || "zone"), current: cur, target: tgt, deviation: Math.round(Math.abs(cur - tgt) * 10) / 10 };
+    });
     const maxDeviation = Math.max(...temps.map(t => t.deviation));
     const avgDeviation = Math.round(temps.reduce((s, t) => s + t.deviation, 0) / temps.length * 10) / 10;
-    return { ok: true, result: { zones: temps, maxDeviation, avgDeviation, balanced: maxDeviation < 3, worstZone: temps.sort((a, b) => b.deviation - a.deviation)[0]?.zone, recommendations: maxDeviation > 5 ? ["Check damper settings", "Inspect ductwork for blockages", "Consider zone control system"] : maxDeviation > 2 ? ["Adjust dampers", "Check vents are open"] : ["System is well-balanced"] } };
+    const balanced = maxDeviation < 3;
+    const verdict = maxDeviation < 3 ? "balanced" : maxDeviation <= 5 ? "minor imbalance" : "imbalanced";
+    // 100 = perfect; each °F of worst-case deviation costs 10 points, floored at 0.
+    const balanceScore = Math.max(0, Math.round(100 - maxDeviation * 10));
+    const recommendations = maxDeviation > 5 ? ["Check damper settings", "Inspect ductwork for blockages", "Consider zone control system"] : maxDeviation > 2 ? ["Adjust dampers", "Check vents are open"] : ["System is well-balanced"];
+    return { ok: true, result: {
+      zones: temps,
+      maxDeviation,
+      avgDeviation,
+      balanced,
+      verdict,
+      balanceScore,
+      worstZone: temps.slice().sort((a, b) => b.deviation - a.deviation)[0]?.zone,
+      recommendations,
+      recommendation: recommendations[0],
+    } };
   });
 
   // ─────────────────────────────────────────────────────────────────────
