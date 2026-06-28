@@ -41,6 +41,7 @@ import express from "express";
 import cors from "cors";
 import crypto from "crypto";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { startSSE } from "./lib/sse.js";
 import fs from "fs";
 import path from "path";
@@ -39154,8 +39155,9 @@ try {
 async function runMcpTool(domain, name, input, ctx) {
   const lensHandler = LENS_ACTIONS.get(`${domain}.${name}`);
   if (lensHandler) {
-    const virtualArtifact = { id: null, domain, type: "domain_action", data: input || {}, meta: {} };
-    return await lensHandler(ctx, virtualArtifact, input || {});
+    const data = _peelRedundantArtifactWrapper(input || {});
+    const virtualArtifact = { id: null, domain, type: "domain_action", data, meta: {} };
+    return await lensHandler(ctx, virtualArtifact, data);
   }
   return await runMacro(domain, name, input || {}, ctx);
 }
@@ -39253,12 +39255,14 @@ app.post("/api/lens/run", async (req, res) => {
     // Accept both macro-style {domain, name, input} and legacy lens-action
     // {domain, action, ...rest}. `name` and `action` are aliases.
     const action = body.action || body.name;
-    const rest = body.input && typeof body.input === "object"
-      ? body.input
-      : (() => {
-          const { domain: _d, action: _a, name: _n, input: _i, ...r } = body;
-          return r;
-        })();
+    const rest = _peelRedundantArtifactWrapper(
+      body.input && typeof body.input === "object"
+        ? body.input
+        : (() => {
+            const { domain: _d, action: _a, name: _n, input: _i, ...r } = body;
+            return r;
+          })()
+    );
     if (!domain || !action) return res.status(400).json({ ok: false, error: "domain and action required" });
     const ctx = makeCtx(req);
     // H1: gate the whole dispatch (lens-action AND macro paths) for anonymous callers
