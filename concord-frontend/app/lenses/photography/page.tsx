@@ -406,9 +406,9 @@ export default function PhotographyPage() {
             <Camera className="w-6 h-6 text-sky-400" />
             <h1 className="text-2xl font-bold">Photography</h1>
             {(isLoading || dtusLoading) && (
-              <div className="flex items-center gap-1.5 text-xs text-sky-400">
+              <div role="status" aria-busy="true" className="flex items-center gap-1.5 text-xs text-sky-400">
                 <div className="w-3 h-3 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
-                Loading...
+                Loading photography…
               </div>
             )}
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
@@ -451,7 +451,7 @@ export default function PhotographyPage() {
             {'iso' in actionResult && 'aperture' in actionResult && (
               <div className="flex flex-wrap gap-4 text-xs">
                 <span className="text-gray-400">ISO: <span className="text-neon-cyan font-bold">{String(actionResult.iso)}</span></span>
-                <span className="text-gray-400">Aperture: <span className="text-neon-cyan">f/{String(actionResult.aperture)}</span></span>
+                <span className="text-gray-400">Aperture: <span className="text-neon-cyan">{String(actionResult.aperture)}</span></span>
                 <span className="text-gray-400">Shutter: <span className="text-neon-cyan">{String(actionResult.shutterSpeed)}</span></span>
                 <span className="text-gray-400">EV: <span className="text-neon-green">{String(actionResult.ev)}</span></span>
                 <span className="text-gray-400">Handheld: <span className={actionResult.handheld ? 'text-neon-green' : 'text-red-400'}>{String(actionResult.handheld)}</span></span>
@@ -524,7 +524,11 @@ export default function PhotographyPage() {
           ))}
         </div>
 
-        {isError && <ErrorState error={error?.message} onRetry={refetch} />}
+        {isError && (
+          <div role="alert">
+            <ErrorState error={error?.message} onRetry={refetch} />
+          </div>
+        )}
 
         {/* Gallery */}
         {tab === 'gallery' && (

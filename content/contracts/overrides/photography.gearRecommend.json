@@ -1,0 +1,26 @@
+{
+  "macro_id": "photography.gearRecommend",
+  "domain": "photography",
+  "name": "gearRecommend",
+  "inputs": {
+    "genre": { "type": "string", "required": false, "maxLength": 40 },
+    "budget": { "type": "string", "required": false, "maxLength": 40 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.genre === 'string'",
+    "output.ok === false || typeof output.result.budget === 'string'",
+    "output.ok === false || (output.result.recommendation && typeof output.result.recommendation.lens === 'string')",
+    "output.ok === false || typeof output.result.recommendation.lighting === 'string'",
+    "output.ok === false || typeof output.result.recommendation.accessory === 'string'",
+    "output.ok === false || typeof output.result.tip === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "genre": "portrait", "budget": "medium" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "genre": "landscape", "budget": "high" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "genre": "<script>alert(1)</script>", "budget": "1e999" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. NOT assassin-driven (LENS_ACTIONS only). Authored contract pinned by server/tests/photography-lens-macros.test.js. PhotographyActionPanel sends { artifact: { data: { genre, budget } } } (peeled → handler reads artifact.data.genre/style + artifact.data.budget). Unknown genre falls back to the 'general' recommendation; recommendation.lens/lighting/accessory always present (the component renders all three)."
+}
