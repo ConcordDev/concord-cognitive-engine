@@ -1,0 +1,31 @@
+{
+  "macro_id": "neuro.importSignal",
+  "domain": "neuro",
+  "name": "importSignal",
+  "inputs": {
+    "format": { "type": "string", "maxLength": 16 },
+    "name": { "type": "string", "maxLength": 120 },
+    "sampleRate": { "type": "number" },
+    "text": { "type": "string" },
+    "payload": { "type": "object" },
+    "events": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.recordingId === 'string'",
+    "output.ok === false || Array.isArray(output.result.channelNames)",
+    "output.ok === false || Number.isFinite(output.result.channelCount)",
+    "output.ok === false || Number.isFinite(output.result.sampleCount)",
+    "output.ok === false || Number.isFinite(output.result.durationSec)",
+    "output.ok === false || Number.isFinite(output.result.eventCount)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "format": "csv", "name": "rest", "sampleRate": 256, "text": "Fz,Cz,Pz\n0.1,-0.2,0.3\n0.2,-0.1,0.25\n0.15,-0.15,0.2", "events": [] }, "expect": { "ok": true } },
+    { "input": { "format": "edf-json", "sampleRate": 128, "payload": { "channels": [{ "name": "O1", "samples": [0.1, 0.2, 0.3, 0.4] }], "sampleRate": 128 } }, "expect": { "ok": true } },
+    { "input": { "format": "csv", "text": "" }, "expect": { "ok": false } },
+    { "input": { "format": "csv", "sampleRate": 256, "text": "Fz,Cz\nabc,1.2\nNaN,0.5\n0.3,xyz" }, "expect": { "ok": true } }
+  ],
+  "_note": "STATE-backed (per-user recordings in globalThis._concordSTATE.neuroLens). Parses CSV / edf-json / fif-json into the canonical channel format. FAIL-CLOSED: non-finite CSV cells and non-finite JSON samples are coerced to 0 (Number.isFinite guard) so no NaN is persisted; round-trip through waveformWindow stays finite. Empty CSV / empty payload / no parsed samples are rejected. EegWorkbench reads recordingId/channelNames/channelCount/sampleCount/durationSec/eventCount EXACTLY."
+}

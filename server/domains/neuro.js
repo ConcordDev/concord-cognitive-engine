@@ -113,14 +113,23 @@ export default function registerNeuroActions(registerLensAction) {
       }
       const peakFreq = Math.round(peakBin * freqRes * 100) / 100;
 
-      // Alpha/Beta ratio (arousal index)
+      // Alpha/Beta + Theta/Beta ratios (arousal + attention indices). When beta
+      // power is ~0 (e.g. a pure low-frequency signal) the ratio is unbounded —
+      // clamp to a finite sentinel (999) so the rendered "α/β …" number never
+      // displays literal "Infinity" and no non-finite value can leak downstream.
+      const RATIO_CAP = 999;
       const alphaP = bandPower.alpha.absolutePower;
       const betaP = bandPower.beta.absolutePower;
-      const alphaBetaRatio = betaP > 0 ? Math.round((alphaP / betaP) * 1000) / 1000 : Infinity;
+      const safeRatio = (num) => {
+        if (!(betaP > 0)) return num > 0 ? RATIO_CAP : 0;
+        const r = Math.round((num / betaP) * 1000) / 1000;
+        return Number.isFinite(r) ? Math.min(r, RATIO_CAP) : RATIO_CAP;
+      };
+      const alphaBetaRatio = safeRatio(alphaP);
 
       // Theta/Beta ratio (attention index — elevated in ADHD)
       const thetaP = bandPower.theta.absolutePower;
-      const thetaBetaRatio = betaP > 0 ? Math.round((thetaP / betaP) * 1000) / 1000 : Infinity;
+      const thetaBetaRatio = safeRatio(thetaP);
 
       // Dominant band
       const dominant = Object.entries(bandPower).sort((a, b) => b[1].relativePower - a[1].relativePower)[0];
@@ -262,8 +271,51 @@ export default function registerNeuroActions(registerLensAction) {
    */
   registerLensAction("neuro", "erpAnalysis", (ctx, artifact, _params) => {
   try {
-    const epochs = artifact.data?.epochs || [];
-    const sampleRate = artifact.data?.sampleRate || 256;
+    let epochs = artifact.data?.epochs || [];
+    let sampleRate = artifact.data?.sampleRate || 256;
+
+    // Continuous-signal entry: a single channel + event onset(s) is segmented
+    // into pre/post epochs around each onset (the quick-bench path). This is a
+    // real capability — slice the continuous trace around the marker(s) — not a
+    // synthetic fallback. `eventOnset` may be a single value or an array, in
+    // SECONDS (≤1 ⇒ fraction of the trace is NOT assumed; seconds throughout).
+    if (epochs.length === 0 && artifact.data?.signal) {
+      const sig = artifact.data.signal || {};
+      const samples = Array.isArray(sig.samples) ? sig.samples : [];
+      sampleRate = Number(sig.sampleRate) || sampleRate;
+      if (samples.length === 0) return { ok: false, error: "Signal has no samples." };
+      const rawOnsets = Array.isArray(artifact.data.eventOnset)
+        ? artifact.data.eventOnset
+        : [artifact.data.eventOnset != null ? artifact.data.eventOnset : 0.5];
+      const preSamp = Math.round(0.2 * sampleRate);   // 200 ms pre
+      const postSamp = Math.round(0.8 * sampleRate);  // 800 ms post
+      const segLen = preSamp + postSamp;
+      const built = [];
+      for (const on of rawOnsets) {
+        const onsetSamp = Math.round((Number(on) || 0) * sampleRate);
+        const start = onsetSamp - preSamp;
+        const end = onsetSamp + postSamp;
+        if (start < 0 || end > samples.length) continue;
+        // baseline-correct against the pre-stimulus window
+        const seg = samples.slice(start, end);
+        let blMean = 0;
+        for (let i = 0; i < preSamp; i++) blMean += seg[i] || 0;
+        blMean /= Math.max(1, preSamp);
+        built.push({ onset: onsetSamp, samples: seg.map(v => v - blMean) });
+      }
+      // If no onset produced an in-bounds window, fall back to one centred epoch
+      // so a short bench signal still yields an ERP rather than a dead error.
+      if (built.length === 0) {
+        const want = Math.min(segLen, samples.length);
+        let blMean = 0;
+        const bl = Math.min(preSamp, want);
+        for (let i = 0; i < bl; i++) blMean += samples[i] || 0;
+        blMean /= Math.max(1, bl);
+        built.push({ onset: 0, samples: samples.slice(0, want).map(v => v - blMean) });
+      }
+      epochs = built;
+    }
+
     if (epochs.length === 0) return { ok: false, error: "No epoch data." };
 
     const epochLen = epochs[0].samples?.length || 0;
@@ -297,7 +349,12 @@ export default function registerNeuroActions(registerLensAction) {
     for (let i = 0; i < baselineSamples; i++) baselineRms += avg[i] * avg[i];
     baselineRms = Math.sqrt(baselineRms / Math.max(baselineSamples, 1));
     const peakAmplitude = Math.max(...avg.map(Math.abs));
-    const snr = baselineRms > 0 ? Math.round((peakAmplitude / baselineRms) * 100) / 100 : Infinity;
+    // SNR is unbounded when the baseline is silent — clamp to a finite sentinel
+    // (9999) so the rendered "SNR …" value never shows literal "Infinity".
+    const SNR_CAP = 9999;
+    const snr = baselineRms > 0
+      ? Math.min(SNR_CAP, Math.round((peakAmplitude / baselineRms) * 100) / 100)
+      : (peakAmplitude > 0 ? SNR_CAP : 0);
 
     // Peak detection: find local maxima/minima in the average
     const peaks = [];

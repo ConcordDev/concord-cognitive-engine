@@ -1,0 +1,30 @@
+{
+  "macro_id": "neuro.frequencyAnalysis",
+  "domain": "neuro",
+  "name": "frequencyAnalysis",
+  "inputs": {
+    "channels": { "type": "array" },
+    "signal": { "type": "object" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.channels)",
+    "output.ok === false || Number.isFinite(output.result.channelCount)",
+    "output.ok === false || output.result.channels.every(c => typeof c.channel === 'string')",
+    "output.ok === false || output.result.channels.every(c => Number.isFinite(c.peakFrequency))",
+    "output.ok === false || output.result.channels.every(c => c.dominantBand && typeof c.dominantBand.name === 'string' && Number.isFinite(c.dominantBand.relativePower))",
+    "output.ok === false || output.result.channels.every(c => ['delta','theta','alpha','beta','gamma'].every(b => c.bands[b] && typeof c.bands[b].label === 'string' && Number.isFinite(c.bands[b].relativePower)))",
+    "output.ok === false || output.result.channels.every(c => Number.isFinite(c.indices.alphaBetaRatio) && Number.isFinite(c.indices.thetaBetaRatio))",
+    "output.ok === false || output.result.channels.every(c => typeof c.indices.arousalLevel === 'string' && typeof c.indices.attentionIndex === 'string')",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "channels": [{ "name": "CH1", "samples": [0,0.38,0.71,0.92,1,0.92,0.71,0.38,0,-0.38,-0.71,-0.92,-1,-0.92,-0.71,-0.38], "sampleRate": 16 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "signal": { "channel": "Fz", "samples": [0,1,0,-1,0,1,0,-1,0,1,0,-1,0,1,0,-1], "sampleRate": 16 } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": false } },
+    { "input": { "artifact": { "data": { "channels": [{ "name": "CH1", "samples": ["abc", null, "NaN", "Infinity", 0.5, 1, 0, -1], "sampleRate": 16 } ] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. Hanning-windowed radix-2 FFT → single-sided PSD → per-band power. The arousal/attention ratios (alphaBetaRatio, thetaBetaRatio) are CLAMPED to a finite sentinel (999) so a pure low-frequency signal with ~0 beta power never leaks Infinity into the rendered 'α/β …' value (fixed 2026-06-28). NeuroActionPanel's freq card maps over channels[].{channel,peakFrequency,dominantBand.{name,relativePower,association},bands.*.{label,relativePower},indices.{alphaBetaRatio,thetaBetaRatio,arousalLevel,attentionIndex}} EXACTLY."
+}

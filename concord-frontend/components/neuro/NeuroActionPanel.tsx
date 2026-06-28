@@ -30,8 +30,10 @@ interface BandStat { absolutePower: number; relativePower: number; label: string
 interface FreqChannel { channel: string; sampleRate: number; sampleCount: number; bands: Record<string, BandStat>; peakFrequency: number; totalPower: number; dominantBand: { name: string; relativePower: number; association: string }; indices: { alphaBetaRatio: number; thetaBetaRatio: number; arousalLevel: string; attentionIndex: string } }
 interface FreqResult { channels: FreqChannel[]; channelCount: number }
 interface Connection { from: string; to: string; correlation: number; strength?: string }
-interface ConnResult { connections?: Connection[]; correlationMatrix?: number[][]; channelNames?: string[] }
-interface ErpResult { peakAmplitudeMicroV?: number; peakLatencyMs?: number; component?: string; baseline?: number }
+interface ConnResult { channelCount: number; significantConnections?: Connection[]; totalConnections?: number; correlationMatrix?: { labels: string[]; matrix: number[][] }; networkMetrics?: { averageConnectivity: number; density: number; strongConnections: number }; hubs?: { channel: string; connectivityScore: number }[] }
+interface ErpPeak { latencyMs: number; amplitude: number; polarity: string; component: string | null }
+interface ErpIdentified { component: string; latencyMs: number; amplitude: number }
+interface ErpResult { epochCount: number; peakAmplitude: number; snr: number; snrQuality: string; baselineRms: number; peaks: ErpPeak[]; identifiedComponents: ErpIdentified[] }
 
 // Composite EEG signal generator: alpha-dominant base + slight beta on CH1, delta-dominant on CH2.
 function generateChannels(): { name: string; samples: number[]; sampleRate: number }[] {
@@ -96,12 +98,12 @@ export function NeuroActionPanel() {
   async function actConn() {
     if (channels.length < 2) { err('Need 2+ channels (use composite).'); return; }
     setBusy('conn'); setFeedback(null);
-    try { const r = await callMacro<ConnResult>('connectivityAnalysis', { artifact: { data: { channels } } }); if (r.ok && r.result) { setConnResult(r.result); pipe.publish('neuro.connectivity', r.result, { label: `${r.result.connections?.length ?? 0} edges` }); ok(`${r.result.connections?.length ?? 0} connections.`); } else err(r.error ?? 'conn failed'); }
+    try { const r = await callMacro<ConnResult>('connectivityAnalysis', { artifact: { data: { channels } } }); if (r.ok && r.result) { setConnResult(r.result); pipe.publish('neuro.connectivity', r.result, { label: `${r.result.significantConnections?.length ?? 0} edges` }); ok(`${r.result.significantConnections?.length ?? 0} connections.`); } else err(r.error ?? 'conn failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actErp() {
     setBusy('erp'); setFeedback(null);
-    try { const r = await callMacro<ErpResult>('erpAnalysis', { artifact: { data: { signal: channels[0], eventOnset: 0.5 } } }); if (r.ok && r.result) { setErpResult(r.result); pipe.publish('neuro.erp', r.result, { label: r.result.component ?? 'ERP' }); ok(`ERP analyzed.`); } else err(r.error ?? 'erp failed'); }
+    try { const r = await callMacro<ErpResult>('erpAnalysis', { artifact: { data: { signal: channels[0], eventOnset: 0.5 } } }); if (r.ok && r.result) { setErpResult(r.result); pipe.publish('neuro.erp', r.result, { label: r.result.identifiedComponents?.[0]?.component ?? 'ERP' }); ok(`ERP analyzed.`); } else err(r.error ?? 'erp failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSim() {
@@ -122,7 +124,7 @@ export function NeuroActionPanel() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const ch0 = freqResult?.channels?.[0];
-    const body = [`🧠 EEG bench`, '', ch0 ? `Dominant: ${ch0.dominantBand.name} (${ch0.dominantBand.relativePower}%) — ${ch0.dominantBand.association}` : '', ch0 ? `Peak ${ch0.peakFrequency} Hz · arousal ${ch0.indices.arousalLevel} · attention ${ch0.indices.attentionIndex}` : '', connResult?.connections?.length ? `${connResult.connections.length} functional connections` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
+    const body = [`🧠 EEG bench`, '', ch0 ? `Dominant: ${ch0.dominantBand.name} (${ch0.dominantBand.relativePower}%) — ${ch0.dominantBand.association}` : '', ch0 ? `Peak ${ch0.peakFrequency} Hz · arousal ${ch0.indices.arousalLevel} · attention ${ch0.indices.attentionIndex}` : '', connResult?.significantConnections?.length ? `${connResult.significantConnections.length} functional connections` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
     try {
       const messageId = await dmRecall.run(async () => {
         const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
@@ -151,7 +153,7 @@ export function NeuroActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const ch0 = freqResult?.channels?.[0];
-      const task = `EEG bench. ${ch0 ? `Channel ${ch0.channel}: dominant ${ch0.dominantBand.name} (${ch0.dominantBand.relativePower}%, ${ch0.dominantBand.association}), peak ${ch0.peakFrequency} Hz, arousal ${ch0.indices.arousalLevel}, attention ${ch0.indices.attentionIndex}.` : ''} ${connResult?.connections?.length ? `${connResult.connections.length} functional connections.` : ''} Interpret the most likely cognitive state + one neurofeedback intervention. Plain text, 3 sentences max.`;
+      const task = `EEG bench. ${ch0 ? `Channel ${ch0.channel}: dominant ${ch0.dominantBand.name} (${ch0.dominantBand.relativePower}%, ${ch0.dominantBand.association}), peak ${ch0.peakFrequency} Hz, arousal ${ch0.indices.arousalLevel}, attention ${ch0.indices.attentionIndex}.` : ''} ${connResult?.significantConnections?.length ? `${connResult.significantConnections.length} functional connections.` : ''} Interpret the most likely cognitive state + one neurofeedback intervention. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Interpretation ready.'); } else err('Agent returned empty.');
@@ -225,20 +227,28 @@ export function NeuroActionPanel() {
             <div className="text-[10px] text-zinc-400 mt-4">α/β {ch.indices.alphaBetaRatio} · θ/β {ch.indices.thetaBetaRatio} · {ch.indices.arousalLevel} / {ch.indices.attentionIndex}</div>
           </div>
         ))}
-        {connResult?.connections && (
+        {connResult?.significantConnections && (
           <div className="rounded-md border border-fuchsia-500/30 bg-fuchsia-500/5 p-2.5 md:col-span-2">
-            <div className="text-[10px] uppercase tracking-wider text-fuchsia-300 font-semibold">Connectivity ({connResult.connections.length})</div>
+            <div className="text-[10px] uppercase tracking-wider text-fuchsia-300 font-semibold">Connectivity ({connResult.significantConnections.length}{connResult.networkMetrics ? ` · density ${connResult.networkMetrics.density}%` : ''})</div>
             <div className="space-y-0.5 mt-1 max-h-32 overflow-y-auto">
-              {connResult.connections.slice(0, 8).map((c, i) => <div key={i} className="text-[11px] text-zinc-300 flex items-center gap-2"><span className="font-mono">{c.from} ↔ {c.to}</span><div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-fuchsia-400" style={{ width: `${Math.min(100, Math.abs(c.correlation) * 100)}%` }} /></div><span className="font-mono text-fuchsia-200 text-[10px]">{c.correlation.toFixed(2)}</span></div>)}
+              {connResult.significantConnections.slice(0, 8).map((c, i) => <div key={i} className="text-[11px] text-zinc-300 flex items-center gap-2"><span className="font-mono">{c.from} ↔ {c.to}</span><div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-fuchsia-400" style={{ width: `${Math.min(100, Math.abs(c.correlation) * 100)}%` }} /></div><span className="font-mono text-fuchsia-200 text-[10px]">{c.correlation.toFixed(2)}</span></div>)}
             </div>
           </div>
         )}
         {erpResult && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">ERP</div>
-            <div className="text-2xl font-bold text-amber-300">{erpResult.peakAmplitudeMicroV ?? '-'} μV</div>
-            <div className="text-[10px] text-zinc-400">peak latency {erpResult.peakLatencyMs ?? '-'} ms</div>
-            {erpResult.component && <div className="text-[10px] text-amber-200">component: {erpResult.component}</div>}
+            <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">ERP · {erpResult.epochCount} epoch{erpResult.epochCount === 1 ? '' : 's'}</div>
+            <div className="text-2xl font-bold text-amber-300">{erpResult.peakAmplitude} μV</div>
+            <div className="text-[10px] text-zinc-400">SNR {erpResult.snr} ({erpResult.snrQuality}) · baseline RMS {erpResult.baselineRms}</div>
+            {erpResult.identifiedComponents.length > 0 ? (
+              <div className="text-[10px] text-amber-200 mt-1">
+                {erpResult.identifiedComponents.map((c, i) => (
+                  <span key={i} className="mr-2">{c.component}@{c.latencyMs}ms ({c.amplitude}μV)</span>
+                ))}
+              </div>
+            ) : (
+              <div className="text-[10px] text-zinc-500 mt-1">{erpResult.peaks.length} peak{erpResult.peaks.length === 1 ? '' : 's'}, none matched a known component</div>
+            )}
           </div>
         )}
       </div>
