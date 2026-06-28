@@ -530,6 +530,27 @@ The calculator-family sweep is now essentially complete. Remaining queue: the no
 many are CRUD/visualization surfaces rather than compute panels, so lower dead-calculator risk.
 ~92 lenses through the non-score gate. The loop continues.
 
+### Phase-2 batch 19 DONE (2026-06-28): bio, consulting, affect, art, artistry
+145 server + 28 UX-state tests — the first non-calculator/feature-lens batch (twice-launched; the first
+run was cut off by the shared session limit and cleanly reverted, then redone from a clean checkpoint).
+The dead-surface + fail-open class persists even in feature lenses:
+- **bio**: 2 dead sequence surfaces (align tab alignedA→alignA; restriction-map enzyme→enzymes[] +
+  sites rendered as [object Object]) + 2 fail-closed. 23 server + 4 vitest + 6 overrides.
+- **art**: dead ArtActionPanel workbench (4 macros, both directions → blank cards) + swallowed-fetch
+  (.catch(()=>[]) made the Retry UI dead code) + 4 fail-opens (#NaN swatches). 21 server + 10 vitest.
+- **affect**: 1 dead surface (Pattern Detection theme/trigger/label mismatch → [object Object]) + 4
+  backend poison/crash fixes (text.split/.map on non-string/non-array → 500). 31 server + 5 vitest.
+- **artistry**: all 30 calls aligned (no dead surface); swallowed-fetch + 12 fail-open numeric sites
+  (finNum). 36 server + 5 vitest + 6 overrides.
+- **consulting**: all 39 workbench macros aligned; 4 pure-compute money macros fail-open (finPos/finSigned).
+  31 server + 5 vitest + 6 overrides.
+INFRA: `system.cartograph` crossed the 8s fuzz timeout as the repo grew (it reads/serializes the large
+generated SYSTEMS.json, ignores numeric input) → added it to a documented HEAVY_FUZZ_SKIP_IDS set in the
+assassin harness (heavy_introspection, same justification as the live_* external-IO skip). Ratchet GREEN.
+**97 lenses now carry the UX-states gate marker** (batches 1–19). 258 WIRED; tsc 0. The loop continues
+into the non-calculator long tail (atlas, board, bridge, forum, household, robotics-class, classroom,
+council, debate, crypto, code, chat, etc.).
+
 ### Phase-2 batch 14+15 (2026-06-28): marketing, analytics, retail, audit, supplychain, voice
 Batch 14's subagents were cut off mid-work by the shared session limit; only **marketing** was complete
 + verified (fail-open Infinity-leak fix; committed), the rest reverted for a clean resume. Batch 15
