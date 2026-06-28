@@ -1,0 +1,27 @@
+{
+  "macro_id": "hr.ptoBalance",
+  "domain": "hr",
+  "name": "ptoBalance",
+  "inputs": {
+    "employeeId": { "type": "string", "required": true, "maxLength": 200 },
+    "annualDays": { "type": "number", "required": true }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.accrued)",
+    "output.ok === false || Number.isFinite(output.result.used)",
+    "output.ok === false || Number.isFinite(output.result.remaining)",
+    "output.ok === false || typeof output.result.rolloverDate === 'string'",
+    "output.ok === false || output.result.accrued <= output.result.annualDays",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "employeeId": "emp_42", "annualDays": 24 }, "expect": { "ok": true } },
+    { "input": { "employeeId": "emp_9", "annualDays": 20 }, "expect": { "ok": true } },
+    { "input": { "annualDays": 20 }, "expect": { "ok": false } },
+    { "input": { "employeeId": "e", "annualDays": 0 }, "expect": { "ok": false } },
+    { "input": { "employeeId": "e", "annualDays": "Infinity" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/hr.js). 3-arg dispatch via /api/lens/run on key 'hr.ptoBalance'. HrActionPanel sends FLAT { employeeId, annualDays } and renders r.result.{accrued,used,remaining,rolloverDate}. Deterministic: accrued = annualDays/12 * monthsElapsed (current-month inclusive, so <= annualDays); used = sum of STATE-approved PTO for the employee this year (0 when none / STATE absent); remaining = accrued - used; rolloverDate = next Jan 1. Was DEAD before the 2026-06-28 fix (handler read totalPTO/usedPTO/pendingRequests and returned monthsRemaining/burnRate/projectedYearEnd). POISON: 'Infinity' annualDays rejects (Number()+isFinite, NOT parseFloat); a 'NaN'-days STATE row collapses to 0 so remaining stays finite. Not driven by macro-assassin; pinned by server/tests/hr-lens-macros.test.js."
+}

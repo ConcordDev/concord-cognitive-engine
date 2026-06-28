@@ -1,0 +1,29 @@
+{
+  "macro_id": "hr.compensationBenchmark",
+  "domain": "hr",
+  "name": "compensationBenchmark",
+  "inputs": {
+    "role": { "type": "string", "required": true, "maxLength": 200 },
+    "location": { "type": "string", "required": false, "maxLength": 200 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.role === 'string'",
+    "output.ok === false || Number.isFinite(output.result.market50)",
+    "output.ok === false || Number.isFinite(output.result.market75)",
+    "output.ok === false || Number.isFinite(output.result.rangeLow)",
+    "output.ok === false || Number.isFinite(output.result.rangeHigh)",
+    "output.ok === false || Number.isFinite(output.result.offerSuggestion)",
+    "output.ok === false || (output.result.rangeLow <= output.result.market50 && output.result.market50 <= output.result.rangeHigh)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "role": "Senior Engineer", "location": "SF" }, "expect": { "ok": true } },
+    { "input": { "role": "Junior Developer", "location": "remote" }, "expect": { "ok": true } },
+    { "input": { "role": "Recruiter" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "role": "" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/hr.js). 3-arg dispatch via /api/lens/run on key 'hr.compensationBenchmark'. HrActionPanel sends FLAT { role, location } and renders r.result.{role,market50,market75,rangeLow,rangeHigh,offerSuggestion} ($k). Deterministic pure compute: a role-keyword median seed scaled by a location cost-of-labor multiplier; p75 = +18%, range ±22%, offer = midpoint(median,p75). Was DEAD before the 2026-06-28 alignment fix (handler read data.salary/yearsExperience and returned benchmarkSalary/percentile — every comp card blank). Not driven by macro-assassin (lives in LENS_ACTIONS, not MACROS); pinned by server/tests/hr-lens-macros.test.js."
+}
