@@ -1,0 +1,23 @@
+{
+  "macro_id": "atlas.overpass-poi",
+  "domain": "atlas",
+  "name": "overpass-poi",
+  "external_io": true,
+  "inputs": {
+    "south": { "type": "number" },
+    "west": { "type": "number" },
+    "north": { "type": "number" },
+    "east": { "type": "number" },
+    "amenity": { "type": "string", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "south": 10, "west": 0, "north": 5, "east": 5 }, "expect": { "ok": false } }
+  ],
+  "_note": "atlas.overpass-poi (server/domains/atlas.js) hits the OSM Overpass API (overpass-api.de, free/no-key) for POIs within a bbox. EXTERNAL-IO — marked external_io:true so the assassin NEVER drives it live. Fail-soft: a missing or invalid bbox (south>=north or west>=east) is validate-REJECTED BEFORE any fetch; a 429/network failure returns {ok:false,error} and never throws. The PlaceFinder/AtlasActionPanel panels call it via runDomain('atlas','overpass-poi',{input}). Pinned (validate-reject, no-network) by server/tests/atlas-lens-macros.test.js."
+}

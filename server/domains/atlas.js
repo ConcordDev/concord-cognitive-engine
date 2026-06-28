@@ -91,7 +91,10 @@ export default function registerAtlasActions(registerLensAction) {
       let lon = parseFloat(place.lon);
       let source = "provided";
 
-      if (isNaN(lat) || isNaN(lon)) {
+      // Treat non-finite/out-of-envelope provided coords as "missing" so a
+      // poisoned Infinity/1e308 never leaks into distance math (fail-CLOSED).
+      const provided = Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+      if (!provided) {
         const ref = reference[nameLower];
         if (ref) {
           lat = ref.lat;
@@ -176,6 +179,17 @@ export default function registerAtlasActions(registerLensAction) {
     const n = points.length;
     const labels = points.map((p, i) => p.name || `Point_${i}`);
     const matrix = Array.from({ length: n }, () => new Array(n).fill(0));
+    // Accept lon OR lng (different panels send each) — coerce once.
+    const latOf = (p) => parseFloat(p.lat) || 0;
+    const lonOf = (p) => parseFloat(p.lon ?? p.lng) || 0;
+    // Fail-CLOSED: a non-finite or out-of-envelope coordinate is REJECTED so
+    // Infinity/NaN can never leak into the matrix as a serialized null.
+    for (const p of points) {
+      const la = parseFloat(p.lat), lo = parseFloat(p.lon ?? p.lng);
+      if (!Number.isFinite(la) || !Number.isFinite(lo) || la < -90 || la > 90 || lo < -180 || lo > 180) {
+        return { ok: false, error: "each point needs a finite lat (-90..90) + lon/lng (-180..180)" };
+      }
+    }
 
     let totalDist = 0;
     let pairCount = 0;
@@ -183,18 +197,24 @@ export default function registerAtlasActions(registerLensAction) {
     let minDist = Infinity;
     let maxPair = null;
     let minPair = null;
+    // Flat pair list (from/to/distanceKm) for the bespoke AtlasActionPanel.
+    const pairs = [];
+    let nearest = null;
 
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
-        const lat1 = parseFloat(points[i].lat) || 0;
-        const lon1 = parseFloat(points[i].lon) || 0;
-        const lat2 = parseFloat(points[j].lat) || 0;
-        const lon2 = parseFloat(points[j].lon) || 0;
+        const lat1 = latOf(points[i]);
+        const lon1 = lonOf(points[i]);
+        const lat2 = latOf(points[j]);
+        const lon2 = lonOf(points[j]);
         const dist = haversine(lat1, lon1, lat2, lon2);
         matrix[i][j] = dist;
         matrix[j][i] = dist;
         totalDist += dist;
         pairCount++;
+        // ~50 km/h overland estimate for a rough drive-time readout.
+        const estTimeMinutes = Math.round((dist / 50) * 60);
+        pairs.push({ from: labels[i], to: labels[j], distanceKm: dist, estTimeMinutes });
 
         if (dist > maxDist) {
           maxDist = dist;
@@ -203,6 +223,7 @@ export default function registerAtlasActions(registerLensAction) {
         if (dist < minDist) {
           minDist = dist;
           minPair = [labels[i], labels[j]];
+          nearest = { from: labels[i], to: labels[j], distanceKm: dist };
         }
       }
     }
@@ -210,12 +231,12 @@ export default function registerAtlasActions(registerLensAction) {
     const avgDist = pairCount > 0 ? Math.round((totalDist / pairCount) * 100) / 100 : 0;
 
     // Compute centroid
-    const avgLat = points.reduce((s, p) => s + (parseFloat(p.lat) || 0), 0) / n;
-    const avgLon = points.reduce((s, p) => s + (parseFloat(p.lon) || 0), 0) / n;
+    const avgLat = points.reduce((s, p) => s + latOf(p), 0) / n;
+    const avgLon = points.reduce((s, p) => s + lonOf(p), 0) / n;
 
     // Spread: average distance from centroid
     const centroidDistances = points.map((p) => {
-      return haversine(avgLat, avgLon, parseFloat(p.lat) || 0, parseFloat(p.lon) || 0);
+      return haversine(avgLat, avgLon, latOf(p), lonOf(p));
     });
     const avgSpread = Math.round((centroidDistances.reduce((s, d) => s + d, 0) / n) * 100) / 100;
 
@@ -223,6 +244,9 @@ export default function registerAtlasActions(registerLensAction) {
       pointCount: n,
       labels,
       matrix,
+      // Flat pair list + nearest — the bespoke AtlasActionPanel renders these.
+      pairs,
+      nearest,
       stats: {
         averageDistanceKm: avgDist,
         maxDistanceKm: maxDist,
@@ -233,6 +257,12 @@ export default function registerAtlasActions(registerLensAction) {
         centroid: { lat: Math.round(avgLat * 10000) / 10000, lon: Math.round(avgLon * 10000) / 10000 },
         averageSpreadKm: avgSpread,
         clusterTightness: avgSpread < 100 ? "tight" : avgSpread < 500 ? "moderate" : avgSpread < 2000 ? "spread" : "dispersed",
+        // Aliases the DistanceMatrixPanel renders (meanKm/maxKm/minKm/maxPair/minPair).
+        meanKm: avgDist,
+        maxKm: maxDist,
+        minKm: minDist === Infinity ? 0 : minDist,
+        maxPair,
+        minPair,
       },
     };
 
@@ -252,6 +282,16 @@ export default function registerAtlasActions(registerLensAction) {
     const regions = artifact.data?.regions || [];
     if (regions.length === 0) {
       return { ok: true, result: { message: "No region data provided. Supply artifact.data.regions as [{ name, population, area, gdp, density, growth }].", summary: null, rankings: null } };
+    }
+
+    // Fail-CLOSED: a non-finite numeric (Infinity/NaN/1e308) in any metric is
+    // rejected so it can never leak into totals/gini.
+    for (const r of regions) {
+      for (const k of ["population", "area", "gdp", "density", "growth"]) {
+        if (r[k] !== undefined && r[k] !== null && r[k] !== "" && !Number.isFinite(parseFloat(r[k]))) {
+          return { ok: false, error: `region "${r.name || "Unknown"}" has a non-finite ${k}` };
+        }
+      }
     }
 
     const parsed = regions.map((r) => ({
@@ -370,11 +410,20 @@ export default function registerAtlasActions(registerLensAction) {
       return Math.round(R * c * 100) / 100;
     }
 
+    // Fail-CLOSED: reject non-finite / out-of-envelope coordinates before the
+    // TSP loop so Infinity/NaN can never leak into route legs.
+    for (const w of waypoints) {
+      const la = parseFloat(w.lat), lo = parseFloat(w.lon ?? w.lng);
+      if (!Number.isFinite(la) || !Number.isFinite(lo) || la < -90 || la > 90 || lo < -180 || lo > 180) {
+        return { ok: false, error: "each waypoint needs a finite lat (-90..90) + lon/lng (-180..180)" };
+      }
+    }
+
     const n = waypoints.length;
     const labels = waypoints.map((w, i) => w.name || `Waypoint_${i}`);
     const coords = waypoints.map((w) => ({
       lat: parseFloat(w.lat) || 0,
-      lon: parseFloat(w.lon) || 0,
+      lon: parseFloat(w.lon ?? w.lng) || 0,
     }));
 
     // Pre-compute distance matrix
@@ -485,9 +534,23 @@ export default function registerAtlasActions(registerLensAction) {
 
     const savings = naiveTotal > 0 ? Math.round(((naiveTotal - bestTotal) / naiveTotal) * 10000) / 100 : 0;
 
+    // Component-canonical aliases (DistanceMatrixPanel + MapsDirections render
+    // these): ordered place-name list, the integer visit order, and per-hop
+    // legs as { from, to, km }. All derived from the optimized route — no
+    // fabricated values.
+    const routeNames = routeDetails.map((r) => r.name);
+    const order = [...bestRoute];
+    const legs = [];
+    for (let step = 1; step < routeDetails.length; step++) {
+      legs.push({ from: routeDetails[step - 1].name, to: routeDetails[step].name, km: routeDetails[step].legDistanceKm });
+    }
+
     const result = {
       waypointCount: n,
       optimizedRoute: routeDetails,
+      route: routeNames,
+      order,
+      legs,
       totalDistanceKm: bestTotal,
       naiveOrderDistanceKm: naiveTotal,
       savingsPercent: savings,

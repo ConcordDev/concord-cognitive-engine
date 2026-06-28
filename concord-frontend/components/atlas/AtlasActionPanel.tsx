@@ -43,8 +43,8 @@ interface GeoResult { query: string; places: Place[]; count: number }
 interface RevResult { latitude: number; longitude: number; displayName: string; address?: Record<string, string> }
 interface PoiElement { id: number; latitude: number; longitude: number; name?: string; amenity?: string; tags?: Record<string, string> }
 interface PoiResult { elements?: PoiElement[]; count?: number }
-interface DistMatrix { from: string; to: string; distanceKm: number; estTimeMinutes: number }
-interface DistResult { matrix: DistMatrix[]; nearest?: { from: string; to: string; distanceKm: number } }
+interface DistPair { from: string; to: string; distanceKm: number; estTimeMinutes: number }
+interface DistResult { pairs: DistPair[]; nearest?: { from: string; to: string; distanceKm: number } }
 
 interface PointRow { name: string; lat: number; lng: number }
 const POINT_COLS: ColumnSpec<PointRow>[] = [
@@ -137,8 +137,8 @@ export function AtlasActionPanel() {
       const r = await callMacro<DistResult>('distanceMatrix', { artifact: { data: { points } } });
       if (r.ok && r.result) {
         setDistResult(r.result);
-        pipe.publish('atlas.dist', r.result, { label: `${r.result.matrix.length} pairs` });
-        ok(`${r.result.matrix.length} pairs.`);
+        pipe.publish('atlas.dist', r.result, { label: `${r.result.pairs.length} pairs` });
+        ok(`${r.result.pairs.length} pairs.`);
       } else err(r.error ?? 'dist failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -186,7 +186,7 @@ export function AtlasActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Atlas/geo brief. ${geoResult?.places[0] ? `Location: ${geoResult.places[0].displayName}.` : ''} ${poiResult ? `Found ${poiResult.elements?.length} ${amenity} in bbox.` : ''} ${distResult ? `${distResult.matrix.length} distance pairs.` : ''} Suggest one geospatial insight + one related query worth running. Plain text, 3 sentences max.`;
+      const task = `Atlas/geo brief. ${geoResult?.places[0] ? `Location: ${geoResult.places[0].displayName}.` : ''} ${poiResult ? `Found ${poiResult.elements?.length} ${amenity} in bbox.` : ''} ${distResult ? `${distResult.pairs.length} distance pairs.` : ''} Suggest one geospatial insight + one related query worth running. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) {
@@ -306,9 +306,9 @@ export function AtlasActionPanel() {
         )}
         {distResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-60 overflow-y-auto md:col-span-2">
-            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Distance matrix · {distResult.matrix.length} pairs</div>
+            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Distance matrix · {distResult.pairs.length} pairs</div>
             {distResult.nearest && <div className="text-[11px] text-emerald-300">nearest: {distResult.nearest.from} ↔ {distResult.nearest.to} ({distResult.nearest.distanceKm}km)</div>}
-            {distResult.matrix.slice(0, 8).map((m, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5 flex justify-between"><span><span className="font-mono text-purple-200">{m.from}</span> → <span className="font-mono text-purple-200">{m.to}</span></span><span className="font-mono">{m.distanceKm}km · {m.estTimeMinutes}min</span></div>)}
+            {distResult.pairs.slice(0, 8).map((m, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5 flex justify-between"><span><span className="font-mono text-purple-200">{m.from}</span> → <span className="font-mono text-purple-200">{m.to}</span></span><span className="font-mono">{m.distanceKm}km · {m.estTimeMinutes}min</span></div>)}
           </div>
         )}
       </div>

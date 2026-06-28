@@ -1,0 +1,21 @@
+{
+  "macro_id": "atlas.regionStats",
+  "domain": "atlas",
+  "name": "regionStats",
+  "inputs": {
+    "regions": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || output.result.message !== undefined || typeof output.result.totals === 'object'",
+    "output.ok !== true || output.result.message !== undefined || (output.result.distribution.populationGini >= 0 && output.result.distribution.populationGini <= 1)",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "regions": [{ "name": "A", "population": 1000000, "area": 500, "gdp": 50000000000 }, { "name": "B", "population": 3000000, "area": 1500, "gdp": 60000000000 }] }, "expect": { "ok": true } },
+    { "input": { "regions": [{ "name": "Bad", "population": "Infinity" }] }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "atlas.regionStats (server/domains/atlas.js) is a pure-compute LENS_ACTIONS handler aggregating demographic/economic stats: totals, weighted averages, per-capita GDP, rankings, population std-dev + a real Gini concentration index. Fail-CLOSED: any non-finite metric (Infinity/NaN) is REJECTED so it can never leak into the Gini/totals; a finite-but-huge population (1e12) is preserved. Empty input returns a guidance message. The page 'Region Stats' compute button renders regionCount/totals/averages/distribution.concentration. Pinned by server/tests/atlas-lens-macros.test.js."
+}
