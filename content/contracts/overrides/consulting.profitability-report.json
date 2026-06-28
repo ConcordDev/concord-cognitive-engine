@@ -1,0 +1,21 @@
+{
+  "macro_id": "consulting.profitability-report",
+  "domain": "consulting",
+  "name": "profitability-report",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.totalBilled)",
+    "output.ok === false || Number.isFinite(output.result.totalCost)",
+    "output.ok === false || Number.isFinite(output.result.totalMargin)",
+    "output.ok === false || Number.isFinite(output.result.overallMarginPct)",
+    "output.ok === false || Array.isArray(output.result.rows)",
+    "output.ok === false || output.result.rows.every(function(r){ return Number.isFinite(r.margin) && Number.isFinite(r.marginPct); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS STATE-backed (per-user). Per-engagement billed-vs-cost margin. All rates via csNum (fail-closed); marginPct/overallMarginPct guard billed===0 -> 0 (no Infinity/NaN divide). Every row + total stays FINITE. Empty state -> ok:true zero totals (degrade-graceful). Pinned by server/tests/consulting-lens-macros.test.js + consulting-domain-parity.test.js."
+}

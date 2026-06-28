@@ -1,0 +1,22 @@
+{
+  "macro_id": "consulting.proposalScore",
+  "domain": "consulting",
+  "name": "proposalScore",
+  "inputs": {},
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.score)",
+    "output.ok === false || (output.result.score >= 0 && output.result.score <= 100)",
+    "output.ok === false || Array.isArray(output.result.sectionsPresent)",
+    "output.ok === false || Array.isArray(output.result.sectionsMissing)",
+    "output.ok === false || typeof output.result.completeness === 'string'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "executive-summary": "x", "methodology": "y", "timeline": "z" }, "expect": { "ok": true } },
+    { "input": { "executive-summary": "x", "methodology": "y", "timeline": "z", "pricing": "p", "team": "t", "references": "r" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler reading artifact.data. Pure compute; section-completeness score 0-100 over six fixed sections (no numeric input, no Infinity risk). Pinned by server/tests/consulting-lens-macros.test.js."
+}
