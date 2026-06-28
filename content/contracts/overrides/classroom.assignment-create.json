@@ -1,0 +1,31 @@
+{
+  "macro_id": "classroom.assignment-create",
+  "domain": "classroom",
+  "name": "assignment-create",
+  "inputs": {
+    "cohortId": { "type": "number", "required": true },
+    "title": { "type": "string", "required": true, "maxLength": 4000 },
+    "instructions": { "type": "string", "required": false, "maxLength": 4000 },
+    "dueAt": { "type": "string", "required": false },
+    "points": { "type": "number", "required": false, "min": 0, "max": 1000 },
+    "topic": { "type": "string", "required": false, "maxLength": 80 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.assignment === 'object' && output.result.assignment !== null)",
+    "output.ok === false || typeof output.result.assignment.id === 'string'",
+    "output.ok === false || (Number.isFinite(output.result.assignment.points) && output.result.assignment.points >= 0 && output.result.assignment.points <= 1000)",
+    "output.ok === false || output.result.assignment.status === 'published'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "cohortId": 1, "title": "Essay", "points": 80, "topic": "Week 1" }, "expect": { "ok": true } },
+    { "input": { "cohortId": 1, "title": "Big", "points": 5000 }, "expect": { "ok": true } },
+    { "input": { "cohortId": 1, "title": "Poison", "points": "1e999" }, "expect": { "ok": true } },
+    { "input": { "cohortId": 1, "title": "Neg", "points": -7 }, "expect": { "ok": true } },
+    { "input": { "cohortId": 1 }, "expect": { "ok": false } },
+    { "input": { "title": "Orphan" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (registerLensAction). Dispatch handler(ctx, artifact, input). In-memory STATE.classroomLens.assignments per userId. POISON: points via Math.max(0,Math.min(1000,Number(x)||100)) so '1e999'/'Infinity'/'NaN' collapse to a FINITE clamped value. title + finite cohortId required → fail-CLOSED. Not assassin-driven (LENS_ACTIONS); pinned by server/tests/classroom-lens-macros.test.js."
+}

@@ -1,0 +1,26 @@
+{
+  "macro_id": "classroom.quiz-submit",
+  "domain": "classroom",
+  "name": "quiz-submit",
+  "inputs": {
+    "quizId": { "type": "string", "required": true },
+    "studentId": { "type": "string", "required": false },
+    "answers": { "type": "object", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.attempt === 'object' && output.result.attempt !== null)",
+    "output.ok === false || Number.isFinite(output.result.attempt.score)",
+    "output.ok === false || Number.isFinite(output.result.attempt.totalPoints)",
+    "output.ok === false || (Number.isFinite(output.result.attempt.percent) && output.result.attempt.percent >= 0 && output.result.attempt.percent <= 100)",
+    "output.ok === false || Array.isArray(output.result.attempt.breakdown)",
+    "output.ok === false || output.result.attempt.breakdown.every(function(b){ return typeof b.correct === 'boolean' && Number.isFinite(b.awarded); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "quizId": "missing", "answers": {} }, "expect": { "ok": false } },
+    { "input": { "quizId": "missing", "answers": "not-an-object" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler. Auto-graded: case-insensitive trimmed string-equality per question; earned = sum of awarded; percent = round(earned/totalPoints*100) guarded totalPoints>0. POISON: a non-object answers bag is guarded (typeof === 'object') → no throw, 0 matches → score 0, percent FINITE. Missing quiz → fail-CLOSED 'quiz not found'. correctAnswer is exposed in the per-question breakdown (the post-submit review panel) but NEVER in quiz-get/quiz-list. Fuzz uses a missing quizId (a real attempt needs a seeded quiz — covered by the macros test). Pinned by server/tests/classroom-lens-macros.test.js."
+}

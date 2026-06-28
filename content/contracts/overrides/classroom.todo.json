@@ -1,0 +1,24 @@
+{
+  "macro_id": "classroom.todo",
+  "domain": "classroom",
+  "name": "todo",
+  "inputs": {
+    "cohortId": { "type": "number", "required": false },
+    "studentId": { "type": "string", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.upcoming)",
+    "output.ok === false || Array.isArray(output.result.missing)",
+    "output.ok === false || Array.isArray(output.result.done)",
+    "output.ok === false || (Number.isInteger(output.result.counts.upcoming) && Number.isInteger(output.result.counts.missing) && Number.isInteger(output.result.counts.done))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "cohortId": 5, "studentId": "stu-1" }, "expect": { "ok": true } },
+    { "input": { "studentId": "" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Buckets a student's assignments: graded→done, unsubmitted+past-due→missing, unsubmitted+future→upcoming. dueAt parsed via Date.parse; a poisoned/unparseable dueAt → NaN, Number.isFinite guard routes it to upcoming (not missing) — no throw. studentId defaults to caller. Empty → ok:true, all-empty buckets. Pinned by server/tests/classroom-lens-macros.test.js."
+}

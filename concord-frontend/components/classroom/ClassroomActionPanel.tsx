@@ -30,7 +30,7 @@ function pickMessage(e: unknown): string { const ax = e as { response?: { data?:
 interface Book { workId: string; title: string; authors: string[]; firstPublishYear?: number; editionCount?: number; subjects?: string[]; coverImage?: string | null; readUrl?: string | null }
 interface SearchResult { query?: string; works: Book[]; count: number; totalResults?: number }
 interface WorkResult { workId: string; title: string; description?: string; subjects?: string[]; subjectPlaces?: string[]; subjectPeople?: string[]; firstPublishDate?: string; covers?: string[] }
-interface IsbnResult { isbn?: string; title?: string; authors?: string[]; publisher?: string; publishDate?: string; pages?: number; coverImage?: string | null }
+interface IsbnResult { isbn?: string; title?: string; subtitle?: string; publishers?: string[]; publishDate?: string; pages?: number; coverImage?: string | null }
 
 export function ClassroomActionPanel() {
   const [query, setQuery] = useState('');
@@ -103,7 +103,7 @@ export function ClassroomActionPanel() {
       searchResult ? `Search "${searchResult.query}": ${searchResult.count} results${searchResult.works[0] ? `\n→ ${searchResult.works[0].title} (${searchResult.works[0].authors[0] ?? '?'}, ${searchResult.works[0].firstPublishYear ?? '?'})` : ''}` : '',
       subjResult ? `Subject ${subject}: top "${subjResult.works[0]?.title}"` : '',
       workResult ? `Work: ${workResult.title} (${workResult.firstPublishDate ?? '?'})` : '',
-      isbnResult ? `ISBN ${isbnResult.isbn}: ${isbnResult.title} (${isbnResult.publisher})` : '',
+      isbnResult ? `ISBN ${isbnResult.isbn}: ${isbnResult.title}${isbnResult.publishers?.length ? ` (${isbnResult.publishers.join(', ')})` : ''}` : '',
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
@@ -214,7 +214,7 @@ export function ClassroomActionPanel() {
         {isbnResult && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">ISBN {isbnResult.isbn}</div>
-            <div className="flex gap-2 mt-1">{isbnResult.coverImage && <img src={isbnResult.coverImage} alt={isbnResult.title} className="w-16 h-24 object-cover rounded" />}<div><div className="text-[11px] font-semibold text-amber-200">{isbnResult.title}</div><div className="text-[10px] text-zinc-400">{(isbnResult.authors ?? []).join(', ')}</div><div className="text-[10px] text-zinc-400">{isbnResult.publisher} · {isbnResult.publishDate}</div>{isbnResult.pages && <div className="text-[10px] text-zinc-400">{isbnResult.pages} pages</div>}</div></div>
+            <div className="flex gap-2 mt-1">{isbnResult.coverImage && <img src={isbnResult.coverImage} alt={isbnResult.title} className="w-16 h-24 object-cover rounded" />}<div><div className="text-[11px] font-semibold text-amber-200">{isbnResult.title}</div>{isbnResult.subtitle && <div className="text-[10px] text-zinc-400">{isbnResult.subtitle}</div>}<div className="text-[10px] text-zinc-400">{[(isbnResult.publishers ?? []).join(', '), isbnResult.publishDate].filter(Boolean).join(' · ')}</div>{isbnResult.pages && <div className="text-[10px] text-zinc-400">{isbnResult.pages} pages</div>}</div></div>
           </div>
         )}
       </div>

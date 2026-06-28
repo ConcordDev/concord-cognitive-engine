@@ -53,12 +53,24 @@ export default function ClassroomPage() {
   const [submitForm, setSubmitForm] = useState({ cohortId: '', dtuId: '' });
   const [status, setStatus] = useState<string | null>(null);
   const [activeCohort, setActiveCohort] = useState<number | null>(null);
+  // Honest load lifecycle: distinguish "still loading" and "load failed" from
+  // a genuinely-empty cohort list. Without this, a swallowed fetch (macro()
+  // returns null on any network/parse error) renders identically to "no
+  // cohorts" — a silent-empty that hides backend outages from the user.
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = async () => {
+    setLoading(true);
     const r = await macro('classroom', 'list_cohorts');
+    setLoading(false);
     if (r?.ok) {
       setTeaching(r.teaching || []);
       setStudying(r.studying || []);
+      setLoadError(null);
+    } else {
+      // null (swallowed fetch failure) or { ok:false } → surface, don't silently blank.
+      setLoadError(r?.error || r?.reason || 'Could not reach the classroom service.');
     }
   };
 
@@ -106,6 +118,19 @@ export default function ClassroomPage() {
 
         {status && (
           <div className="mb-4 bg-cyan-950/50 border border-cyan-700/50 text-cyan-200 px-3 py-2 rounded-lg text-sm">{status}</div>
+        )}
+
+        {loadError && (
+          <div role="alert" className="mb-4 bg-rose-950/50 border border-rose-700/50 text-rose-200 px-3 py-2 rounded-lg text-sm flex items-center justify-between gap-3">
+            <span>{loadError}</span>
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              className="shrink-0 rounded bg-rose-800/60 hover:bg-rose-700/60 px-2 py-1 text-xs text-rose-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              Try again
+            </button>
+          </div>
         )}
 
         <div className="grid md:grid-cols-3 gap-3 mb-6">
@@ -159,8 +184,12 @@ export default function ClassroomPage() {
           </section>
         </div>
 
+        {loading && (
+          <div role="status" aria-busy="true" className="mb-4 text-zinc-400 italic text-sm">Loading classroom cohorts…</div>
+        )}
+
         <h2 className="text-sm font-bold text-zinc-300 uppercase tracking-wider mb-2">Teaching</h2>
-        {teaching.length === 0 ? <p className="text-zinc-400 italic mb-4">No cohorts you teach.</p> : (
+        {loading || loadError ? null : teaching.length === 0 ? <p className="text-zinc-400 italic mb-4">No cohorts you teach.</p> : (
           <ul className="space-y-1 mb-6">
             {teaching.map(c => (
               <li key={c.id}>
@@ -181,7 +210,7 @@ export default function ClassroomPage() {
         )}
 
         <h2 className="text-sm font-bold text-zinc-300 uppercase tracking-wider mb-2">Studying</h2>
-        {studying.length === 0 ? <p className="text-zinc-400 italic">No cohorts you're enrolled in.</p> : (
+        {loading || loadError ? null : studying.length === 0 ? <p className="text-zinc-400 italic">No cohorts you're enrolled in.</p> : (
           <ul className="space-y-1">
             {studying.map(c => (
               <li key={c.id}>

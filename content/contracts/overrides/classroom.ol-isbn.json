@@ -1,0 +1,24 @@
+{
+  "macro_id": "classroom.ol-isbn",
+  "domain": "classroom",
+  "name": "ol-isbn",
+  "inputs": {
+    "isbn": { "type": "string", "required": true }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.isbn === 'string'",
+    "output.ok === false || Array.isArray(output.result.publishers)",
+    "output.ok === false || Array.isArray(output.result.authorKeys)",
+    "output.ok === false || !('authors' in output.result)",
+    "output.ok === false || !('publisher' in output.result)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "isbn": "12345" }, "expect": { "ok": false } },
+    { "input": { "isbn": "" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS network handler (Open Library /isbn). Validates isbn is 10 or 13 chars (after stripping non-[0-9X]) BEFORE any fetch → fail-CLOSED. CONTRACT: returns publishers (ARRAY) + authorKeys, NOT a singular publisher or author NAMES — the OL isbn endpoint exposes author KEYS only, so the handler does not fabricate names. Phase-2 fix realigned ClassroomActionPanel (was reading isbnResult.publisher/authors — dead surfaces that rendered blank) onto publishers/subtitle/pages. fetch failure / 404 → ok:false with an error string (degrade-graceful). Pinned by server/tests/classroom-lens-macros.test.js."
+}
