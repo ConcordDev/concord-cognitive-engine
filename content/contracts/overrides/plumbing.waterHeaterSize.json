@@ -1,0 +1,30 @@
+{
+  "macro_id": "plumbing.waterHeaterSize",
+  "domain": "plumbing",
+  "name": "waterHeaterSize",
+  "inputs": {
+    "household": { "type": "number" },
+    "simultaneousFixtures": { "type": "number" },
+    "tempRiseF": { "type": "number" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.household)",
+    "output.ok === false || Number.isFinite(output.result.peakDemandGPM)",
+    "output.ok === false || typeof output.result.tankRecommendation === 'string'",
+    "output.ok === false || typeof output.result.tanklessRecommendation === 'string'",
+    "output.ok === false || Number.isFinite(output.result.firstHourRating)",
+    "output.ok === false || typeof output.result.recommendation === 'string'",
+    "output.ok === false || Number.isFinite(parseFloat(output.result.tanklessRecommendation))",
+    "output.ok === false || Number.isFinite(parseFloat(output.result.tankRecommendation))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "household": 4, "simultaneousFixtures": 2 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "household": 6, "simultaneousFixtures": 3 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "household": "x", "simultaneousFixtures": "NaN", "tempRiseF": "Infinity" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. peakGPM = simultaneous·2.5 ; tank = ceil(people·15/10)·10 gal ; tankless kW = round(peakGPM·8.33·60·ΔT/3412) (ΔT default 70°F, overridable via tempRiseF) ; firstHour = round(tank·1.5). Non-finite household/fixtures/ΔT fall to defaults (2/2/70) via Number.isFinite guards — Infinity ΔT no longer leaks an 'Infinity kW' card (2026-06-28). people > 4 → tankless recommendation. PlumbCalc.tsx WaterHeaterSizer renders household/peakDemandGPM/tankRecommendation/tanklessRecommendation/firstHourRating/recommendation EXACTLY — fields verified aligned, no phantoms."
+}

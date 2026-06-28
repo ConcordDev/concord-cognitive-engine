@@ -1,0 +1,30 @@
+{
+  "macro_id": "plumbing.pipeSize",
+  "domain": "plumbing",
+  "name": "pipeSize",
+  "inputs": {
+    "flowGPM": { "type": "number" },
+    "velocityFPS": { "type": "number" },
+    "material": { "type": "string", "maxLength": 40 }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.flowRate === 'string'",
+    "output.ok === false || typeof output.result.velocity === 'string'",
+    "output.ok === false || typeof output.result.calculatedDiameter === 'string'",
+    "output.ok === false || typeof output.result.recommendedSize === 'string'",
+    "output.ok === false || typeof output.result.material === 'string'",
+    "output.ok === false || typeof output.result.note === 'string'",
+    "output.ok === false || Number.isFinite(parseFloat(output.result.calculatedDiameter))",
+    "output.ok === false || Number.isFinite(parseFloat(output.result.recommendedSize))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "flowGPM": 10, "velocityFPS": 5, "material": "copper" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "flowGPM": 20, "velocityFPS": 10 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "flowGPM": "abc", "velocityFPS": "Infinity" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. d = √(GPM/(2.448·v)) then first nominal size ≥ d from [0.5,0.75,1,1.25,1.5,2,2.5,3,4]. Non-finite flow/velocity fall to default 5 via a Number.isFinite guard (parseFloat passes 'Infinity' through — fNum fixes that fail-CLOSED, 2026-06-28). velocity > 8 → erosion note. PlumbCalc.tsx PipeSizer renders flowRate/velocity/calculatedDiameter/recommendedSize/material/note EXACTLY (and regex-parses the leading number of calculatedDiameter + recommendedSize) — fields verified aligned, no phantoms."
+}

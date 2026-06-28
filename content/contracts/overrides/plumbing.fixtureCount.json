@@ -1,0 +1,26 @@
+{
+  "macro_id": "plumbing.fixtureCount",
+  "domain": "plumbing",
+  "name": "fixtureCount",
+  "inputs": {
+    "fixtures": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.message === 'string' || Number.isFinite(output.result.totalWSFU)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.fixtures)",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.meterSize === 'string'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.supplyLine === 'string'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.note === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "fixtures": [{ "type": "toilet", "count": 2 }, { "type": "lavatory", "count": 2 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "fixtures": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "fixtures": "not-an-array" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "fixtures": [{ "type": "toilet", "count": "abc" }, null, "junk", { "type": "shower", "count": "Infinity" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data.fixtures[]{type,count}. WSFU per IPC/UPC: toilet 2.5, lavatory 1, bathtub 2, shower 2, kitchen-sink 1.5, dishwasher 1.5, washing-machine 2, hose-bib 2.5 (unknown → 1.5). Meter band: ≤15→3/4\", ≤30→1\", ≤60→1.5\", else 2\". Empty/non-array/missing fixtures → { message } prompt (the empty-state card). Non-object fixture entries are skipped; non-finite counts fall to 1 via Number.isFinite — a non-array payload no longer crashes on .reduce (2026-06-28). PlumbCalc.tsx FixtureSupplyCalc renders fixtures/totalWSFU/meterSize/supplyLine/note EXACTLY (sends { type, count:number }) — fields verified aligned, no phantoms."
+}
