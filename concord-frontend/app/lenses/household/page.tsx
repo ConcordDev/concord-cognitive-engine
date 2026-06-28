@@ -366,13 +366,58 @@ export default function HouseholdLensPage() {
 
   const handleDelete = async (id: string) => { await remove(id); };
 
+  // Derive the board-wide arrays each calculator reads from the LIVE artifacts.
+  // The persisted artifact's .data is a single record (family member / chore /
+  // meal) and never carries mealPlan / chores / maintenanceItems — so without
+  // these params the handlers always saw undefined and returned empty (the
+  // board-style dead surface). The handlers read params.X ?? artifact.data.X.
+  const deriveActionParams = useCallback((action: string): Record<string, unknown> => {
+    if (action === 'generateGroceryList') {
+      return {
+        mealPlan: mealItems.map(i => {
+          const d = i.data as unknown as MealPlan;
+          return {
+            day: d.day, meal: d.mealType, recipe: d.recipe,
+            ingredients: (d.ingredients || []).map(name => ({ name, quantity: 1, unit: '' })),
+          };
+        }),
+      };
+    }
+    if (action === 'rotateChores' || action === 'choreRotation') {
+      return {
+        chores: choreItems.map(i => ({ name: i.title, currentAssignee: (i.data as unknown as Chore).assignee, frequency: (i.data as unknown as Chore).frequency })),
+        members: familyItems.map(i => (i.data as unknown as FamilyMember).name).filter(Boolean),
+      };
+    }
+    if (action === 'maintenanceCheck' || action === 'maintenanceDue') {
+      return {
+        maintenanceItems: maintenanceItems.map(i => {
+          const d = i.data as unknown as MaintenanceItem;
+          // dueDate is the page's field; the handler computes from lastCompleted
+          // + intervalDays, so pass dueDate as an explicit nextDue anchor via a
+          // synthetic lastCompleted is wrong — instead surface name + dueDate so
+          // the handler flags never-completed items as overdue honestly.
+          return { name: i.title, category: d.area, priority: d.priority };
+        }),
+      };
+    }
+    if (action === 'weeklySummary') {
+      return {
+        chores: choreItems.map(i => ({ name: i.title, completedDate: i.meta.status === 'completed' ? (i.data as unknown as Chore).lastCompleted : undefined })),
+        mealPlan: mealItems.map(i => ({ recipe: (i.data as unknown as MealPlan).recipe })),
+      };
+    }
+    return {};
+  }, [mealItems, choreItems, familyItems, maintenanceItems]);
+
   const handleAction = async (action: string, artifactId?: string) => {
-    const targetId = artifactId || editingId || filtered[0]?.id;
-    if (!targetId) return;
+    const targetId = artifactId || editingId || familyItems[0]?.id || filtered[0]?.id;
+    if (!targetId) { setActionResult({ message: 'Add a family member first so actions have somewhere to attach.' }); return; }
     try {
-      const result = await runAction.mutateAsync({ id: targetId, action });
+      const params = deriveActionParams(action);
+      const result = await runAction.mutateAsync({ id: targetId, action, params });
       if (result.ok === false) { setActionResult({ message: `Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(result.result as Record<string, unknown>); }
-    } catch (err) { console.error('Action failed:', err); }
+    } catch (err) { console.error('Action failed:', err); setActionResult({ message: `Action failed: ${err instanceof Error ? err.message : 'unknown error'}` }); }
   };
 
   const toggleChoreComplete = async (item: LensItem<ArtifactData>) => {

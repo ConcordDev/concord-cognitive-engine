@@ -36,10 +36,29 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface GroceryResult { items?: Array<{ name: string; quantity: string; aisle?: string }>; total?: number }
-interface ChoreResult { rotation?: Array<{ chore: string; assignee: string; due: string }>; weekOf?: string }
-interface MaintResult { items?: Array<{ task: string; dueDate: string; daysOverdue?: number }>; overdueCount?: number }
-interface SummaryResult { choresDone?: number; choresTotal?: number; maintCompleted?: number; sentiment?: string }
+// Shapes EXACTLY match the household.* handler returns (server/domains/household.js).
+interface GroceryResult {
+  list?: Array<{ name: string; quantity: number; unit?: string; category?: string }>;
+  uniqueItems?: number;
+  mealsPlanned?: number;
+}
+interface ChoreResult {
+  assignments?: Array<{ chore: string; assignee: string; frequency?: string; previousAssignee?: string | null }>;
+  totalChores?: number;
+  strategy?: string;
+}
+interface MaintResult {
+  overdue?: Array<{ name: string; nextDueDate?: string | null; daysOverdue?: number | null }>;
+  overdueCount?: number;
+  upcomingCount?: number;
+}
+interface SummaryResult {
+  choresCompleted?: number;
+  totalChores?: number;
+  choreCompletionRate?: number;
+  mealsPlanned?: number;
+  maintenanceDueSoon?: string[];
+}
 
 export function HouseholdActionPanel() {
   const [meals, setMeals] = useState('');
@@ -64,11 +83,22 @@ export function HouseholdActionPanel() {
   const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
   const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
 
+  // Parse each meal line as "Recipe: ingredient, ingredient" (ingredients
+  // optional). This is what the handler aggregates into the grocery list.
+  function parseMealPlan(): Array<{ recipe: string; meal: string; ingredients: Array<{ name: string; quantity: number; unit: string }> }> {
+    return meals.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+      const [recipe, rest] = line.split(':');
+      const ingredients = (rest || '').split(',').map(s => s.trim()).filter(Boolean)
+        .map(name => ({ name, quantity: 1, unit: '' }));
+      return { recipe: (recipe || line).trim(), meal: (recipe || line).trim(), ingredients };
+    });
+  }
+
   async function actGrocery() {
-    const mealList = meals.split('\n').map(l => l.trim()).filter(Boolean);
-    if (!mealList.length) { err('Add meals.'); return; }
+    const mealPlan = parseMealPlan();
+    if (!mealPlan.length) { err('Add meals.'); return; }
     setBusy('grocery'); setFeedback(null);
-    try { const r = await callMacro<GroceryResult>('generateGroceryList', { meals: mealList }); if (r.ok && r.result) { setGroceryResult(r.result); pipe.publish('household.grocery', r.result, { label: `${r.result.items?.length ?? 0} items` }); ok(`${r.result.items?.length ?? 0} items.`); } else err(r.error ?? 'grocery failed'); }
+    try { const r = await callMacro<GroceryResult>('generateGroceryList', { mealPlan }); if (r.ok && r.result) { setGroceryResult(r.result); const n = r.result.list?.length ?? 0; pipe.publish('household.grocery', r.result, { label: `${n} items` }); ok(n > 0 ? `${n} grocery items.` : 'No ingredients — add "Recipe: egg, milk".'); } else err(r.error ?? 'grocery failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actChores() {
@@ -76,17 +106,23 @@ export function HouseholdActionPanel() {
     const m = members.split('\n').map(s => s.trim()).filter(Boolean);
     if (!c.length || !m.length) { err('Add chores + members.'); return; }
     setBusy('chores'); setFeedback(null);
-    try { const r = await callMacro<ChoreResult>('choreRotation', { chores: c, members: m, weekStart: new Date().toISOString().slice(0, 10) }); if (r.ok && r.result) { setChoreResult(r.result); pipe.publish('household.chores', r.result, { label: `${r.result.rotation?.length ?? 0} rotated` }); ok(`${r.result.rotation?.length ?? 0} chores rotated.`); } else err(r.error ?? 'chores failed'); }
+    try { const r = await callMacro<ChoreResult>('choreRotation', { chores: c.map(name => ({ name })), members: m, strategy: 'round-robin' }); if (r.ok && r.result) { setChoreResult(r.result); const n = r.result.assignments?.length ?? 0; pipe.publish('household.chores', r.result, { label: `${n} rotated` }); ok(`${n} chores rotated.`); } else err(r.error ?? 'chores failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMaintenance() {
     setBusy('maintenance'); setFeedback(null);
-    try { const r = await callMacro<MaintResult>('maintenanceDue', { window: 'month' }); if (r.ok && r.result) { setMaintResult(r.result); pipe.publish('household.maint', r.result, { label: `${r.result.overdueCount ?? 0} overdue` }); ok(`${r.result.overdueCount ?? 0} overdue.`); } else err(r.error ?? 'maintenance failed'); }
+    // Derive real maintenance items from the chores textarea (one per line);
+    // no lastServiceDate → handler flags each "never-serviced" (overdue).
+    const items = chores.split('\n').map(s => s.trim()).filter(Boolean).map(name => ({ name }));
+    if (!items.length) { err('Add maintenance items in the Chores box (one per line).'); return; }
+    try { const r = await callMacro<MaintResult>('maintenanceDue', { maintenanceItems: items, lookaheadDays: 30 }); if (r.ok && r.result) { setMaintResult(r.result); pipe.publish('household.maint', r.result, { label: `${r.result.overdueCount ?? 0} overdue` }); ok(`${r.result.overdueCount ?? 0} overdue.`); } else err(r.error ?? 'maintenance failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSummary() {
     setBusy('summary'); setFeedback(null);
-    try { const r = await callMacro<SummaryResult>('weeklySummary', {}); if (r.ok && r.result) { setSummaryResult(r.result); pipe.publish('household.summary', r.result, { label: `${r.result.choresDone}/${r.result.choresTotal} chores` }); ok(`${r.result.choresDone}/${r.result.choresTotal} chores done.`); } else err(r.error ?? 'summary failed'); }
+    const choreItems = chores.split('\n').map(s => s.trim()).filter(Boolean).map(name => ({ name }));
+    const mealPlan = parseMealPlan();
+    try { const r = await callMacro<SummaryResult>('weeklySummary', { chores: choreItems, mealPlan }); if (r.ok && r.result) { setSummaryResult(r.result); pipe.publish('household.summary', r.result, { label: `${r.result.choresCompleted}/${r.result.totalChores} chores` }); ok(`${r.result.choresCompleted}/${r.result.totalChores} chores done.`); } else err(r.error ?? 'summary failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -101,10 +137,10 @@ export function HouseholdActionPanel() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`🏠 Household — week of ${new Date().toLocaleDateString()}`, '',
-      groceryResult ? `Grocery: ${groceryResult.items?.length} items` : '',
-      choreResult ? `Chores rotated: ${choreResult.rotation?.length}` : '',
-      maintResult ? `Maintenance overdue: ${maintResult.overdueCount}` : '',
-      summaryResult ? `Sentiment: ${summaryResult.sentiment}` : '',
+      groceryResult ? `Grocery: ${groceryResult.list?.length ?? 0} items` : '',
+      choreResult ? `Chores rotated: ${choreResult.assignments?.length ?? 0}` : '',
+      maintResult ? `Maintenance overdue: ${maintResult.overdueCount ?? 0}` : '',
+      summaryResult ? `Chores done: ${summaryResult.choresCompleted}/${summaryResult.totalChores}` : '',
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
@@ -133,7 +169,7 @@ export function HouseholdActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Household state: ${members.split('\n').filter(Boolean).length} members, ${chores.split('\n').filter(Boolean).length} chores. ${maintResult ? `${maintResult.overdueCount} overdue maintenance.` : ''} ${summaryResult ? `Sentiment: ${summaryResult.sentiment}.` : ''} Suggest the single weekly meeting agenda item that would most reduce household friction. Plain text.`;
+      const task = `Household state: ${members.split('\n').filter(Boolean).length} members, ${chores.split('\n').filter(Boolean).length} chores. ${maintResult ? `${maintResult.overdueCount} overdue maintenance.` : ''} ${summaryResult ? `${summaryResult.choresCompleted}/${summaryResult.totalChores} chores done this week.` : ''} Suggest the single weekly meeting agenda item that would most reduce household friction. Plain text.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Meeting topic ready.'); } else err('Agent returned empty.');
@@ -159,8 +195,8 @@ export function HouseholdActionPanel() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Meals (one per line)</label><textarea value={meals} onChange={(e) => setMeals(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-teal-200 font-mono focus:outline-none focus:ring-2 focus:ring-teal-400/40 resize-none" /></div>
-        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Chores (one per line)</label><textarea value={chores} onChange={(e) => setChores(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-teal-200 font-mono focus:outline-none focus:ring-2 focus:ring-teal-400/40 resize-none" /></div>
+        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Meals — &quot;Recipe: ingredients&quot;</label><textarea value={meals} onChange={(e) => setMeals(e.target.value)} rows={5} placeholder={'Tacos: beef, tortilla, cheese\nSalad: lettuce, tomato'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-teal-200 font-mono focus:outline-none focus:ring-2 focus:ring-teal-400/40 resize-none" /></div>
+        <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Chores / maintenance (per line)</label><textarea value={chores} onChange={(e) => setChores(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-teal-200 font-mono focus:outline-none focus:ring-2 focus:ring-teal-400/40 resize-none" /></div>
         <div><label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Members (one per line)</label><textarea value={members} onChange={(e) => setMembers(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-teal-200 font-mono focus:outline-none focus:ring-2 focus:ring-teal-400/40 resize-none" /></div>
       </div>
 
@@ -187,29 +223,31 @@ export function HouseholdActionPanel() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        {groceryResult?.items && (
+        {groceryResult?.list && (
           <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5 max-h-40 overflow-y-auto">
-            <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Grocery ({groceryResult.items.length})</div>
-            {groceryResult.items.slice(0, 10).map((i, idx) => <div key={idx} className="text-[11px] text-zinc-300">{i.name} <span className="text-zinc-400 font-mono">{i.quantity}</span>{i.aisle && <span className="text-zinc-400"> · {i.aisle}</span>}</div>)}
+            <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Grocery ({groceryResult.list.length})</div>
+            {groceryResult.list.length === 0 && <div className="text-[11px] text-zinc-400 italic">No ingredients parsed — use &quot;Recipe: egg, milk&quot; format.</div>}
+            {groceryResult.list.slice(0, 10).map((i, idx) => <div key={idx} className="text-[11px] text-zinc-300">{i.name} <span className="text-zinc-400 font-mono">{i.quantity}{i.unit ? ` ${i.unit}` : ''}</span>{i.category && i.category !== 'other' && <span className="text-zinc-400"> · {i.category}</span>}</div>)}
           </div>
         )}
-        {choreResult?.rotation && (
+        {choreResult?.assignments && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-40 overflow-y-auto">
-            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Chores (week of {choreResult.weekOf})</div>
-            {choreResult.rotation.slice(0, 10).map((r, i) => <div key={i} className="text-[11px] text-zinc-300 flex justify-between"><span>{r.chore}</span><span className="text-purple-200 font-semibold">{r.assignee}</span></div>)}
+            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Chores ({choreResult.totalChores} · {choreResult.strategy})</div>
+            {choreResult.assignments.slice(0, 10).map((r, i) => <div key={i} className="text-[11px] text-zinc-300 flex justify-between"><span>{r.chore}</span><span className="text-purple-200 font-semibold">{r.assignee}</span></div>)}
           </div>
         )}
-        {maintResult?.items && (
+        {maintResult?.overdue && (
           <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5 max-h-40 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">Maintenance ({maintResult.overdueCount} overdue)</div>
-            {maintResult.items.slice(0, 6).map((m, i) => <div key={i} className="text-[11px] text-zinc-300 flex justify-between"><span>{m.task}</span><span className={cn('font-mono', (m.daysOverdue ?? 0) > 0 ? 'text-rose-300' : 'text-zinc-400')}>{m.daysOverdue ? `+${m.daysOverdue}d` : m.dueDate}</span></div>)}
+            {maintResult.overdue.length === 0 && <div className="text-[11px] text-zinc-400 italic">Nothing overdue.</div>}
+            {maintResult.overdue.slice(0, 6).map((m, i) => <div key={i} className="text-[11px] text-zinc-300 flex justify-between"><span>{m.name}</span><span className={cn('font-mono', (m.daysOverdue ?? 0) > 0 ? 'text-rose-300' : 'text-zinc-400')}>{m.daysOverdue != null ? `+${m.daysOverdue}d` : (m.nextDueDate || 'never')}</span></div>)}
           </div>
         )}
         {summaryResult && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Weekly summary</div>
-            <div className="text-2xl font-bold text-cyan-300">{summaryResult.choresDone}/{summaryResult.choresTotal}</div>
-            <div className="text-[10px] text-zinc-400">chores · {summaryResult.maintCompleted} maint done · sentiment: {summaryResult.sentiment}</div>
+            <div className="text-2xl font-bold text-cyan-300">{summaryResult.choresCompleted}/{summaryResult.totalChores}</div>
+            <div className="text-[10px] text-zinc-400">chores · {summaryResult.mealsPlanned} meals planned · {summaryResult.choreCompletionRate}% rate{summaryResult.maintenanceDueSoon && summaryResult.maintenanceDueSoon.length > 0 ? ` · ${summaryResult.maintenanceDueSoon.length} maint due` : ''}</div>
           </div>
         )}
       </div>

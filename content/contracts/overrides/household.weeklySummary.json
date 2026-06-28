@@ -1,0 +1,29 @@
+{
+  "macro_id": "household.weeklySummary",
+  "domain": "household",
+  "name": "weeklySummary",
+  "inputs": {
+    "chores": { "type": "array", "required": false },
+    "mealPlan": { "type": "array", "required": false },
+    "shoppingList": { "type": "array", "required": false },
+    "maintenanceItems": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || Number.isFinite(output.result.choresCompleted)",
+    "output.ok === false || Number.isFinite(output.result.totalChores)",
+    "output.ok === false || Number.isFinite(output.result.choreCompletionRate)",
+    "output.ok === false || (output.result.choreCompletionRate >= 0 && output.result.choreCompletionRate <= 100)",
+    "output.ok === false || Number.isFinite(output.result.mealsPlanned)",
+    "output.ok === false || Number.isFinite(output.result.shoppingProgress.remaining)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "chores": [{ "name": "A", "completedDate": "2026-06-28" }, { "name": "B" }], "mealPlan": [{ "recipe": "X" }] }, "expect": { "ok": true } },
+    { "input": { "chores": [{ "name": "A", "completedDate": "garbage" }], "maintenanceItems": [{ "name": "M", "lastCompleted": "bad", "intervalDays": "NaN" }] }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'household.weeklySummary'. Reads artifact.data.X || params.X. Counts chores with a completedDate inside the trailing 7 days, computes choreCompletionRate (guards totalChores===0 → 0, never NaN), meals planned, shopping progress, upcoming tasks, maintenance due soon. POISON: completedDate/lastCompleted via finiteDate, intervalDays via finiteInt — a garbage date is simply not counted; every numeric output FINITE and the rate is bounded [0,100]. Pinned by server/tests/household-lens-macros.test.js."
+}

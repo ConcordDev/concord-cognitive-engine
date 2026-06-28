@@ -1,0 +1,30 @@
+{
+  "macro_id": "household.maintenanceDue",
+  "domain": "household",
+  "name": "maintenanceDue",
+  "inputs": {
+    "maintenanceItems": { "type": "array", "required": false },
+    "lookaheadDays": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || Number.isFinite(output.result.totalItems)",
+    "output.ok === false || Number.isFinite(output.result.overdueCount)",
+    "output.ok === false || Number.isFinite(output.result.upcomingCount)",
+    "output.ok === false || Number.isFinite(output.result.currentCount)",
+    "output.ok === false || Array.isArray(output.result.overdue)",
+    "output.ok === false || output.result.overdue.every(function(o){ return o.daysOverdue === null || Number.isFinite(o.daysOverdue); })",
+    "output.ok === false || output.result.upcoming.every(function(u){ return Number.isFinite(u.daysUntilDue); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "maintenanceItems": [] }, "expect": { "ok": true } },
+    { "input": { "maintenanceItems": [{ "name": "Smoke detector", "lastServiceDate": "2025-01-01", "intervalDays": 365 }], "lookaheadDays": 30 }, "expect": { "ok": true } },
+    { "input": { "maintenanceItems": [{ "name": "Gutters" }] }, "expect": { "ok": true } },
+    { "input": { "maintenanceItems": [{ "name": "X", "lastServiceDate": "garbage", "intervalDays": "Infinity" }], "lookaheadDays": "NaN" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'household.maintenanceDue'. Reads artifact.data.maintenanceItems || params.maintenanceItems. Computes nextDue = lastServiceDate + intervalDays; buckets overdue / upcoming (within lookaheadDays) / current. Never-serviced items are overdue with daysOverdue:null. POISON: lastServiceDate via finiteDate (bad date → null → never-serviced, no NaN), intervalDays via finiteInt(...,365), lookaheadDays via finiteNum(...,30) — every count + day delta stays FINITE. Pinned by server/tests/household-lens-macros.test.js."
+}

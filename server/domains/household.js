@@ -6,6 +6,24 @@
 
 const OPEN_FOOD_FACTS = "https://world.openfoodfacts.org/api/v2";
 
+// Fail-closed numeric parse. parseFloat/Number() silently pass Infinity/NaN
+// ("Infinity", "1e999", NaN) — guard with Number.isFinite so a poisoned input
+// collapses to the fallback instead of leaking Infinity/NaN into output.
+function finiteNum(v, fallback = 0) {
+  const n = typeof v === "number" ? v : parseFloat(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+function finiteInt(v, fallback) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+// Date that is parseable AND finite, else null (so date math never yields NaN).
+function finiteDate(v) {
+  if (!v) return null;
+  const t = new Date(v).getTime();
+  return Number.isFinite(t) ? new Date(t) : null;
+}
+
 export default function registerHouseholdActions(registerLensAction) {
   /**
    * generateGroceryList
@@ -16,9 +34,17 @@ export default function registerHouseholdActions(registerLensAction) {
    */
   registerLensAction("household", "generateGroceryList", (ctx, artifact, params) => {
   try {
-    const mealPlan = artifact.data.mealPlan || [];
-    const pantry = artifact.data.pantry || [];
-    const categorize = params.categorize !== false;
+    const d = artifact.data || {};
+    const p = params || {};
+    // Accept the canonical structured `mealPlan` [{ingredients:[...]}], OR a
+    // flat `meals` array (objects with ingredients, or bare recipe-name strings),
+    // from either artifact.data or params.
+    const rawPlan = d.mealPlan || p.mealPlan || d.meals || p.meals || [];
+    const mealPlan = (Array.isArray(rawPlan) ? rawPlan : []).map((m) =>
+      typeof m === "string" ? { recipe: m, ingredients: [] } : (m || {})
+    );
+    const pantry = d.pantry || p.pantry || [];
+    const categorize = p.categorize !== false;
 
     // Aggregate all ingredients from the meal plan
     const aggregated = {};
@@ -34,7 +60,7 @@ export default function registerHouseholdActions(registerLensAction) {
             usedIn: [],
           };
         }
-        aggregated[key].quantity += parseFloat(ing.quantity) || 0;
+        aggregated[key].quantity += finiteNum(ing.quantity, 0);
         const mealLabel = `${meal.day || ""} ${meal.meal || ""}`.trim();
         if (mealLabel && !aggregated[key].usedIn.includes(mealLabel)) {
           aggregated[key].usedIn.push(mealLabel);
@@ -46,7 +72,7 @@ export default function registerHouseholdActions(registerLensAction) {
     const pantryMap = {};
     for (const item of pantry) {
       const key = `${(item.name || "").toLowerCase()}|${(item.unit || "").toLowerCase()}`;
-      pantryMap[key] = (pantryMap[key] || 0) + (parseFloat(item.quantity) || 0);
+      pantryMap[key] = (pantryMap[key] || 0) + finiteNum(item.quantity, 0);
     }
 
     const groceryList = [];
@@ -105,8 +131,8 @@ export default function registerHouseholdActions(registerLensAction) {
    */
   registerLensAction("household", "maintenanceCheck", (ctx, artifact, params) => {
   try {
-    const items = artifact.data.maintenanceItems || [];
-    const lookaheadDays = params.lookaheadDays != null ? params.lookaheadDays : 14;
+    const items = artifact.data.maintenanceItems || params.maintenanceItems || [];
+    const lookaheadDays = finiteNum(params.lookaheadDays, 14);
     const now = new Date();
 
     const overdue = [];
@@ -114,8 +140,8 @@ export default function registerHouseholdActions(registerLensAction) {
     const current = [];
 
     for (const item of items) {
-      const lastDone = item.lastCompleted ? new Date(item.lastCompleted) : null;
-      const interval = parseInt(item.intervalDays, 10) || 30;
+      const lastDone = finiteDate(item.lastCompleted);
+      const interval = finiteInt(item.intervalDays, 30);
 
       if (!lastDone) {
         overdue.push({ name: item.name, category: item.category || "general", priority: item.priority || "normal", status: "never-completed", daysOverdue: null });
@@ -159,10 +185,11 @@ export default function registerHouseholdActions(registerLensAction) {
    * artifact.data.chores: [{ name, currentAssignee, frequency }]
    * artifact.data.members: [string] or [{ name }]
    */
-  registerLensAction("household", "rotateChores", (ctx, artifact, _params) => {
-    const chores = artifact.data.chores || [];
-    const rawMembers = artifact.data.members || [];
-    const members = rawMembers.map(m => typeof m === "string" ? m : m.name);
+  registerLensAction("household", "rotateChores", (ctx, artifact, params = {}) => {
+    const rawChores = artifact.data.chores || params.chores || [];
+    const chores = rawChores.map(c => typeof c === "string" ? { name: c } : (c || {}));
+    const rawMembers = artifact.data.members || params.members || [];
+    const members = rawMembers.map(m => typeof m === "string" ? m : m.name).filter(Boolean);
 
     if (members.length === 0) return { ok: true, result: { error: "No household members defined." } };
     if (chores.length === 0) return { ok: true, result: { error: "No chores defined." } };
@@ -205,41 +232,46 @@ export default function registerHouseholdActions(registerLensAction) {
    * artifact.data.shoppingList: [{ item, purchased }]
    * artifact.data.upcomingTasks: [{ name, dueDate }]
    */
-  registerLensAction("household", "weeklySummary", (ctx, artifact, _params) => {
+  registerLensAction("household", "weeklySummary", (ctx, artifact, params = {}) => {
   try {
+    const d0 = artifact.data || {};
+    const p = params || {};
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 86400000);
     const weekAhead = new Date(now.getTime() + 7 * 86400000);
 
     // Chores completed this week
-    const chores = artifact.data.chores || [];
+    const chores = d0.chores || p.chores || [];
     const completedChores = chores.filter(c => {
-      if (!c.completedDate) return false;
-      const d = new Date(c.completedDate);
+      const d = finiteDate(c.completedDate);
+      if (!d) return false;
       return d >= weekAgo && d <= now;
     });
 
     // Meals planned
-    const mealPlan = artifact.data.mealPlan || [];
+    const mealPlan = d0.mealPlan || p.mealPlan || d0.meals || p.meals || [];
     const mealsPlanned = mealPlan.length;
 
     // Shopping status
-    const shoppingList = artifact.data.shoppingList || artifact.data.groceryList?.list || [];
+    const shoppingList = d0.shoppingList || p.shoppingList || d0.groceryList?.list || [];
     const totalShoppingItems = shoppingList.length;
     const purchasedItems = shoppingList.filter(i => i.purchased || i.done).length;
 
     // Upcoming tasks
-    const upcoming = (artifact.data.upcomingTasks || []).filter(t => {
+    const upcoming = (d0.upcomingTasks || p.upcomingTasks || []).filter(t => {
       if (!t.dueDate) return true;
-      const d = new Date(t.dueDate);
+      const d = finiteDate(t.dueDate);
+      if (!d) return true;
       return d >= now && d <= weekAhead;
     });
 
     // Maintenance items due
-    const maintenanceItems = artifact.data.maintenanceItems || [];
+    const maintenanceItems = d0.maintenanceItems || p.maintenanceItems || [];
     const maintenanceDue = maintenanceItems.filter(m => {
-      if (!m.lastCompleted || !m.intervalDays) return false;
-      const nextDue = new Date(new Date(m.lastCompleted).getTime() + parseInt(m.intervalDays, 10) * 86400000);
+      const last = finiteDate(m.lastCompleted);
+      const interval = finiteInt(m.intervalDays, 0);
+      if (!last || interval <= 0) return false;
+      const nextDue = new Date(last.getTime() + interval * 86400000);
       return nextDue <= weekAhead;
     });
 
@@ -269,8 +301,8 @@ export default function registerHouseholdActions(registerLensAction) {
    */
   registerLensAction("household", "maintenanceDue", (ctx, artifact, params) => {
   try {
-    const items = artifact.data.maintenanceItems || [];
-    const lookaheadDays = params.lookaheadDays != null ? params.lookaheadDays : 30;
+    const items = artifact.data.maintenanceItems || params.maintenanceItems || [];
+    const lookaheadDays = finiteNum(params.lookaheadDays, 30);
     const now = new Date();
 
     const overdue = [];
@@ -278,8 +310,8 @@ export default function registerHouseholdActions(registerLensAction) {
     const current = [];
 
     for (const item of items) {
-      const lastService = item.lastServiceDate ? new Date(item.lastServiceDate) : null;
-      const interval = parseInt(item.intervalDays, 10) || 365;
+      const lastService = finiteDate(item.lastServiceDate);
+      const interval = finiteInt(item.intervalDays, 365);
 
       if (!lastService) {
         overdue.push({
@@ -355,13 +387,17 @@ export default function registerHouseholdActions(registerLensAction) {
    * artifact.data.members: [{ name, preferences }] or string[]
    * params.strategy — "round-robin" (default) or "random"
    */
-  registerLensAction("household", "choreRotation", (ctx, artifact, params) => {
+  registerLensAction("household", "choreRotation", (ctx, artifact, params = {}) => {
   try {
-    const chores = artifact.data.chores || [];
-    const rawMembers = artifact.data.members || [];
+    // Accept chores/members from artifact.data OR params (HouseholdActionPanel
+    // sends them via the flat run-action input, which the dispatch maps to BOTH
+    // artifact.data and params). Chores may be bare-string recipe names.
+    const rawChores = artifact.data.chores || params.chores || [];
+    const chores = rawChores.map((c) => (typeof c === "string" ? { name: c } : (c || {})));
+    const rawMembers = artifact.data.members || params.members || [];
     const strategy = params.strategy || "round-robin";
 
-    const members = rawMembers.map((m) => (typeof m === "string" ? m : m.name));
+    const members = rawMembers.map((m) => (typeof m === "string" ? m : m.name)).filter(Boolean);
 
     if (members.length === 0) {
       return { ok: true, result: { error: "No household members defined." } };
@@ -943,7 +979,7 @@ export default function registerHouseholdActions(registerLensAction) {
     const s = getCoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const home = getHomeState();
     const log = home ? hmList(home.choreLog, hmActor(ctx)) : [];
-    const rate = Math.max(0, Math.min(10, Number(params.dollarsPerPoint) || 0.05));
+    const rate = Math.max(0, Math.min(10, finiteNum(params.dollarsPerPoint, 0.05)));
     const byPerson = {};
     for (const e of log) {
       if (!byPerson[e.by]) byPerson[e.by] = { person: e.by, points: 0, choresDone: 0 };
@@ -1153,8 +1189,8 @@ export default function registerHouseholdActions(registerLensAction) {
     const s = getCoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const description = hmClean(params.description, 120);
     if (!description) return { ok: false, error: "description required" };
-    const amount = Math.round((Number(params.amount) || 0) * 100) / 100;
-    if (!(amount > 0)) return { ok: false, error: "amount must be > 0" };
+    const amount = Math.round(finiteNum(params.amount, 0) * 100) / 100;
+    if (!(amount > 0) || !Number.isFinite(amount)) return { ok: false, error: "amount must be a finite number > 0" };
     const paidBy = hmClean(params.paidBy, 60);
     if (!paidBy) return { ok: false, error: "paidBy required" };
     const splitAmong = Array.isArray(params.splitAmong)
