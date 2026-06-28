@@ -1,0 +1,21 @@
+{
+  "macro_id": "atlas.geocode",
+  "domain": "atlas",
+  "name": "geocode",
+  "inputs": {
+    "places": { "type": "array" },
+    "origin": { "type": "object" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || output.result.message !== undefined || Array.isArray(output.result.resolved)",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "places": [{ "name": "London" }] }, "expect": { "ok": true } },
+    { "input": { "places": [{ "name": "Custom", "lat": 10, "lon": 20 }] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "atlas.geocode (server/domains/atlas.js) is a pure-compute LENS_ACTIONS handler. It resolves place names against a built-in reference table (or honors provided lat/lon), computing haversine distance + bearing + cardinal direction from an optional origin. Fail-CLOSED: a non-finite or out-of-envelope provided coordinate is treated as MISSING (falls back to the reference table or returns an honest unresolved row) so Infinity/NaN never leak into the distance math. Empty input returns a guidance message, not a crash. The /lenses/atlas page 'Geocode' compute button drives it via the artifact-run path; pinned by server/tests/atlas-lens-macros.test.js."
+}

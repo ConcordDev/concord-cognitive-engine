@@ -47,11 +47,12 @@ export function FieldTripPlanner() {
       name: tripForm.name.trim(), area: tripForm.area.trim(),
       date: tripForm.date || undefined,
     });
-    if (r.data?.ok) {
+    const inner = r.data?.result as { ok?: boolean; error?: string; fieldTrip?: FieldTrip } | undefined;
+    if (r.data?.ok && inner?.ok !== false) {
       setTripForm({ name: '', area: '', date: '' });
-      setActiveId((r.data.result?.fieldTrip as FieldTrip)?.id ?? null);
+      setActiveId(inner?.fieldTrip?.id ?? null);
       await refresh();
-    } else setError(r.data?.error || 'Could not create field trip');
+    } else setError(inner?.error || r.data?.error || 'Could not create field trip');
   }, [tripForm, refresh]);
 
   const deleteTrip = useCallback(async (id: string) => {
@@ -77,10 +78,11 @@ export function FieldTripPlanner() {
       lat: stopForm.lat ? Number(stopForm.lat) : undefined,
       lon: stopForm.lon ? Number(stopForm.lon) : undefined,
     });
-    if (r.data?.ok) {
+    const inner = r.data?.result as { ok?: boolean; error?: string } | undefined;
+    if (r.data?.ok && inner?.ok !== false) {
       setStopForm({ name: '', lithology: '', formation: '', notes: '', lat: '', lon: '' });
       await refresh();
-    } else setError(r.data?.error || 'Could not add stop');
+    } else setError(inner?.error || r.data?.error || 'Could not add stop');
   }, [active, stopForm, refresh]);
 
   const move = useCallback(async (idx: number, dir: -1 | 1) => {
@@ -90,8 +92,9 @@ export function FieldTripPlanner() {
     if (swap < 0 || swap >= ids.length) return;
     [ids[idx], ids[swap]] = [ids[swap], ids[idx]];
     const r = await lensRun('geology', 'fieldtrip-reorder-stops', { tripId: active.id, stopIds: ids });
-    if (r.data?.ok) await refresh();
-    else setError(r.data?.error || 'Could not reorder stops');
+    const inner = r.data?.result as { ok?: boolean; error?: string } | undefined;
+    if (r.data?.ok && inner?.ok !== false) await refresh();
+    else setError(inner?.error || r.data?.error || 'Could not reorder stops');
   }, [active, refresh]);
 
   if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;

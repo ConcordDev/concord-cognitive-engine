@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Home, Plus, Trash2, Check, Trophy, Pause, Play, Loader2 } from 'lucide-react';
+import { Home, Plus, Trash2, Check, Trophy, Pause, Play, Loader2, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -31,16 +31,23 @@ export function ChoreBoard() {
   const [leaders, setLeaders] = useState<Leader[]>([]);
   const [dash, setDash] = useState<Dash | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [newRoom, setNewRoom] = useState('');
   const [taskForm, setTaskForm] = useState({ roomId: '', name: '', intervalDays: 7, effort: 'medium', assignee: '' });
 
   const refresh = useCallback(async () => {
+    setError(null);
     const [rl, cb, lb, d] = await Promise.all([
       lensRun('household', 'room-list', {}),
       lensRun('household', 'chore-board', {}),
       lensRun('household', 'assignee-leaderboard', {}),
       lensRun('household', 'household-dashboard', {}),
     ]);
+    // A swallowed/failed fetch must NOT render identically to genuinely-empty.
+    // lensRun never throws — it surfaces { ok:false, error } — so surface the
+    // first error instead of silently showing an empty board.
+    const failed = [rl, cb, lb, d].find((r) => r.data?.ok === false);
+    if (failed) { setError(failed.data?.error || 'Could not reach the chore board.'); setLoading(false); return; }
     setRooms((rl.data?.result?.rooms as Room[]) || []);
     setBoard((cb.data?.result?.board as BoardTask[]) || []);
     setLeaders((lb.data?.result?.leaderboard as Leader[]) || []);
@@ -82,7 +89,19 @@ export function ChoreBoard() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div role="status" aria-busy="true" className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /><span className="sr-only">Loading chore board…</span></div>;
+
+  if (error) return (
+    <div role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-4 text-center">
+      <AlertTriangle className="w-5 h-5 text-rose-400 mx-auto mb-2" />
+      <p className="text-sm text-rose-200">Could not reach the chore board.</p>
+      <p className="text-[11px] text-zinc-400 mb-3">{error}</p>
+      <button onClick={() => { setLoading(true); void refresh(); }}
+        className="px-3 py-1.5 text-xs rounded-lg bg-rose-600/30 hover:bg-rose-600/50 text-rose-100 border border-rose-500/40">
+        Try again
+      </button>
+    </div>
+  );
 
   return (
     <div>

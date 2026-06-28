@@ -1,0 +1,28 @@
+{
+  "macro_id": "household.choreRotation",
+  "domain": "household",
+  "name": "choreRotation",
+  "inputs": {
+    "chores": { "type": "array", "required": false },
+    "members": { "type": "array", "required": false },
+    "strategy": { "type": "string", "required": false, "maxLength": 32 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.error !== undefined || Array.isArray(output.result.assignments)",
+    "output.ok === false || output.result.error !== undefined || Number.isFinite(output.result.totalChores)",
+    "output.ok === false || output.result.error !== undefined || Number.isFinite(output.result.members)",
+    "output.ok === false || output.result.error !== undefined || output.result.assignments.every(function(a){ return typeof a.chore === 'string' && typeof a.assignee === 'string'; })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "chores": [{ "name": "Dishes", "currentAssignee": "Alex" }], "members": ["Alex", "Sam", "Jordan"], "strategy": "round-robin" }, "expect": { "ok": true } },
+    { "input": { "chores": [{ "name": "Dishes" }, { "name": "Trash" }], "members": ["Alex", "Sam"] }, "expect": { "ok": true } },
+    { "input": { "chores": [{ "name": "X" }], "members": [] }, "expect": { "ok": true } },
+    { "input": { "chores": [], "members": ["A"] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'household.choreRotation'. Reads artifact.data.{chores,members} || params.{chores,members} — the dispatch maps run-action input to BOTH, so a flat ChoreRotation body reaches it (a two-key {artifact:{data},strategy} body is NOT peeled and was the dead surface). Chores may be bare-string names. round-robin shifts each chore to the next member; never-assigned chores fill the least-loaded member deterministically; 'random' shuffles. Returns assignments[{chore,assignee,frequency,previousAssignee}], totalChores, members(count), choresPerMember, previousAssignments. Empty chores/members → {ok:true, result:{error}} guidance (never throw). Pinned by server/tests/household-lens-macros.test.js."
+}

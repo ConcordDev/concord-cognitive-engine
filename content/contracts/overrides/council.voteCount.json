@@ -1,0 +1,28 @@
+{
+  "macro_id": "council.voteCount",
+  "domain": "council",
+  "name": "voteCount",
+  "inputs": {
+    "votes": { "type": "array", "required": false },
+    "quorum": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (typeof output.result.tally === 'object' && Number.isFinite(output.result.tally.for) && Number.isFinite(output.result.tally.against) && Number.isFinite(output.result.tally.abstain))",
+    "output.ok === false || Number.isFinite(output.result.total)",
+    "output.ok === false || (Number.isFinite(output.result.forPercent) && output.result.forPercent >= 0 && output.result.forPercent <= 100)",
+    "output.ok === false || typeof output.result.passed === 'boolean'",
+    "output.ok === false || typeof output.result.quorumMet === 'boolean'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "votes": [] }, "expect": { "ok": true } },
+    { "input": { "votes": [{ "vote": "for" }, { "vote": "yes" }, { "vote": "support" }, { "vote": "against" }, { "vote": "abstain" }] }, "expect": { "ok": true } },
+    { "input": { "votes": [{ "position": "for" }, { "position": "for" }, { "position": "for" }], "quorum": 2 }, "expect": { "ok": true } },
+    { "input": { "votes": [{}, { "vote": 1e999 }] }, "expect": { "ok": true } },
+    { "input": { "votes": "nope" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'council.voteCount'. CouncilActionPanel sends {votes:[{vote}]}; returns {tally:{for,against,abstain},total,forPercent,passed(>=67% supermajority),passThreshold,quorumMet}. POISON: votes Array-guarded; each vote value String()-coerced before .toLowerCase() (was an uncaught throw on a numeric vote, hardened 2026-06-28); forPercent guards total===0 → 0 (no NaN). Pinned by server/tests/council-lens-macros.test.js."
+}

@@ -1,0 +1,28 @@
+{
+  "macro_id": "art.colorHarmony",
+  "domain": "art",
+  "name": "colorHarmony",
+  "inputs": {
+    "palette": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.harmonyScore)",
+    "output.ok === false || output.result.message !== undefined || (output.result.harmonyScore >= 0 && output.result.harmonyScore <= 100)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.dominantHue)",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.harmonies)",
+    "output.ok === false || output.result.message !== undefined || ['warm','cool','balanced'].includes(output.result.temperature)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "palette": [] }, "expect": { "ok": true } },
+    { "input": { "palette": ["#ff0000", "#00ffff", "#ff1a00"] }, "expect": { "ok": true } },
+    { "input": { "palette": [{ "hex": "#3498db" }, { "hex": "#db7734" }] }, "expect": { "ok": true } },
+    { "input": { "palette": ["#zzzzzz", "#00ff00"] }, "expect": { "ok": false } },
+    { "input": { "palette": ["#ff0000", "1e999"] }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/art.js). Dispatch key 'art.colorHarmony'. Pure compute over artifact.data.palette = ['#hex',...] or [{hex}]. POISON: a malformed/non-string hex is fail-CLOSED via normalizeHex BEFORE hexToRgb can emit NaN channels into harmonyScore/dominantHue; empty palette degrades to ok:true {message}. Drives PaletteWorkshop + ArtActionPanel 'Harmony'. Pinned by server/tests/art-lens-macros.test.js."
+}

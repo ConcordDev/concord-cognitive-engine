@@ -96,7 +96,7 @@ export function InsuranceActionPanel() {
     if (!riskTitle.trim() || ![p, i].every(Number.isFinite)) { err('Risk title + probability + impact required.'); return; }
     setBusy('risk'); setFeedback(null);
     try {
-      const r = await callMacro<RiskResult>('riskScore', { artifact: { title: riskTitle, data: { probability: p, impact: i } } });
+      const r = await callMacro<RiskResult>('riskScore', { artifact: { title: riskTitle, data: { risk: riskTitle, probability: p, impact: i } } });
       if (r.ok && r.result) { setRiskResult(r.result); pipe.publish('insurance.risk', r.result, { label: `Risk ${r.result.level} ${r.result.normalizedScore}%` }); ok(`${r.result.level?.toUpperCase()} (${r.result.normalizedScore}%).`); } else err(r.error ?? 'risk failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }

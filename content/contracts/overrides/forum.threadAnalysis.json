@@ -1,0 +1,25 @@
+{
+  "macro_id": "forum.threadAnalysis",
+  "domain": "forum",
+  "name": "threadAnalysis",
+  "inputs": {
+    "posts": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalPosts)",
+    "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.uniqueAuthors) && Number.isFinite(output.result.avgPostLength))",
+    "output.ok === false || output.result.message !== undefined || (Array.isArray(output.result.topContributors) && output.result.topContributors.every(function(c){ return typeof c.name === 'string' && Number.isFinite(c.posts); }))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "posts": [] }, "expect": { "ok": true } },
+    { "input": { "posts": [{ "author": "a", "content": "hello world" }, { "author": "b", "content": "longer reply here" }] }, "expect": { "ok": true } },
+    { "input": { "posts": [{ "author": null, "content": null }, {}, { "content": 123 }] }, "expect": { "ok": true } },
+    { "input": { "posts": "nope" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'forum.threadAnalysis'. The /lenses/forum inline 'Community Analytics' buttons (handleForumAction) DERIVE posts:[{author,content}] from the live posts + their comment trees and pass them as run-action params (the persisted post artifact's .data is a SINGLE post and has no posts array — the prior dead surface). The ForumActionPanel single-wrap {artifact:{data:{posts}}} lands the same field after the dispatch peels one layer. Handler reads params.posts ?? artifact.data.posts. Returns {totalPosts,uniqueAuthors,avgPostLength,topContributors:[{name,posts}],health} or {message} when empty/non-array. POISON: malformed rows (null author/content, non-array) never throw; avgPostLength stays FINITE. Pinned by server/tests/forum-lens-macros.test.js."
+}

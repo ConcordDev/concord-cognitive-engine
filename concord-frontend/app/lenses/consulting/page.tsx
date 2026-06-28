@@ -517,6 +517,38 @@ export default function ConsultingLensPage() {
     </div>
   );
 
+  // Loading state — a11y role=status with aria-busy so assistive tech announces
+  // the in-flight fetch instead of a silent blank surface.
+  if (isLoading) {
+    return (
+      <LensShell lensId="consulting" asMain={false}>
+        <div className="flex items-center justify-center h-full p-8" role="status" aria-busy="true">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-gray-400">Loading consulting data…</p>
+          </div>
+        </div>
+      </LensShell>
+    );
+  }
+
+  // Error state — a11y role=alert with a WORKING Retry that re-fetches the list
+  // (refetch), not a dead button. A swallowed fetch must surface here, not as a
+  // silent empty surface.
+  if (isError) {
+    return (
+      <LensShell lensId="consulting" asMain={false}>
+        <div className="flex items-center justify-center h-full p-8" role="alert">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <p className="text-sm font-medium text-white">Could not load consulting data</p>
+            <p className="text-xs text-gray-400 max-w-sm">{error?.message || 'An unexpected error occurred.'}</p>
+            <button onClick={() => refetch()} className={ds.btnPrimary}>Try again</button>
+          </div>
+        </div>
+      </LensShell>
+    );
+  }
+
   return (
     <LensShell lensId="consulting" asMain={false}>
       <FirstRunTour lensId="consulting" />

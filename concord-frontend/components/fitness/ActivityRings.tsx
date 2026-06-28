@@ -16,22 +16,41 @@ export function ActivityRings() {
   const [today, setToday] = useState<ActivityDay | null>(null);
   const [week, setWeek] = useState<ActivityDay[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
   async function refresh() {
     setLoading(true);
+    setError(null);
     try {
       const res = await lensRun({ domain: 'fitness', action: 'activity-summary', input: { days: 7 } });
-      const days = (res.data?.result?.days || []) as ActivityDay[];
-      setWeek(days);
-      setToday(days[days.length - 1] || null);
-    } catch (e) { console.error('[Activity] failed', e); }
-    finally { setLoading(false); }
+      // /api/lens/run unwraps one { ok, result } layer, so a handler rejection
+      // surfaces at res.data.ok === false — distinguish it from genuinely-empty.
+      if (res.data?.ok === false) {
+        setError(res.data?.error || 'Failed to load activity data.');
+        setWeek([]); setToday(null);
+      } else {
+        const days = (res.data?.result?.days || []) as ActivityDay[];
+        setWeek(days);
+        setToday(days[days.length - 1] || null);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load activity data.');
+      setWeek([]); setToday(null);
+    } finally { setLoading(false); }
   }
 
   if (loading) {
-    return <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-6 flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>;
+    return <div role="status" aria-busy="true" className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-6 flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>;
+  }
+  if (error) {
+    return (
+      <div role="alert" className="bg-[#0d1117] border border-red-500/20 rounded-lg p-6 text-xs text-gray-300 space-y-2">
+        <p className="text-red-300">{error}</p>
+        <button onClick={() => void refresh()} className="px-3 py-1 rounded bg-cyan-500/20 text-cyan-200 border border-cyan-500/30 hover:bg-cyan-500/30">Retry</button>
+      </div>
+    );
   }
   if (!today) {
     return <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-6 text-xs text-gray-400">No activity data yet.</div>;

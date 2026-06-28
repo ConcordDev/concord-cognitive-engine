@@ -36,10 +36,17 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface DeliberateResult { positions?: Array<{ member: string; position: string; reasoning?: string }>; consensus?: string }
-interface VoteResult { yes?: number; no?: number; abstain?: number; passed?: boolean; quorum?: boolean }
-interface MinutesResult { summary?: string; decisions?: string[]; actionItems?: Array<{ owner: string; task: string; due?: string }> }
-interface ResolveResult { resolution?: string; nextSteps?: string[]; mediator?: string }
+// Shapes mirror the REAL server/domains/council.js handler RETURNS (the canonical
+// contract). The earlier shapes here (positions / yes-no-abstain / summary /
+// resolution-mediator) were fabricated — the handler never returned them, so the
+// panel rendered blank in production while handler-shape tests passed. Aligned to
+// the handler 2026-06-28.
+interface DeliberateEvaluation { voice: string; weight: number; score: number; position: 'support' | 'neutral' | 'oppose'; reasoning?: string }
+interface DeliberateResult { proposal?: string; evaluations?: DeliberateEvaluation[]; weightedScore?: number; recommendation?: string; consensus?: string; message?: string }
+interface VoteResult { tally?: { for: number; against: number; abstain: number }; total?: number; forPercent?: number; passed?: boolean; passThreshold?: string; quorumMet?: boolean }
+interface MinutesActionItem { task: string; assignee: string; dueDate: string }
+interface MinutesResult { title?: string; date?: string; attendees?: number; agendaItems?: Array<{ item: number; topic: string; status: string }>; decisions?: Array<{ decision: string; votedBy: string; passed: boolean }>; actionItems?: MinutesActionItem[] }
+interface ResolveResult { issue?: string; parties?: Array<{ party: string; position: string; priority: string }>; commonGround?: string; suggestedApproach?: string; steps?: string[] }
 
 export function CouncilActionPanel() {
   const [motionText, setMotionText] = useState('');
@@ -71,11 +78,11 @@ export function CouncilActionPanel() {
 
   async function actDeliberate() {
     if (!motionText.trim()) { err('Motion required.'); return; }
-    if (!members.trim()) { err('Members required (one per line).'); return; }
     setBusy('deliberate'); setFeedback(null);
     try {
-      const r = await callMacro<DeliberateResult>('deliberate', { motion: motionText.trim(), members: members.split('\n').filter(Boolean) });
-      if (r.ok && r.result) { setDeliberateResult(r.result); pipe.publish('council.deliberate', r.result, { label: `Deliberate ${r.result.positions?.length ?? 0}` }); ok(`${r.result.positions?.length ?? 0} positions.`); } else err(r.error ?? 'deliberate failed');
+      // Handler reads artifact.data.proposal (or .description) + optional .voices.
+      const r = await callMacro<DeliberateResult>('deliberate', { proposal: motionText.trim() });
+      if (r.ok && r.result) { setDeliberateResult(r.result); pipe.publish('council.deliberate', r.result, { label: `Deliberate ${r.result.evaluations?.length ?? 0}` }); ok(`${r.result.evaluations?.length ?? 0} evaluations.`); } else err(r.error ?? 'deliberate failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actVote() {
@@ -83,7 +90,9 @@ export function CouncilActionPanel() {
     if (!pos.length) { err('Add positions (name for/against/abstain, one per line).'); return; }
     setBusy('vote'); setFeedback(null);
     try {
-      const r = await callMacro<VoteResult>('voteCount', { motion: motionText.trim(), positions: pos });
+      // Handler reads artifact.data.votes: [{ vote | position }].
+      const votes = pos.map((p) => ({ voter: p!.member, vote: p!.position }));
+      const r = await callMacro<VoteResult>('voteCount', { votes });
       if (r.ok && r.result) { setVoteResult(r.result); pipe.publish('council.vote', r.result, { label: r.result.passed ? 'PASSED' : 'FAILED' }); ok(r.result.passed ? 'PASSED.' : 'FAILED.'); } else err(r.error ?? 'vote failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -91,7 +100,16 @@ export function CouncilActionPanel() {
     if (!motionText.trim()) { err('Motion required.'); return; }
     setBusy('minutes'); setFeedback(null);
     try {
-      const r = await callMacro<MinutesResult>('generateMinutes', { motion: motionText.trim(), positions: parsePositions(), vote: voteResult });
+      // Handler reads title / agenda / attendees / decisions / actionItems.
+      const pos = parsePositions();
+      const r = await callMacro<MinutesResult>('generateMinutes', {
+        title: `Council session — ${motionText.trim().slice(0, 60)}`,
+        agenda: [{ topic: motionText.trim(), status: voteResult ? 'discussed' : 'pending' }],
+        attendees: pos.map((p) => p!.member),
+        decisions: voteResult
+          ? [{ text: motionText.trim(), votedBy: 'council', passed: !!voteResult.passed }]
+          : [],
+      });
       if (r.ok && r.result) { setMinutesResult(r.result); pipe.publish('council.minutes', r.result, { label: `Minutes ${r.result.decisions?.length ?? 0} decisions` }); ok(`${r.result.decisions?.length ?? 0} decisions.`); } else err(r.error ?? 'minutes failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -99,7 +117,9 @@ export function CouncilActionPanel() {
     if (!conflict.trim()) { err('Conflict description required.'); return; }
     setBusy('resolve'); setFeedback(null);
     try {
-      const r = await callMacro<ResolveResult>('conflictResolution', { conflict: conflict.trim(), members: members.split('\n').filter(Boolean) });
+      // Handler reads artifact.data.issue (or .description) + .parties.
+      const parties = members.split('\n').map((m) => m.trim()).filter(Boolean).map((name) => ({ name }));
+      const r = await callMacro<ResolveResult>('conflictResolution', { issue: conflict.trim(), parties });
       if (r.ok && r.result) { setResolveResult(r.result); pipe.publish('council.resolve', r.result, { label: 'Resolution drafted' }); ok('Resolution drafted.'); } else err(r.error ?? 'resolve failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -115,9 +135,9 @@ export function CouncilActionPanel() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`🏛 Council session: ${motionText}`, '',
-      voteResult ? `Vote: ${voteResult.yes}y / ${voteResult.no}n / ${voteResult.abstain}a → ${voteResult.passed ? 'PASSED' : 'FAILED'}` : '',
-      minutesResult?.summary ? `Summary: ${minutesResult.summary}` : '',
-      minutesResult?.actionItems?.length ? `\nAction items:\n${minutesResult.actionItems.map(a => `  ${a.owner}: ${a.task}${a.due ? ` (${a.due})` : ''}`).join('\n')}` : '',
+      voteResult ? `Vote: ${voteResult.tally?.for ?? 0}y / ${voteResult.tally?.against ?? 0}n / ${voteResult.tally?.abstain ?? 0}a (${voteResult.forPercent ?? 0}%) → ${voteResult.passed ? 'PASSED' : 'FAILED'}` : '',
+      minutesResult?.decisions?.length ? `Decisions: ${minutesResult.decisions.map(d => d.decision).join('; ')}` : '',
+      minutesResult?.actionItems?.length ? `\nAction items:\n${minutesResult.actionItems.map(a => `  ${a.assignee}: ${a.task}${a.dueDate ? ` (${a.dueDate})` : ''}`).join('\n')}` : '',
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
     ].filter(Boolean).join('\n');
     try {
@@ -134,7 +154,7 @@ export function CouncilActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public minutes — ${motionText.slice(0, 60)}`, tags: ['council', 'minutes', 'public'], source: 'council:minutes:publish', meta: { visibility: 'public', consent: { allowCitations: true }, minutes: { motion: motionText, summary: minutesResult.summary, decisions: minutesResult.decisions, actionItems: minutesResult.actionItems, voteOutcome: voteResult?.passed ? 'passed' : 'failed' } } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public minutes — ${motionText.slice(0, 60)}`, tags: ['council', 'minutes', 'public'], source: 'council:minutes:publish', meta: { visibility: 'public', consent: { allowCitations: true }, minutes: { motion: motionText, decisions: minutesResult.decisions, actionItems: minutesResult.actionItems, voteOutcome: voteResult?.passed ? 'passed' : 'failed' } } } });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
@@ -148,7 +168,7 @@ export function CouncilActionPanel() {
     if (!motionText.trim()) { err('Motion required.'); return; }
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Council motion: "${motionText}". ${voteResult ? `Vote: ${voteResult.passed ? 'passed' : 'failed'} (${voteResult.yes}/${voteResult.no}/${voteResult.abstain}).` : ''} Draft a 2-sentence call-for-amendment that addresses the dissent without weakening the core proposal. Plain text.`;
+      const task = `Council motion: "${motionText}". ${voteResult ? `Vote: ${voteResult.passed ? 'passed' : 'failed'} (${voteResult.tally?.for ?? 0}/${voteResult.tally?.against ?? 0}/${voteResult.tally?.abstain ?? 0}).` : ''} Draft a 2-sentence call-for-amendment that addresses the dissent without weakening the core proposal. Plain text.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Amendment draft ready.'); } else err('Agent returned empty.');
@@ -207,36 +227,40 @@ export function CouncilActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {deliberateResult && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 max-h-40 overflow-y-auto">
-            <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Positions</div>
-            {deliberateResult.positions?.map((p, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-cyan-200">{p.member}:</strong> <span className="capitalize">{p.position}</span>{p.reasoning && <span className="text-zinc-400"> — {p.reasoning}</span>}</div>)}
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Deliberation</div>
+              {deliberateResult.recommendation && <span className="text-[10px] font-semibold text-cyan-200">{deliberateResult.recommendation}{typeof deliberateResult.weightedScore === 'number' ? ` · ${deliberateResult.weightedScore}` : ''}</span>}
+            </div>
+            {deliberateResult.message && !deliberateResult.evaluations?.length && <p className="text-[11px] text-zinc-400 italic mt-1">{deliberateResult.message}</p>}
+            {deliberateResult.evaluations?.map((e, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-cyan-200">{e.voice}:</strong> <span className="capitalize">{e.position}</span> <span className="text-zinc-500">({e.score})</span>{e.reasoning && <span className="text-zinc-400"> — {e.reasoning}</span>}</div>)}
             {deliberateResult.consensus && <div className="text-[11px] text-cyan-300 italic mt-1">Consensus: {deliberateResult.consensus}</div>}
           </div>
         )}
         {voteResult && (
           <div className={cn('rounded-md border p-2.5', voteResult.passed ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-rose-500/40 bg-rose-500/5')}>
-            <div className={cn('text-[10px] uppercase tracking-wider font-semibold', voteResult.passed ? 'text-emerald-300' : 'text-rose-300')}>Vote {voteResult.passed ? 'PASSED' : 'FAILED'}{!voteResult.quorum && ' (no quorum)'}</div>
+            <div className={cn('text-[10px] uppercase tracking-wider font-semibold', voteResult.passed ? 'text-emerald-300' : 'text-rose-300')}>Vote {voteResult.passed ? 'PASSED' : 'FAILED'}{!voteResult.quorumMet && ' (no quorum)'}</div>
             <div className="flex gap-4 mt-1 text-sm">
-              <span className="text-emerald-300 font-bold">✓ {voteResult.yes}</span>
-              <span className="text-rose-300 font-bold">✗ {voteResult.no}</span>
-              <span className="text-zinc-400">— {voteResult.abstain}</span>
+              <span className="text-emerald-300 font-bold">✓ {voteResult.tally?.for ?? 0}</span>
+              <span className="text-rose-300 font-bold">✗ {voteResult.tally?.against ?? 0}</span>
+              <span className="text-zinc-400">— {voteResult.tally?.abstain ?? 0}</span>
+              <span className="ml-auto text-zinc-400 text-[11px]">{voteResult.forPercent ?? 0}% · {voteResult.passThreshold}</span>
             </div>
           </div>
         )}
         {minutesResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-40 overflow-y-auto">
-            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Minutes</div>
-            {minutesResult.summary && <p className="text-[11px] text-zinc-300 mt-1">{minutesResult.summary}</p>}
-            {minutesResult.decisions?.length ? <ul className="text-[11px] text-zinc-300 list-disc list-inside">{minutesResult.decisions.map((d, i) => <li key={i}>{d}</li>)}</ul> : null}
+            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">{minutesResult.title || 'Minutes'}{minutesResult.date && <span className="text-zinc-500 normal-case font-normal"> · {minutesResult.date}</span>}</div>
+            {typeof minutesResult.attendees === 'number' && <p className="text-[11px] text-zinc-400 mt-1">{minutesResult.attendees} attendee{minutesResult.attendees !== 1 ? 's' : ''}</p>}
+            {minutesResult.decisions?.length ? <ul className="text-[11px] text-zinc-300 list-disc list-inside">{minutesResult.decisions.map((d, i) => <li key={i}>{d.decision} <span className="text-zinc-500">({d.passed ? 'passed' : 'failed'} · {d.votedBy})</span></li>)}</ul> : null}
             {minutesResult.actionItems?.length ? <div className="mt-1 text-[10px] text-purple-300 font-semibold uppercase tracking-wider">Action items</div> : null}
-            {minutesResult.actionItems?.map((a, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-purple-200">{a.owner}:</strong> {a.task}{a.due && <span className="text-zinc-400"> · {a.due}</span>}</div>)}
+            {minutesResult.actionItems?.map((a, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-purple-200">{a.assignee}:</strong> {a.task}{a.dueDate && <span className="text-zinc-400"> · {a.dueDate}</span>}</div>)}
           </div>
         )}
         {resolveResult && (
           <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">Resolution</div>
-            <p className="text-[11px] text-zinc-300 mt-1">{resolveResult.resolution}</p>
-            {resolveResult.nextSteps?.length ? <ol className="text-[11px] text-zinc-300 list-decimal list-inside mt-1">{resolveResult.nextSteps.slice(0, 4).map((s, i) => <li key={i}>{s}</li>)}</ol> : null}
-            {resolveResult.mediator && <div className="text-[10px] text-zinc-400">Mediator: {resolveResult.mediator}</div>}
+            <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">Resolution{resolveResult.commonGround && <span className="text-zinc-500 normal-case font-normal"> · {resolveResult.commonGround}</span>}</div>
+            {resolveResult.suggestedApproach && <p className="text-[11px] text-zinc-300 mt-1">{resolveResult.suggestedApproach}</p>}
+            {resolveResult.steps?.length ? <ol className="text-[11px] text-zinc-300 list-decimal list-inside mt-1">{resolveResult.steps.slice(0, 5).map((s, i) => <li key={i}>{s}</li>)}</ol> : null}
           </div>
         )}
       </div>

@@ -1,20 +1,41 @@
 // server/domains/consulting.js
 export default function registerConsultingActions(registerLensAction) {
+  // Fail-CLOSED numeric coercion for the pure-compute money macros below.
+  // `parseFloat("1e999")`/`parseFloat("Infinity")` both yield Infinity, and
+  // `Infinity || fallback` is Infinity — so the old `parseFloat(x) || d` pattern
+  // let a poisoned rate/hours flow straight into a fee/utilization total and emit
+  // a money field rendering Infinity/NaN. `finPos` collapses any non-finite (or
+  // negative) value to the supplied finite default, guaranteeing FINITE output.
+  // SANE_MAX caps a single finite-but-absurd input (e.g. 1e308 from the assassin)
+  // so the PRODUCT of rate × hours can never overflow to Infinity. 1e12 is far
+  // above any real consulting rate/hour, so realistic values pass untouched.
+  const SANE_MAX = 1e12;
+  const finPos = (v, fallback = 0) => {
+    const n = typeof v === "number" ? v : parseFloat(v);
+    if (!Number.isFinite(n) || n < 0) return fallback;
+    return Math.min(n, SANE_MAX);
+  };
+  // Finite signed coercion (NPS spans -100..+100), clamped to a sane band.
+  const finSigned = (v, lo, hi, fallback = 0) => {
+    const n = typeof v === "number" ? v : parseFloat(v);
+    return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : fallback;
+  };
   registerLensAction("consulting", "engagementScope", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const deliverables = data.deliverables || [];
-    const rate = parseFloat(data.hourlyRate) || 200;
-    const hours = deliverables.reduce((s, d) => s + (parseFloat(d.hours) || 8), 0);
+    const deliverables = Array.isArray(data.deliverables) ? data.deliverables : [];
+    const rate = finPos(data.hourlyRate, 200) || 200;
+    const hours = deliverables.reduce((s, d) => s + (finPos(d && d.hours, 8) || 8), 0);
     const totalFee = Math.round(hours * rate * 100) / 100;
     const contingency = Math.round(totalFee * 0.15 * 100) / 100;
-    return { ok: true, result: { client: data.client || artifact.title, deliverables: deliverables.map(d => ({ name: d.name, hours: parseFloat(d.hours) || 8, fee: Math.round((parseFloat(d.hours) || 8) * rate * 100) / 100 })), totalHours: hours, hourlyRate: rate, subtotal: totalFee, contingency, grandTotal: Math.round((totalFee + contingency) * 100) / 100, timeline: `${Math.ceil(hours / 40)} weeks at full-time` } };
+    return { ok: true, result: { client: data.client || artifact.title, deliverables: deliverables.map(d => { const h = finPos(d && d.hours, 8) || 8; return { name: d && d.name, hours: h, fee: Math.round(h * rate * 100) / 100 }; }), totalHours: hours, hourlyRate: rate, subtotal: totalFee, contingency, grandTotal: Math.round((totalFee + contingency) * 100) / 100, timeline: `${Math.ceil(hours / 40)} weeks at full-time` } };
   });
   registerLensAction("consulting", "utilizationRate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const billableHours = parseFloat(data.billableHours) || 0;
-    const totalHours = parseFloat(data.totalHours) || 40;
+    const billableHours = finPos(data.billableHours, 0);
+    const totalHours = finPos(data.totalHours, 40) || 40; // guard divide-by-zero
     const rate = billableHours / totalHours;
-    return { ok: true, result: { billableHours, totalHours, utilizationRate: Math.round(rate * 100), target: 75, variance: Math.round(rate * 100) - 75, status: rate >= 0.8 ? "excellent" : rate >= 0.65 ? "on-target" : rate >= 0.5 ? "below-target" : "critical" } };
+    const ratePct = Math.round(rate * 100);
+    return { ok: true, result: { billableHours, totalHours, utilizationRate: ratePct, target: 75, variance: ratePct - 75, status: rate >= 0.8 ? "excellent" : rate >= 0.65 ? "on-target" : rate >= 0.5 ? "below-target" : "critical" } };
   });
   registerLensAction("consulting", "proposalScore", (ctx, artifact, _params) => {
     const data = artifact.data || {};
@@ -25,10 +46,10 @@ export default function registerConsultingActions(registerLensAction) {
   });
   registerLensAction("consulting", "clientHealth", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const nps = parseInt(data.nps) || 0;
-    const invoicesPaid = parseInt(data.invoicesPaid) || 0;
-    const invoicesTotal = parseInt(data.invoicesTotal) || 1;
-    const responseTime = parseFloat(data.avgResponseDays) || 3;
+    const nps = finSigned(data.nps, -100, 100, 0);
+    const invoicesPaid = finPos(data.invoicesPaid, 0);
+    const invoicesTotal = finPos(data.invoicesTotal, 1) || 1; // guard divide-by-zero
+    const responseTime = finPos(data.avgResponseDays, 3);
     const paymentRate = Math.round((invoicesPaid / invoicesTotal) * 100);
     const health = Math.round((Math.min(nps + 100, 200) / 200 * 30 + paymentRate / 100 * 40 + Math.max(0, 1 - responseTime / 14) * 30));
     return { ok: true, result: { client: data.client || artifact.title, nps, paymentRate, avgResponseDays: responseTime, healthScore: health, risk: health >= 70 ? "low" : health >= 40 ? "medium" : "high" } };

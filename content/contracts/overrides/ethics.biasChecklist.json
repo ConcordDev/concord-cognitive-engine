@@ -1,0 +1,26 @@
+{
+  "macro_id": "ethics.biasChecklist",
+  "domain": "ethics",
+  "name": "biasChecklist",
+  "inputs": {
+    "decision": { "type": "string", "required": true },
+    "responses": { "type": "object", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (Number.isInteger(output.result.flaggedCount) && Number.isInteger(output.result.totalCount))",
+    "output.ok === false || (Number.isFinite(output.result.riskScore) && output.result.riskScore >= 0 && output.result.riskScore <= 100)",
+    "output.ok === false || ['low','moderate','high'].includes(output.result.riskLevel)",
+    "output.ok === false || (Array.isArray(output.result.items) && output.result.items.length === 10)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "decision": "Promote candidate", "responses": { "confirmation": { "flagged": true }, "anchoring": { "flagged": true } } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "decision": "d", "responses": "not-an-object" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "decision": "d", "responses": { "confirmation": { "flagged": "1e999", "note": 5 } } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "decision": "" } } }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS (path-3) handler; dispatch key 'ethics.biasChecklist'. BiasChecklistPanel sends {input:{decision, responses:{[biasKey]:{flagged,note?}}}}; dispatch peels a sole-key {artifact:{data}} wrapper. Returns {id,decision,items:[{key,label,prompt,flagged,note}],flaggedCount,totalCount,riskScore,riskLevel,createdAt}. The 10-item bias template (key/label/prompt) comes from the sibling biasChecklistTemplate macro the panel loads first. POISON CONTRACT: riskScore = flaggedCount/totalCount*100 over a FIXED 10-item template, so it is always a finite 0..100 integer regardless of input; a non-object responses field, a non-boolean flagged, or a non-string note are coerced (!! / String()) and never throw. Empty decision is rejected fail-closed. Pinned by server/tests/ethics-lens-macros.test.js."
+}

@@ -1,0 +1,28 @@
+{
+  "macro_id": "fitness.bodyCompReport",
+  "domain": "fitness",
+  "name": "bodyCompReport",
+  "inputs": {
+    "weight": { "type": "number", "required": false },
+    "height": { "type": "number", "required": false },
+    "age": { "type": "number", "required": false },
+    "sex": { "type": "string", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.bmi === null || Number.isFinite(output.result.bmi)",
+    "output.ok === false || output.result.bodyFatPct === null || Number.isFinite(output.result.bodyFatPct)",
+    "output.ok === false || output.result.fatMass === null || Number.isFinite(output.result.fatMass.kg)",
+    "output.ok === false || output.result.leanMass === null || Number.isFinite(output.result.leanMass.kg)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "weight": 80, "height": 180, "age": 30, "sex": "male" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "weight": "1e999", "height": "Infinity", "age": "NaN" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "weight": -80, "height": -180 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS (path-3) handler; dispatch key 'fitness.bodyCompReport'. Returns bmi/bmiCategory/bodyFatPct/fatMass{kg,lbs}/leanMass{kg,lbs}. POISON CONTRACT: ffnum() coerces every numeric through Number.isFinite and fclampN clamps bodyFatPct∈[1,75], so a poisoned ('1e999'/'Infinity'/'NaN') weight/height can NEVER produce Infinity/NaN bmi or mass (the old parseFloat let it through → JSON null). Pinned by server/tests/fitness-lens-macros.test.js. NOTE: fitness is path-3-only, so the macro-assassin does not drive it — the node:test is the real enforcement; this override is the documented contract."
+}

@@ -1,0 +1,25 @@
+{
+  "macro_id": "bio.sequence-analyze",
+  "domain": "bio",
+  "name": "sequence-analyze",
+  "inputs": {
+    "sequence": { "type": "string", "required": true },
+    "kind": { "type": "string", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isInteger(output.result.length)",
+    "output.ok === false || ['dna','rna','protein'].indexOf(output.result.kind) >= 0",
+    "output.ok === false || output.result.gcPercent === undefined || Number.isFinite(output.result.gcPercent)",
+    "output.ok === false || output.result.tm === undefined || Number.isFinite(output.result.tm)",
+    "output.ok === false || output.result.orfs === undefined || Array.isArray(output.result.orfs)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "sequence": "ATGCATGC", "kind": "dna" }, "expect": { "ok": true } },
+    { "input": { "sequence": "", "kind": "dna" }, "expect": { "ok": false } },
+    { "input": { "sequence": "ATGC", "kind": "bogus" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/bio.js). SequenceAnalyzer + BioActionPanel + BioWorkbench send {sequence,kind}. Returns {length,kind,gcPercent,tm,orfs:[{frame,start,end,length}]} for dna/rna, {composition,molecularWeight} for protein. FAIL-CLOSED: a non-string sequence (object/number) is rejected ('sequence must be a string') so it can't String()-coerce into a fabricated GC%. Pinned by server/tests/bio-lens-macros.test.js."
+}

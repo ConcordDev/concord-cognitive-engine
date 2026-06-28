@@ -6,10 +6,20 @@ import { Users, Loader2, Wand2, Trash2, Plus } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
-interface Assignment { member: string; chore: string; week?: number; day?: string }
-interface RotationResult { assignments?: Assignment[]; rotation?: Assignment[]; weeks?: number; strategy?: string; error?: string }
+// The household.choreRotation handler returns assignments shaped
+// { chore, assignee, frequency, previousAssignee } for the chosen strategy.
+interface Assignment { chore: string; assignee: string; frequency?: string; previousAssignee?: string | null }
+interface RotationResult {
+  assignments?: Assignment[];
+  strategy?: string;
+  totalChores?: number;
+  members?: number;
+  choresPerMember?: Record<string, number>;
+  error?: string;
+}
 
-const STRATEGIES = ['round-robin', 'fair-share', 'random'] as const;
+// Only the two strategies the handler actually implements.
+const STRATEGIES = ['round-robin', 'random'] as const;
 
 async function callHousehold<T>(action: string, input: Record<string, unknown>): Promise<T | null> {
   try {
@@ -28,16 +38,20 @@ export function ChoreRotation() {
   const [chores, setChores] = useState<string[]>(['Dishes', 'Trash', 'Vacuum', 'Laundry']);
   const [members, setMembers] = useState<string[]>(['Alex', 'Sam', 'Jordan']);
   const [strategy, setStrategy] = useState<typeof STRATEGIES[number]>('round-robin');
-  const [weeks, setWeeks] = useState(4);
   const [result, setResult] = useState<RotationResult | null>(null);
   const [newChore, setNewChore] = useState('');
   const [newMember, setNewMember] = useState('');
 
   const rotate = useMutation({
     mutationFn: async () => {
+      // Flat params: the dispatch maps run-action input to BOTH artifact.data
+      // and params, so a flat body reaches artifact.data.chores. (A nested
+      // { artifact: { data } } two-key body is NOT peeled and was the dead
+      // surface — the handler saw artifact.data.chores === undefined.)
       const r = await callHousehold<RotationResult>('choreRotation', {
-        artifact: { data: { chores: chores.map((c) => ({ name: c })), members } },
-        strategy, weeks,
+        chores: chores.map((c) => ({ name: c })),
+        members,
+        strategy,
       });
       setResult(r);
       return r;
@@ -51,7 +65,7 @@ export function ChoreRotation() {
   };
   const removeItem = (i: number, list: string[], setList: (l: string[]) => void) => setList(list.filter((_, j) => j !== i));
 
-  const assignments = result?.assignments || result?.rotation || [];
+  const assignments = result?.assignments || [];
 
   return (
     <div className="space-y-4">
@@ -66,9 +80,9 @@ export function ChoreRotation() {
             compact
             apiSource="concord-household-chores"
             title={`Chore rotation — ${members.length} members × ${chores.length} chores (${strategy})`}
-            content={`Strategy: ${strategy}\nMembers: ${members.join(', ')}\nChores: ${chores.join(', ')}\n\nAssignments:\n${assignments.map((a) => `  ${a.week ? `W${a.week} ` : ''}${a.member} → ${a.chore}`).join('\n')}`}
+            content={`Strategy: ${strategy}\nMembers: ${members.join(', ')}\nChores: ${chores.join(', ')}\n\nAssignments:\n${assignments.map((a) => `  ${a.chore} → ${a.assignee}`).join('\n')}`}
             extraTags={['household', 'chores', strategy]}
-            rawData={{ chores, members, strategy, weeks, result }}
+            rawData={{ chores, members, strategy, result }}
           />
         )}
       </header>
@@ -113,10 +127,6 @@ export function ChoreRotation() {
             {STRATEGIES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
-        <label className="block w-24">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Weeks</span>
-          <input type="number" min={1} max={12} value={weeks} onChange={(e) => setWeeks(Math.max(1, Math.min(12, Number(e.target.value) || 4)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" />
-        </label>
         <button type="button" onClick={() => rotate.mutate()} disabled={rotate.isPending || chores.length === 0 || members.length === 0} className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-mono text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50">
           {rotate.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
           Rotate
@@ -132,11 +142,13 @@ export function ChoreRotation() {
           <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
             {assignments.map((a, i) => (
               <div key={i} className="flex items-center justify-between rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1.5 text-xs">
-                <span className="flex items-center gap-2">
-                  {a.week && <span className="rounded bg-emerald-500/20 px-1 font-mono text-[10px] text-emerald-200">W{a.week}</span>}
-                  <span className="font-mono text-zinc-200">{a.member}</span>
-                </span>
                 <span className="text-zinc-400">{a.chore}</span>
+                <span className="flex items-center gap-2">
+                  {a.previousAssignee && a.previousAssignee !== a.assignee && (
+                    <span className="font-mono text-[10px] text-zinc-500 line-through">{a.previousAssignee}</span>
+                  )}
+                  <span className="font-mono text-emerald-200">{a.assignee}</span>
+                </span>
               </div>
             ))}
           </div>

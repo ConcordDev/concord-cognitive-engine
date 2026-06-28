@@ -1,0 +1,27 @@
+{
+  "macro_id": "classroom.grade-submission",
+  "domain": "classroom",
+  "name": "grade-submission",
+  "inputs": {
+    "submissionId": { "type": "string", "required": true },
+    "score": { "type": "number", "required": false },
+    "maxPoints": { "type": "number", "required": false },
+    "feedback": { "type": "string", "required": false, "maxLength": 4000 },
+    "returned": { "type": "boolean", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.grade === 'object' && output.result.grade !== null)",
+    "output.ok === false || Number.isFinite(output.result.grade.score)",
+    "output.ok === false || Number.isFinite(output.result.grade.maxPoints)",
+    "output.ok === false || (Number.isFinite(output.result.grade.percent) && output.result.grade.percent >= 0 && output.result.grade.percent <= 100)",
+    "output.ok === false || (output.result.grade.score >= 0 && output.result.grade.score <= output.result.grade.maxPoints)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "submissionId": "missing", "score": 5 }, "expect": { "ok": false } },
+    { "input": { "submissionId": "missing", "score": "Infinity" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler. percent = round(score/maxPoints*100), maxPoints pulled from the parent assignment. POISON: score via Math.max(0,Math.min(maxPoints,Number(x)||0)) → FINITE clamped; percent guards maxPoints>0 so no NaN/Infinity divide. Re-grading the same submission REPLACES the prior grade (no duplicate). Missing submission → fail-CLOSED 'submission not found'. Fuzz cases use a missing submissionId because a real grade needs a seeded assignment+submission (covered by the macros test, not fuzzable standalone). Pinned by server/tests/classroom-lens-macros.test.js."
+}

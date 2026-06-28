@@ -1,0 +1,24 @@
+{
+  "macro_id": "bio.restriction-map",
+  "domain": "bio",
+  "name": "restriction-map",
+  "inputs": {
+    "sequence": { "type": "string", "required": true },
+    "enzymes": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.sites)",
+    "output.ok === false || output.result.count === output.result.sites.length",
+    "output.ok === false || output.result.sites.every(function(s){ return typeof s.enzyme === 'string' && Number.isInteger(s.position) && Number.isInteger(s.cutAt) && typeof s.site === 'string'; })",
+    "output.ok === false || Array.isArray(output.result.enzymesScanned)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "sequence": "AAAGAATTCAAA" }, "expect": { "ok": true } },
+    { "input": { "sequence": "GAATTCGGATCC", "enzymes": ["EcoRI"] }, "expect": { "ok": true } },
+    { "input": { "sequence": "" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/bio.js). sites are OBJECTS {enzyme,position,cutAt,site} + count + enzymesScanned — NOT a number[] of positions and NOT a fragments[] (those were never emitted). BioActionPanel previously sent {enzyme} (singular, ignored → scanned all 10) and rendered sites as number[] → '[object Object]'; it now sends enzymes:[enzyme] and renders s.cutAt/s.enzyme@s.position. Pinned by server/tests/bio-lens-macros.test.js."
+}

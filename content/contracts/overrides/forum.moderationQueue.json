@@ -1,0 +1,25 @@
+{
+  "macro_id": "forum.moderationQueue",
+  "domain": "forum",
+  "name": "moderationQueue",
+  "inputs": {
+    "reports": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (Number.isFinite(output.result.totalReports) && Number.isFinite(output.result.pending) && Number.isFinite(output.result.resolved))",
+    "output.ok === false || (typeof output.result.byReason === 'object' && output.result.byReason !== null)",
+    "output.ok === false || ['low','medium','high'].indexOf(output.result.urgency) !== -1",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "reports": [] }, "expect": { "ok": true } },
+    { "input": { "reports": [{ "status": "pending", "reason": "spam", "date": "2026-06-02T00:00:00Z" }, { "status": "resolved", "reason": "off_topic", "date": "2026-05-30T00:00:00Z" }] }, "expect": { "ok": true } },
+    { "input": { "reports": [{ "status": "pending", "date": "garbage" }, { "status": "pending", "date": "NaN" }] }, "expect": { "ok": true } },
+    { "input": { "reports": "nope" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'forum.moderationQueue'. The /lenses/forum inline buttons DERIVE reports from REAL post state (locked posts → pending review, removed posts → resolved) and pass them as run-action params; the persisted single-post artifact has no reports array (the prior dead surface). Handler reads params.reports ?? artifact.data.reports. Returns {totalReports,pending,resolved,byReason,oldestPending,urgency} (urgency ∈ low|medium|high). POISON: corrupt/NaN report dates never throw (fmTime guards getTime() to a finite epoch); counts stay FINITE; non-array degrades to zero-counts. Pinned by server/tests/forum-lens-macros.test.js."
+}

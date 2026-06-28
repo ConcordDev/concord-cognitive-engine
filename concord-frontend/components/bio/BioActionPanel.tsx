@@ -30,7 +30,12 @@ interface SeqResult { length: number; kind: string; gcPercent?: number; tm?: num
 interface PrimerInfo { sequence: string; length: number; tm: number; gcPercent: number }
 interface PrimerResult { forward: PrimerInfo; reverse: PrimerInfo; productSize: number; notes?: string }
 interface AlignResult { score: number; alignA: string; alignB: string; alignBars: string; matches: number; identity: number; alignmentLength: number }
-interface RestrictResult { enzyme?: string; sites?: number[]; fragments?: { start: number; end: number; length: number }[] }
+// bio.restriction-map returns sites as objects {enzyme, position, cutAt, site}
+// plus a count + the list of enzymes scanned — NOT a number[] of positions and
+// NOT a fragments array (those were never emitted by the handler, so the old
+// shape rendered "[object Object]" cut positions and never showed fragments).
+interface RestrictSite { enzyme: string; position: number; cutAt: number; site: string }
+interface RestrictResult { sites?: RestrictSite[]; count?: number; enzymesScanned?: string[] }
 
 // No seed sequences — paste real DNA / RNA / protein strings.
 export function BioActionPanel() {
@@ -86,7 +91,10 @@ export function BioActionPanel() {
     if (!enzyme.trim()) { err('Enzyme required (e.g. EcoRI, BamHI, HindIII).'); return; }
     setBusy('restrict'); setFeedback(null);
     try {
-      const r = await callMacro<RestrictResult>('restriction-map', { sequence: sequence.trim(), enzyme: enzyme.trim() });
+      // Handler reads params.enzymes (an array); pass the single enzyme as a
+      // one-element array so the filter actually applies (a singular `enzyme`
+      // field is ignored by the handler and silently scans ALL 10 enzymes).
+      const r = await callMacro<RestrictResult>('restriction-map', { sequence: sequence.trim(), enzymes: [enzyme.trim()] });
       if (r.ok && r.result) { setRestrictResult(r.result); pipe.publish('bio.restrict', r.result, { label: `${enzyme}: ${r.result.sites?.length ?? 0} sites` }); ok(`${r.result.sites?.length ?? 0} cut sites.`); } else err(r.error ?? 'restrict failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -232,8 +240,8 @@ export function BioActionPanel() {
         {restrictResult && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">{enzyme} · {restrictResult.sites?.length ?? 0} sites</div>
-            <div className="text-[10px] text-zinc-400 mt-1">cuts at: {(restrictResult.sites ?? []).slice(0, 10).join(', ') || 'none'}</div>
-            {restrictResult.fragments && <div className="text-[10px] text-amber-200 mt-1">fragments: {restrictResult.fragments.slice(0, 5).map(f => f.length).join(' / ')} bp</div>}
+            <div className="text-[10px] text-zinc-400 mt-1">cuts at: {(restrictResult.sites ?? []).slice(0, 10).map(s => s.cutAt).join(', ') || 'none'}</div>
+            {(restrictResult.sites?.length ?? 0) > 0 && <div className="text-[10px] text-amber-200 mt-1 font-mono break-all">{(restrictResult.sites ?? []).slice(0, 6).map((s, i) => <span key={i} className="mr-2">{s.enzyme}@{s.position}</span>)}</div>}
           </div>
         )}
       </div>

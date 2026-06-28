@@ -1,0 +1,26 @@
+{
+  "macro_id": "consulting.invoice-create",
+  "domain": "consulting",
+  "name": "invoice-create",
+  "inputs": {
+    "engagementId": { "type": "string", "required": true, "maxLength": 120 },
+    "taxRate": { "type": "number", "required": false },
+    "dueInDays": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.invoice.subtotal)",
+    "output.ok === false || Number.isFinite(output.result.invoice.tax)",
+    "output.ok === false || Number.isFinite(output.result.invoice.total)",
+    "output.ok === false || (output.result.invoice.taxRate >= 0 && output.result.invoice.taxRate <= 1)",
+    "output.ok === false || Array.isArray(output.result.invoice.lineItems)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "engagementId": "missing" }, "expect": { "ok": false } },
+    { "input": { "engagementId": "missing", "taxRate": "1e999" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS STATE-backed (per-user). Rolls up unbilled time into an invoice. Money math via csNum (fail-closed) + csRound2; taxRate clamped to [0,1] so a poisoned 1e999 collapses to 0 (never Infinity tax). subtotal/tax/total stay FINITE. Empty/unknown engagement -> ok:false (validation-rejection). Pinned by server/tests/consulting-lens-macros.test.js + consulting-domain-parity.test.js."
+}

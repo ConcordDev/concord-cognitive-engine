@@ -1,0 +1,30 @@
+{
+  "macro_id": "board.burndownForecast",
+  "domain": "board",
+  "name": "burndownForecast",
+  "inputs": {
+    "sprints": { "type": "array", "required": false },
+    "remainingPoints": { "type": "number", "required": false },
+    "simulations": { "type": "number", "required": false },
+    "sprintLengthDays": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.remainingPoints) && Number.isFinite(output.result.simulations) && Number.isFinite(output.result.velocityStats.mean))",
+    "output.ok === false || output.result.message !== undefined || (output.result.forecast && Number.isFinite(output.result.forecast.deterministicSprints) && typeof output.result.forecast.mostLikelyDate === 'string')",
+    "output.ok === false || output.result.message !== undefined || output.result.burndownProjection.every(function(s){ return Number.isFinite(s.projectedRemaining); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "sprints": [], "remainingPoints": 50 }, "expect": { "ok": true } },
+    { "input": { "sprints": [{ "id": "s1", "completedPoints": 10 }, { "id": "s2", "completedPoints": 20 }, { "id": "s3", "completedPoints": 15 }], "remainingPoints": 60 }, "expect": { "ok": true } },
+    { "input": { "sprints": [{ "completedPoints": 10 }], "remainingPoints": "1e999" }, "expect": { "ok": true } },
+    { "input": { "sprints": [{ "completedPoints": "1e999" }, { "completedPoints": "Infinity" }, { "completedPoints": 15 }], "remainingPoints": 30 }, "expect": { "ok": true } },
+    { "input": { "sprints": [{ "completedPoints": 10 }], "remainingPoints": 5, "simulations": 1e999 }, "expect": { "ok": true } },
+    { "input": { "sprints": "nope", "remainingPoints": 10 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'board.burndownForecast'. The /lenses/board AI Action Panel derives sprints:[{id,completedPoints,...}] (done tasks grouped by completion week) + remainingPoints (open tasks weighted by 100-progress) from live tasks and passes them as run-action params. Handler reads params.X ?? artifact.data.X. Returns {remainingPoints,velocityStats:{mean,...},simulations,forecast:{deterministicSprints,mostLikelyDate,confidenceRange,...},burndownProjection:[{sprint,projectedRemaining}]}. POISON: finNum forces remainingPoints/velocities FINITE — a poisoned remainingPoints (1e999/Infinity) fails the >0 gate → 'no remaining points' (NO infinite Monte-Carlo loop); poisoned velocities are filtered out of the >0 set; simulations/sprintLengthDays are clamped to [1,50000]/[1,365] so a huge value can't hang. Non-array sprints → guidance. Pinned by server/tests/board-lens-macros.test.js."
+}

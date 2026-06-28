@@ -1,0 +1,22 @@
+{
+  "macro_id": "fitness.vo2max-estimate",
+  "domain": "fitness",
+  "name": "vo2max-estimate",
+  "inputs": {
+    "distanceKm": { "type": "number", "required": false },
+    "durationSec": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.vo2max)",
+    "output.ok === false || output.result.vo2max > 0"
+  ],
+  "fuzz_cases": [
+    { "input": { "distanceKm": 5, "durationSec": 1500 }, "expect": { "ok": true } },
+    { "input": { "distanceKm": "1e999", "durationSec": "Infinity" }, "expect": { "ok": false } },
+    { "input": { "distanceKm": -5, "durationSec": -100 }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS (path-3) handler; dispatch key 'fitness.vo2max-estimate'. VDOT physiology from distanceKm+durationSec (or a logged run ≥1.5km). FAIL-CLOSED: a non-finite or ≤0 vo2max returns { ok:false, error:'could not estimate' } rather than leaking NaN/Infinity — never a fabricated reading. Pinned by server/tests/fitness-lens-macros.test.js. Path-3-only → node:test is the real enforcement."
+}

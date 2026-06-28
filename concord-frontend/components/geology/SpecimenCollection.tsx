@@ -55,8 +55,9 @@ export function SpecimenCollection() {
     const r = await lensRun('geology', 'collection-add', {
       name: form.name.trim(), kind: form.kind, locality: form.locality.trim(),
     });
-    if (r.data?.ok) { setForm({ name: '', kind: form.kind, locality: '' }); await refresh(); }
-    else setError(r.data?.error || 'Could not add specimen');
+    const inner = r.data?.result as { ok?: boolean; error?: string } | undefined;
+    if (r.data?.ok && inner?.ok !== false) { setForm({ name: '', kind: form.kind, locality: '' }); await refresh(); }
+    else setError(inner?.error || r.data?.error || 'Could not add specimen');
   }, [form, refresh]);
 
   const toggle = useCallback(async (id: string) => {

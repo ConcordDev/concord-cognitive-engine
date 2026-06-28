@@ -1,0 +1,31 @@
+{
+  "macro_id": "affect.emotionTimeline",
+  "domain": "affect",
+  "name": "emotionTimeline",
+  "inputs": {
+    "entries": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.arcType === 'string'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.entryCount)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.volatility)",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.smoothedValence)",
+    "output.ok === false || output.result.message !== undefined || output.result.smoothedValence.every(function(v){ return Number.isFinite(v); })",
+    "output.ok === false || output.result.message !== undefined || (output.result.arcSegments && Number.isFinite(output.result.arcSegments.beginning) && Number.isFinite(output.result.arcSegments.middle) && Number.isFinite(output.result.arcSegments.end))",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overallValence)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overallIntensity)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "entries": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "entries": [{ "id": "a", "text": "terrible awful miserable" }, { "id": "b", "text": "okay getting better" }, { "id": "c", "text": "wonderful amazing joy" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "entries": [{ "text": "great success triumph" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "entries": "not an array" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "entries": 42 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "entries": { "x": 1 } } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'affect.emotionTimeline'. /lenses/affect Analysis tab renders r.result.{arcType,entryCount,volatility,smoothedValence[],arcSegments.{beginning,middle,end},turningPoints[].{index,type,valence,magnitude},overallValence,overallIntensity}. Vonnegut-shape arc classifier over a pos/neg lexicon + moving-average smoothing. Empty/absent entries → {ok:true,result.message}. FIXED (Phase-2 gate): a poisoned non-array entries once threw `entries.map is not a function`; now Array.isArray-guarded + try/catch. Not assassin-driven (LENS_ACTIONS); pinned by server/tests/affect-lens-macros.test.js."
+}

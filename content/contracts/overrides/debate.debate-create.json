@@ -1,0 +1,23 @@
+{
+  "macro_id": "debate.debate-create",
+  "domain": "debate",
+  "name": "debate-create",
+  "inputs": {
+    "thesis": { "type": "string", "required": true, "minLength": 8, "maxLength": 400 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.debate && typeof output.result.debate.id === 'string')",
+    "output.ok === false || typeof output.result.debate.thesis === 'string'",
+    "output.ok === false || Array.isArray(output.result.debate.claims)",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "thesis": "AI models should be open-sourced for safety review" }, "expect": { "ok": true } },
+    { "input": { "thesis": "short" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "thesis": 9999 }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler, dispatch key 'debate.debate-create'. KialoArgumentMap createDebate() sends {thesis}; reads r.result.debate.id to open the new debate. Per-user STATE-backed (globalThis._concordSTATE.debateLens.debates Map, keyed by ctx.actor.userId). thesis < 8 chars (after trim/coerce) → {ok:false,error:string}. No LLM. STATE-unavailable degrades to {ok:false,'STATE unavailable'}. Pinned by server/tests/debate-lens-macros.test.js."
+}

@@ -1,0 +1,25 @@
+{
+  "macro_id": "artistry.compositionScore",
+  "domain": "artistry",
+  "name": "compositionScore",
+  "inputs": {
+    "elements": { "type": "array", "required": false },
+    "canvas": { "type": "object", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.result.overallScore === undefined || Number.isFinite(output.result.overallScore)",
+    "output.ok === false || output.result.balanceScore === undefined || Number.isFinite(output.result.balanceScore)",
+    "output.ok === false || output.result.coverageScore === undefined || Number.isFinite(output.result.coverageScore)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "elements": [], "canvas": {} }, "expect": { "ok": true } },
+    { "input": { "canvas": { "width": 100, "height": 100 }, "elements": [{ "x": 25, "y": 25, "width": 16, "height": 16, "weight": 1 }] }, "expect": { "ok": true } },
+    { "input": { "canvas": { "width": "Infinity", "height": "NaN" }, "elements": [{ "x": "1e999", "y": 0, "width": "Infinity", "height": 10, "weight": "Infinity" }] }, "expect": { "ok": true } },
+    { "input": { "elements": "boom" }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/artistry.js). 3-arg dispatch via /api/lens/run on key 'artistry.compositionScore' (virtualArtifact.data === input). The /lenses/artistry page reads result.overallScore (rendered /100). DETERMINISTIC pure compute. POISON: canvas dims + element x/y/width/height/weight are coerced via finNum — Infinity/NaN/1e999 collapse to a sane fallback (canvas→100, dims→0, weight→1), so the rule-of-thirds / balance / coverage scores and overallScore stay FINITE. Empty/absent elements degrade graceful (ok:true with the page message + score:0), never throws. Not driven by macro-assassin (LENS_ACTIONS, not MACROS); authored spec pinned by server/tests/artistry-lens-macros.test.js."
+}

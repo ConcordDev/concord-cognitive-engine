@@ -18,18 +18,31 @@ export interface BioObservation {
 export function BiodiversityLog() {
   const [observations, setObservations] = useState<BioObservation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
   async function refresh() {
     setLoading(true);
+    setError(null);
     try {
       const res = await api.post('/api/lens/run', {
         domain: 'eco', action: 'biodiversity-list', input: { limit: 50 },
       });
-      setObservations((res.data?.result?.observations || []) as BioObservation[]);
+      // /api/lens/run single-unwraps the handler envelope: a handler REJECTION
+      // arrives as res.data.result = { ok:false, error }. Surface it as an error
+      // (never silent-empty) so a backend failure is DISTINGUISHABLE from a
+      // genuinely-empty life list.
+      const node = res.data?.result;
+      if (node && (node as { ok?: boolean }).ok === false) {
+        setError((node as { error?: string }).error || 'Could not load life list.');
+        setObservations([]);
+      } else {
+        setObservations(((node as { observations?: BioObservation[] })?.observations || []) as BioObservation[]);
+      }
     } catch (e) {
-      console.error('[BioLog] list failed', e);
+      setError(e instanceof Error ? e.message : 'Could not load life list.');
+      setObservations([]);
     } finally { setLoading(false); }
   }
 
@@ -53,8 +66,18 @@ export function BiodiversityLog() {
       </header>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-400">
+          <div role="status" aria-busy="true" className="flex items-center justify-center py-8 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
+          </div>
+        ) : error ? (
+          <div role="alert" className="px-3 py-8 text-center text-xs text-red-400 space-y-2">
+            <div>{error}</div>
+            <button
+              onClick={() => refresh()}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-white/[0.04] border border-white/10 text-gray-300 hover:bg-white/[0.08]"
+            >
+              Retry
+            </button>
           </div>
         ) : observations.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400">

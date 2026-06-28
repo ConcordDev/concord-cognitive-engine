@@ -72,12 +72,13 @@ describe("eco.weather-forecast", () => {
 });
 
 describe("eco.aqi-current", () => {
-  it("returns fallback AQI when network unreachable", async () => {
+  it("fails honestly when Open-Meteo unreachable (no fabricated AQI)", async () => {
+    // Per the "everything must be real" directive, a network failure surfaces
+    // an honest { ok:false } error rather than a fabricated plausible reading
+    // — the AQIPanel renders the error branch, not a fake AQI of 42.
     const r = await call("aqi-current", ctxA, { lat: 37.7, lng: -122.4 });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.category, "good");
-    assert.ok(typeof r.result.aqi === "number");
-    assert.match(r.result.source, /fallback/);
+    assert.equal(r.ok, false);
+    assert.match(r.error, /unreachable/i);
   });
 
   it("rejects missing coords", async () => {

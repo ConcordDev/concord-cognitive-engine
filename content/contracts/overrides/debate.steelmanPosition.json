@@ -1,0 +1,27 @@
+{
+  "macro_id": "debate.steelmanPosition",
+  "domain": "debate",
+  "name": "steelmanPosition",
+  "inputs": {
+    "position": { "type": "string", "required": false, "maxLength": 4000 },
+    "argument": { "type": "string", "required": false, "maxLength": 4000 },
+    "side": { "type": "string", "required": false, "enum": ["pro", "con"] },
+    "arguments": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || (typeof output.result.message === 'string') || (Array.isArray(output.result.steelmanSteps) && output.result.steelmanSteps.length >= 1)",
+    "output.ok === false || (typeof output.result.message === 'string') || (output.result.framework && typeof output.result.framework.premise === 'string')",
+    "output.ok === false || (typeof output.result.message === 'string') || Number.isFinite(output.result.originalLength)"
+  ],
+  "fuzz_cases": [
+    { "input": { "side": "con", "arguments": ["A ban costs jobs", "Alternatives are not ready"] }, "expect": { "ok": true } },
+    { "input": { "position": "Free movement boosts national GDP over the long run" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "position": 9999 }, "expect": { "ok": true } },
+    { "input": { "arguments": "notarray" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler, dispatch key 'debate.steelmanPosition'. DebateActionPanel 'Steelman' passes {side,arguments:[...]}; page.tsx passes NO params so the handler derives the position from the live debate's chosen-side (or pro) argument text. Renders r.result.{steelmanSteps[], framework{premise,evidence,conclusion}, originalLength, side, originalPosition}; empty → {ok:true,result.message}. Deterministic template, no LLM. try/catch-guarded; non-string position / non-array arguments coerced before .split(). Pinned by server/tests/debate-lens-macros.test.js."
+}

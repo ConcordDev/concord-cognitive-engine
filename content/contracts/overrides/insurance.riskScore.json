@@ -1,0 +1,26 @@
+{
+  "macro_id": "insurance.riskScore",
+  "domain": "insurance",
+  "name": "riskScore",
+  "inputs": {
+    "risk": { "type": "string", "maxLength": 200 },
+    "probability": { "type": "number", "min": 0, "max": 1000000000 },
+    "impact": { "type": "number", "min": 0, "max": 1000000000 },
+    "mitigations": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.risk === 'string' && output.result.risk.length > 0)",
+    "output.ok === false || Number.isFinite(output.result.rawScore)",
+    "output.ok === false || Number.isFinite(output.result.normalizedScore)",
+    "output.ok === false || Number.isFinite(output.result.mitigatedScore)",
+    "output.ok === false || ['low','medium','high','critical'].includes(output.result.level)"
+  ],
+  "fuzz_cases": [
+    { "input": { "risk": "Cyber breach", "probability": 4, "impact": 5 }, "expect": { "ok": true } },
+    { "input": { "risk": "Minor", "probability": 1, "impact": 2 }, "expect": { "ok": true } },
+    { "input": { "risk": "x", "probability": 1e308, "impact": 5 }, "expect": { "ok": false, "error": "invalid_probability" } }
+  ],
+  "_note": "insurance.riskScore (read-only P×I risk calculator for the InsuranceActionPanel) computes rawScore = probability×impact, normalizedScore = rawScore/25×100, a level band (critical ≥15 / high ≥10 / medium ≥5 / low), and mitigatedScore = rawScore − mitigations.length. The 'risk' label is read from data.risk/params.risk first (artifact.title is dropped by the dispatch peel of the sole-key { artifact: { title, data } } body) so the panel's risk card is never blank. Fail-CLOSED: a poisoned probability/impact (NaN/Infinity/1e308/negative) returns ok:false invalid_<field> BEFORE the score multiply, never a null/Infinity score."
+}

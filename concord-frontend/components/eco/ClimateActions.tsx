@@ -24,6 +24,7 @@ const CATEGORIES: Array<ClimateAction['category']> = ['transport', 'food', 'home
 export function ClimateActions({ onLogged }: ClimateActionsProps) {
   const [actions, setActions] = useState<ClimateAction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [logged, setLogged] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState<ClimateAction['category'] | 'all'>('all');
   const [effortMax, setEffortMax] = useState<number>(5);
@@ -33,13 +34,24 @@ export function ClimateActions({ onLogged }: ClimateActionsProps) {
 
   async function refresh() {
     setLoading(true);
+    setError(null);
     try {
       const res = await api.post('/api/lens/run', {
         domain: 'eco', action: 'climate-actions-list', input: {},
       });
-      setActions((res.data?.result?.actions || []) as ClimateAction[]);
+      // /api/lens/run single-unwraps: a handler rejection arrives as
+      // res.data.result = { ok:false, error }. Surface it as an error so a
+      // backend failure is never indistinguishable from "no actions match".
+      const node = res.data?.result;
+      if (node && (node as { ok?: boolean }).ok === false) {
+        setError((node as { error?: string }).error || 'Could not load climate actions.');
+        setActions([]);
+      } else {
+        setActions(((node as { actions?: ClimateAction[] })?.actions || []) as ClimateAction[]);
+      }
     } catch (e) {
-      console.error('[Actions] list failed', e);
+      setError(e instanceof Error ? e.message : 'Could not load climate actions.');
+      setActions([]);
     } finally { setLoading(false); }
   }
 
@@ -111,8 +123,18 @@ export function ClimateActions({ onLogged }: ClimateActionsProps) {
       </div>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-400">
+          <div role="status" aria-busy="true" className="flex items-center justify-center py-6 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
+          </div>
+        ) : error ? (
+          <div role="alert" className="px-3 py-8 text-center text-xs text-red-400 space-y-2">
+            <div>{error}</div>
+            <button
+              onClick={() => refresh()}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-white/[0.04] border border-white/10 text-gray-300 hover:bg-white/[0.08]"
+            >
+              Retry
+            </button>
           </div>
         ) : visible.length === 0 ? (
           <div className="px-3 py-8 text-xs text-gray-400 text-center">No actions match.</div>

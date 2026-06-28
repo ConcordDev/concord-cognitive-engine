@@ -549,7 +549,12 @@ export default function AffectLensPage() {
 
   if (stateLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div
+        role="status"
+        aria-busy="true"
+        aria-live="polite"
+        className="flex items-center justify-center h-full p-8"
+      >
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-neon-pink border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm text-gray-400">Loading affect state...</p>
@@ -560,7 +565,7 @@ export default function AffectLensPage() {
 
   if (isError || isError2 || isError3 || isError4) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div role="alert" className="flex items-center justify-center h-full p-8">
         <ErrorState
           error={error?.message || error2?.message || error3?.message || error4?.message}
           onRetry={() => {
@@ -2079,17 +2084,17 @@ export default function AffectLensPage() {
                                   : 'text-purple-400'
                             }`} />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-300">
-                                {String(pattern.name || pattern.label || pattern.type || `Pattern ${i + 1}`)}
+                              <p className="text-sm font-medium text-gray-300 capitalize">
+                                {String(pattern.theme || pattern.name || pattern.label || pattern.type || `Pattern ${i + 1}`)}
                               </p>
                               {!!(pattern.description || pattern.detail) && (
                                 <p className="text-xs text-gray-400 mt-0.5">
                                   {String(pattern.description || pattern.detail)}
                                 </p>
                               )}
-                              {!!pattern.frequency && (
+                              {!!(pattern.count ?? pattern.frequency) && (
                                 <span className="text-[10px] text-gray-400 mt-1 block">
-                                  Frequency: {String(pattern.frequency)}
+                                  Occurrences: {String(pattern.count ?? pattern.frequency)}
                                 </span>
                               )}
                             </div>
@@ -2114,8 +2119,11 @@ export default function AffectLensPage() {
                       <p className="text-xs text-gray-400 font-medium mb-2">Emotional Triggers</p>
                       <div className="flex flex-wrap gap-1.5">
                         {(patternResult.triggers as Array<Record<string, unknown>>).map((trigger, i) => (
-                          <span key={i} className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">
-                            {String(trigger.name || trigger.label || trigger)}
+                          <span key={i} className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full capitalize">
+                            {String(trigger.trigger || trigger.name || trigger.label || trigger)}
+                            {trigger.count != null && (
+                              <span className="ml-1 opacity-70">({String(trigger.count)})</span>
+                            )}
                           </span>
                         ))}
                       </div>
@@ -2130,9 +2138,9 @@ export default function AffectLensPage() {
                         {(patternResult.cycles as Array<Record<string, unknown>>).map((cycle, i) => (
                           <div key={i} className="flex items-center gap-2 text-xs p-2 bg-purple-500/5 rounded border border-purple-500/10">
                             <RefreshCw className="w-3 h-3 text-purple-400 shrink-0" />
-                            <span className="text-gray-400">{String(cycle.description || cycle.name || `Cycle ${i + 1}`)}</span>
-                            {!!cycle.period && (
-                              <span className="ml-auto text-gray-600 font-mono">{String(cycle.period)}</span>
+                            <span className="text-gray-400">{String(cycle.label || cycle.description || cycle.name || `Cycle ${i + 1}`)}</span>
+                            {!!(cycle.count ?? cycle.period) && (
+                              <span className="ml-auto text-gray-600 font-mono">{String(cycle.count ?? cycle.period)}</span>
                             )}
                           </div>
                         ))}
@@ -2145,19 +2153,32 @@ export default function AffectLensPage() {
                     <div>
                       <p className="text-xs text-gray-400 font-medium mb-2">Correlations</p>
                       <div className="space-y-1">
-                        {(patternResult.correlations as Array<Record<string, unknown>>).map((corr, i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs">
-                            <Activity className="w-3 h-3 text-cyan-400" />
-                            <span className="text-gray-400">
-                              {String(corr.description || corr.name || `${corr.from || ''} -> ${corr.to || ''}`)}
-                            </span>
-                            {typeof corr.strength === 'number' && (
-                              <span className="ml-auto font-mono text-cyan-400">
-                                r={corr.strength.toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                        ))}
+                        {(patternResult.correlations as Array<Record<string, unknown>>).map((corr, i) => {
+                          // Canonical handler shape: { between: [a, b], strength: 'strong'|'moderate' }.
+                          // Fall back to the alternate shapes the panel historically tolerated.
+                          const between = Array.isArray(corr.between)
+                            ? (corr.between as unknown[]).map((x) => String(x)).join(' ↔ ')
+                            : null;
+                          const label =
+                            String(corr.description || corr.name || '') ||
+                            between ||
+                            `${corr.from || ''} -> ${corr.to || ''}`;
+                          return (
+                            <div key={i} className="flex items-center gap-2 text-xs">
+                              <Activity className="w-3 h-3 text-cyan-400" />
+                              <span className="text-gray-400">{label}</span>
+                              {typeof corr.strength === 'number' ? (
+                                <span className="ml-auto font-mono text-cyan-400">
+                                  r={(corr.strength as number).toFixed(2)}
+                                </span>
+                              ) : typeof corr.strength === 'string' ? (
+                                <span className="ml-auto font-mono text-cyan-400 capitalize">
+                                  {String(corr.strength)}
+                                </span>
+                              ) : null}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

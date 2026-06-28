@@ -14,14 +14,14 @@
  * Every value rendered comes from a real macro response.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import {
   Scale, Users, Grid3x3, ListChecks, MessagesSquare, Archive,
-  Plus, Trash2, X, Loader2, Search, Gavel, ThumbsUp, ThumbsDown,
+  Plus, Trash2, X, Loader2, Search, Gavel, ThumbsUp, ThumbsDown, RefreshCw,
 } from 'lucide-react';
 
 type ToolTab = 'multiframework' | 'stakeholder' | 'matrix' | 'bias' | 'review' | 'cases';
@@ -150,6 +150,63 @@ interface CaseRecord {
 const SECTION = 'rounded-xl border border-lattice-border bg-lattice-surface p-4 space-y-3';
 const errBox = 'text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2';
 
+/**
+ * LoadGate — the single load-state authority for every ethics list panel.
+ *
+ * Each panel's list-load reaches a real macro through lensRun (which unwraps the
+ * { ok, result } envelope, so a handler rejection lands as r.data.ok === false
+ * with r.data.error). The prior surface did `if (r.data.ok && r.data.result)
+ * setRecords(...)` with no else — a failed load rendered identically to a
+ * genuinely-empty one (the silent-empty defect). LoadGate makes the four states
+ * DISTINGUISHABLE: a spinner while loading, a red alert with a WORKING retry
+ * that re-runs the loader on error, an honest CTA when truly empty, and the
+ * children (real records) when populated.
+ *
+ * It renders nothing of its own in the populated case — the panel passes its
+ * record list and LoadGate decides loading/error/empty vs. handing through.
+ */
+function LoadGate({
+  loading,
+  error,
+  onRetry,
+  isEmpty,
+  emptyLabel,
+  children,
+}: {
+  loading: boolean;
+  error: string;
+  onRetry: () => void;
+  isEmpty: boolean;
+  emptyLabel: string;
+  children: ReactNode;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-8 text-sm text-gray-400">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        Loading {emptyLabel}…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className={cn(errBox, 'flex items-center justify-between gap-3')} role="alert">
+        <span>Could not load {emptyLabel}: {error}</span>
+        <button
+          onClick={onRetry}
+          className="flex items-center gap-1 px-2 py-1 rounded border border-red-500/40 text-red-300 hover:bg-red-500/10 whitespace-nowrap"
+        >
+          <RefreshCw className="w-3.5 h-3.5" /> Retry
+        </button>
+      </div>
+    );
+  }
+  if (isEmpty) {
+    return <EmptyHint label={emptyLabel} />;
+  }
+  return <>{children}</>;
+}
+
 function riskColor(level: string): string {
   return level === 'high' ? 'text-red-400'
     : level === 'moderate' ? 'text-yellow-400'
@@ -202,10 +259,15 @@ function MultiFrameworkPanel() {
   const [records, setRecords] = useState<MfaRecord[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState('');
 
   const load = useCallback(async () => {
+    setLoading(true); setLoadErr('');
     const r = await lensRun('ethics', 'listMultiFramework', {});
-    if (r.data.ok && r.data.result) setRecords(r.data.result.analyses || []);
+    setLoading(false);
+    if (!r.data.ok) { setLoadErr(r.data.error || 'request failed'); return; }
+    setRecords(r.data.result?.analyses || []);
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -293,6 +355,10 @@ function MultiFrameworkPanel() {
         {err && <div className={errBox}>{err}</div>}
       </div>
 
+      <LoadGate
+        loading={loading} error={loadErr} onRetry={load}
+        isEmpty={records.length === 0} emptyLabel="multi-framework analyses"
+      >
       {records.map((rec) => (
         <div key={rec.id} className={SECTION}>
           <div className="flex items-start justify-between gap-3">
@@ -342,7 +408,7 @@ function MultiFrameworkPanel() {
           </div>
         </div>
       ))}
-      {records.length === 0 && <EmptyHint label="multi-framework analyses" />}
+      </LoadGate>
     </div>
   );
 }
@@ -359,12 +425,17 @@ function StakeholderMapPanel() {
   const [records, setRecords] = useState<SmapRecord[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState('');
 
   const optionList = optionsText.split(',').map((s) => s.trim()).filter(Boolean);
 
   const load = useCallback(async () => {
+    setLoading(true); setLoadErr('');
     const r = await lensRun('ethics', 'listStakeholderMaps', {});
-    if (r.data.ok && r.data.result) setRecords(r.data.result.maps || []);
+    setLoading(false);
+    if (!r.data.ok) { setLoadErr(r.data.error || 'request failed'); return; }
+    setRecords(r.data.result?.maps || []);
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -463,6 +534,10 @@ function StakeholderMapPanel() {
         {err && <div className={errBox}>{err}</div>}
       </div>
 
+      <LoadGate
+        loading={loading} error={loadErr} onRetry={load}
+        isEmpty={records.length === 0} emptyLabel="stakeholder maps"
+      >
       {records.map((rec) => (
         <div key={rec.id} className={SECTION}>
           <div className="flex items-start justify-between gap-3">
@@ -513,7 +588,7 @@ function StakeholderMapPanel() {
           </div>
         </div>
       ))}
-      {records.length === 0 && <EmptyHint label="stakeholder maps" />}
+      </LoadGate>
     </div>
   );
 }
@@ -532,12 +607,17 @@ function DecisionMatrixPanel() {
   const [records, setRecords] = useState<MtxRecord[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState('');
 
   const criteriaNames = criteria.map((c) => c.name.trim()).filter(Boolean);
 
   const load = useCallback(async () => {
+    setLoading(true); setLoadErr('');
     const r = await lensRun('ethics', 'listDecisionMatrices', {});
-    if (r.data.ok && r.data.result) setRecords(r.data.result.matrices || []);
+    setLoading(false);
+    if (!r.data.ok) { setLoadErr(r.data.error || 'request failed'); return; }
+    setRecords(r.data.result?.matrices || []);
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -631,6 +711,10 @@ function DecisionMatrixPanel() {
         {err && <div className={errBox}>{err}</div>}
       </div>
 
+      <LoadGate
+        loading={loading} error={loadErr} onRetry={load}
+        isEmpty={records.length === 0} emptyLabel="decision matrices"
+      >
       {records.map((rec) => (
         <div key={rec.id} className={SECTION}>
           <div className="flex items-start justify-between gap-3">
@@ -663,7 +747,7 @@ function DecisionMatrixPanel() {
           </div>
         </div>
       ))}
-      {records.length === 0 && <EmptyHint label="decision matrices" />}
+      </LoadGate>
     </div>
   );
 }
@@ -677,14 +761,20 @@ function BiasChecklistPanel() {
   const [records, setRecords] = useState<BiasRecord[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState('');
 
   const load = useCallback(async () => {
+    setLoading(true); setLoadErr('');
     const [tpl, list] = await Promise.all([
       lensRun('ethics', 'biasChecklistTemplate', {}),
       lensRun('ethics', 'listBiasChecklists', {}),
     ]);
-    if (tpl.data.ok && tpl.data.result) setTemplate(tpl.data.result.items || []);
-    if (list.data.ok && list.data.result) setRecords(list.data.result.checklists || []);
+    setLoading(false);
+    if (!tpl.data.ok) { setLoadErr(tpl.data.error || 'request failed'); return; }
+    if (!list.data.ok) { setLoadErr(list.data.error || 'request failed'); return; }
+    setTemplate(tpl.data.result?.items || []);
+    setRecords(list.data.result?.checklists || []);
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -749,6 +839,10 @@ function BiasChecklistPanel() {
         {err && <div className={errBox}>{err}</div>}
       </div>
 
+      <LoadGate
+        loading={loading} error={loadErr} onRetry={load}
+        isEmpty={records.length === 0} emptyLabel="bias checklists"
+      >
       {records.map((rec) => (
         <div key={rec.id} className={SECTION}>
           <div className="flex items-start justify-between gap-3">
@@ -770,7 +864,7 @@ function BiasChecklistPanel() {
           </div>
         </div>
       ))}
-      {records.length === 0 && <EmptyHint label="bias checklists" />}
+      </LoadGate>
     </div>
   );
 }
@@ -783,10 +877,15 @@ function ReviewWorkflowPanel() {
   const [records, setRecords] = useState<ReviewRecord[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState('');
 
   const load = useCallback(async () => {
+    setLoading(true); setLoadErr('');
     const r = await lensRun('ethics', 'listReviews', {});
-    if (r.data.ok && r.data.result) setRecords(r.data.result.reviews || []);
+    setLoading(false);
+    if (!r.data.ok) { setLoadErr(r.data.error || 'request failed'); return; }
+    setRecords(r.data.result?.reviews || []);
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -815,10 +914,14 @@ function ReviewWorkflowPanel() {
         {err && <div className={errBox}>{err}</div>}
       </div>
 
+      <LoadGate
+        loading={loading} error={loadErr} onRetry={load}
+        isEmpty={records.length === 0} emptyLabel="ethics reviews"
+      >
       {records.map((rec) => (
         <ReviewCard key={rec.id} review={rec} onChange={load} />
       ))}
-      {records.length === 0 && <EmptyHint label="ethics reviews" />}
+      </LoadGate>
     </div>
   );
 }
@@ -942,6 +1045,8 @@ function CaseLibraryPanel() {
   const [allTags, setAllTags] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState('');
 
   const [cTitle, setCTitle] = useState('');
   const [cDilemma, setCDilemma] = useState('');
@@ -951,14 +1056,15 @@ function CaseLibraryPanel() {
   const [cTags, setCTags] = useState('');
 
   const load = useCallback(async () => {
+    setLoading(true); setLoadErr('');
     const r = await lensRun('ethics', 'searchCases', {
       query: query.trim(),
       tag: tagFilter.trim(),
     });
-    if (r.data.ok && r.data.result) {
-      setCases(r.data.result.cases || []);
-      setAllTags(r.data.result.allTags || []);
-    }
+    setLoading(false);
+    if (!r.data.ok) { setLoadErr(r.data.error || 'request failed'); return; }
+    setCases(r.data.result?.cases || []);
+    setAllTags(r.data.result?.allTags || []);
   }, [query, tagFilter]);
   useEffect(() => { load(); }, [load]);
 
@@ -1032,6 +1138,10 @@ function CaseLibraryPanel() {
         </div>
       )}
 
+      <LoadGate
+        loading={loading} error={loadErr} onRetry={load}
+        isEmpty={cases.length === 0} emptyLabel="archived cases"
+      >
       {cases.map((c) => (
         <div key={c.id} className={SECTION}>
           <div className="flex items-start justify-between gap-3">
@@ -1061,7 +1171,7 @@ function CaseLibraryPanel() {
           )}
         </div>
       ))}
-      {cases.length === 0 && <EmptyHint label="archived cases" />}
+      </LoadGate>
     </div>
   );
 }

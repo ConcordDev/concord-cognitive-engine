@@ -33,6 +33,11 @@ interface ColumnUnit {
 const SCALES = ['tiny', 'small', 'medium', 'large'] as const;
 type Scale = (typeof SCALES)[number];
 
+/** True when the transport succeeded AND the handler didn't reject (result.ok !== false). */
+function r_ok(transportOk: boolean | undefined, inner: { ok?: boolean } | undefined): boolean {
+  return !!transportOk && inner?.ok !== false;
+}
+
 export function GeologicMapPanel() {
   const [lat, setLat] = useState('');
   const [lon, setLon] = useState('');
@@ -60,9 +65,14 @@ export function GeologicMapPanel() {
         lensRun('geology', 'geologic-map', { lat: la, lon: lo, scale }),
         lensRun('geology', 'rock-units-here', { lat: la, lon: lo }),
       ]);
-      if (mapR.data?.ok) setUnits((mapR.data.result?.units as GeoUnit[]) || []);
-      else setError(mapR.data?.error || 'Geologic map lookup failed');
-      if (hereR.data?.ok) setColumn((hereR.data.result?.columnUnits as ColumnUnit[]) || []);
+      // /api/lens/run unwraps one { ok, result } layer; a handler rejection
+      // surfaces as result.ok === false (transport r.data.ok is always true).
+      const mapInner = mapR.data?.result as { ok?: boolean; error?: string; units?: GeoUnit[] } | undefined;
+      const hereInner = hereR.data?.result as { ok?: boolean; columnUnits?: ColumnUnit[] } | undefined;
+      if (r_ok(mapR.data?.ok, mapInner)) setUnits(mapInner?.units || []);
+      else { setError(mapInner?.error || mapR.data?.error || 'Geologic map lookup failed'); setUnits([]); }
+      if (r_ok(hereR.data?.ok, hereInner)) setColumn(hereInner?.columnUnits || []);
+      else setColumn([]);
       setRan(true);
     } finally {
       setLoading(false);

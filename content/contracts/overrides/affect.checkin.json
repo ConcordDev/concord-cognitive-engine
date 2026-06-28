@@ -1,0 +1,33 @@
+{
+  "macro_id": "affect.checkin",
+  "domain": "affect",
+  "name": "checkin",
+  "inputs": {
+    "mood": { "type": "number", "required": true },
+    "note": { "type": "string", "required": false, "maxLength": 2000 },
+    "activities": { "type": "array", "required": false },
+    "promptId": { "type": "string", "required": false },
+    "promptAnswer": { "type": "string", "required": false, "maxLength": 4000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.entry && Number.isFinite(output.result.entry.mood))",
+    "output.ok === false || typeof output.result.entry.moodLabel === 'string'",
+    "output.ok === false || typeof output.result.entry.moodEmoji === 'string'",
+    "output.ok === false || Array.isArray(output.result.entry.activities)",
+    "output.ok === false || Number.isFinite(output.result.currentStreak)",
+    "output.ok === false || Number.isFinite(output.result.longestStreak)",
+    "output.ok === false || Number.isFinite(output.result.totalCheckins)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "mood": 4, "note": "decent day", "activities": ["walk", "Reading"] }, "expect": { "ok": true } },
+    { "input": { "mood": 1 }, "expect": { "ok": true } },
+    { "input": { "mood": 5, "promptId": "prompt_0", "promptAnswer": "today was calm" }, "expect": { "ok": true } },
+    { "input": { "mood": 99 }, "expect": { "ok": false } },
+    { "input": { "mood": "NaN" }, "expect": { "ok": false } },
+    { "input": { "mood": "Infinity" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'affect.checkin'. MoodTracker.tsx sends {mood,note,activities,promptId,promptAnswer} as flat params and renders r.result.entry.{moodEmoji,moodLabel} + currentStreak + longestStreak. Mood is validated against the per-user scale min/max via Number()+Number.isFinite; out-of-range / non-numeric → {ok:false,error:string} (the panel surfaces r.data.error). Streak is consecutive-calendar-day. Per-user in globalThis._concordSTATE.affectMood — no seed/mock entries ever. Already try/catch-guarded. Streak/scope math pinned by affect-domain-parity.test.js; field-alignment + validation pinned by server/tests/affect-lens-macros.test.js."
+}

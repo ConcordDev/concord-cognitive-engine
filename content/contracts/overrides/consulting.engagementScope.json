@@ -1,0 +1,30 @@
+{
+  "macro_id": "consulting.engagementScope",
+  "domain": "consulting",
+  "name": "engagementScope",
+  "inputs": {
+    "client": { "type": "string", "required": false, "maxLength": 200 },
+    "hourlyRate": { "type": "number", "required": false },
+    "deliverables": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.hourlyRate)",
+    "output.ok === false || Number.isFinite(output.result.totalHours)",
+    "output.ok === false || Number.isFinite(output.result.subtotal)",
+    "output.ok === false || Number.isFinite(output.result.contingency)",
+    "output.ok === false || Number.isFinite(output.result.grandTotal)",
+    "output.ok === false || Array.isArray(output.result.deliverables)",
+    "output.ok === false || output.result.deliverables.every(function(d){ return Number.isFinite(d.fee) && Number.isFinite(d.hours); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "client": "Acme", "hourlyRate": 250, "deliverables": [{ "name": "Discovery", "hours": 10 }] }, "expect": { "ok": true } },
+    { "input": { "hourlyRate": "1e999", "deliverables": [{ "name": "X", "hours": "Infinity" }] }, "expect": { "ok": true } },
+    { "input": { "hourlyRate": "1e308", "deliverables": [{ "name": "X", "hours": "1e308" }] }, "expect": { "ok": true } },
+    { "input": { "deliverables": "nope" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler reading artifact.data (page analyze-family). Pure compute; project-estimate/bill-rate math. POISON: hourlyRate/hours via finPos (non-finite/negative -> default, clamped at SANE_MAX 1e12) so the rate x hours product can never overflow to Infinity; every money field stays FINITE. Not assassin-driven (LENS_ACTIONS); pinned by server/tests/consulting-lens-macros.test.js."
+}

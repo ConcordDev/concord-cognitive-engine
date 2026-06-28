@@ -43,9 +43,9 @@ function isOverdue(due: string | null): boolean {
 }
 
 export function BoardWorkspace() {
-  const { boards, loading: listLoading, reload: reloadList } = useBoardList();
+  const { boards, loading: listLoading, error: listError, reload: reloadList } = useBoardList();
   const [activeId, setActiveId] = useState<string | null>(null);
-  const { board, loading: boardLoading, reload: reloadBoard } = useBoardDetail(activeId);
+  const { board, loading: boardLoading, error: boardError, reload: reloadBoard } = useBoardDetail(activeId);
 
   const [view, setView] = useState<'board' | 'calendar'>('board');
   const [newBoardName, setNewBoardName] = useState('');
@@ -267,9 +267,35 @@ export function BoardWorkspace() {
         </div>
       )}
 
-      {!listLoading && boards.length === 0 && (
+      {/* A failed list load must read as an error, not a silent "empty" state. */}
+      {!listLoading && listError && boards.length === 0 && (
+        <div className="text-center py-12 text-sm text-red-400" role="alert">
+          Could not load boards: {listError}
+          <button
+            onClick={reloadList}
+            className="ml-2 underline text-red-300 hover:text-red-200"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {!listLoading && !listError && boards.length === 0 && (
         <div className="text-center py-12 text-sm text-gray-400">
           No boards yet. Create your first board above.
+        </div>
+      )}
+
+      {/* A board-detail load failure surfaces instead of a blank workspace. */}
+      {activeId && !boardLoading && boardError && (
+        <div className="text-sm text-red-400 py-6" role="alert">
+          Could not load this board: {boardError}
+          <button
+            onClick={reloadBoard}
+            className="ml-2 underline text-red-300 hover:text-red-200"
+          >
+            Retry
+          </button>
         </div>
       )}
 

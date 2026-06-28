@@ -15,9 +15,21 @@ const USGS_DESIGNMAPS = "https://earthquake.usgs.gov/ws/designmaps/asce7-22.json
 const MACROSTRAT_API = "https://macrostrat.org/api/v2";
 
 export default function registerGeologyActions(registerLensAction) {
+  // Fail-CLOSED numeric coercion: parseFloat/Number pass "Infinity"/1e999/NaN
+  // through silently, which then serialize to `null` (or leak Infinity) in the
+  // result and read as blank in production. fin() returns a finite number or
+  // the supplied fallback — never Infinity/NaN. Used by every geology handler
+  // that does physics/depth/hardness math (richter/seismic/density/mineral).
+  const fin = (v, fallback = 0) => {
+    const n = typeof v === "number" ? v : parseFloat(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
   registerLensAction("geology", "rockClassify", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const hardness = parseFloat(data.mohsHardness) || 0;
+    // Mohs scale is 1–10; clamp to a sane band so a poisoned/huge value can't
+    // leak and the durability/uses branches stay meaningful.
+    const hardness = Math.max(0, Math.min(10, fin(data.mohsHardness, 0)));
     const luster = (data.luster || "").toLowerCase();
     const color = data.color || "";
     const texture = (data.texture || "").toLowerCase();
@@ -26,8 +38,10 @@ export default function registerGeologyActions(registerLensAction) {
   });
   registerLensAction("geology", "seismicRisk", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const lat = parseFloat(data.latitude) || 37;
-    const lon = parseFloat(data.longitude) || -122;
+    // Coordinates clamp to the real lat/lon envelope; a poisoned Infinity/NaN
+    // falls back to the default site rather than leaking null into `location`.
+    const lat = Math.max(-90, Math.min(90, fin(data.latitude, 37)));
+    const lon = Math.max(-180, Math.min(180, fin(data.longitude, -122)));
     const soilType = (data.soilType || "rock").toLowerCase();
     const buildingCode = data.buildingCode || "IBC 2021";
     const amplificationFactors = { rock: 1.0, "stiff-soil": 1.2, "soft-soil": 1.6, "very-soft": 2.0, sand: 1.4, clay: 1.5 };
@@ -38,7 +52,9 @@ export default function registerGeologyActions(registerLensAction) {
   });
   registerLensAction("geology", "mineralId", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const properties = { hardness: parseFloat(data.hardness) || 0, streak: data.streak || "", cleavage: data.cleavage || "", fracture: data.fracture || "", specific_gravity: parseFloat(data.specificGravity) || 0 };
+    // Hardness 0–10 (Mohs), specific gravity 0–25 (osmium ~22.6 is the densest
+    // natural solid) — clamp both so a poisoned numeric can't leak Infinity/NaN.
+    const properties = { hardness: Math.max(0, Math.min(10, fin(data.hardness, 0))), streak: data.streak || "", cleavage: data.cleavage || "", fracture: data.fracture || "", specific_gravity: Math.max(0, Math.min(25, fin(data.specificGravity, 0))) };
     const score = (properties.hardness > 0 ? 25 : 0) + (properties.streak ? 20 : 0) + (properties.cleavage ? 20 : 0) + (properties.specific_gravity > 0 ? 20 : 0) + (data.color ? 15 : 0);
     return { ok: true, result: { specimen: data.name || artifact.title, properties, identificationConfidence: score, testsPerformed: Object.values(properties).filter(v => v && v !== 0).length, testsRecommended: score < 60 ? ["streak test", "acid test", "hardness test", "specific gravity"].filter(t => !properties[t.split(" ")[0]]) : [], classification: properties.hardness >= 7 ? "silicate-likely" : properties.hardness >= 3 ? "carbonate-or-sulfate" : "clay-or-evaporite" } };
   });
@@ -46,7 +62,10 @@ export default function registerGeologyActions(registerLensAction) {
     const layers = artifact.data?.layers || [];
     if (layers.length === 0) return { ok: true, result: { message: "Add geological layers with thickness and age." } };
     let cumulativeDepth = 0;
-    const column = layers.map(l => { const thick = parseFloat(l.thickness) || 1; cumulativeDepth += thick; return { formation: l.name || l.formation, lithology: l.lithology || l.rockType || "unknown", thickness: thick, depthTop: cumulativeDepth - thick, depthBottom: cumulativeDepth, age: l.age || "unknown", fossils: l.fossils || [] }; });
+    // Thickness must be a positive finite metre value; a poisoned Infinity/NaN
+    // or negative thickness can't be allowed to leak into cumulativeDepth and
+    // invert the depth axis. Clamp to ≥0; default to 1 m when absent.
+    const column = layers.map(l => { const raw = fin(l.thickness, 1); const thick = raw > 0 ? raw : (raw === 0 ? 0 : 1); cumulativeDepth += thick; return { formation: l.name || l.formation, lithology: l.lithology || l.rockType || "unknown", thickness: thick, depthTop: cumulativeDepth - thick, depthBottom: cumulativeDepth, age: l.age || "unknown", fossils: Array.isArray(l.fossils) ? l.fossils : [] }; });
     return { ok: true, result: { layers: column, totalThickness: cumulativeDepth, layerCount: layers.length, oldestFormation: column[column.length - 1]?.formation, youngestFormation: column[0]?.formation, fossiliferous: column.filter(l => l.fossils.length > 0).length } };
   });
 

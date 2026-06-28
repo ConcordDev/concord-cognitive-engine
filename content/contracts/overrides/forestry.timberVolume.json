@@ -1,0 +1,28 @@
+{
+  "macro_id": "forestry.timberVolume",
+  "domain": "forestry",
+  "name": "timberVolume",
+  "inputs": {
+    "species": { "type": "string", "required": false },
+    "acres": { "type": "number", "required": false },
+    "avgAgeYears": { "type": "number", "required": false },
+    "treeCount": { "type": "number", "required": false },
+    "pricePerMBF": { "type": "number", "required": false }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.boardFeet) && output.result.boardFeet >= 0)",
+    "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.valuation) && Number.isFinite(output.result.cubicFeet))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "species": "douglas-fir", "acres": 40, "avgAgeYears": 35, "treeCount": 100 }, "expect": { "ok": true } },
+    { "input": { "species": "oak", "acres": 10, "avgAgeYears": 30, "treeCount": 0 }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "species": "mixed", "acres": "1e999", "avgAgeYears": "Infinity", "treeCount": "100", "pricePerMBF": "NaN" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler; dispatch key 'forestry.timberVolume'. The /lenses/forestry ForestryActionPanel posts { species, acres, avgAgeYears, treeCount } via runDomain (params === artifact.data === body.input). The PRIOR handler read artifact.data.trees (a `trees[]` array the panel NEVER sends) and returned totalBoardFeet/estimatedValue while the panel renders result.boardFeet/result.valuation/result.cubicFeet — a DEAD SURFACE that always rendered the empty-guidance message in production. Fixed: estimates per-tree board feet from a species×age yield model (VOLUME_SPECIES_FACTOR × ageMaturity sigmoid), scales by treeCount, returns boardFeet/cubicFeet/valuation. POISON: frFinite() rejects Infinity/NaN/1e999 (parseFloat/Number admit them silently) — non-finite acres → 0 → empty-guidance (fail-closed), poisoned pricePerMBF → default 400, every numeric output FINITE. Pinned by server/tests/forestry-lens-macros.test.js."
+}

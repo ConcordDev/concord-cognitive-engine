@@ -9,10 +9,25 @@ export default function registerBoardActions(registerLensAction) {
    * artifact.data.cards: [{ id, title, column, createdAt, startedAt?, completedAt?, transitions?: [{ column, enteredAt, exitedAt? }] }]
    * artifact.data.columns: [{ name, wipLimit? }] — ordered column definitions
    */
-  registerLensAction("board", "workflowAnalysis", (ctx, artifact, params) => {
+  // Finite-number coercion helpers shared by the three analytics calculators.
+  // parseFloat("Infinity") / parseFloat("1e999") both yield a non-finite value
+  // that flows through `x || 0` (Infinity || 0 === Infinity) and JSON-serialises
+  // to null → blank in the UI. finNum/finInt force every numeric output FINITE.
+  const finNum = (v, dflt = 0) => {
+    const n = typeof v === "number" ? v : parseFloat(v);
+    return Number.isFinite(n) ? n : dflt;
+  };
+  const finInt = (v, dflt = 0) => Math.round(finNum(v, dflt));
+  const safeArr = (v) => (Array.isArray(v) ? v : []);
+
+  registerLensAction("board", "workflowAnalysis", (ctx, artifact, params = {}) => {
   try {
-    const cards = artifact.data.cards || [];
-    const columns = artifact.data.columns || [];
+    // Component-exact contract: the board page derives `cards`/`columns` from
+    // its live tasks and passes them as params (the persisted task artifact's
+    // .data has no cards/columns of its own). Fall back to artifact.data for any
+    // caller that pre-stamps the board snapshot onto the artifact.
+    const cards = safeArr(params.cards ?? artifact?.data?.cards);
+    const columns = safeArr(params.columns ?? artifact?.data?.columns);
 
     if (cards.length === 0) {
       return { ok: true, result: { message: "No cards provided for workflow analysis." } };
@@ -189,9 +204,9 @@ export default function registerBoardActions(registerLensAction) {
    * with urgency and risk adjustment.
    * artifact.data.cards: [{ id, title, businessValue: 1-10, timeCriticality: 1-10, riskReduction: 1-10, effort: 1-10, deadline? }]
    */
-  registerLensAction("board", "cardPrioritization", (ctx, artifact, params) => {
+  registerLensAction("board", "cardPrioritization", (ctx, artifact, params = {}) => {
   try {
-    const cards = artifact.data.cards || [];
+    const cards = safeArr(params.cards ?? artifact?.data?.cards);
     if (cards.length === 0) {
       return { ok: true, result: { message: "No cards provided for prioritization." } };
     }
@@ -241,7 +256,9 @@ export default function registerBoardActions(registerLensAction) {
         normalizedScore: Math.min(100, normalizedScore),
         deadline: card.deadline || null,
         daysUntilDeadline: card.deadline
-          ? Math.round((new Date(card.deadline) - now) / 86400000)
+          ? (Number.isFinite(new Date(card.deadline).getTime())
+              ? Math.round((new Date(card.deadline).getTime() - now.getTime()) / 86400000)
+              : null)
           : null,
       };
     });
@@ -308,22 +325,27 @@ export default function registerBoardActions(registerLensAction) {
    * params.simulations — number of Monte Carlo runs (default 1000)
    * params.sprintLengthDays — sprint duration in days (default 14)
    */
-  registerLensAction("board", "burndownForecast", (ctx, artifact, params) => {
+  registerLensAction("board", "burndownForecast", (ctx, artifact, params = {}) => {
   try {
-    const sprints = artifact.data.sprints || [];
-    const remainingPoints = parseFloat(artifact.data.remainingPoints) || 0;
-    const simulations = params.simulations || 1000;
-    const sprintLengthDays = params.sprintLengthDays || 14;
+    const sprints = safeArr(params.sprints ?? artifact?.data?.sprints);
+    // finNum: a poisoned remainingPoints ("Infinity"/"1e999") must NOT pass the
+    // > 0 gate and seed an infinite Monte-Carlo loop / non-finite output.
+    const remainingPoints = finNum(params.remainingPoints ?? artifact?.data?.remainingPoints, 0);
+    // Clamp the simulation knobs FINITE + bounded so a poisoned/huge value can't
+    // hang the loop. 1..50_000 sims, 1..365-day sprints.
+    const simulations = Math.max(1, Math.min(50000, finInt(params.simulations, 1000)));
+    const sprintLengthDays = Math.max(1, Math.min(365, finInt(params.sprintLengthDays, 14)));
 
     if (sprints.length === 0) {
       return { ok: true, result: { message: "No sprint history provided for forecasting." } };
     }
-    if (remainingPoints <= 0) {
+    if (!(remainingPoints > 0)) {
       return { ok: true, result: { message: "No remaining points to forecast.", completionDate: new Date().toISOString() } };
     }
 
-    // Extract historical velocities
-    const velocities = sprints.map(s => parseFloat(s.completedPoints) || 0).filter(v => v > 0);
+    // Extract historical velocities — finNum so "1e999"/Infinity do not survive
+    // the > 0 filter and poison avgVelocity / stdDev downstream.
+    const velocities = sprints.map(s => finNum(s.completedPoints, 0)).filter(v => v > 0);
     if (velocities.length === 0) {
       return { ok: true, result: { message: "No positive velocity data in sprint history." } };
     }

@@ -1,0 +1,22 @@
+{
+  "macro_id": "fitness.race-predictor",
+  "domain": "fitness",
+  "name": "race-predictor",
+  "inputs": {
+    "vo2max": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.vo2max)",
+    "output.ok === false || Array.isArray(output.result.predictions)",
+    "output.ok === false || output.result.predictions.every(p => Number.isFinite(p.timeSeconds) && p.timeSeconds > 0 && Number.isFinite(p.paceSecPerKm))"
+  ],
+  "fuzz_cases": [
+    { "input": { "vo2max": 50 }, "expect": { "ok": true } },
+    { "input": { "vo2max": "Infinity" }, "expect": { "ok": false } },
+    { "input": { "vo2max": -50 }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS (path-3) handler; dispatch key 'fitness.race-predictor'. VDOT race-time predictions across distances from vo2max (or a logged run). FAIL-CLOSED: a non-finite vo2max returns { ok:false } rather than a fabricated time; every prediction's timeSeconds/paceSecPerKm is finite + positive. Pinned by server/tests/fitness-lens-macros.test.js. Path-3-only → node:test is the real enforcement."
+}

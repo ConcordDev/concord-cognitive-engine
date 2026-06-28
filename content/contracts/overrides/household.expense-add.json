@@ -1,0 +1,29 @@
+{
+  "macro_id": "household.expense-add",
+  "domain": "household",
+  "name": "expense-add",
+  "inputs": {
+    "description": { "type": "string", "required": true, "maxLength": 120 },
+    "amount": { "type": "number", "required": true },
+    "paidBy": { "type": "string", "required": true, "maxLength": 60 },
+    "splitAmong": { "type": "array", "required": true },
+    "category": { "type": "string", "required": false, "maxLength": 40 },
+    "date": { "type": "string", "required": false, "maxLength": 10 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (Number.isFinite(output.result.expense.amount) && output.result.expense.amount > 0)",
+    "output.ok === false || (Number.isFinite(output.result.expense.sharePerPerson) && output.result.expense.sharePerPerson >= 0)",
+    "output.ok === false || Array.isArray(output.result.expense.splitAmong)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "description": "Dinner", "amount": 30, "paidBy": "Alex", "splitAmong": ["Alex", "Sam", "Jordan"] }, "expect": { "ok": true } },
+    { "input": { "description": "X", "amount": 0, "paidBy": "A", "splitAmong": ["A"] }, "expect": { "ok": false } },
+    { "input": { "description": "X", "amount": 5, "paidBy": "A", "splitAmong": [] }, "expect": { "ok": false } },
+    { "input": { "description": "X", "amount": "1e999", "paidBy": "A", "splitAmong": ["A"] }, "expect": { "ok": false } },
+    { "input": { "description": "X", "amount": "Infinity", "paidBy": "A", "splitAmong": ["A"] }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (STATE-backed, per-user). Dispatch key 'household.expense-add'. ExpenseSplitter sends flat params. amount via finiteNum then rejected unless finite AND > 0 — a poisoned '1e999'/'Infinity'/NaN amount returns {ok:false} and is NEVER stored as Infinity (which would poison expense-balances). sharePerPerson = round(amount/len). Requires description, paidBy, and a non-empty splitAmong. Pinned by server/tests/household-lens-macros.test.js."
+}

@@ -1,0 +1,26 @@
+{
+  "macro_id": "legal.contractRenewal",
+  "domain": "legal",
+  "name": "contractRenewal",
+  "inputs": {
+    "expiryDate": { "type": "string" },
+    "renewalType": { "type": "string" },
+    "title": { "type": "string" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.result.status === 'no_expiry' || Number.isFinite(output.result.daysUntilExpiry)",
+    "output.ok === false || output.result.status === 'no_expiry' || ['critical','high','medium','low'].includes(output.result.urgency)",
+    "output.ok === false || output.result.status === 'no_expiry' || typeof output.result.autoRenewal === 'boolean'",
+    "output.ok === false || output.result.status === 'no_expiry' || typeof output.result.actionRequired === 'boolean'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "expiryDate": "2099-01-10", "renewalType": "manual", "title": "MSA" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "expiryDate": "2099-02-20", "renewalType": "auto" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "expiryDate": "Infinity", "renewalType": "manual" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LegalActionPanel.actRenewal calls this ONCE per contract row with { expiryDate, renewalType, title } and assembles renewals[]. Handler reads artifact.data.{expiryDate,renewalType} (single contract). Returns { daysUntilExpiry, urgency band (<=14 critical, <=30 high, <=60 medium, else low), autoRenewal (renewalType==='auto'), actionRequired (<=60 days) }. No expiry → { status:'no_expiry' }. Fail-CLOSED: an unparseable expiryDate yields NaN daysUntilExpiry; the invariant tolerates it on the no_expiry branch but the panel only pushes rows where typeof daysUntilExpiry==='number' && finite."
+}

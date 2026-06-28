@@ -94,7 +94,7 @@ export default function AtlasLensPage() {
 
   // ── Data fetching ──────────────────────────────────────────────────────
 
-  const { data: coverageData, isLoading: coverageLoading, isError: coverageError } = useQuery({
+  const { data: coverageData, isLoading: coverageLoading, isError: coverageError, refetch: refetchCoverage } = useQuery({
     queryKey: ['atlas-coverage'],
     queryFn: () => apiHelpers.atlasTomography.coverage().then(r => r.data),
     refetchInterval: 30000,
@@ -106,7 +106,7 @@ export default function AtlasLensPage() {
     refetchInterval: 20000,
   });
 
-  const { data: anomalyData, isLoading: anomalyLoading, isError: anomalyError } = useQuery({
+  const { data: anomalyData, isLoading: anomalyLoading, isError: anomalyError, refetch: refetchAnomalies } = useQuery({
     queryKey: ['atlas-anomalies'],
     queryFn: () => apiHelpers.atlasTomography.signalsAnomalies(50).then(r => r.data),
     refetchInterval: 15000,
@@ -167,11 +167,34 @@ export default function AtlasLensPage() {
     <div data-lens-theme="atlas" className="min-h-screen bg-zinc-950 text-zinc-100 p-6 space-y-6">
       {/* Phase 4 — REAL OpenStreetMap Nominatim search. Tier-1 honest live geocode. */}
       <OsmGeocodePanel />
-      {/* Error banner */}
+      {/* ── Four UX states for the tomography channel ── */}
+      {/* LOADING */}
+      {(coverageLoading || anomalyLoading) && !coverageError && !anomalyError && (
+        <div role="status" aria-live="polite" className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 flex items-center gap-2">
+          <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
+          <p className="text-sm text-zinc-400">Scanning signal tomography…</p>
+        </div>
+      )}
+      {/* ERROR — role=alert + a working Retry that RE-FETCHES (not a full reload) */}
       {(coverageError || anomalyError) && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center justify-between">
+        <div role="alert" className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center justify-between">
           <p className="text-red-400 text-sm">Some data sources failed to load. Showing available data.</p>
-          <button onClick={() => window.location.reload()} className="text-xs text-red-300 hover:text-white">Retry</button>
+          <button
+            onClick={() => { refetchCoverage(); refetchAnomalies(); }}
+            className="text-xs text-red-300 hover:text-white border border-red-500/30 rounded px-2 py-1"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+      {/* EMPTY — honest CTA when every tomography source resolved with no rows */}
+      {!coverageLoading && !anomalyLoading && !coverageError && !anomalyError &&
+        markers.length === 0 &&
+        ((taxonomyData as { signals?: unknown[]; total?: number })?.signals?.length || (taxonomyData as { total?: number })?.total || 0) === 0 &&
+        ((anomalyData as { anomalies?: unknown[]; total?: number })?.anomalies?.length || (anomalyData as { total?: number })?.total || 0) === 0 && (
+        <div className="bg-zinc-900 border border-dashed border-zinc-700 rounded-lg p-4 text-center">
+          <p className="text-sm text-zinc-300 font-medium">No signal coverage yet</p>
+          <p className="text-xs text-zinc-500 mt-1">Query a tile by latitude/longitude below, or save a place to seed your atlas.</p>
         </div>
       )}
       {/* Header */}

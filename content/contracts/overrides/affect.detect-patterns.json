@@ -1,0 +1,32 @@
+{
+  "macro_id": "affect.detect-patterns",
+  "domain": "affect",
+  "name": "detect-patterns",
+  "inputs": {
+    "entries": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || Number.isFinite(output.result.entryCount)",
+    "output.ok === false || Array.isArray(output.result.patterns)",
+    "output.ok === false || output.result.patterns.every(function(p){ return typeof p.theme === 'string' && Number.isFinite(p.count); })",
+    "output.ok === false || Array.isArray(output.result.triggers)",
+    "output.ok === false || output.result.triggers.every(function(t){ return typeof t.trigger === 'string' && Number.isFinite(t.count); })",
+    "output.ok === false || Array.isArray(output.result.cycles)",
+    "output.ok === false || output.result.cycles.every(function(c){ return typeof c.label === 'string'; })",
+    "output.ok === false || Array.isArray(output.result.correlations)",
+    "output.ok === false || typeof output.result.summary === 'string'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "entries": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "entries": [{ "text": "work deadline stress made me anxious", "timestamp": "2026-06-01T09:00:00Z" }, { "text": "more work stress and a tight deadline", "timestamp": "2026-06-02T09:30:00Z" }, { "text": "work stress again, anxious about money", "timestamp": "2026-06-04T09:15:00Z" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "checkins": [{ "note": "family time happy and calm" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "entries": "not an array" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "entries": 42 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "entries": [{ "text": 123 }, null, { "text": "stress and work" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'affect.detect-patterns'. /lenses/affect Analysis tab renders r.result.{patterns[].{theme,count},triggers[].{trigger,count},cycles[].{label,count},correlations[].{between,strength},summary}. Deterministic journal-text analysis: stopword-filtered theme frequency, trigger-word hits, time-of-day/day-of-week cycles. Reads artifact.data.entries OR .checkins; String-coerces e.text/e.note. Empty → {ok:true} with stable empty arrays + summary string. Hardened (Phase-2 gate) with an outer try/catch. The page renderer was aligned to these canonical field names (theme/trigger/label/between) — it previously read name/label/from/to and rendered blanks. Not assassin-driven (LENS_ACTIONS); pinned by server/tests/affect-lens-macros.test.js."
+}

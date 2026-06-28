@@ -505,6 +505,151 @@ an inverted security sort, a renderer-corrupting geometry, 2 crashes, a triage-e
 and a long tail of Infinity/NaN fail-opens — every one in a lens that "looked wired." 2 lenses were clean.
 56 lenses now through the non-score gate (batches 1–13). The loop continues.
 
+### Phase-2 batches 14–18 DONE (2026-06-28): the calculator-family completion sweep
+**92 lenses now carry the UX-states gate marker** (`ls concord-frontend/tests/*-lens-states.test.tsx | wc -l`).
+Batches 14–18 swept the rest of the `*ActionPanel`/`*Calc` calculator family (marketing, analytics, retail,
+audit, supplychain, voice — redone after a session-limit interruption — then creative, education, collab,
+commonsense, telecommunications, landscaping, linguistics, mentorship, services, robotics, physics, hr,
+aviation, insurance, legal, +more). The field-mismatch + fail-closed + crash class stayed the dominant
+finding right to the end:
+- **Entirely-dead surfaces:** creative (4), education (4), audit (4 — redo), hr (4, both directions, handlers
+  rewritten), aviation (🔴 safety: W&B calc returned gross 0 / CG 0 for every input).
+- **Partial dead / field mismatch:** retail (3/4), commonsense, mentorship (inline panel), services (the 2-key
+  {artifact:{data},period} trap — moved period into data), creative's distributionChecklist (2-key trap),
+  insurance (peel dropped artifact.title → blank risk card).
+- **Crashes:** analytics (.map throw + guidance-result render crash), linguistics (text.split on non-string →
+  500), legal (RangeError in addDays on an invalid date), aviation (blank render blocks).
+- **Clean bills (no defect, coverage added):** supplychain, telecommunications, landscaping, physics,
+  plus earlier plumbing + law-enforcement — the honest counterweight (~6 of ~50 calculator lenses were fine).
+- A long tail of `Number.isFinite` fail-closed guards on Infinity/NaN money/percentage leaks across nearly
+  every lens.
+Assassin ratchet GREEN throughout (the flaky system.history-snapshot timeout recurs under load, always
+clean on a lone re-run); 258 WIRED; tsc 0; per-lens parity tests intact.
+The calculator-family sweep is now essentially complete. Remaining queue: the non-calculator long tail
+(atlas, board, bridge, collab-class, forum, household, robotics-class, art/artistry, consulting, etc.) —
+many are CRUD/visualization surfaces rather than compute panels, so lower dead-calculator risk.
+~92 lenses through the non-score gate. The loop continues.
+
+### Phase-2 batch 23 (2026-06-28): ethics (re-queue) + fishing DONE — finance reverted, food not started
+2 banked; finance reverted (incomplete/broken), food not started. tsc 0; tree clean.
+- **ethics** (re-queue, now DONE): the prior revert's lesson held — this pass WIRED the shared `LoadGate`
+  into all 6 DecisionToolkit panels (rendered at lines 358/537/714/842/917/1141, cited), gave each list-load
+  real loading/error/empty/populated + a working retry, and fixed a REAL `decisionMatrix` poisoned-weight
+  NaN leak (`weight:"1e999"`→`weightSum=Infinity`→`Infinity/Infinity=NaN`→`null` cells; now `fnum()`-clamped
+  before summing). 24 server + 5 vitest + 4 overrides. (path-3-only → node:test is enforcement.)
+- **fishing** (DONE): game lens (cast→bite→reel→mint), already well-built; ONE real silent-empty fix —
+  catalog `{ok:false}` collapsed into EMPTY instead of ERROR; now throws → distinguishable error+retry.
+  Lib already fail-closed (poisoned reactionMs/tension clamp; qualityScore stays finite). 18 server + 9 vitest;
+  overrides already existed. (path-2 `registerFishingMacros`; assassin drove 10, 0 violations.)
+- **finance**: REVERTED. The agent was session-/coordinator-stopped mid-pass — it had modified
+  `finance.js` + `FinanceActionPanel.tsx` (left 22 tsc errors) + `NetWorthTracker.tsx` but had NOT written
+  its behavioral test, states test, or overrides yet ("now let me write the test file…"). Per "don't bank
+  partial work," all 3 modified files reverted to clean HEAD. RE-QUEUE: finance is money-sensitive (~73
+  macros — loan/mortgage/compound-interest/retirement/tax/ROI/NPV); fail-closed numerics are critical
+  (a `$Infinity`/`NaN` payment is a real defect). Watch division-by-zero on term/rate.
+- **food**: NOT STARTED (batch was trimmed to 3 agents for budget). RE-QUEUE (~68 macros).
+**111 lenses now carry the UX-states gate marker** (batches 1–23). PR #839 opened against `main`.
+
+### Phase-2 batch 22 (2026-06-28): energy, eco, fitness DONE — ethics DEFERRED (reverted)
+3 of 4 banked; ethics reverted (honest). 109 server + 29 UX-state tests across the 3 done lenses; tsc 0.
+- **energy**: largely aligned already; 4 fail-OPEN calculators (consumptionAnalysis/solarEstimate/
+  carbonFootprint/gridStatus — `parseFloat(x)||N` let `"1e999"`/`"Infinity"` through → JSON `null` blanks,
+  `gridStatus` even rendered `"Infinity MW"`) → `finiteNum` clamps; EnergyDevicesPanel silent-empty →
+  distinguishable load-error+retry. 31 server + 8 vitest + 5 overrides. (path-3-only → assassin drives 0; node:test is enforcement.)
+- **eco**: REAL fake-data defect killed — `aqi-current` returned a FABRICATED fallback AQI (a fake "good"/42
+  reading) on network failure; now fails honestly `{ok:false,error:'unreachable'}` and the AQIPanel renders
+  the error branch (the pre-existing eco-domain-parity test was updated to assert the honest behavior — a
+  legitimate fix, not gaming). + fail-closed footprint/biodiversity numerics + distinguishable error states
+  across 6 panels. 36 server + 11 vitest + 4 overrides.
+- **fitness**: ~69 macros, all path-3. Fail-closed BMR/body-fat/HR-zone/VDOT(vo2max,race-predictor)/
+  progression numerics (`ffnum`/`fclampN`/finite guards — a lying calorie/1RM/HR number is a real harm);
+  ActivityRings+SleepRecovery honest loading/error states. 42 server + 10 vitest + 5 overrides (authored by
+  the coordinator after the agent was session-limited before writing them). (path-3-only → node:test is enforcement.)
+- **ethics**: REVERTED. The agent added `LoadGate`+`readEnvelope` helpers but NEVER wired them (0 render
+  sites, 0 calls — dead scaffolding), the list panels still silent-empty, and no states test / no overrides
+  were written (session-limited mid-pass). Per the no-scaffolding rule + "don't bank partial work," the
+  whole ethics change (domain + DecisionToolkit + server test) was reverted to clean HEAD and re-queued for
+  a fresh pass. Its backend numeric work was real but is not bankable without the wired frontend + states test.
+**109 lenses now carry the UX-states gate marker** (batches 1–22; ethics re-queued). The loop continues.
+
+### Phase-2 batch 21 DONE (2026-06-28): forum, household, geology, forestry
+143 server + 24 UX-state tests; per-domain assassin clean; 258 WIRED; tsc 0. The dead-`*ActionPanel`-surface
++ fail-open-numeric class persists into the knowledge/utility tail, plus two new systemic findings:
+- **forum**: 4 dead "Community Analytics" surfaces (threadAnalysis/moderationQueue/communityHealth/
+  topicClustering) — buttons posted a single-Post artifact + no params to handlers reading forum-wide
+  arrays → always rendered the empty-guidance message. Fixed via `deriveForumParams()` deriving real
+  inputs from live posts/comments + `params.X ?? artifact.data.X` handler fallback; `fmInt` fail-closed
+  guards (trending's `Math.max(0.01, NaN)` propagated NaN into hotScore); FmTopicsPanel distinguishable
+  load-error. 30 server + 5 vitest + 4 overrides.
+- **household**: 2 fully dead surfaces (ChoreRotation — a 2-key `{artifact:{data},strategy,weeks}` body
+  the dispatch never peels → handler saw undefined; HouseholdActionPanel's 4 actions sent wrong fields +
+  rendered fields the handler never returns) + board-style empty page actions (`deriveActionParams`) + 7
+  fail-open numerics incl. an `Infinity` expense that would poison `expense-balances`. 38 server + 5 vitest + 6 ov.
+- **geology**: SYSTEMIC error-detection bug — `/api/lens/run` unwraps one `{ok,result}` layer so the
+  transport `r.data.ok` is ALWAYS true; every geology write path checked only `r.data.ok` → handler
+  rejections silently swallowed (form reset, no error). Fixed across 7 components to read `result.ok!==false`;
+  + fail-closed physics numerics (rockClassify/seismicRisk/mineralId/stratigraphicColumn leaked Infinity)
+  + 2 silent-empty list panels. 32 server + 8 vitest + 5 ov.
+- **forestry**: 4 dead calculators (timberVolume/fireRisk/harvestPlan/carbonSequestration ignored the
+  panel input + returned unread field names, one returned a STRING where the panel rendered a number) +
+  fail-closed `frFinite` + StandManager silent-empty. 43 server + 6 vitest + 5 ov.
+**VERIFICATION-ENGINE GAP FLAGGED (not yet fixed):** the macro-assassin harness (`scripts/contracts/harness.mjs#enumerateMacros`)
+enumerates only the path-2 `MACROS` registry, NOT path-3 `LENS_ACTIONS`. So path-3-only lenses
+(forestry exclusively; geology/forum/household partially) get a trivially-true "0 violations" (the assassin
+drove 0–2 of their macros) and their override files are documented-but-unenforced. The behavioral node:test
+is the real enforcement for those. Fix = teach `enumerateMacros` to also walk `LENS_ACTIONS` — a shared-harness
+change that shifts the ratchet baseline for ALL path-3 lenses, so it's queued as its own deliberate pass.
+**106 lenses now carry the UX-states gate marker** (batches 1–21). The loop continues into the rest of the tail.
+
+### Phase-2 batch 20 DONE (2026-06-28): atlas, board, classroom, council, debate
+First batch of the non-calculator long tail. 147 server + 23 UX-state tests; assassin 0 violations across
+all 5 domains; 258 WIRED; tsc 0. The dead-surface (`*ActionPanel` field-mismatch) + fail-open numeric
+class still recurs even in knowledge/governance lenses:
+- **atlas**: 4 dead calculator surfaces — `AtlasActionPanel.distanceMatrix` read `result.matrix` as
+  objects (handler returned `number[][]`) + `lng` vs `lon` mismatch zeroed every distance;
+  `DistanceMatrixPanel` route/stats panels + `MapsDirections` legs all rendered handler fields that
+  never existed → blank. Fixed via real handler aliases (`pairs`/`nearest`/`route`/`legs`/`stats.*`) +
+  `lon ?? lng` coercion; 4 fail-closed (Infinity/NaN coords → reject, not `null`-poison the matrix).
+  25 server + 4 vitest + 6 overrides.
+- **board**: all 3 AI calculators (workflowAnalysis/cardPrioritization/burndownForecast) DEAD — the page
+  persisted each task as a single-task artifact while handlers read board-wide arrays → `buildBoardActionParams`
+  derives real arrays from live tasks + `params.X ?? artifact.data.X` fallback + finNum/finInt guards +
+  a silent-empty fix in BoardWorkspace. 26 server + 5 vitest + 4 overrides.
+- **classroom**: behavioral macro tests (assignment/grade/gradebook/quiz/ol-isbn/todo) + swallowed-fetch
+  → distinguishable error/empty (the silent-empty defect). 32 server + 6 vitest + 6 overrides.
+- **council**: dead `CouncilActionPanel` surface (sent `motion`/`members`/`positions`/`conflict`, rendered
+  `positions`/`yes/no/abstain`/`summary`/`resolution` the handler never returns → blank in prod) aligned
+  to the real contract; 4 fail-open/uncaught-throw fixes (deliberate `.slice` on non-string, voteCount
+  `.toLowerCase` on numeric, generateMinutes/conflictResolution `.map` on non-array → 500). MeetingsWorkspace
+  4-UX-state test authored by the coordinator after the agent stalled before writing it. 30 server + 4 vitest + 6 overrides.
+- **debate**: 4 AI actions (evaluateArgument/fallacyCheck/steelmanPosition/scoreDebate) double-dead —
+  page sent no params + DebateActionPanel sent params the handlers ignored AND rendered fabricated field
+  names → handlers now derive inputs from the real debate shape (topic + pro/con args + votes) and the
+  panel aligns to the real contract; try/catch + string/array poison guards. 34 server + 4 vitest + 6 overrides.
+**102 lenses now carry the UX-states gate marker** (batches 1–20). The loop continues into the rest of the
+non-calculator tail (bridge, forum, household, crypto, code, chat, knowledge/research/social families).
+
+### Phase-2 batch 19 DONE (2026-06-28): bio, consulting, affect, art, artistry
+145 server + 28 UX-state tests — the first non-calculator/feature-lens batch (twice-launched; the first
+run was cut off by the shared session limit and cleanly reverted, then redone from a clean checkpoint).
+The dead-surface + fail-open class persists even in feature lenses:
+- **bio**: 2 dead sequence surfaces (align tab alignedA→alignA; restriction-map enzyme→enzymes[] +
+  sites rendered as [object Object]) + 2 fail-closed. 23 server + 4 vitest + 6 overrides.
+- **art**: dead ArtActionPanel workbench (4 macros, both directions → blank cards) + swallowed-fetch
+  (.catch(()=>[]) made the Retry UI dead code) + 4 fail-opens (#NaN swatches). 21 server + 10 vitest.
+- **affect**: 1 dead surface (Pattern Detection theme/trigger/label mismatch → [object Object]) + 4
+  backend poison/crash fixes (text.split/.map on non-string/non-array → 500). 31 server + 5 vitest.
+- **artistry**: all 30 calls aligned (no dead surface); swallowed-fetch + 12 fail-open numeric sites
+  (finNum). 36 server + 5 vitest + 6 overrides.
+- **consulting**: all 39 workbench macros aligned; 4 pure-compute money macros fail-open (finPos/finSigned).
+  31 server + 5 vitest + 6 overrides.
+INFRA: `system.cartograph` crossed the 8s fuzz timeout as the repo grew (it reads/serializes the large
+generated SYSTEMS.json, ignores numeric input) → added it to a documented HEAVY_FUZZ_SKIP_IDS set in the
+assassin harness (heavy_introspection, same justification as the live_* external-IO skip). Ratchet GREEN.
+**97 lenses now carry the UX-states gate marker** (batches 1–19). 258 WIRED; tsc 0. The loop continues
+into the non-calculator long tail (atlas, board, bridge, forum, household, robotics-class, classroom,
+council, debate, crypto, code, chat, etc.).
+
 ### Phase-2 batch 14+15 (2026-06-28): marketing, analytics, retail, audit, supplychain, voice
 Batch 14's subagents were cut off mid-work by the shared session limit; only **marketing** was complete
 + verified (fail-open Infinity-leak fix; committed), the rest reverted for a clean resume. Batch 15

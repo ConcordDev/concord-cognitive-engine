@@ -42,11 +42,15 @@ interface PrimerResult {
 
 interface AlignResult {
   score?: number;
-  alignedA?: string;
-  alignedB?: string;
-  midline?: string;
+  // Handler (bio.align-pairwise) returns these exact field names — see
+  // server/domains/bio.js. Earlier this component read alignedA/alignedB/
+  // midline/identityPercent, none of which the handler emits, so the align
+  // result rendered blank in production (the block was gated on alignedA).
+  alignA?: string;
+  alignB?: string;
+  alignBars?: string;
   identity?: number;
-  identityPercent?: number;
+  alignmentLength?: number;
 }
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
@@ -261,25 +265,25 @@ export function SequenceAnalyzer() {
         </motion.div>
       )}
 
-      {align && tab === 'align' && align.alignedA && (
+      {align && tab === 'align' && align.alignA && (
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3 space-y-2">
           <div className="flex items-center justify-between">
             <div className="text-xs font-semibold text-cyan-300">
-              Alignment · score {align.score} · {align.identityPercent?.toFixed(1) || '—'}% identity
+              Alignment · score {align.score} · {align.identity?.toFixed(1) || '—'}% identity
             </div>
             <SaveAsDtuButton
               compact
               apiSource="concord-bio-align"
-              title={`Alignment (${align.identityPercent?.toFixed(0) || '—'}% identity)`}
-              content={`A: ${align.alignedA}\n   ${align.midline || ''}\nB: ${align.alignedB || ''}\nScore: ${align.score} · Identity: ${align.identityPercent}%`}
+              title={`Alignment (${align.identity?.toFixed(0) || '—'}% identity)`}
+              content={`A: ${align.alignA}\n   ${align.alignBars || ''}\nB: ${align.alignB || ''}\nScore: ${align.score} · Identity: ${align.identity}%`}
               extraTags={['bio', 'alignment']}
               rawData={align}
             />
           </div>
           <pre className="overflow-x-auto whitespace-pre rounded border border-zinc-800 bg-zinc-950 p-2 font-mono text-[11px] leading-tight">
-            <span className="text-emerald-400">A: {align.alignedA}</span>{'\n'}
-            <span className="text-zinc-600">   {align.midline || ''}</span>{'\n'}
-            <span className="text-cyan-400">B: {align.alignedB}</span>
+            <span className="text-emerald-400">A: {align.alignA}</span>{'\n'}
+            <span className="text-zinc-600">   {align.alignBars || ''}</span>{'\n'}
+            <span className="text-cyan-400">B: {align.alignB}</span>
           </pre>
         </motion.div>
       )}

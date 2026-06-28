@@ -18,16 +18,28 @@ export interface RecoveryDay {
 export function SleepRecovery() {
   const [days, setDays] = useState<RecoveryDay[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
   async function refresh() {
     setLoading(true);
+    setError(null);
     try {
       const res = await lensRun({ domain: 'fitness', action: 'recovery-history', input: { days: 14 } });
-      setDays((res.data?.result?.days || []) as RecoveryDay[]);
-    } catch (e) { console.error('[Recovery] failed', e); }
-    finally { setLoading(false); }
+      // /api/lens/run unwraps one { ok, result } layer, so a handler rejection
+      // lands at res.data.ok === false (NOT swallowed into empty). Surface it
+      // as a distinguishable error rather than a silent-empty CTA.
+      if (res.data?.ok === false) {
+        setError(res.data?.error || 'Failed to load recovery data.');
+        setDays([]);
+      } else {
+        setDays((res.data?.result?.days || []) as RecoveryDay[]);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load recovery data.');
+      setDays([]);
+    } finally { setLoading(false); }
   }
 
   const latest = days[days.length - 1];
@@ -40,7 +52,12 @@ export function SleepRecovery() {
         <span className="ml-auto text-[10px] text-gray-400">Whoop-style</span>
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div role="status" aria-busy="true" className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+      ) : error ? (
+        <div role="alert" className="px-3 py-8 text-center text-xs space-y-2">
+          <p className="text-red-300">{error}</p>
+          <button onClick={() => void refresh()} className="px-3 py-1 rounded bg-cyan-500/20 text-cyan-200 border border-cyan-500/30 hover:bg-cyan-500/30">Retry</button>
+        </div>
       ) : !latest ? (
         <div className="px-3 py-8 text-center text-xs text-gray-400">No recovery data — connect a wearable or log manually.</div>
       ) : (

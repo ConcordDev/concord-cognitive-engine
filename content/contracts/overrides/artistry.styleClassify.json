@@ -1,0 +1,24 @@
+{
+  "macro_id": "artistry.styleClassify",
+  "domain": "artistry",
+  "name": "styleClassify",
+  "inputs": {
+    "attributes": { "type": "object", "required": false },
+    "tags": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.result.classification === null || typeof output.result.classification === 'string'",
+    "output.ok === false || Number.isFinite(output.result.confidence)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "tags": ["impressionist", "plein air", "oil"], "attributes": { "era": "19th century" } }, "expect": { "ok": true } },
+    { "input": { "tags": ["zzzzz", "qqqqq"] }, "expect": { "ok": true } },
+    { "input": { "attributes": { "medium": "oil", "technique": "chiaroscuro" } }, "expect": { "ok": true } },
+    { "input": { "tags": "not-an-array", "attributes": "boom" }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/artistry.js). 3-arg dispatch via /api/lens/run on key 'artistry.styleClassify' (virtualArtifact.data === input). The /lenses/artistry page reads result.classification + result.confidence. DETERMINISTIC keyword-match classifier (no LLM). confidence is a 0..1 number bounded by Math.min(1, ...). Unmatched input → classification 'Unclassified' (always a string, never blank). Empty attributes+tags degrade graceful (ok:true with the page message + classification:null, confidence:0). A non-array tags / non-object attributes throws inside the handler and is caught → {ok:false, handler_error}, never an uncaught throw. Not driven by macro-assassin (LENS_ACTIONS, not MACROS); authored spec pinned by server/tests/artistry-lens-macros.test.js."
+}

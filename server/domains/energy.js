@@ -7,22 +7,42 @@
 
 const EIA_BASE = "https://api.eia.gov/v2";
 
+// Fail-CLOSED numeric parse: returns a FINITE number or the fallback. Unlike
+// `parseFloat(x) || d`, this never lets Infinity / -Infinity / NaN through
+// (parseFloat("1e999") === Infinity, parseFloat("Infinity") === Infinity, and
+// `Infinity || d` keeps Infinity because it is truthy), which would otherwise
+// cascade into the output and serialize to JSON `null` — a blank calculator in
+// production. Optional [min,max] clamp keeps physically-meaningful bounds.
+function finiteNum(v, fallback = 0, min, max) {
+  const n = typeof v === "number" ? v : parseFloat(v);
+  if (!Number.isFinite(n)) return fallback;
+  let out = n;
+  if (typeof min === "number" && out < min) out = min;
+  if (typeof max === "number" && out > max) out = max;
+  return out;
+}
+
 export default function registerEnergyActions(registerLensAction) {
   registerLensAction("energy", "consumptionAnalysis", (ctx, artifact, _params) => {
-    const readings = artifact.data?.readings || [];
+    const readings = Array.isArray(artifact.data?.readings) ? artifact.data.readings : [];
     if (readings.length === 0) return { ok: true, result: { message: "Add energy readings (kWh) to analyze consumption." } };
-    const values = readings.map(r => parseFloat(r.kWh || r.value) || 0);
+    // Clamp each reading to a finite, non-negative kWh. Poisoned entries
+    // (Infinity / NaN / "1e999") collapse to 0 rather than corrupting the sum.
+    const values = readings.map((r) => finiteNum(r?.kWh ?? r?.value, 0, 0));
     const total = values.reduce((s, v) => s + v, 0);
-    const avg = total / values.length;
-    const peak = Math.max(...values);
-    const costPerKWh = parseFloat(artifact.data?.costPerKWh) || 0.12;
-    return { ok: true, result: { totalKWh: Math.round(total * 10) / 10, avgKWh: Math.round(avg * 10) / 10, peakKWh: Math.round(peak * 10) / 10, readingCount: values.length, estimatedCost: Math.round(total * costPerKWh * 100) / 100, costPerKWh, peakToAvgRatio: Math.round((peak / avg) * 100) / 100, savingsOpportunity: peak > avg * 2 ? "Significant peak reduction possible" : "Consumption is relatively stable" } };
+    const avg = values.length > 0 ? total / values.length : 0;
+    const peak = values.length > 0 ? Math.max(...values) : 0;
+    const costPerKWh = finiteNum(artifact.data?.costPerKWh, 0.12, 0);
+    const peakToAvgRatio = avg > 0 ? Math.round((peak / avg) * 100) / 100 : 0;
+    return { ok: true, result: { totalKWh: Math.round(total * 10) / 10, avgKWh: Math.round(avg * 10) / 10, peakKWh: Math.round(peak * 10) / 10, readingCount: values.length, estimatedCost: Math.round(total * costPerKWh * 100) / 100, costPerKWh, peakToAvgRatio, savingsOpportunity: peak > avg * 2 ? "Significant peak reduction possible" : "Consumption is relatively stable" } };
   });
   registerLensAction("energy", "solarEstimate", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const roofSqFt = parseFloat(data.roofAreaSqFt) || 1000;
-    const sunHours = parseFloat(data.peakSunHours) || 5;
-    const usageKWh = parseFloat(data.monthlyUsageKWh) || 900;
+    // Clamp to physically-sane bounds so a poisoned ("1e999"/"Infinity") or
+    // absurd input never cascades into Infinity panels/cost/payback.
+    const roofSqFt = finiteNum(data.roofAreaSqFt, 1000, 100, 1_000_000);
+    const sunHours = finiteNum(data.peakSunHours, 5, 0.1, 24);
+    const usageKWh = finiteNum(data.monthlyUsageKWh, 900, 1, 10_000_000);
     const panelWatts = 400;
     const panelSqFt = 18;
     const maxPanels = Math.floor(roofSqFt * 0.7 / panelSqFt);
@@ -36,10 +56,12 @@ export default function registerEnergyActions(registerLensAction) {
   });
   registerLensAction("energy", "carbonFootprint", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const electricityKWh = parseFloat(data.electricityKWh) || 0;
-    const naturalGasTherms = parseFloat(data.naturalGasTherms) || 0;
-    const gasolineGallons = parseFloat(data.gasolineGallons) || 0;
-    const flightMiles = parseFloat(data.flightMiles) || 0;
+    // Fail-closed, non-negative finite inputs. Poison collapses to 0 so the
+    // CO2 totals stay finite (an Infinity here would render as null in the UI).
+    const electricityKWh = finiteNum(data.electricityKWh, 0, 0);
+    const naturalGasTherms = finiteNum(data.naturalGasTherms, 0, 0);
+    const gasolineGallons = finiteNum(data.gasolineGallons, 0, 0);
+    const flightMiles = finiteNum(data.flightMiles, 0, 0);
     // EPA emission factors
     const co2Electricity = electricityKWh * 0.000417; // metric tons per kWh
     const co2Gas = naturalGasTherms * 0.0053;
@@ -164,10 +186,12 @@ export default function registerEnergyActions(registerLensAction) {
 
   registerLensAction("energy", "gridStatus", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const demandMW = parseFloat(data.currentDemandMW) || 0;
-    const capacityMW = parseFloat(data.totalCapacityMW) || 0;
-    const renewablePercent = parseFloat(data.renewablePercent) || 0;
-    const frequency = parseFloat(data.gridFrequencyHz) || 60;
+    // Fail-closed finite parse with sane bounds; these values are also echoed
+    // into output strings, so an unguarded Infinity would render "Infinity MW".
+    const demandMW = finiteNum(data.currentDemandMW, 0, 0, 100_000_000);
+    const capacityMW = finiteNum(data.totalCapacityMW, 0, 0, 100_000_000);
+    const renewablePercent = finiteNum(data.renewablePercent, 0, 0, 100);
+    const frequency = finiteNum(data.gridFrequencyHz, 60, 0, 1000);
     const utilization = capacityMW > 0 ? Math.round((demandMW / capacityMW) * 100) : 0;
     const frequencyDeviation = Math.abs(frequency - 60);
     return { ok: true, result: { currentDemand: `${demandMW} MW`, totalCapacity: `${capacityMW} MW`, utilization, renewableShare: `${renewablePercent}%`, gridFrequency: `${frequency} Hz`, frequencyStable: frequencyDeviation < 0.05, status: utilization > 90 ? "critical-load" : utilization > 75 ? "high-load" : utilization > 50 ? "normal" : "low-load", reserves: `${Math.round(capacityMW - demandMW)} MW available` } };

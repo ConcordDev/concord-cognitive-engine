@@ -1,0 +1,23 @@
+{
+  "macro_id": "bio.translate-orf",
+  "domain": "bio",
+  "name": "translate-orf",
+  "inputs": {
+    "sequence": { "type": "string", "required": true }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isInteger(output.result.length)",
+    "output.ok === false || (Array.isArray(output.result.frames) && output.result.frames.length === 6)",
+    "output.ok === false || output.result.frames.every(function(f){ return typeof f.protein === 'string' && Array.isArray(f.codons); })",
+    "output.ok === false || output.result.longestOrf === null || typeof output.result.longestOrf.peptide === 'string'",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "sequence": "ATGAAATTTGGGTAA" }, "expect": { "ok": true } },
+    { "input": { "sequence": "" }, "expect": { "ok": false } },
+    { "input": { "sequence": "XYZ123" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/bio.js). MolecularWorkbench OrfTab sends {sequence}; renders frames[{frame,strand,codons:[{codon,aa,start,isStart,isStop}],protein,longestOrf}] + top longestOrf. 6 frames (+1..+3, -1..-3). FAIL-CLOSED: non-ACGTUN input rejected. Pinned by server/tests/bio-lens-macros.test.js."
+}

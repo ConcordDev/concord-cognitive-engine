@@ -2,6 +2,20 @@
 // Domain actions for artistry: color palette analysis, composition scoring, style classification, media inventory.
 
 export default function registerArtistryActions(registerLensAction) {
+  // Fail-CLOSED numeric coercion for the pure-compute analysis macros.
+  // `parseFloat("Infinity")` → Infinity and `Number("1e999")` → Infinity, and
+  // `Infinity || fallback` is Infinity — so the naive `parseFloat(x) || d`
+  // pattern lets a poisoned magnitude flow straight into a computed total
+  // (mediaInventory value, composition canvas size, palette weight) and emit a
+  // report containing Infinity/NaN. `finNum` collapses any non-finite (or
+  // beyond-1e15) input to the supplied fallback so every computed output stays
+  // FINITE by construction. Negative magnitudes are passed through (a negative
+  // weight/quantity is a domain choice, not a fail-open hazard).
+  const finNum = (v, fallback = 0) => {
+    const n = typeof v === "number" ? v : parseFloat(v);
+    return Number.isFinite(n) && Math.abs(n) <= 1e15 ? n : fallback;
+  };
+
   /**
    * colorPaletteAnalysis
    * Analyze artwork colors, calculate harmony scores, and detect dominant hues.
@@ -17,7 +31,7 @@ export default function registerArtistryActions(registerLensAction) {
 
     const colors = raw.map((entry) => {
       const hex = typeof entry === "string" ? entry : entry.color || "#000000";
-      const weight = typeof entry === "object" ? (parseFloat(entry.weight) || 1) : 1;
+      const weight = typeof entry === "object" ? (finNum(entry.weight, 1) || 1) : 1;
       const r = parseInt(hex.slice(1, 3), 16) || 0;
       const g = parseInt(hex.slice(3, 5), 16) || 0;
       const b = parseInt(hex.slice(5, 7), 16) || 0;
@@ -133,8 +147,8 @@ export default function registerArtistryActions(registerLensAction) {
   try {
     const elements = artifact.data?.elements || [];
     const canvas = artifact.data?.canvas || {};
-    const canvasW = parseFloat(canvas.width) || 100;
-    const canvasH = parseFloat(canvas.height) || 100;
+    const canvasW = finNum(canvas.width, 100) || 100;
+    const canvasH = finNum(canvas.height, 100) || 100;
 
     if (elements.length === 0) {
       return { ok: true, result: { message: "No elements provided. Supply artifact.data.elements as [{ x, y, width, height }] and artifact.data.canvas as { width, height }.", score: 0, breakdown: {} } };
@@ -151,9 +165,9 @@ export default function registerArtistryActions(registerLensAction) {
     // Evaluate each element's center proximity to rule-of-thirds points
     let thirdsScore = 0;
     const elementAnalysis = elements.map((el) => {
-      const cx = ((parseFloat(el.x) || 0) + (parseFloat(el.width) || 0) / 2) / canvasW;
-      const cy = ((parseFloat(el.y) || 0) + (parseFloat(el.height) || 0) / 2) / canvasH;
-      const w = parseFloat(el.weight) || 1;
+      const cx = (finNum(el.x, 0) + finNum(el.width, 0) / 2) / canvasW;
+      const cy = (finNum(el.y, 0) + finNum(el.height, 0) / 2) / canvasH;
+      const w = finNum(el.weight, 1) || 1;
 
       // Distance to nearest thirds point
       let minDist = Infinity;
@@ -172,16 +186,16 @@ export default function registerArtistryActions(registerLensAction) {
       return { centerX: Math.round(cx * 100) / 100, centerY: Math.round(cy * 100) / 100, nearestThird: nearestPoint, proximityScore: Math.round(proximity * 100) / 100 };
     });
 
-    const totalWeight = elements.reduce((s, el) => s + (parseFloat(el.weight) || 1), 0);
+    const totalWeight = elements.reduce((s, el) => s + (finNum(el.weight, 1) || 1), 0);
     thirdsScore = totalWeight > 0 ? Math.round((thirdsScore / totalWeight) * 100) / 100 : 0;
 
     // Visual balance: compare weight distribution across quadrants
     const quadrants = [0, 0, 0, 0]; // TL, TR, BL, BR
     for (const el of elements) {
-      const cx = ((parseFloat(el.x) || 0) + (parseFloat(el.width) || 0) / 2) / canvasW;
-      const cy = ((parseFloat(el.y) || 0) + (parseFloat(el.height) || 0) / 2) / canvasH;
-      const w = parseFloat(el.weight) || 1;
-      const area = ((parseFloat(el.width) || 0) * (parseFloat(el.height) || 0)) / (canvasW * canvasH);
+      const cx = (finNum(el.x, 0) + finNum(el.width, 0) / 2) / canvasW;
+      const cy = (finNum(el.y, 0) + finNum(el.height, 0) / 2) / canvasH;
+      const w = finNum(el.weight, 1) || 1;
+      const area = (finNum(el.width, 0) * finNum(el.height, 0)) / (canvasW * canvasH);
       const mass = w * (area || 0.01);
       const qi = (cy < 0.5 ? 0 : 2) + (cx < 0.5 ? 0 : 1);
       quadrants[qi] += mass;
@@ -196,8 +210,8 @@ export default function registerArtistryActions(registerLensAction) {
     // Coverage: how much of the canvas is utilized
     let coveredArea = 0;
     for (const el of elements) {
-      const w = parseFloat(el.width) || 0;
-      const h = parseFloat(el.height) || 0;
+      const w = finNum(el.width, 0);
+      const h = finNum(el.height, 0);
       coveredArea += w * h;
     }
     const coverageRatio = Math.min(1, coveredArea / (canvasW * canvasH));
@@ -327,10 +341,10 @@ export default function registerArtistryActions(registerLensAction) {
     const reorderAlerts = [];
 
     const items = supplies.map((item) => {
-      const qty = parseFloat(item.quantity) || 0;
-      const unitCost = parseFloat(item.unitCost) || 0;
+      const qty = finNum(item.quantity, 0);
+      const unitCost = finNum(item.unitCost, 0);
       const value = Math.round(qty * unitCost * 100) / 100;
-      const threshold = parseFloat(item.reorderThreshold) || 0;
+      const threshold = finNum(item.reorderThreshold, 0);
       const category = item.category || "uncategorized";
 
       totalValue += value;

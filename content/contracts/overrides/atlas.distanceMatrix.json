@@ -1,0 +1,23 @@
+{
+  "macro_id": "atlas.distanceMatrix",
+  "domain": "atlas",
+  "name": "distanceMatrix",
+  "inputs": {
+    "points": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || output.result.message !== undefined || Array.isArray(output.result.matrix)",
+    "output.ok !== true || output.result.message !== undefined || Array.isArray(output.result.pairs)",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "points": [{ "name": "A", "lat": 40.71, "lon": -74 }, { "name": "B", "lat": 34.05, "lon": -118.24 }] }, "expect": { "ok": true } },
+    { "input": { "points": [{ "name": "A", "lat": 40.71, "lng": -74 }, { "name": "B", "lat": 34.05, "lng": -118.24 }] }, "expect": { "ok": true } },
+    { "input": { "points": [{ "name": "X", "lat": "Infinity", "lon": "1e308" }, { "name": "Y", "lat": 1, "lon": 2 }] }, "expect": { "ok": false } },
+    { "input": { "points": [{ "name": "A", "lat": 1, "lon": 2 }] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "atlas.distanceMatrix (server/domains/atlas.js) is a pure-compute LENS_ACTIONS handler computing an NxN haversine matrix + stats. It accepts both lon and lng keys (DistanceMatrixPanel sends lon; AtlasActionPanel sends lng). It emits matrix (number[][] for the heatmap), pairs ([{from,to,distanceKm,estTimeMinutes}] for the bespoke panel), nearest, and stats with both canonical (averageDistanceKm/maxDistanceKm/...) and aliased (meanKm/maxKm/minKm/maxPair/minPair) keys. Fail-CLOSED: a non-finite or out-of-envelope coordinate is REJECTED so Infinity/NaN never serialize to null in the matrix. Fewer than 2 points returns a guidance message. Pinned by server/tests/atlas-lens-macros.test.js."
+}

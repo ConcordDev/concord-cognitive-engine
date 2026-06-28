@@ -400,6 +400,15 @@ export default function registerEthicsActions(registerLensAction) {
     return { pos, neg };
   }
 
+  // Coerce any value to a finite number, falling back to `dflt` for
+  // NaN/Infinity/-Infinity/"1e999"/"Infinity"/non-numeric. The scoring math
+  // below MUST never emit NaN/Infinity into a record — poisoned numeric input
+  // ("1e999", "Infinity", NaN) is a real attack surface for the lens.
+  function fnum(v, dflt = 0) {
+    const n = typeof v === "number" ? v : Number(v);
+    return Number.isFinite(n) ? n : dflt;
+  }
+
   /**
    * multiFrameworkDilemma — run a single dilemma + options through
    * utilitarian / deontological / virtue lenses side by side.
@@ -473,11 +482,11 @@ export default function registerEthicsActions(registerLensAction) {
     if (stakeholders.length === 0) return { ok: false, error: "at least one stakeholder required" };
 
     const rows = stakeholders.map((s) => {
-      const vuln = Math.max(0, Math.min(100, Number(s.vulnerability) || 0));
+      const vuln = Math.max(0, Math.min(100, fnum(s.vulnerability, 0)));
       const impacts = {};
       let totalWeighted = 0;
       for (const opt of options) {
-        const raw = Number(s.impacts?.[opt]) || 0;
+        const raw = fnum(s.impacts?.[opt], 0);
         const clamped = Math.max(-100, Math.min(100, raw));
         // Vulnerability amplifies negative impact.
         const weighted = clamped < 0 ? clamped * (1 + vuln / 100) : clamped;
@@ -536,15 +545,20 @@ export default function registerEthicsActions(registerLensAction) {
     if (criteria.length === 0) return { ok: false, error: "at least one criterion required" };
     if (options.length === 0) return { ok: false, error: "at least one option required" };
 
-    const weightSum = criteria.reduce((s, c) => s + (Number(c.weight) || 0), 0) || 1;
-    const normCriteria = criteria.map((c) => ({
-      name: c.name || "Criterion",
-      weight: (Number(c.weight) || 0) / weightSum,
+    // Clamp each weight to a finite, non-negative value BEFORE summing — a
+    // poisoned "1e999"/Infinity weight would otherwise make weightSum Infinity
+    // and every normalized weight NaN (Infinity/Infinity), leaking NaN/percent
+    // into the rendered record.
+    const rawWeights = criteria.map((c) => Math.max(0, fnum(c.weight, 0)));
+    const weightSum = rawWeights.reduce((s, w) => s + w, 0) || 1;
+    const normCriteria = criteria.map((c, i) => ({
+      name: typeof c.name === "string" && c.name.trim() ? c.name : "Criterion",
+      weight: rawWeights[i] / weightSum,
     }));
 
     const scored = options.map((o) => {
       const breakdown = normCriteria.map((c) => {
-        const raw = Math.max(0, Math.min(10, Number(o.scores?.[c.name]) || 0));
+        const raw = Math.max(0, Math.min(10, fnum(o.scores?.[c.name], 0)));
         return { criterion: c.name, raw, weighted: Math.round(raw * c.weight * 100) / 100 };
       });
       const total = Math.round(breakdown.reduce((s, b) => s + b.weighted, 0) * 100) / 100;

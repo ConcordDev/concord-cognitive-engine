@@ -1,20 +1,32 @@
 export default function registerFitnessActions(registerLensAction) {
+  // Fail-CLOSED numeric coercion for the legacy calc surfaces (progression /
+  // body-comp / periodization / class-utilization) which predate the `fnum`
+  // helper below and used `parseFloat(x) || 0` — a fail-OPEN pattern that lets
+  // Infinity ("1e999"/"Infinity") leak straight through into the output. A
+  // lying calorie / 1RM / progression number is a real safety harm, so every
+  // numeric input is coerced through `Number.isFinite` with a finite default
+  // and (optionally) clamped to a sane domain. NaN/Infinity NEVER reach output.
+  const ffnum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const fclampN = (v, lo, hi, d = lo) => { const n = ffnum(v, d); return Math.max(lo, Math.min(hi, n)); };
+
   registerLensAction("fitness", "progressionCalc", (ctx, artifact, _params) => {
-    const exercises = artifact.data?.exercises || [];
+    const exercises = Array.isArray(artifact.data?.exercises) ? artifact.data.exercises : [];
     const recommendations = exercises.map(ex => {
-      const weight = ex.weight || 0;
-      const reps = ex.reps || 0;
-      const rpe = ex.rpe || 7;
+      // Weights/reps/RPE are clamped to physically-sane finite domains so a
+      // poisoned "1e999" weight can never produce an Infinity recommendation.
+      const weight = fclampN(ex?.weight, 0, 100000, 0);
+      const reps = fclampN(ex?.reps, 0, 1000, 0);
+      const rpe = ex?.rpe == null ? 7 : fclampN(ex?.rpe, 1, 10, 7);
       let increment = 0;
       if (rpe <= 6) increment = weight * 0.05;
       else if (rpe <= 7) increment = weight * 0.025;
       else if (rpe >= 9) increment = -weight * 0.05;
       return {
-        exercise: ex.name,
+        exercise: String(ex?.name ?? ''),
         currentWeight: weight,
         currentReps: reps,
         currentRPE: rpe,
-        recommendedWeight: Math.round((weight + increment) * 2) / 2,
+        recommendedWeight: Math.max(0, Math.round((weight + increment) * 2) / 2),
         recommendation: rpe <= 6 ? 'increase_weight' : rpe <= 8 ? 'maintain' : 'reduce_weight',
       };
     });
@@ -22,17 +34,18 @@ export default function registerFitnessActions(registerLensAction) {
   });
 
   registerLensAction("fitness", "classUtilization", (ctx, artifact, params) => {
-    const capacity = artifact.data?.capacity || 0;
-    const enrolled = artifact.data?.enrolled || 0;
-    const attendanceLog = artifact.data?.attendanceLog || [];
-    const period = params.period || 30;
+    const capacity = fclampN(artifact.data?.capacity, 0, 1000000, 0);
+    const enrolled = fclampN(artifact.data?.enrolled, 0, 1000000, 0);
+    const attendanceLog = Array.isArray(artifact.data?.attendanceLog) ? artifact.data.attendanceLog : [];
+    const period = fclampN(params?.period, 1, 3650, 30);
     const recentAttendance = attendanceLog.filter(a => {
-      const d = new Date(a.date);
+      const d = new Date(a?.date);
+      if (isNaN(d.getTime())) return false;
       const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - period);
       return d >= cutoff;
     });
     const avgAttendance = recentAttendance.length > 0
-      ? Math.round(recentAttendance.reduce((s, a) => s + (a.count || 0), 0) / recentAttendance.length)
+      ? Math.round(recentAttendance.reduce((s, a) => s + fclampN(a?.count, 0, 1000000, 0), 0) / recentAttendance.length)
       : enrolled;
     const utilization = capacity > 0 ? Math.round((avgAttendance / capacity) * 100) : 0;
     return { ok: true, result: { className: artifact.title, capacity, enrolled, avgAttendance, utilization, period, sessions: recentAttendance.length } };
@@ -41,14 +54,17 @@ export default function registerFitnessActions(registerLensAction) {
   registerLensAction("fitness", "bodyCompReport", (ctx, artifact, _params) => {
   try {
     const data = artifact.data || {};
-    const weight = parseFloat(data.weight) || 0; // in lbs or kg
-    const height = parseFloat(data.height) || 0; // in inches or cm
-    const unit = data.unit || "imperial"; // "imperial" or "metric"
-    const age = parseInt(data.age, 10) || 30;
-    const sex = (data.sex || data.gender || "male").toLowerCase();
-    const waist = parseFloat(data.waist) || 0;
-    const neck = parseFloat(data.neck) || 0;
-    const hip = parseFloat(data.hip) || 0;
+    // Fail-CLOSED + clamped to physiological domains. parseFloat("1e999") is
+    // Infinity and `Infinity || 0` is Infinity, so the old `parseFloat||0` was
+    // fail-OPEN and would emit Infinity BMI / body-fat. ffnum + clamp closes it.
+    const weight = fclampN(data.weight, 0, 2000, 0); // lbs or kg
+    const height = fclampN(data.height, 0, 300, 0);   // inches or cm
+    const unit = data.unit === "metric" ? "metric" : "imperial";
+    const age = fclampN(data.age, 1, 120, 30);
+    const sex = String(data.sex || data.gender || "male").toLowerCase() === "female" ? "female" : "male";
+    const waist = fclampN(data.waist, 0, 500, 0);
+    const neck = fclampN(data.neck, 0, 500, 0);
+    const hip = fclampN(data.hip, 0, 500, 0);
 
     // Convert to metric for BMI
     let weightKg, heightCm;
@@ -81,12 +97,25 @@ export default function registerFitnessActions(registerLensAction) {
         neckCm = neck;
         hipCm = hip;
       }
+      // The Navy formula takes log10 of (waist−neck) / (waist+hip−neck); when
+      // waist ≤ neck (or the sum ≤ neck) that argument is ≤0 → NaN. Guard the
+      // circumference difference so a nonsensical measurement set degrades to
+      // "no estimate" rather than leaking NaN.
       if (sex === "male") {
-        bodyFatPct = 495 / (1.0324 - 0.19077 * Math.log10(waistCm - neckCm) + 0.15456 * Math.log10(heightCm)) - 450;
+        const wn = waistCm - neckCm;
+        if (wn > 0 && heightCm > 0) {
+          bodyFatPct = 495 / (1.0324 - 0.19077 * Math.log10(wn) + 0.15456 * Math.log10(heightCm)) - 450;
+        }
       } else if (hipCm > 0) {
-        bodyFatPct = 495 / (1.29579 - 0.35004 * Math.log10(waistCm + hipCm - neckCm) + 0.22100 * Math.log10(heightCm)) - 450;
+        const whn = waistCm + hipCm - neckCm;
+        if (whn > 0 && heightCm > 0) {
+          bodyFatPct = 495 / (1.29579 - 0.35004 * Math.log10(whn) + 0.22100 * Math.log10(heightCm)) - 450;
+        }
       }
-      if (bodyFatPct != null) bodyFatPct = Math.round(bodyFatPct * 10) / 10;
+      // Clamp to a finite physiological band; drop a non-finite/absurd result.
+      if (bodyFatPct != null) {
+        bodyFatPct = Number.isFinite(bodyFatPct) ? Math.round(fclampN(bodyFatPct, 1, 75, 1) * 10) / 10 : null;
+      }
     }
 
     const fatMass = bodyFatPct != null ? Math.round(weightKg * (bodyFatPct / 100) * 10) / 10 : null;
@@ -148,8 +177,10 @@ export default function registerFitnessActions(registerLensAction) {
   });
 
   registerLensAction("fitness", "periodization", (ctx, artifact, params) => {
-    const weeks = params.weeks || artifact.data?.weeks || 12;
-    const goal = params.goal || artifact.data?.goal || 'general_fitness';
+    // Clamp weeks to a finite, sane macrocycle length so a poisoned "1e999"
+    // can't produce Infinity phase durations.
+    const weeks = fclampN(params?.weeks ?? artifact.data?.weeks, 1, 104, 12);
+    const goal = params?.goal || artifact.data?.goal || 'general_fitness';
     const phases = [];
     if (goal === 'strength') {
       phases.push({ name: 'Hypertrophy', weeks: Math.ceil(weeks * 0.33), sets: '3-4', reps: '8-12', intensity: '65-75%' });
@@ -276,9 +307,36 @@ export default function registerFitnessActions(registerLensAction) {
     const N = Math.max(1, Math.min(90, Number(params.days) || 14));
     const all = state.recoveryEntries?.get(userId) || [];
     const cutoff = Date.now() - N * 86400000;
-    const days = all
-      .filter((d) => new Date(d.date).getTime() >= cutoff)
-      .sort((a, b) => a.date.localeCompare(b.date));
+    // Map each stored device row → the EXACT shape SleepRecovery.tsx renders
+    // (recoveryScore / sleepDurationHours / sleepQualityPct / restingHr / hrv /
+    // strainYesterday). The stored rows carry restingHr / hrv / sleepHours /
+    // recoveryScore (written by wearable-sync); the component reads
+    // sleepDurationHours / sleepQualityPct / strainYesterday, which never
+    // existed on the row → undefined.toFixed() crash in prod. We surface the
+    // real device fields under the rendered names and derive the rest ONLY from
+    // present real values (no fabrication; missing → 0, never invented). The
+    // raw row is preserved under `raw` for callers that want device-native keys.
+    const sorted = all
+      .filter((d) => d && !isNaN(new Date(d.date).getTime()) && new Date(d.date).getTime() >= cutoff)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const days = sorted.map((d, i) => {
+      const sleepHours = fnum(d.sleepHours);
+      const prev = i > 0 ? sorted[i - 1] : null;
+      return {
+        date: d.date,
+        recoveryScore: Math.max(0, Math.min(100, Math.round(fnum(d.recoveryScore)))),
+        sleepDurationHours: Math.max(0, Math.round(sleepHours * 100) / 100),
+        // sleepQualityPct is reported by the device when present; otherwise it
+        // is left at 0 (honest "not reported"), never synthesised.
+        sleepQualityPct: Math.max(0, Math.min(100, Math.round(fnum(d.sleepQualityPct)))),
+        restingHr: Math.max(0, Math.round(fnum(d.restingHr))),
+        hrv: Math.max(0, Math.round(fnum(d.hrv) * 10) / 10),
+        // strain "yesterday" is the prior day's reported strain, if the device
+        // pushed one; 0 when there is no prior reading.
+        strainYesterday: prev ? Math.max(0, Math.min(21, Math.round(fnum(prev.strain ?? prev.strainYesterday) * 10) / 10)) : 0,
+        raw: d,
+      };
+    });
     return {
       ok: true,
       result: {
@@ -303,9 +361,32 @@ export default function registerFitnessActions(registerLensAction) {
     const N = Math.max(1, Math.min(30, Number(params.days) || 7));
     const all = state.activityEntries?.get(userId) || [];
     const cutoff = Date.now() - N * 86400000;
+    // Apple-Fitness ring goals. Standard targets; the device can override any
+    // of them per-row (moveGoal/exerciseGoal/standGoal/stepsGoal). These are
+    // GOALS (a fixed target), not fabricated metric data — the actual progress
+    // values below come only from real stored device readings.
+    const DEFAULT_MOVE_GOAL = 600, DEFAULT_EXERCISE_GOAL = 30, DEFAULT_STAND_GOAL = 12, DEFAULT_STEPS_GOAL = 10000;
+    // Map each stored device row → the EXACT shape ActivityRings.tsx renders.
+    // The stored row carries steps / activeCalories / exerciseMinutes (written
+    // by wearable-sync); the component reads moveCalories / standHours and four
+    // *Goal fields that never existed → undefined.toLocaleString() crash + NaN
+    // ring widths in prod. We surface real values under the rendered names and
+    // default the goals; missing real metrics → 0 (honest), never invented.
     const days = all
-      .filter((d) => new Date(d.date).getTime() >= cutoff)
-      .sort((a, b) => a.date.localeCompare(b.date));
+      .filter((d) => d && !isNaN(new Date(d.date).getTime()) && new Date(d.date).getTime() >= cutoff)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+      .map((d) => ({
+        date: d.date,
+        moveCalories: Math.max(0, Math.round(fnum(d.moveCalories ?? d.activeCalories))),
+        moveGoal: Math.max(1, Math.round(fnum(d.moveGoal, DEFAULT_MOVE_GOAL))),
+        exerciseMinutes: Math.max(0, Math.round(fnum(d.exerciseMinutes))),
+        exerciseGoal: Math.max(1, Math.round(fnum(d.exerciseGoal, DEFAULT_EXERCISE_GOAL))),
+        standHours: Math.max(0, Math.round(fnum(d.standHours))),
+        standGoal: Math.max(1, Math.round(fnum(d.standGoal, DEFAULT_STAND_GOAL))),
+        steps: Math.max(0, Math.round(fnum(d.steps))),
+        stepsGoal: Math.max(1, Math.round(fnum(d.stepsGoal, DEFAULT_STEPS_GOAL))),
+        raw: d,
+      }));
     return {
       ok: true,
       result: {

@@ -1,0 +1,28 @@
+{
+  "macro_id": "council.ranked-choice-tabulate",
+  "domain": "council",
+  "name": "ranked-choice-tabulate",
+  "inputs": {
+    "ballots": { "type": "array", "required": false },
+    "candidates": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.result.method === 'instant_runoff'",
+    "output.ok === false || Number.isFinite(output.result.totalBallots)",
+    "output.ok === false || Number.isFinite(output.result.majority)",
+    "output.ok === false || Array.isArray(output.result.rounds)",
+    "output.ok === false || Array.isArray(output.result.eliminated)",
+    "output.ok === false || output.result.winner === null || (typeof output.result.winner.candidate === 'string' && Number.isFinite(output.result.winner.votes))",
+    "output.ok === false || typeof output.result.decided === 'boolean'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "ballots": [] }, "expect": { "ok": false } },
+    { "input": { "ballots": [{ "voter": "1", "ranking": ["A", "B"] }, { "voter": "2", "ranking": ["A", "C"] }, { "voter": "3", "ranking": ["B", "A"] }, { "voter": "4", "ranking": ["B", "C"] }, { "voter": "5", "ranking": ["C", "A"] }], "candidates": [{ "id": "A", "label": "Alice" }, { "id": "B", "label": "Bob" }, { "id": "C", "label": "Carol" }] }, "expect": { "ok": true } },
+    { "input": { "ballots": [{ "ranking": [1e999] }, { "ranking": ["X"] }] }, "expect": {} },
+    { "input": { "ballots": "nope" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'council.ranked-choice-tabulate'. DecisionArchive sends {ballots:[{voter,ranking[]}],candidates:[{id,label}]}. Real instant-runoff: eliminate lowest each round (lexicographic tie-break), redistribute, until majority. Returns {method,totalBallots,majority,rounds:[{round,tallies[{candidate,label,votes}],exhausted,majority}],eliminated[],winner,decided}. GUARDS: empty ballots → ok:false; no candidates → ok:false; 100-round guard; whole body in try/catch → handler_error on any throw (fail-closed, never an uncaught runner crash). Pinned by server/tests/council-lens-macros.test.js."
+}

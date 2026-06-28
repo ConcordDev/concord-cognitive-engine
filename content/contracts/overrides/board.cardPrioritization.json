@@ -1,0 +1,25 @@
+{
+  "macro_id": "board.cardPrioritization",
+  "domain": "board",
+  "name": "cardPrioritization",
+  "inputs": {
+    "cards": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.rankedCards)",
+    "output.ok === false || output.result.message !== undefined || output.result.rankedCards.every(function(c){ return Number.isFinite(c.wsjfScore) && Number.isFinite(c.normalizedScore) && Number.isFinite(c.costOfDelay) && Number.isFinite(c.rank) && (c.daysUntilDeadline === null || Number.isFinite(c.daysUntilDeadline)); })",
+    "output.ok === false || output.result.message !== undefined || (output.result.tiers && Array.isArray(output.result.tiers.critical))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "cards": [] }, "expect": { "ok": true } },
+    { "input": { "cards": [{ "id": "c1", "title": "Hi", "businessValue": 10, "timeCriticality": 9, "riskReduction": 8, "effort": 2 }, { "id": "c2", "title": "Lo", "businessValue": 3, "timeCriticality": 2, "riskReduction": 2, "effort": 8 }] }, "expect": { "ok": true } },
+    { "input": { "cards": [{ "id": "x", "title": "X", "businessValue": "1e999", "timeCriticality": "NaN", "riskReduction": "Infinity", "effort": "0", "deadline": "not-a-date" }] }, "expect": { "ok": true } },
+    { "input": { "cards": "nope" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'board.cardPrioritization'. The /lenses/board AI Action Panel derives cards:[{id,title,businessValue,timeCriticality,riskReduction,effort,deadline?}] from live tasks (priority→businessValue, (100-progress)→timeCriticality, bug→riskReduction, estimate→effort) and passes them as run-action params. Handler reads params.cards ?? artifact.data.cards. Returns {rankedCards:[{id,title,wsjfScore,normalizedScore,costOfDelay,rank,daysUntilDeadline}],tiers:{critical,high,medium,low},quadrants}. POISON: WSJF inputs clamp to [1,10] (Infinity→10, NaN→default 5); an unparseable deadline yields daysUntilDeadline=null instead of a JSON-null NaN. Non-array cards → guidance message. Pinned by server/tests/board-lens-macros.test.js."
+}

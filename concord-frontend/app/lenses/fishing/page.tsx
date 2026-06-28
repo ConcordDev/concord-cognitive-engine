@@ -71,10 +71,15 @@ export default function FishingLensPage() {
       ]);
       if (!cRes.ok) throw new Error(`catalog ${cRes.status}`);
       const c = await cRes.json();
-      // catches is auth-gated; tolerate a 401 by showing an empty log rather
-      // than failing the whole lens.
+      // The catalog is the PRIMARY read. A handler rejection ({ ok:false })
+      // must surface as a real ERROR, never collapse into the empty-state CTA
+      // (the silent-empty defect class): an empty catalog and a failed catalog
+      // load are different truths and must read differently to the player.
+      if (c?.ok === false) throw new Error(c.error || c.reason || 'catalog unavailable');
+      // catches is auth-gated + secondary; tolerate a 401 / { ok:false } by
+      // showing an empty log rather than failing the whole lens.
       const m = mRes.ok ? await mRes.json() : { ok: true, catches: [] };
-      setCatalog(c?.ok ? (c.fish || []) : []);
+      setCatalog(Array.isArray(c?.fish) ? c.fish : []);
       setCatches(m?.ok ? (m.catches || []) : []);
       setState('ready');
     } catch (e) {

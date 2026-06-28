@@ -1,0 +1,29 @@
+{
+  "macro_id": "household.generateGroceryList",
+  "domain": "household",
+  "name": "generateGroceryList",
+  "inputs": {
+    "mealPlan": { "type": "array", "required": false },
+    "meals": { "type": "array", "required": false },
+    "pantry": { "type": "array", "required": false },
+    "categorize": { "type": "boolean", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || Number.isFinite(output.result.uniqueItems)",
+    "output.ok === false || Number.isFinite(output.result.mealsPlanned)",
+    "output.ok === false || Array.isArray(output.result.list)",
+    "output.ok === false || output.result.list.every(function(i){ return Number.isFinite(i.quantity) && i.quantity > 0; })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "mealPlan": [] }, "expect": { "ok": true } },
+    { "input": { "mealPlan": [{ "day": "Mon", "meal": "dinner", "ingredients": [{ "name": "Tomato", "quantity": 3, "unit": "ea" }, { "name": "Tomato", "quantity": 2, "unit": "ea" }] }] }, "expect": { "ok": true } },
+    { "input": { "mealPlan": [{ "ingredients": [{ "name": "A", "quantity": "1e999" }, { "name": "B", "quantity": "Infinity" }, { "name": "C", "quantity": "NaN" }] }] }, "expect": { "ok": true } },
+    { "input": { "meals": ["Tacos", "Salad"] }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'household.generateGroceryList'. The /lenses/household page derives mealPlan from the live MealPlan artifacts; HouseholdActionPanel parses 'Recipe: a, b' lines into ingredients. Reads artifact.data.X || params.X — accepts mealPlan OR meals (objects or bare-name strings) from either layer. Aggregates duplicate (name|unit) ingredients, subtracts pantry, drops fully-covered items, sorts by category then name. POISON: ingredient/pantry quantity via finiteNum so '1e999'/'Infinity'/NaN collapse to 0 (item dropped) — every list.quantity stays FINITE and > 0. Pinned by server/tests/household-lens-macros.test.js."
+}

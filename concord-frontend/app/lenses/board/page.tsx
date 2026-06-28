@@ -277,6 +277,75 @@ function avatarColor(name: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
+// Map the live kanban tasks onto the {cards,columns,sprints,remainingPoints}
+// shapes the board.* calculator macros read. Every value is derived from real
+// task state — no fabricated rows. `done` tasks are treated as completed (their
+// dueDate stands in for completion), priority maps to WSJF business value, and
+// the column ordering matches the on-screen columns.
+const PRIORITY_VALUE: Record<Priority, number> = { urgent: 10, high: 8, medium: 5, low: 3 };
+
+function buildBoardActionParams(
+  action: string,
+  tasks: Task[]
+): Record<string, unknown> {
+  if (action === 'workflowAnalysis') {
+    return {
+      columns: columns.map((c) => ({ name: c.name })),
+      cards: tasks.map((t) => {
+        const col = columns.find((c) => c.id === t.status);
+        const created =
+          t.activity[t.activity.length - 1]?.timestamp || t.dueDate || new Date().toISOString();
+        return {
+          id: t.id,
+          title: t.title,
+          column: col?.name ?? t.status,
+          createdAt: created,
+          completedAt: t.status === 'done' ? t.dueDate || created : undefined,
+        };
+      }),
+    };
+  }
+  if (action === 'cardPrioritization') {
+    return {
+      cards: tasks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        businessValue: PRIORITY_VALUE[t.priority],
+        // Less-complete work carries more remaining criticality.
+        timeCriticality: Math.max(1, Math.round((100 - t.progress) / 10)),
+        riskReduction: t.type === 'bug' ? 8 : 5,
+        effort: t.estimate && /^\d/.test(t.estimate) ? Math.max(1, parseInt(t.estimate, 10)) : 5,
+        deadline: t.dueDate || undefined,
+      })),
+    };
+  }
+  if (action === 'burndownForecast') {
+    // Group done tasks into weekly "sprints" by completion week; remaining points
+    // = open tasks weighted by how much work is left (1 pt per 100−progress%).
+    const doneByWeek = new Map<string, number>();
+    for (const t of tasks) {
+      if (t.status !== 'done' || !t.dueDate) continue;
+      const d = new Date(t.dueDate);
+      if (Number.isNaN(d.getTime())) continue;
+      const wk = `${d.getUTCFullYear()}-${Math.floor(d.getTime() / (7 * 86400000))}`;
+      doneByWeek.set(wk, (doneByWeek.get(wk) || 0) + PRIORITY_VALUE[t.priority]);
+    }
+    const sprints = Array.from(doneByWeek.entries()).map(([id, completedPoints], i) => ({
+      id,
+      completedPoints,
+      plannedPoints: completedPoints,
+      startDate: '',
+      endDate: '',
+      index: i,
+    }));
+    const remainingPoints = tasks
+      .filter((t) => t.status !== 'done')
+      .reduce((s, t) => s + Math.max(1, Math.round(((100 - t.progress) / 100) * PRIORITY_VALUE[t.priority])), 0);
+    return { sprints, remainingPoints };
+  }
+  return {};
+}
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -350,7 +419,12 @@ export default function BoardLensPage() {
     if (!targetId) return;
     setIsRunning(action);
     try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
+      // The persisted task artifact's .data carries a single task, not the
+      // board-wide {cards,columns,sprints} the calculators read. Derive those
+      // from the live tasks and pass them as params so the handler computes over
+      // the real board instead of silently returning "No cards provided".
+      const params = buildBoardActionParams(action, tasks);
+      const res = await runAction.mutateAsync({ id: targetId, action, params });
       if (res.ok === false) {
         setActionResult({
           message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}`,

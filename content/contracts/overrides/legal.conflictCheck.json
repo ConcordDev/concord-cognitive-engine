@@ -1,0 +1,27 @@
+{
+  "macro_id": "legal.conflictCheck",
+  "domain": "legal",
+  "name": "conflictCheck",
+  "inputs": {
+    "client": { "type": "string" },
+    "parties": { "type": "array" },
+    "opposingParty": { "type": "string" },
+    "checkAgainst": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.conflicts)",
+    "output.ok === false || typeof output.result.hasConflict === 'boolean'",
+    "output.ok === false || output.result.hasConflict === (output.result.conflicts.length > 0)",
+    "output.ok === false || typeof output.result.checkedAt === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "client": "Acme Co", "parties": ["Acme Co"], "checkAgainst": ["Acme Co"] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "client": "Acme Co", "parties": ["Acme Co"], "checkAgainst": ["Globex"] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "client": "Acme Co", "parties": ["Acme Co"] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } }
+  ],
+  "_note": "LegalActionPanel.actConflict channel: callMacro('conflictCheck', { client, parties:[partyA], checkAgainst:[partyB] }). Handler reads artifact.data.{parties,client,opposingParty} and params.checkAgainst[]; for each checkAgainst name that matches a party/client/opposingParty it pushes { name, conflictType:'direct_party', caseId }. Returns { conflicts, hasConflict, checkedAt }. Panel renders hasConflict + conflicts[].name/.conflictType EXACTLY. Degrade-graceful: no checkAgainst → empty conflicts, hasConflict false."
+}

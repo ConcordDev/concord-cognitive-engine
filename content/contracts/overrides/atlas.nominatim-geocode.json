@@ -1,0 +1,20 @@
+{
+  "macro_id": "atlas.nominatim-geocode",
+  "domain": "atlas",
+  "name": "nominatim-geocode",
+  "external_io": true,
+  "inputs": {
+    "query": { "type": "string", "required": false, "maxLength": 200 },
+    "limit": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "query": "   " }, "expect": { "ok": false } }
+  ],
+  "_note": "atlas.nominatim-geocode (server/domains/atlas.js) hits OpenStreetMap Nominatim (nominatim.openstreetmap.org, free/no-key). EXTERNAL-IO — marked external_io:true so the assassin NEVER drives it against the live endpoint. Fail-soft: an empty/whitespace query is validate-REJECTED ({ok:false,error:'query required'}) BEFORE any fetch; a network failure returns {ok:false,error} and never throws. The PlaceFinder/MapsDirections/SavedPlaces panels call it via apiHelpers.lens.runDomain('atlas','nominatim-geocode',{input}). Pinned (validate-reject, no-network) by server/tests/atlas-lens-macros.test.js."
+}

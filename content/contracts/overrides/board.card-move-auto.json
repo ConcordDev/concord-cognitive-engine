@@ -1,0 +1,23 @@
+{
+  "macro_id": "board.card-move-auto",
+  "domain": "board",
+  "name": "card-move-auto",
+  "inputs": {
+    "boardId": { "type": "string", "required": true },
+    "cardId": { "type": "string", "required": true },
+    "toColumnId": { "type": "string", "required": true },
+    "position": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result === 'object' && typeof output.result.cardId === 'string' && typeof output.result.columnId === 'string' && Array.isArray(output.result.automationsApplied))",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "boardId": "nope", "cardId": "nope", "toColumnId": "nope" }, "expect": { "ok": false } },
+    { "input": { "boardId": "x", "cardId": "y", "toColumnId": "z", "position": "1e999" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS STATE handler (per-user, globalThis._concordSTATE.boardLens). Dispatch key 'board.card-move-auto'. BoardWorkspace.onDrop sends {boardId,cardId,toColumnId}. Moves the card to the target column AND applies any matching card-moved-to-column automation rules (check-all-checklist / clear-due / add-label / set-assignee), then renumbers the target column's positions. Returns {cardId,columnId,automationsApplied:[ruleId]}. Unknown board/card/column → clean {ok:false,error}. STATE-unavailable → {ok:false,error:'STATE unavailable'} (never throws — wrapped in try/catch). Pinned by server/tests/board-lens-macros.test.js."
+}

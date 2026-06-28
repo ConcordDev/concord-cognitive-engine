@@ -1,0 +1,25 @@
+{
+  "macro_id": "forum.topicClustering",
+  "domain": "forum",
+  "name": "topicClustering",
+  "inputs": {
+    "threads": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalThreads)",
+    "output.ok === false || output.result.message !== undefined || (Array.isArray(output.result.clusters) && output.result.clusters.every(function(c){ return typeof c.topic === 'string' && Number.isFinite(c.threads) && Number.isFinite(c.share); }))",
+    "output.ok === false || output.result.message !== undefined || (typeof output.result.topTopic === 'string' && Number.isFinite(output.result.uncategorized))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "threads": [] }, "expect": { "ok": true } },
+    { "input": { "threads": [{ "tags": ["mixing", "tutorial"] }, { "tags": ["mixing"] }, { "tags": [] }] }, "expect": { "ok": true } },
+    { "input": { "threads": [{}, { "tags": null }, { "tags": ["a"] }] }, "expect": { "ok": true } },
+    { "input": { "threads": "nope" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'forum.topicClustering'. The /lenses/forum inline buttons DERIVE threads:[{tags}] from the live posts' tag arrays and pass them as run-action params; the persisted single-post artifact has no threads array (the prior dead surface). Handler reads params.threads ?? artifact.data.threads. Returns {totalThreads,clusters:[{topic,threads,share}],topTopic,uncategorized} or {message} when empty/non-array. POISON: malformed rows ({}, tags:null) never throw; every cluster share is FINITE; uncategorized counts tag-less rows. Pinned by server/tests/forum-lens-macros.test.js."
+}

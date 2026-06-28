@@ -1,0 +1,24 @@
+{
+  "macro_id": "artistry.jobApply",
+  "domain": "artistry",
+  "name": "jobApply",
+  "inputs": {
+    "jobId": { "type": "string", "required": true, "maxLength": 80 },
+    "message": { "type": "string", "required": false, "maxLength": 1500 },
+    "portfolioProjectId": { "type": "string", "required": false, "maxLength": 80 },
+    "quote": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.applied === true && typeof output.result.jobId === 'string')",
+    "output.ok === false || (typeof output.result.applicationCount === 'number' && Number.isFinite(output.result.applicationCount))",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "jobId": "nonexistent" }, "expect": { "ok": false } },
+    { "input": {}, "expect": { "ok": false } },
+    { "input": { "jobId": "x", "quote": "Infinity" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/artistry.js). 3-arg dispatch via /api/lens/run on key 'artistry.jobApply' (SOCIAL surface, reads `params`). The /lenses/artistry JobBoard.apply() sends these exact field names. VALIDATION-REJECTION surface: job_not_found (unknown jobId), cannot_apply_own_job (poster === applicant), job_closed (status !== 'open'), already_applied (duplicate). quote is coerced via Number.isFinite(Number(quote)) — a poisoned 'Infinity' falls to null (fail-closed), never a non-finite number in the application. With no STATE → {ok:false, state_unavailable}, never throws. The assassin drive has no STATE/seeded jobs, so every fuzz case correctly terminates ok:false (a missing/invalid job is an honest rejection, not a fake success). Not driven by macro-assassin (LENS_ACTIONS, not MACROS); authored spec pinned by server/tests/artistry-lens-macros.test.js."
+}

@@ -21,6 +21,7 @@ export function EnergyEstimator() {
   const [azimuth, setAzimuth] = useState<number>(180);
   const [result, setResult] = useState<EstimateResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
@@ -34,14 +35,25 @@ export function EnergyEstimator() {
 
   async function estimate() {
     setLoading(true);
+    setError(null);
     try {
       const res = await api.post('/api/lens/run', {
         domain: 'eco', action: 'energy-estimate',
         input: { lat, lng, systemKw, tilt, azimuth },
       });
-      setResult(res.data?.result as EstimateResult || null);
+      // /api/lens/run single-unwraps: a handler rejection arrives as
+      // res.data.result = { ok:false, error }. Surface it rather than crashing
+      // on result.monthlyKwh.map / Math.max(...result.monthlyKwh).
+      const node = res.data?.result as (EstimateResult & { ok?: boolean; error?: string }) | null;
+      if (node && node.ok === false) {
+        setError(node.error || 'Could not estimate production.');
+        setResult(null);
+      } else {
+        setResult((node as EstimateResult) || null);
+      }
     } catch (e) {
-      console.error('[Energy] estimate failed', e);
+      setError(e instanceof Error ? e.message : 'Could not estimate production.');
+      setResult(null);
     } finally { setLoading(false); }
   }
 
@@ -80,6 +92,7 @@ export function EnergyEstimator() {
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
           Estimate production
         </button>
+        {error && <div role="alert" className="text-xs text-red-400">{error}</div>}
         {result && (
           <div className="space-y-2 pt-2 border-t border-white/10">
             <div className="grid grid-cols-3 gap-2 text-center">

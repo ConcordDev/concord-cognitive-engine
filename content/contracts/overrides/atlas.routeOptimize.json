@@ -1,0 +1,23 @@
+{
+  "macro_id": "atlas.routeOptimize",
+  "domain": "atlas",
+  "name": "routeOptimize",
+  "inputs": {
+    "waypoints": { "type": "array" },
+    "startIndex": { "type": "number" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok !== true || output.result.message !== undefined || Array.isArray(output.result.route)",
+    "output.ok !== true || output.result.message !== undefined || Array.isArray(output.result.legs)",
+    "output.ok === true || typeof (output.reason || output.error) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "waypoints": [{ "name": "A", "lat": 40.71, "lon": -74 }, { "name": "B", "lat": 34.05, "lon": -118.24 }, { "name": "C", "lat": 41.88, "lon": -87.63 }] }, "expect": { "ok": true } },
+    { "input": { "waypoints": [{ "name": "X", "lat": "abc", "lon": 0 }, { "name": "Y", "lat": 1, "lon": 2 }] }, "expect": { "ok": false } },
+    { "input": { "waypoints": [{ "name": "A", "lat": 1, "lon": 2 }] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "atlas.routeOptimize (server/domains/atlas.js) is a pure-compute LENS_ACTIONS handler running nearest-neighbor + 2-opt TSP. It emits optimizedRoute ([{step,name,lat,lon,legDistanceKm,...}] for the page render) plus the component-canonical aliases route (ordered name string[]), order (int waypoint indices), and legs ([{from,to,km}] for MapsDirections/DistanceMatrixPanel), all derived from the same optimized route — no fabricated values. Accepts lon or lng keys. Fail-CLOSED: a non-finite/out-of-envelope waypoint coord is REJECTED. Fewer than 2 waypoints returns a guidance message. Pinned by server/tests/atlas-lens-macros.test.js."
+}

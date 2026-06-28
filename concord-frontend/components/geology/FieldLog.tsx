@@ -30,25 +30,45 @@ export function FieldLog() {
   const [dash, setDash] = useState<Dash | null>(null);
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', kind: 'rock', locationName: '', formation: '', notes: '' });
 
   const refresh = useCallback(async () => {
-    const [ol, d] = await Promise.all([
-      lensRun('geology', 'observation-list', filter ? { kind: filter } : {}),
-      lensRun('geology', 'field-dashboard', {}),
-    ]);
-    setObs((ol.data?.result?.observations as Observation[]) || []);
-    setDash((d.data?.result as Dash) || null);
-    setLoading(false);
+    setError(null);
+    try {
+      const [ol, d] = await Promise.all([
+        lensRun('geology', 'observation-list', filter ? { kind: filter } : {}),
+        lensRun('geology', 'field-dashboard', {}),
+      ]);
+      const olInner = ol.data?.result as { ok?: boolean; error?: string; observations?: Observation[] } | undefined;
+      const dInner = d.data?.result as (Dash & { ok?: boolean; error?: string }) | undefined;
+      // A swallowed failure must NOT render identically to genuinely-empty:
+      // surface the handler/transport error distinctly so EMPTY ≠ ERROR.
+      if (!ol.data?.ok || olInner?.ok === false) {
+        setError(olInner?.error || ol.data?.error || 'Could not load field observations');
+      } else {
+        setObs(olInner?.observations || []);
+        setDash(dInner && dInner.ok !== false ? dInner : null);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load field observations');
+    } finally {
+      setLoading(false);
+    }
   }, [filter]);
   useEffect(() => { void refresh(); }, [refresh]);
 
   async function log() {
     if (!form.name.trim()) return;
-    await lensRun('geology', 'observation-log', {
+    const r = await lensRun('geology', 'observation-log', {
       name: form.name.trim(), kind: form.kind,
       locationName: form.locationName.trim(), formation: form.formation.trim(), notes: form.notes.trim(),
     });
+    const inner = r.data?.result as { ok?: boolean; error?: string } | undefined;
+    if (!r.data?.ok || inner?.ok === false) {
+      setError(inner?.error || r.data?.error || 'Could not log observation');
+      return;
+    }
     setForm({ name: '', kind: 'rock', locationName: '', formation: '', notes: '' });
     await refresh();
   }
@@ -57,7 +77,25 @@ export function FieldLog() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return (
+    <div role="status" aria-busy="true" className="flex items-center justify-center gap-2 py-6 text-zinc-400">
+      <Loader2 className="w-4 h-4 animate-spin" /><span className="text-xs">Loading field observations…</span>
+    </div>
+  );
+
+  if (error) return (
+    <div role="alert" className="py-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Mountain className="w-4 h-4 text-amber-500" />
+        <h3 className="text-sm font-bold text-zinc-100">Field Observation Log</h3>
+      </div>
+      <p className="text-xs text-rose-400 mb-2">{error}</p>
+      <button onClick={() => { setLoading(true); void refresh(); }}
+        className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold">
+        Retry
+      </button>
+    </div>
+  );
 
   return (
     <div>
