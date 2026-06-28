@@ -542,6 +542,24 @@ needs a server.js input-passthrough change to the lens.run stored-artifact dispa
 scope; batch it separately.
 69 lenses now through the non-score gate (batches 1–16). The loop continues.
 
+### Phase-2 batch 17 DONE (2026-06-28): robotics, linguistics, mentorship, services, landscaping
+118 server + 25 UX-state tests.
+- **services**: revenueByProvider DEAD in prod — the panel sent a 2-key {artifact:{data},period} body the
+  sole-key dispatch peel correctly leaves untouched (the exact trap flagged); fixed by moving period
+  inside data. + clientRetentionReport field mismatch (avgLifetimeValue→averageLifetimeValue) + money
+  guards + swallowed-fetch. 23 server + 5 vitest + 6 overrides.
+- **mentorship**: inline page-panel calculators DEAD (read mentor/mentee objects vs stored relation's
+  mentorName/menteeName/skills/goals → 'undefined ↔ undefined · 0%'); fixed at domain via relation
+  aliases + finNum. 23 server + 5 vitest + 4 overrides.
+- **linguistics**: text.split-on-non-string 500 CRASH across 4 handlers → String() coercion; fields
+  aligned. 24 server + 5 vitest + 5 overrides.
+- **landscaping**: fields aligned; 2 fail-closed Infinity leaks (irrigation/material). 23 server + 5 vitest + 4 ov.
+- **robotics**: calculators aligned; fnum fail-closed guards + FleetManager 4 UX states (states test
+  authored by the coordinator after the agent stalled before writing it). 31 server + 5 vitest + 5 overrides.
+Assassin ratchet GREEN; 258 WIRED; tsc 0. The 2-key-wrapper trap (services) and the inline-panel
+stored-artifact pattern (mentorship, fixed at domain) are now both demonstrated + handled.
+74 lenses now through the non-score gate (batches 1–17). The loop continues.
+
 **NAMED PHASE-2 BACKLOG CLOSED (2026-06-27):** all 6 batches done (24 lenses through the non-score
 gate across batches 1–6). Real defects fixed across the run: 2 CC money bugs (sponsorship.create,
 inheritance value/open_listing) + 1 in-game-currency treasury fail-open (kingdoms) + ~6 numeric

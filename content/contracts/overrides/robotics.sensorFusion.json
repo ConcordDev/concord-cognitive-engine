@@ -1,0 +1,27 @@
+{
+  "macro_id": "robotics.sensorFusion",
+  "domain": "robotics",
+  "name": "sensorFusion",
+  "inputs": {
+    "sensors": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.sensorCount)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.fusedValue)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.fusedConfidence)",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.method === 'string'",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.sensors)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "sensors": [{ "name": "gps", "value": 10, "confidence": 0.9, "weight": 2 }, { "name": "imu", "value": 20, "confidence": 0.5, "weight": 1 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "sensors": [{ "type": "lidar", "value": 5 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "sensors": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "sensors": [{ "name": "x", "value": "Infinity", "confidence": "NaN", "weight": "Infinity" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data.sensors. Field-aligned 2026-06-28 to RoboticsActionPanel.tsx: the fusion card renders sensorCount / fusedValue / fusedConfidence / method EXACTLY plus sensors[].{sensor,value,confidence} (the {sensor}: {value} (c={confidence}) list). fusedValue = confidence×weight-weighted mean of values (3dp); sensor name falls back to type. Fail-CLOSED: non-finite value/confidence/weight fall to finite defaults (0 / 0.8 / 1) via Number.isFinite so fusedValue is always finite. Empty/non-array sensors return the honest 'Add sensor data' message, never throws."
+}

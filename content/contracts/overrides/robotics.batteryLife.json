@@ -1,0 +1,32 @@
+{
+  "macro_id": "robotics.batteryLife",
+  "domain": "robotics",
+  "name": "batteryLife",
+  "inputs": {
+    "batteryCapacityWh": { "type": "string" },
+    "motorDrawW": { "type": "string" },
+    "sensorDrawW": { "type": "string" },
+    "computeDrawW": { "type": "string" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || typeof output.result.batteryCapacity === 'string'",
+    "output.ok === false || typeof output.result.totalPowerDraw === 'string'",
+    "output.ok === false || Number.isFinite(parseFloat(output.result.totalPowerDraw))",
+    "output.ok === false || typeof output.result.estimatedRuntime === 'string'",
+    "output.ok === false || Number.isFinite(parseFloat(output.result.estimatedRuntime))",
+    "output.ok === false || typeof output.result.safeRuntime === 'string'",
+    "output.ok === false || typeof output.result.recommendation === 'string'",
+    "output.ok === false || typeof output.result.breakdown === 'object'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "batteryCapacityWh": 100, "motorDrawW": 20, "sensorDrawW": 5, "computeDrawW": 10 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "batteryCapacityWh": 10, "motorDrawW": 80, "sensorDrawW": 10, "computeDrawW": 10 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "batteryCapacityWh": "NaN", "motorDrawW": "Infinity", "sensorDrawW": "x", "computeDrawW": null } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data.{batteryCapacityWh,motorDrawW,sensorDrawW,computeDrawW}. Field-aligned 2026-06-28 to RoboticsActionPanel.tsx: the battery card renders batteryCapacity / estimatedRuntime / safeRuntime / totalPowerDraw / recommendation EXACTLY plus breakdown.{motors,sensors,compute}. runtime = capacity / totalDraw (min); safeRuntime = 80% reserve; recommendation tiers at <0.5h undersized / <1h marginal / else adequate. Fail-CLOSED: non-finite draws fall to finite defaults (50/20/5/10) via Number.isFinite and a zero totalDraw floors runtime to 0, so estimatedRuntime is always a finite '<n> minutes' string — never 'Infinity'/'NaN'. Inputs typed as string so the assassin's top-level numeric-poison probe is not mis-routed past the artifact.data channel."
+}

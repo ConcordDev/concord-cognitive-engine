@@ -1,0 +1,34 @@
+{
+  "macro_id": "robotics.gridPlan",
+  "domain": "robotics",
+  "name": "gridPlan",
+  "inputs": {
+    "width": { "type": "string" },
+    "height": { "type": "string" },
+    "startX": { "type": "string" },
+    "startY": { "type": "string" },
+    "goalX": { "type": "string" },
+    "goalY": { "type": "string" },
+    "obstacles": { "type": "array" }
+  },
+  "reads_artifact_data": false,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || typeof output.result.found === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.path)",
+    "output.ok === false || Number.isFinite(output.result.length)",
+    "output.ok === false || output.result.cost === null || Number.isFinite(output.result.cost)",
+    "output.ok === false || Number.isFinite(output.result.expansions)",
+    "output.ok === false || Number.isFinite(output.result.obstacleCount)",
+    "output.ok === false || typeof output.result.algorithm === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "width": 10, "height": 10, "startX": 0, "startY": 0, "goalX": 9, "goalY": 9 }, "expect": { "ok": true } },
+    { "input": { "width": 5, "height": 5, "startX": 0, "startY": 0, "goalX": 4, "goalY": 4, "obstacles": [{ "x": 2, "y": 2 }] }, "expect": { "ok": true } },
+    { "input": { "width": 5, "height": 5, "startX": 0, "startY": 0, "obstacles": [{ "x": 0, "y": 0 }] }, "expect": { "ok": false } },
+    { "input": { "width": "NaN", "height": "Infinity", "startX": -1, "startY": "x", "goalX": 999, "goalY": 999 }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads params (NOT artifact.data — PathPlanner.tsx passes the grid as flat params via lensRun). Field-aligned 2026-06-28 to PathPlanner.tsx: the result strip renders found / length / cost / expansions / obstacleCount EXACTLY. A* over a 4-connected occupancy grid; width/height clamp [2,80], start/goal clamp into bounds; a blocked start or goal cell is rejected (ok:false). Fail-CLOSED: non-finite width/height/coords clamp to finite bounds via Number.isFinite so the search space is always bounded and terminates."
+}
