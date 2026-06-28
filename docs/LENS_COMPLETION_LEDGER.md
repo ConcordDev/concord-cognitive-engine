@@ -505,6 +505,24 @@ an inverted security sort, a renderer-corrupting geometry, 2 crashes, a triage-e
 and a long tail of Infinity/NaN fail-opens — every one in a lens that "looked wired." 2 lenses were clean.
 56 lenses now through the non-score gate (batches 1–13). The loop continues.
 
+### Phase-2 batch 14+15 (2026-06-28): marketing, analytics, retail, audit, supplychain, voice
+Batch 14's subagents were cut off mid-work by the shared session limit; only **marketing** was complete
++ verified (fail-open Infinity-leak fix; committed), the rest reverted for a clean resume. Batch 15
+re-ran the 4 cut-off lenses + analytics, all completed cleanly:
+- **retail**: 3 of 4 calculators DEAD (pipelineValue/customerLTV/slaStatus field-mismatched both ways)
+  + finite money guards. 24 server + 5 vitest + 4 overrides.
+- **audit**: ENTIRE surface dead (all 4 calcs both-way mismatched, samplingPlan percents-vs-fractions)
+  + removed a FABRICATED 'Genesis Block' placeholder node (fake-data defect). 19 server + 5 vitest + 4 ov.
+- **voice**: dead inline 'Voice Actions' page panel (wpm vs speakingRate, label vs speaker) + a
+  formatTimestamp getHours-on-ISO-string crash + fail-closed guards. 30 server + 5 vitest + 4 overrides.
+- **analytics**: fields aligned; fail-open Infinity (detect/forecast) + uncaught .map throws + a
+  component render-crash on the {message} guidance shape. 21 server + 7 vitest + 4 overrides.
+- **supplychain**: CLEAN BILL (both channels aligned, scenarioSimulate intact), a11y only. 18 server +
+  5 vitest + 5 overrides.
+- **marketing**: fail-open Infinity-leak fix (campaignROI/abTest). 19 server + 5 vitest + 4 overrides.
+Assassin ratchet GREEN; 258 WIRED; tsc 0.
+63 lenses now through the non-score gate (batches 1–15). The loop continues.
+
 **NAMED PHASE-2 BACKLOG CLOSED (2026-06-27):** all 6 batches done (24 lenses through the non-score
 gate across batches 1–6). Real defects fixed across the run: 2 CC money bugs (sponsorship.create,
 inheritance value/open_listing) + 1 in-game-currency treasury fail-open (kingdoms) + ~6 numeric

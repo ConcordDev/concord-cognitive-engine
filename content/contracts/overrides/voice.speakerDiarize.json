@@ -1,0 +1,29 @@
+{
+  "macro_id": "voice.speakerDiarize",
+  "domain": "voice",
+  "name": "speakerDiarize",
+  "inputs": {
+    "transcript": { "type": "string", "maxLength": 40000 },
+    "segments": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result === 'object')",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.speakerCount)",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.dominantSpeaker === 'string'",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.speakers)",
+    "output.ok === false || output.result.message !== undefined || output.result.speakers.every(function(s){ return typeof s.speaker === 'string' && Number.isFinite(s.wordCount) && Number.isFinite(s.wordShare) && Number.isFinite(s.talkTimeSeconds); })",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalWords)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "transcript": "[Speaker A]: Good morning everyone. [Speaker B]: Ready to ship today." } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "segments": [{ "speaker": "Ana", "text": "hello there", "startTime": 0, "endTime": 4 }, { "speaker": "Ben", "text": "yes indeed", "startTime": 4, "endTime": 6 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "segments": [{ "speaker": "X", "text": "a b c", "startTime": "Infinity", "endTime": "NaN" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "transcript": [123] } } }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTION (registerLensAction). Dispatch key 'voice.speakerDiarize'. Deterministic pure text compute; reads artifact.data. Parses [Speaker X]: tags (or explicit segments) into per-speaker turn stats. Non-finite startTime/endTime fall to 0 via parseFloat||0 (talkTimeSeconds never NaN); a non-string transcript is rejected. Result card renders speakerCount/dominantSpeaker/speakers[].{speaker,wordCount,wordShare,talkTimeSeconds} EXACTLY — the page's prior inline panel read speakers[].label/.duration/.share which were never returned (fixed 2026-06-28). Not assassin-driven (LENS_ACTION); authored spec pinned by server/tests/voice-lens-macros.test.js."
+}

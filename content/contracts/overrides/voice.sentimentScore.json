@@ -1,0 +1,29 @@
+{
+  "macro_id": "voice.sentimentScore",
+  "domain": "voice",
+  "name": "sentimentScore",
+  "inputs": {
+    "transcript": { "type": "string", "maxLength": 40000 },
+    "text": { "type": "string", "maxLength": 40000 },
+    "segments": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result === 'object')",
+    "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.overallScore) && output.result.overallScore >= -1 && output.result.overallScore <= 1)",
+    "output.ok === false || output.result.message !== undefined || ['positive','negative','neutral'].includes(output.result.overallLabel)",
+    "output.ok === false || output.result.message !== undefined || ['improving','declining','stable','insufficient-data'].includes(output.result.sentimentArc)",
+    "output.ok === false || output.result.message !== undefined || (output.result.segmentBreakdown && output.result.segmentBreakdown.total === output.result.segmentBreakdown.positive + output.result.segmentBreakdown.negative + output.result.segmentBreakdown.neutral)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "transcript": "This is excellent and wonderful, I love it." } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "transcript": "This is terrible and awful, I hate the failure." } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "transcript": "This is not good." } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "transcript": { "x": 1 } } } }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTION (registerLensAction). Dispatch key 'voice.sentimentScore'. Deterministic lexicon polarity scoring with negation + intensifier handling; reads artifact.data. overallScore = (pos-neg)/(pos+neg) clamped to [-1,1] (0 when no signals — never NaN); a non-string transcript is rejected. Result card renders overallScore/overallLabel/sentimentArc/segmentBreakdown{positive,negative,neutral,total} EXACTLY — the page's prior inline panel read score/label/confidence which were never returned (fixed 2026-06-28). Not assassin-driven (LENS_ACTION); authored spec pinned by server/tests/voice-lens-macros.test.js."
+}

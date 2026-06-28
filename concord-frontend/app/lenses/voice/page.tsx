@@ -247,9 +247,14 @@ export default function VoiceLensPage() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const formatTimestamp = (d: Date) => {
-    const h = d.getHours();
-    const m = d.getMinutes();
+  const formatTimestamp = (d: Date | string | number) => {
+    // Takes loaded from the artifact store carry an ISO STRING timestamp (JSON
+    // can't round-trip a Date), so coerce before calling Date methods — a raw
+    // string crashed formatTimestamp with `getHours is not a function`.
+    const dt = d instanceof Date ? d : new Date(d);
+    if (Number.isNaN(dt.getTime())) return '';
+    const h = dt.getHours();
+    const m = dt.getMinutes();
     const ampm = h >= 12 ? 'PM' : 'AM';
     return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${ampm}`;
   };
@@ -476,18 +481,20 @@ export default function VoiceLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8 sm:p-10">
+      <div role="status" aria-live="polite" className="flex items-center justify-center h-full p-8 sm:p-10">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading...</p>
+          <p className="text-sm text-gray-400">Loading recordings...</p>
         </div>
       </div>
     );
   }
 
   if (isError) {
+    // A failed feed surfaces a distinct error + a working Retry (refetch) — NOT
+    // a silent-empty "No takes yet" page. role=alert makes it assertive for AT.
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div role="alert" className="flex items-center justify-center h-full p-8">
         <ErrorState error={error?.message} onRetry={refetch} />
       </div>
     );
@@ -1022,13 +1029,17 @@ export default function VoiceLensPage() {
           <div className="bg-lattice-surface border border-lattice-border rounded p-2 space-y-1 text-xs">
             {voiceActionResult.action === 'transcriptAnalyze' && (() => {
               const r = voiceActionResult.result;
+              const fillers = (r.fillerWords && typeof r.fillerWords === 'object') ? r.fillerWords as Record<string, number> : {};
               return (
                 <div className="flex flex-wrap gap-3">
                   <span className="text-gray-400">Words: <span className="text-white">{String(r.wordCount ?? 0)}</span></span>
-                  <span className="text-gray-400">WPM: <span className="text-white">{String(r.wpm ?? 0)}</span></span>
-                  <span className="text-gray-400">Sentences: <span className="text-white">{String(r.sentences ?? 0)}</span></span>
-                  <span className="text-gray-400">Filler Words: <span className="text-white">{String(r.fillerWords ?? 0)}</span></span>
-                  <span className="text-gray-400">Duration: <span className="text-white">{String(r.durationSeconds ?? 0)}s</span></span>
+                  <span className="text-gray-400">Rate: <span className="text-white">{String(r.speakingRate ?? '—')}</span></span>
+                  <span className="text-gray-400">Sentences: <span className="text-white">{String(r.sentenceCount ?? 0)}</span></span>
+                  <span className="text-gray-400">Fillers: <span className="text-white">{String(r.totalFillers ?? 0)} ({String(r.fillerRate ?? '0%')})</span></span>
+                  <span className="text-gray-400">Vocab: <span className="text-white">{String(r.vocabularyRichness ?? '0%')}</span></span>
+                  {Object.entries(fillers).slice(0, 4).map(([k, v]) => (
+                    <span key={k} className="bg-amber-500/10 text-amber-200 px-1.5 py-0.5 rounded font-mono text-[10px]">{k} ×{String(v)}</span>
+                  ))}
                 </div>
               );
             })()}
@@ -1037,11 +1048,11 @@ export default function VoiceLensPage() {
               const speakers = Array.isArray(r.speakers) ? r.speakers as Array<Record<string, unknown>> : [];
               return (
                 <div className="space-y-1">
-                  <span className="text-gray-400">Speakers: <span className="text-white">{String(r.speakerCount ?? 0)}</span></span>
+                  <span className="text-gray-400">Speakers: <span className="text-white">{String(r.speakerCount ?? 0)}</span> · dominant <span className="text-white">{String(r.dominantSpeaker ?? '—')}</span></span>
                   {speakers.slice(0, 3).map((s, i) => (
                     <div key={i} className="flex justify-between bg-lattice-elevated px-2 py-0.5 rounded">
-                      <span className="text-gray-300">{String(s.label ?? `Speaker ${i + 1}`)}</span>
-                      <span className="text-gray-400">{String(s.duration ?? 0)}s ({String(s.share ?? 0)}%)</span>
+                      <span className="text-gray-300">{String(s.speaker ?? `Speaker ${i + 1}`)}</span>
+                      <span className="text-gray-400">{String(s.wordCount ?? 0)}w ({String(s.wordShare ?? 0)}%)</span>
                     </div>
                   ))}
                 </div>
@@ -1049,26 +1060,31 @@ export default function VoiceLensPage() {
             })()}
             {voiceActionResult.action === 'sentimentScore' && (() => {
               const r = voiceActionResult.result;
-              const score = Number(r.score ?? 0);
+              const score = Number(r.overallScore ?? 0);
               const scoreColor = score > 0.3 ? 'text-neon-green' : score < -0.3 ? 'text-red-400' : 'text-gray-300';
+              const breakdown = (r.segmentBreakdown && typeof r.segmentBreakdown === 'object') ? r.segmentBreakdown as Record<string, number> : {};
               return (
                 <div className="flex flex-wrap gap-3">
-                  <span className="text-gray-400">Overall: <span className={`font-semibold ${scoreColor}`}>{String(r.label ?? 'neutral')}</span></span>
+                  <span className="text-gray-400">Overall: <span className={`font-semibold ${scoreColor}`}>{String(r.overallLabel ?? 'neutral')}</span></span>
                   <span className="text-gray-400">Score: <span className="text-white">{score.toFixed(2)}</span></span>
-                  <span className="text-gray-400">Confidence: <span className="text-white">{String(r.confidence ?? 0)}</span></span>
+                  <span className="text-gray-400">Arc: <span className="text-white">{String(r.sentimentArc ?? '—')}</span></span>
+                  <span className="text-gray-400">Segments: <span className="text-white">+{String(breakdown.positive ?? 0)} / -{String(breakdown.negative ?? 0)} / ={String(breakdown.neutral ?? 0)}</span></span>
                 </div>
               );
             })()}
             {voiceActionResult.action === 'keywordSpot' && (() => {
               const r = voiceActionResult.result;
-              const keywords = Array.isArray(r.keywords) ? r.keywords as Array<Record<string, unknown>> : [];
+              const keywords = Array.isArray(r.topKeywords) ? r.topKeywords as Array<Record<string, unknown>> : [];
               return (
-                <div className="flex flex-wrap gap-1">
-                  {keywords.slice(0, 8).map((kw, i) => (
-                    <span key={i} className="bg-neon-purple/20 text-neon-purple px-1.5 py-0.5 rounded text-xs">
-                      {String(kw.word ?? kw)} ({String(kw.count ?? kw.frequency ?? 1)})
-                    </span>
-                  ))}
+                <div className="space-y-1">
+                  <span className="text-gray-400">Hits: <span className="text-white">{String(r.totalOccurrences ?? 0)}</span> · density <span className="text-white">{String(r.keywordDensity ?? '0%')}</span></span>
+                  <div className="flex flex-wrap gap-1">
+                    {keywords.slice(0, 8).map((kw, i) => (
+                      <span key={i} className="bg-neon-purple/20 text-neon-purple px-1.5 py-0.5 rounded text-xs">
+                        {String(kw.keyword ?? '')} ({String(kw.count ?? 0)})
+                      </span>
+                    ))}
+                  </div>
                 </div>
               );
             })()}

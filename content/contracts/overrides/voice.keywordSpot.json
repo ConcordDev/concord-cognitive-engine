@@ -1,0 +1,32 @@
+{
+  "macro_id": "voice.keywordSpot",
+  "domain": "voice",
+  "name": "keywordSpot",
+  "inputs": {
+    "transcript": { "type": "string", "maxLength": 40000 },
+    "text": { "type": "string", "maxLength": 40000 },
+    "keywords": { "type": "array" },
+    "contextRadius": { "type": "number" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && typeof output.result === 'object')",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalOccurrences)",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.keywordDensity === 'string'",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.topKeywords)",
+    "output.ok === false || output.result.message !== undefined || output.result.topKeywords.every(function(k){ return typeof k.keyword === 'string' && Number.isFinite(k.count) && Array.isArray(k.occurrences); })",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.notFound)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "transcript": "We will ship the release; the budget is a problem.", "keywords": ["release", "budget", "missing"], "contextRadius": 50 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "transcript": "alpha beta gamma", "keywords": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "transcript": "   ", "keywords": ["x"] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "transcript": "hit hit hit", "keywords": ["hit"], "contextRadius": "Infinity" } } }, "expect": { "ok": false } },
+    { "input": { "artifact": { "data": { "transcript": "hit", "keywords": ["hit"], "contextRadius": "1e999" } } }, "expect": { "ok": false } },
+    { "input": { "artifact": { "data": { "transcript": 12345, "keywords": ["x"] } } }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTION (registerLensAction). Dispatch key 'voice.keywordSpot'. Deterministic keyword spotting with regex-escaped word-boundary search + context snippets; reads artifact.data. FAIL-CLOSED: a non-finite or negative contextRadius (NaN/Infinity/'1e999') is rejected via Number.isFinite (no silent fallback); a non-string transcript is rejected. contextRadius governs snippet width around each hit. Result card renders totalOccurrences/keywordDensity('N%')/topKeywords[].{keyword,count} EXACTLY — the page's prior inline panel read keywords[].word/.frequency which were never returned (fixed 2026-06-28). Not assassin-driven (LENS_ACTION); authored spec pinned by server/tests/voice-lens-macros.test.js."
+}
