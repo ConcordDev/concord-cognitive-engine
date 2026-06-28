@@ -1,4 +1,78 @@
 export default function registerAviationActions(registerLensAction) {
+  // ── Weight & Balance shape normalizer ────────────────────────────
+  //
+  // The W&B editor (app/lenses/aviation/page.tsx#renderWBEditor) persists a
+  // FLAT artifact.data shape — emptyWeight/emptyArm + per-station
+  // <name>Weight/<name>Arm pairs (fuel/pilot/copilot/paxRow1/paxRow2/cargo/
+  // baggage) + maxGross/fwdCGLimit/aftCGLimit + a STRING `aircraft` (type
+  // label). The calculate-wb / validate-wb handlers were written to read a
+  // STRUCTURED shape — `aircraft: { emptyWeight, emptyArm, maxGrossWeight,
+  // cgEnvelope:{fwd,aft} }` + `loading: [{station,weight,arm}]`. The two
+  // never met, so the W&B Calculate button returned gross 0 / cg 0 for every
+  // input (a DEAD safety-critical calculator). This helper accepts BOTH:
+  // structured shape passes through; flat shape is folded into the same
+  // canonical { aircraft, loading } the math runs on. Non-finite numerics
+  // are dropped (treated as 0 weight / 0 arm) so a poisoned field never
+  // produces NaN/Infinity gross weight or CG.
+  const WB_STATIONS = [
+    ["fuel", "Fuel"], ["pilot", "Pilot"], ["copilot", "Copilot / Front PAX"],
+    ["paxRow1", "PAX Row 1"], ["paxRow2", "PAX Row 2"],
+    ["cargo", "Cargo"], ["baggage", "Baggage"],
+  ];
+  function _fin(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  function normalizeWBInput(artifact, params) {
+    const d = (artifact && artifact.data) || {};
+    const p = params || {};
+    const rawAircraft = d.aircraft ?? p.aircraft;
+    const rawLoading = d.loading ?? p.loading;
+    // Structured shape: aircraft is an object OR an explicit loading array exists.
+    const structured =
+      (rawAircraft && typeof rawAircraft === "object" && !Array.isArray(rawAircraft)) ||
+      Array.isArray(rawLoading);
+    if (structured) {
+      const acObj = (rawAircraft && typeof rawAircraft === "object") ? rawAircraft : {};
+      return {
+        aircraft: {
+          tailNumber: acObj.tailNumber ?? d.tailNumber ?? p.tailNumber ?? null,
+          emptyWeight: _fin(acObj.emptyWeight),
+          emptyArm: _fin(acObj.emptyArm),
+          maxGrossWeight: acObj.maxGrossWeight != null ? _fin(acObj.maxGrossWeight) : null,
+          cgEnvelope: acObj.cgEnvelope && typeof acObj.cgEnvelope === "object"
+            ? { fwd: _fin(acObj.cgEnvelope.fwd), aft: _fin(acObj.cgEnvelope.aft) }
+            : null,
+        },
+        loading: Array.isArray(rawLoading)
+          ? rawLoading.map((l) => ({
+              station: l.station != null ? String(l.station) : "Station",
+              weight: _fin(l.weight), arm: _fin(l.arm),
+            }))
+          : [],
+      };
+    }
+    // Flat editor shape — fold each <name>Weight/<name>Arm pair into a station.
+    const src = Object.keys(d).length ? d : p;
+    const loading = [];
+    for (const [key, label] of WB_STATIONS) {
+      const w = _fin(src[`${key}Weight`]);
+      const arm = _fin(src[`${key}Arm`]);
+      if (w !== 0 || arm !== 0) loading.push({ station: label, weight: w, arm });
+    }
+    const maxGross = src.maxGross ?? src.maxGrossWeight;
+    const fwd = src.fwdCGLimit ?? src.fwdCG;
+    const aft = src.aftCGLimit ?? src.aftCG;
+    const hasEnvelope = fwd != null || aft != null;
+    return {
+      aircraft: {
+        tailNumber: src.tailNumber ?? null,
+        emptyWeight: _fin(src.emptyWeight),
+        emptyArm: _fin(src.emptyArm),
+        maxGrossWeight: (maxGross != null && Number.isFinite(Number(maxGross))) ? _fin(maxGross) : null,
+        cgEnvelope: hasEnvelope ? { fwd: _fin(fwd), aft: _fin(aft) } : null,
+      },
+      loading,
+    };
+  }
+
   registerLensAction("aviation", "currencyCheck", (ctx, artifact, _params) => {
     const certifications = artifact.data?.certifications || [];
     const medicalExpiry = artifact.data?.medicalExpiry ? new Date(artifact.data.medicalExpiry) : null;
@@ -68,14 +142,25 @@ export default function registerAviationActions(registerLensAction) {
     const msPerHour = 3600000;
     const msPerDay = 86400000;
 
-    // Combine shifts and flights into duty periods
+    // Combine shifts and flights into duty periods. Coerce hours through
+    // Number() with a finite guard — a poisoned string like "NaN" is truthy
+    // and would slip past `||`, NaN-ing every downstream reduction.
+    const finiteHours = (...vals) => {
+      for (const v of vals) {
+        if (v == null) continue;
+        const n = Number(v);
+        if (Number.isFinite(n)) return n;
+      }
+      return 0;
+    };
     const dutyPeriods = [...shifts, ...flights]
       .filter(s => s.startTime || s.date)
       .map(s => {
         const start = new Date(s.startTime || s.date);
-        const hours = s.dutyHours || s.hobbsTime || s.hours || 0;
-        const end = s.endTime ? new Date(s.endTime) : new Date(start.getTime() + hours * msPerHour);
-        return { start, end, hours: hours || (end - start) / msPerHour };
+        const declared = finiteHours(s.dutyHours, s.hobbsTime, s.hours);
+        const end = s.endTime ? new Date(s.endTime) : new Date(start.getTime() + declared * msPerHour);
+        const spanHours = (end - start) / msPerHour;
+        return { start, end, hours: declared || (Number.isFinite(spanHours) ? spanHours : 0) };
       });
 
     // Current duty period (most recent)
@@ -218,13 +303,20 @@ export default function registerAviationActions(registerLensAction) {
 
   registerLensAction("aviation", "weatherCheck", (ctx, artifact, _params) => {
   try {
-    const wind = artifact.data?.wind || {};
-    const visibility = artifact.data?.visibility != null ? artifact.data.visibility : null;
-    const ceiling = artifact.data?.ceiling != null ? artifact.data.ceiling : null;
-    const conditions = artifact.data?.conditions || artifact.data?.weather || "clear";
-    const temperature = artifact.data?.temperature;
-    const dewpoint = artifact.data?.dewpoint;
-    const altimeter = artifact.data?.altimeter;
+    // Accept BOTH the structured `wind: { direction, speed, gust }` shape and
+    // the flat editor shape (windDirection / windSpeed / windGust) the
+    // Weather editor (renderWeatherEditor) actually persists — otherwise the
+    // METAR-format wind string read 000/00KT for every observation.
+    const d = artifact.data || {};
+    const wind = (d.wind && typeof d.wind === "object")
+      ? d.wind
+      : { direction: d.windDirection, speed: d.windSpeed, gust: d.windGust };
+    const visibility = d.visibility != null ? d.visibility : null;
+    const ceiling = d.ceiling != null ? d.ceiling : null;
+    const conditions = d.conditions || d.weather || d.wxConditions || "clear";
+    const temperature = d.temperature;
+    const dewpoint = d.dewpoint;
+    const altimeter = d.altimeter;
 
     // Determine flight category based on ceiling and visibility
     let flightCategory = "VFR";
@@ -254,8 +346,8 @@ export default function registerAviationActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        station: artifact.title || artifact.data?.station,
-        observedAt: artifact.data?.observedAt || new Date().toISOString(),
+        station: artifact.title || d.station || d.stationId,
+        observedAt: d.observedAt || d.observationTime || new Date().toISOString(),
         wind: windString,
         windComponents: { direction: wind.direction || 0, speed: wind.speed || 0, gust: wind.gust || null },
         visibility: visString,
@@ -295,8 +387,7 @@ export default function registerAviationActions(registerLensAction) {
    */
   registerLensAction("aviation", "calculate-wb", (ctx, artifact, params) => {
   try {
-    const ac = artifact.data?.aircraft || params?.aircraft || {};
-    const loading = artifact.data?.loading || params?.loading || [];
+    const { aircraft: ac, loading } = normalizeWBInput(artifact, params);
 
     const emptyWeight = Number(ac.emptyWeight) || 0;
     const emptyArm = Number(ac.emptyArm) || 0;
@@ -347,8 +438,7 @@ export default function registerAviationActions(registerLensAction) {
    */
   registerLensAction("aviation", "validate-wb", (ctx, artifact, params) => {
   try {
-    const ac = artifact.data?.aircraft || params?.aircraft || {};
-    const loading = artifact.data?.loading || params?.loading || [];
+    const { aircraft: ac, loading } = normalizeWBInput(artifact, params);
     const emptyWeight = Number(ac.emptyWeight) || 0;
     const emptyArm = Number(ac.emptyArm) || 0;
     const totalLoadWeight = loading.reduce((s, l) => s + (Number(l.weight) || 0), 0);
