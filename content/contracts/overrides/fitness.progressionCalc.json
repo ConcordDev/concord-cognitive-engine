@@ -1,0 +1,22 @@
+{
+  "macro_id": "fitness.progressionCalc",
+  "domain": "fitness",
+  "name": "progressionCalc",
+  "inputs": {
+    "exercises": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.recommendations)",
+    "output.ok === false || output.result.recommendations.every(r => Number.isFinite(r.recommendedWeight) && r.recommendedWeight >= 0)",
+    "output.ok === false || output.result.recommendations.every(r => ['increase_weight','maintain','reduce_weight'].includes(r.recommendation))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "exercises": [{ "name": "squat", "weight": 100, "reps": 5, "rpe": 6 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "exercises": [{ "name": "x", "weight": "1e999", "reps": "Infinity", "rpe": "NaN" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "exercises": [] } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS (path-3) handler; dispatch key 'fitness.progressionCalc'. Returns { recommendations[].{exercise,currentWeight,currentReps,currentRPE,recommendedWeight,recommendation} }. POISON CONTRACT: ffnum() guarantees recommendedWeight is finite + Math.max(0,…)-floored even on poisoned weight/rpe; recommendation is one of three RPE-gated enum strings. Pinned by server/tests/fitness-lens-macros.test.js. Path-3-only → node:test is the real enforcement."
+}
