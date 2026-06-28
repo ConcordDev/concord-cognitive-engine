@@ -61,7 +61,16 @@ export function AQIPanel({ lat, lng }: AQIPanelProps) {
           domain: 'eco', action: 'aqi-current',
           input: { lat: coords.lat, lng: coords.lng },
         });
-        setData(res.data?.result as AQIData || null);
+        // /api/lens/run single-unwraps: a handler rejection arrives as
+        // res.data.result = { ok:false, error }. Surface it (the panel renders
+        // the error branch) instead of crashing on data.lat.toFixed().
+        const node = res.data?.result as (AQIData & { ok?: boolean; error?: string }) | null;
+        if (node && node.ok === false) {
+          setError(node.error || 'Air-quality source unavailable.');
+          setData(null);
+        } else {
+          setData((node as AQIData) || null);
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'fetch failed');
       } finally { setLoading(false); }

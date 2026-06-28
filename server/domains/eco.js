@@ -89,8 +89,10 @@ export default function registerEcoActions(registerLensAction) {
 
     for (const activity of activities) {
       const key = `${activity.category}_${activity.type}`.toLowerCase().replace(/\s+/g, "_");
-      const factor = emissionFactors[key] || activity.emissionFactor || 0;
-      const quantity = activity.quantity || 0;
+      // Fail-CLOSED: a poisoned Infinity/NaN/1e999 factor or quantity must never
+      // leak into the totals. Coerce both to finite, non-negative numbers.
+      const factor = finiteNum(emissionFactors[key] ?? activity.emissionFactor, 0, { min: 0 });
+      const quantity = finiteNum(activity.quantity, 0, { min: 0 });
       const emissions = quantity * factor;
       const scope = activity.scope || inferScope(activity.category, activity.type);
 
@@ -126,8 +128,8 @@ export default function registerEcoActions(registerLensAction) {
     let totalOffsets = 0;
     const processedOffsets = offsets.map(o => {
       const key = `${o.type}_${o.unit}`.toLowerCase().replace(/\s+/g, "_");
-      const factor = offsetFactors[key] || o.offsetFactor || 0;
-      const offsetAmount = (o.quantity || 0) * factor;
+      const factor = finiteNum(offsetFactors[key] ?? o.offsetFactor, 0, { min: 0 });
+      const offsetAmount = finiteNum(o.quantity, 0, { min: 0 }) * factor;
       totalOffsets += offsetAmount;
       return {
         type: o.type,
@@ -193,10 +195,15 @@ export default function registerEcoActions(registerLensAction) {
     if (Array.isArray(artifact.data?.observations)) {
       for (const obs of artifact.data.observations) {
         const name = obs.species || obs.name || "unknown";
-        speciesCounts[name] = (speciesCounts[name] || 0) + (obs.count || 1);
+        // Fail-CLOSED: a poisoned Infinity/NaN/1e999 count is clamped to a
+        // finite, non-negative integer so the diversity indices never go NaN.
+        const c = finiteNum(obs.count, 1, { min: 0, integer: true });
+        speciesCounts[name] = (speciesCounts[name] || 0) + c;
       }
     } else if (artifact.data?.species) {
-      speciesCounts = { ...artifact.data.species };
+      for (const [k, v] of Object.entries(artifact.data.species)) {
+        speciesCounts[k] = finiteNum(v, 0, { min: 0, integer: true });
+      }
     } else {
       return { ok: true, result: { message: "No species data provided." } };
     }
@@ -597,16 +604,10 @@ export default function registerEcoActions(registerLensAction) {
         },
       };
     } catch (e) {
-      const fallback = 42;
-      return {
-        ok: true,
-        result: {
-          aqi: fallback, pm25: 8, pm10: 14, o3: 60, no2: 12, co: 0.4, so2: 2,
-          category: 'good', recommendation: "Air quality good (fallback estimate).",
-          source: `fallback (${e?.message || 'network unavailable'})`,
-          lat, lng,
-        },
-      };
+      // Per "everything must be real": Open-Meteo is the real source; a network
+      // failure surfaces honestly rather than fabricating a plausible AQI. The
+      // AQIPanel renders this as an error, not a silent fake reading.
+      return { ok: false, error: `Open-Meteo air-quality unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
 
@@ -710,11 +711,13 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
    */
   registerLensAction("eco", "energy-estimate", (_ctx, _artifact, params = {}) => {
   try {
-    const lat = Number(params.lat) || 0;
-    const lng = Number(params.lng) || 0;
-    const systemKw = Math.max(0.1, Number(params.systemKw) || 5);
-    const tilt = Math.min(89, Math.max(0, Number(params.tilt) || 30));
-    const azimuth = params.azimuth != null ? Number(params.azimuth) : 180;
+    // Fail-CLOSED: every numeric is coerced to a finite value within physical
+    // bounds, so a poisoned Infinity/NaN/1e999 never leaks into the kWh totals.
+    const lat = finiteNum(params.lat, 0, { min: -90, max: 90 });
+    const lng = finiteNum(params.lng, 0, { min: -180, max: 180 });
+    const systemKw = finiteNum(params.systemKw, 5, { min: 0.1, max: 1e6 });
+    const tilt = finiteNum(params.tilt, 30, { min: 0, max: 89 });
+    const azimuth = params.azimuth != null ? finiteNum(params.azimuth, 180, { min: 0, max: 360 }) : 180;
 
     // Baseline daily insolation (kWh/m²/day) — NREL average for the US is
     // ~4.5; we modulate by absolute latitude (higher = lower) and seasonal
@@ -1320,6 +1323,20 @@ function categoriseAqi(aqi) {
 }
 
 function clamp01(n) { return Math.max(0, Math.min(1, n)); }
+
+// finiteNum — the fail-CLOSED numeric coercion every eco calc routes user
+// numbers through. parseFloat/Number admit Infinity (from "1e999") and NaN
+// (from "not-a-number") silently; this rejects both, falls back to `fallback`,
+// then clamps into [min, max]. With `integer:true` the result is floored.
+// Guarantees a finite return for ALL inputs so no calc can leak Infinity/NaN.
+function finiteNum(v, fallback = 0, { min = -Infinity, max = Infinity, integer = false } = {}) {
+  let n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) n = fallback;
+  if (n < min) n = min;
+  if (n > max) n = max;
+  if (integer) n = Math.floor(n);
+  return n;
+}
 
 function extractJson(text) {
   if (!text) return null;

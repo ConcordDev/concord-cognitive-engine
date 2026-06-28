@@ -48,7 +48,16 @@ export function SpeciesIdentifier({ onAccept }: SpeciesIdentifierProps) {
         domain: 'eco', action: 'species-identify',
         input: { imageDataUrl: dataUrl },
       });
-      const items = (res.data?.result?.suggestions || []) as SpeciesSuggestion[];
+      // /api/lens/run single-unwraps: a handler rejection arrives as
+      // res.data.result = { ok:false, error }. Surface it rather than reading a
+      // missing .suggestions and masking the real failure as "no species".
+      const node = res.data?.result as { ok?: boolean; error?: string; suggestions?: SpeciesSuggestion[] } | null;
+      if (node && node.ok === false) {
+        setSuggestions([]);
+        setError(node.error || 'Species identification failed.');
+        return;
+      }
+      const items = (node?.suggestions || []) as SpeciesSuggestion[];
       setSuggestions(items);
       if (items.length === 0) setError('No species identified. Try a clearer or closer shot.');
     } catch (e) {

@@ -1,0 +1,26 @@
+{
+  "macro_id": "eco.sustainabilityScore",
+  "domain": "eco",
+  "name": "sustainabilityScore",
+  "inputs": {
+    "indicators": { "type": "object", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.overallScore === null || Number.isFinite(output.result.overallScore)",
+    "output.ok === false || (typeof output.result.maturityLevel === 'string' && typeof output.result.pillars === 'object')",
+    "output.ok === false || Number.isFinite(output.result.dataCompleteness)",
+    "output.ok === false || Array.isArray(output.result.recommendations)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "indicators": { "environmental": { "emissions": 80, "energyEfficiency": 80, "wasteReduction": 80, "waterUsage": 80, "biodiversity": 80 }, "social": { "laborPractices": 60 }, "governance": { "transparency": 40 } } }, "expect": { "ok": true } },
+    { "input": { "indicators": { "environmental": { "emissions": "Infinity", "energyEfficiency": "1e999", "wasteReduction": -50 } } }, "expect": { "ok": true } },
+    { "input": { "indicators": { "environmental": { "emissions": "NaN" } } }, "expect": { "ok": true } },
+    { "input": { "indicators": {} }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (registerLensAction; path-3). The /lenses/eco Sustainability Score button drives this; handler reads artifact.data.indicators.{environmental,social,governance}. Each sub-indicator is a 0-100 score; pillar weights default {environmental:0.4,social:0.35,governance:0.25} (override via params.weights). Returns {overallScore,maturityLevel,overallRating,pillars,strengths,weaknesses,recommendations,dataCompleteness}. POISON: each indicator goes through Math.max(0,Math.min(100,Number(value))) with a !isNaN guard, so Infinity/'1e999' clamp to 100 and 'NaN'/missing read as not-reported (score:null) — the overall score is null or finite, never NaN. Pinned by server/tests/eco-lens-macros.test.js."
+}

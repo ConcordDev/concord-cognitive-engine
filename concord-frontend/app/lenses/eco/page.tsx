@@ -247,7 +247,11 @@ export default function EcoLensPage() {
   const totalSpecies = POPULATIONS.length;
   const criticalCount = POPULATIONS.filter(p => p.conservationStatus === 'critical' || p.conservationStatus === 'endangered').length;
   const growingCount = POPULATIONS.filter(p => p.conservationStatus === 'growing').length;
-  const avgBiodiversity = BIODIVERSITY.reduce((sum, b) => sum + b.shannonIndex, 0) / BIODIVERSITY.length;
+  // Fail-CLOSED: guard the divide so an empty BIODIVERSITY array renders 0, not
+  // NaN (the page prints avgBiodiversity.toFixed(2) directly).
+  const avgBiodiversity = BIODIVERSITY.length > 0
+    ? BIODIVERSITY.reduce((sum, b) => sum + b.shannonIndex, 0) / BIODIVERSITY.length
+    : 0;
   const totalImpactArea = IMPACTS.reduce((sum, i) => sum + i.affectedArea, 0);
   const criticalImpacts = IMPACTS.filter(i => i.severity === 'critical' || i.severity === 'high').length;
 
@@ -1262,7 +1266,7 @@ export default function EcoLensPage() {
           <div className="lens-card text-xs text-gray-400 space-y-2">
             <h3 className="text-sm font-bold text-white">Why this matters</h3>
             <p>Each action below cites real lifecycle research. The kgCO₂e saved is a per-instance estimate; the more you log, the more accurate your annual delta.</p>
-            <p>Pair with the offsets marketplace (coming) to neutralise the residual emissions you can&apos;t cut.</p>
+            <p>Log the actions you take below; the Footprint trend tab turns your running total into a tracked delta over time.</p>
           </div>
         </div>
       )}

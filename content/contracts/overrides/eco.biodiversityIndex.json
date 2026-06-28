@@ -1,0 +1,26 @@
+{
+  "macro_id": "eco.biodiversityIndex",
+  "domain": "eco",
+  "name": "biodiversityIndex",
+  "inputs": {
+    "observations": { "type": "array", "required": false },
+    "species": { "type": "object", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.speciesRichness) && Number.isFinite(output.result.totalIndividuals))",
+    "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.diversityIndices.shannonH) && Number.isFinite(output.result.diversityIndices.simpsonsD) && Number.isFinite(output.result.diversityIndices.shannonEvenness))",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.rankAbundance)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "species": { "a": 25, "b": 25, "c": 25, "d": 25 } }, "expect": { "ok": true } },
+    { "input": { "observations": [{ "species": "oak", "count": 50 }, { "species": "oak", "count": 50 }, { "species": "fern", "count": 1 }] }, "expect": { "ok": true } },
+    { "input": { "species": { "a": "Infinity", "b": "1e999" } }, "expect": { "ok": true } },
+    { "input": { "observations": [{ "species": "x", "count": "NaN" }] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (registerLensAction; path-3). The /lenses/eco Biodiversity Index button drives this; handler reads artifact.data.observations (array of {species,count}) OR artifact.data.species (object speciesName→count). Returns {speciesRichness,totalIndividuals,diversityIndices:{shannonH,shannonHMax,shannonEvenness,simpsonsD,simpsonsDiversity,simpsonsReciprocal,bergerParkerDominance},richnessIndices,diversityLabel,evennessLabel,dominantSpecies,rareSpecies,rankAbundance,rarefactionCurve} OR {message} when no data. POISON: finiteNum(...,{min:0,integer:true}) clamps every per-species count to a finite non-negative integer so Shannon/Simpson/rarefaction never go NaN/Infinity. Pinned by server/tests/eco-lens-macros.test.js."
+}

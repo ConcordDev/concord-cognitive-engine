@@ -1,0 +1,25 @@
+{
+  "macro_id": "eco.carbonFootprint",
+  "domain": "eco",
+  "name": "carbonFootprint",
+  "inputs": {
+    "activities": { "type": "array", "required": false },
+    "offsets": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || (Number.isFinite(output.result.totalEmissionsKgCO2e) && Number.isFinite(output.result.netEmissionsKgCO2e) && Number.isFinite(output.result.totalOffsetsKgCO2e))",
+    "output.ok === false || output.result.message !== undefined || (typeof output.result.carbonNeutral === 'boolean' && Array.isArray(output.result.categoryBreakdown) && Array.isArray(output.result.activities))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "activities": [{ "category": "electricity", "type": "kwh", "quantity": 1000 }, { "category": "beef", "type": "kg", "quantity": 10 }] }, "expect": { "ok": true } },
+    { "input": { "activities": [{ "category": "electricity", "type": "kwh", "quantity": "Infinity" }, { "category": "beef", "type": "kg", "quantity": "1e999" }] }, "expect": { "ok": true } },
+    { "input": { "activities": [{ "category": "x", "type": "y", "quantity": -5, "emissionFactor": "NaN" }] }, "expect": { "ok": true } },
+    { "input": { "activities": [{ "category": "car", "type": "km", "quantity": 100 }], "offsets": [{ "type": "tree_planting", "unit": "tree", "quantity": "Infinity" }] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (registerLensAction; path-3, virtualArtifact.data === input). The /lenses/eco AI Eco Analysis panel drives this via useRunArtifact → POST /api/lens/eco/:id/run; handler reads artifact.data.activities / .offsets. Returns {totalEmissionsKgCO2e,totalEmissionsTonneCO2e,totalOffsetsKgCO2e,netEmissionsKgCO2e,offsetPercentage,carbonNeutral,scopeBreakdown,categoryBreakdown,equivalencies,activities,offsets} OR {message} when no activities. POISON: finiteNum() coerces every per-activity factor + quantity (and offset factor + quantity) to a finite, non-negative number so a poisoned Infinity/NaN/'1e999' quantity NEVER leaks Infinity/NaN into the totals or breakdowns. Pinned by server/tests/eco-lens-macros.test.js."
+}

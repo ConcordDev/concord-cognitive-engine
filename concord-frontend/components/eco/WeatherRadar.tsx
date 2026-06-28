@@ -90,7 +90,16 @@ export function WeatherRadar({ lat, lng, locationLabel }: WeatherRadarProps) {
           domain: 'eco', action: 'weather-forecast',
           input: { lat: coords.lat, lng: coords.lng },
         });
-        setData(res.data?.result as ForecastData || null);
+        // /api/lens/run single-unwraps: a handler rejection (e.g. Open-Meteo
+        // unreachable) arrives as res.data.result = { ok:false, error }. Surface
+        // it so the error branch renders instead of crashing on data.current.
+        const node = res.data?.result as (ForecastData & { ok?: boolean; error?: string }) | null;
+        if (node && node.ok === false) {
+          setError(node.error || 'Weather source unavailable.');
+          setData(null);
+        } else {
+          setData((node as ForecastData) || null);
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'fetch failed');
       } finally { setLoading(false); }
