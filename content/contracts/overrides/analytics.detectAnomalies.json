@@ -1,0 +1,28 @@
+{
+  "macro_id": "analytics.detectAnomalies",
+  "domain": "analytics",
+  "name": "detectAnomalies",
+  "inputs": {
+    "dataPoints": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.mean)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.stdDev)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalPoints)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.anomaliesFound)",
+    "output.ok === false || output.result.message !== undefined || (Array.isArray(output.result.anomalies) && output.result.anomalies.every(function(a){ return Number.isFinite(a.value) && Number.isFinite(a.zScore) && typeof a.date === 'string'; }))",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "dataPoints": [] }, "expect": { "ok": true } },
+    { "input": { "dataPoints": [{ "date": "d1", "value": 10 }, { "date": "d2", "value": 11 }, { "date": "d3", "value": 9 }, { "date": "d4", "value": 50 }, { "date": "d5", "value": 10 }] }, "expect": { "ok": true } },
+    { "input": { "dataPoints": [{ "value": "1e999" }, { "value": "Infinity" }, { "value": "NaN" }, { "value": 1 }, { "value": 2 }] }, "expect": { "ok": true } },
+    { "input": { "dataPoints": [{ "value": 5 }, { "value": 5 }, { "value": 5 }, { "value": 5 }, { "value": 5 }] }, "expect": { "ok": true } },
+    { "input": { "dataPoints": "nope" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'analytics.detectAnomalies'. Component sends {artifact:{data:{dataPoints:[{date,value}]}}}. Returns {mean,stdDev,totalPoints,anomaliesFound,anomalies:[{date,value,zScore,isAnomaly,direction}],threshold}. POISON (the real bug fixed): parseFloat('1e999')/parseFloat('Infinity')=Infinity (truthy → bare ||0 misses it) → mean/stdDev=Infinity → JSON null → blank render. finNum collapses non-finite to 0 so every value stays FINITE; safeRound never emits Infinity/NaN. Pinned by server/tests/analytics-lens-macros.test.js."
+}

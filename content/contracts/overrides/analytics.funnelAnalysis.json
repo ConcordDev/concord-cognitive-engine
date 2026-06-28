@@ -1,0 +1,26 @@
+{
+  "macro_id": "analytics.funnelAnalysis",
+  "domain": "analytics",
+  "name": "funnelAnalysis",
+  "inputs": {
+    "stages": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.stages)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.overallConversion)",
+    "output.ok === false || output.result.message !== undefined || output.result.stages.every(function(s){ return Number.isFinite(s.count) && Number.isFinite(s.dropoff) && Number.isFinite(s.conversionFromTop) && typeof s.stage === 'string'; })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "stages": [] }, "expect": { "ok": true } },
+    { "input": { "stages": [{ "name": "Visit", "count": 1000 }, { "name": "Signup", "count": 400 }, { "name": "Buy", "count": 80 }] }, "expect": { "ok": true } },
+    { "input": { "stages": [{ "name": "A", "count": "1e999" }, { "name": "B", "count": "Infinity" }] }, "expect": { "ok": true } },
+    { "input": { "stages": [{ "name": "A", "count": "NaN" }, { "name": "B", "count": 0 }] }, "expect": { "ok": true } },
+    { "input": { "stages": "nope" }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'analytics.funnelAnalysis'. Component (AnalyticsActionPanel.tsx) sends {artifact:{data:{stages:[{name,count}]}}} → dispatch peels one wrapper → artifact.data = {stages:[...]}. Returns {stages:[{stage,count,dropoff,conversionFromTop}],overallConversion,worstDropoff,worstDropoffRate}. POISON: count via finInt so '1e999'/'Infinity'/'NaN' collapse to a FINITE int; non-array stages degrades to a guidance message instead of throwing. Pinned by server/tests/analytics-lens-macros.test.js."
+}
