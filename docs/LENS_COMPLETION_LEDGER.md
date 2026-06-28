@@ -523,6 +523,25 @@ re-ran the 4 cut-off lenses + analytics, all completed cleanly:
 Assassin ratchet GREEN; 258 WIRED; tsc 0.
 63 lenses now through the non-score gate (batches 1–15). The loop continues.
 
+### Phase-2 batch 16 DONE (2026-06-28): collab, commonsense, creative, education, telecommunications
+121 server + 30 UX-state tests.
+- **creative**: all 4 producer-bench calcs DEAD (output mismatch + distributionChecklist sent a 2-key
+  {artifact:{data},platform} body the sole-key peel correctly DOESN'T touch → fixed at component). 13+6+4.
+- **education**: all 4 EducationActionPanel surfaces DEAD (fabricated field names) + 2 wrong input keys
+  (gradeLevel→grade, text→source) + eduFinite fail-closed. 16+5+4.
+- **commonsense**: 2 dead surfaces (plausibilityCheck statement.text + analogyMapping, both-way). 16+7+5.
+- **collab**: clean field alignment, 3 fail-open poisoned-numeric leaks + a11y. 21+5+4.
+- **telecommunications**: CLEAN BILL (both surfaces field-exact), a11y only. 46+5+6.
+Assassin ratchet GREEN; 258 WIRED; tsc 0.
+**RECURRING STRUCTURAL ITEM (flagged, deferred):** several lens pages have an inline "<Domain> Actions"
+panel driven by `useRunArtifact` → `/api/lens/:domain/:id/run` (lens.run) that passes a STORED artifact
+with no calculator-shaped input → those buttons hit the handler's degrade-graceful {message} path and
+render an "Action completed." fallback (collab → zeroed cards; commonsense → message fallback). NOT a
+field mismatch or crash; the real calculator UX is the canonical *ActionPanel (now fixed). A proper fix
+needs a server.js input-passthrough change to the lens.run stored-artifact dispatch — out of per-lens
+scope; batch it separately.
+69 lenses now through the non-score gate (batches 1–16). The loop continues.
+
 **NAMED PHASE-2 BACKLOG CLOSED (2026-06-27):** all 6 batches done (24 lenses through the non-score
 gate across batches 1–6). Real defects fixed across the run: 2 CC money bugs (sponsorship.create,
 inheritance value/open_listing) + 1 in-game-currency treasury fail-open (kingdoms) + ~6 numeric
