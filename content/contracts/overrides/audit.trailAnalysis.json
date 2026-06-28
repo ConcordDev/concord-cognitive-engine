@@ -1,0 +1,25 @@
+{
+  "macro_id": "audit.trailAnalysis",
+  "domain": "audit",
+  "name": "trailAnalysis",
+  "inputs": {
+    "trail": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.totalEvents)",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.anomalies)",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.userActivitySummary)",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.suspiciousPatterns)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "trail": [{ "sequenceNumber": 1, "timestamp": "2026-01-01T00:00:00Z", "actor": "alice", "action": "create", "hash": "h1" }, { "sequenceNumber": 3, "timestamp": "2026-01-01T00:01:00Z", "actor": "bob", "action": "update", "previousHash": "WRONG" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "trail": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "trail": [{ "sequenceNumber": 1, "timestamp": "not-a-date", "actor": "a", "action": "x" }, { "sequenceNumber": 2, "timestamp": "also-bad", "actor": "a", "action": "y" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. Detects sequence gaps, out-of-order timestamps, hash-chain breaks, unauthorized actors, duplicate sequence numbers, and statistical time gaps. Result card renders totalEvents / anomalies[].{event,user,reason} / userActivitySummary[].{user,eventCount} / suspiciousPatterns[] EXACTLY (the prior totalEntries/issues/actorSummary fields were NOT what the card read → the trail card was blank; fixed 2026-06-28; originals retained for parity + provenance). anomalies flatten each detected issue and resolve the actor from the issue's sequenceNumber when absent. Bad timestamps are NaN-guarded (isNaN checks) so timeAnalysis never leaks NaN. Empty trail returns an honest empty-shape message."
+}

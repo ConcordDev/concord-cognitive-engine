@@ -1,0 +1,27 @@
+{
+  "macro_id": "audit.riskScore",
+  "domain": "audit",
+  "name": "riskScore",
+  "inputs": {
+    "controls": { "type": "array" },
+    "inherentRisks": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.auditRisk)",
+    "output.ok === false || typeof output.result.riskLevel === 'string'",
+    "output.ok === false || Number.isFinite(output.result.overallControlRisk)",
+    "output.ok === false || Number.isFinite(output.result.detectionRisk)",
+    "output.ok === false || Number.isFinite(output.result.inherentRisk)",
+    "output.ok === false || Array.isArray(output.result.controls)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "controls": [{ "id": "c1", "name": "Firewall", "effectiveness": 0.9 }, { "id": "c2", "name": "MFA", "effectiveness": 0.8 }], "inherentRisks": [{ "id": "ir1", "name": "Data breach", "likelihood": 0.5, "impact": 0.8, "category": "security" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "controls": [], "inherentRisks": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "controls": [{ "id": "c", "name": "c", "effectiveness": "12abc" }], "inherentRisks": [{ "id": "i", "name": "i", "likelihood": "NaN", "impact": "Infinity" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. Audit risk model AR = IR x CR x DR: inherentRisk = mean(likelihood*impact); overallControlRisk = 1 - product(effectiveness); detectionRisk = 1 - mean(effectiveness). Result card renders flat auditRisk/riskLevel/overallControlRisk/detectionRisk/inherentRisk + controls[].{id,name,adjustedEffectiveness,controlRisk,observedEffectiveness} EXACTLY (the prior nested components{} + controlResults were NOT what the flat card read; fixed 2026-06-28; the nested components{} + controlResults are retained for parity + provenance — controls is an alias of controlResults). Fail-CLOSED numerics: prob() = Number()+Number.isFinite+clamp[0,1], so 'Infinity'/'NaN'/'12abc' fall to 0 (parseFloat would have leaked Infinity -> NaN auditRisk, or silently accepted the '12abc' prefix as 12). riskLevel = bayesianAdjustedRisk >=0.6 high / >=0.3 medium / else low."
+}
