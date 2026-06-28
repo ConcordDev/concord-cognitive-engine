@@ -6,13 +6,24 @@
 
 const USASPENDING_API = "https://api.usaspending.gov/api/v2";
 
+// Fail-closed numeric coercion: returns the parsed value ONLY when it is a
+// finite number; otherwise the supplied fallback. Unlike `parseFloat(x) || d`,
+// this rejects Infinity/-Infinity (parseFloat("Infinity") === Infinity, which
+// is truthy and would leak into rendered numbers) and clamps below at 0 by
+// default so a poisoned payload can never divide-by-zero or emit NaN/Infinity.
+function finiteNum(v, fallback, { min = -Infinity, max = Infinity } = {}) {
+  const n = typeof v === "number" ? v : parseFloat(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
 export default function registerDefenseActions(registerLensAction) {
   registerLensAction("defense", "threatAssessment", (ctx, artifact, _params) => {
-    const threats = artifact.data?.threats || [];
+    const threats = Array.isArray(artifact.data?.threats) ? artifact.data.threats : [];
     if (threats.length === 0) return { ok: true, result: { message: "Add threats with likelihood and impact to assess." } };
-    const assessed = threats.map(t => {
-      const likelihood = parseFloat(t.likelihood) || 0.5;
-      const impact = parseFloat(t.impact) || 0.5;
+    const assessed = threats.filter(t => t && typeof t === "object").map(t => {
+      const likelihood = finiteNum(t.likelihood, 0.5, { min: 0, max: 1 });
+      const impact = finiteNum(t.impact, 0.5, { min: 0, max: 1 });
       const riskScore = Math.round(likelihood * impact * 100);
       return { threat: t.name || t.description, category: t.category || "general", likelihood: Math.round(likelihood * 100), impact: Math.round(impact * 100), riskScore, severity: riskScore >= 60 ? "critical" : riskScore >= 40 ? "high" : riskScore >= 20 ? "medium" : "low", mitigation: t.mitigation || "Develop response plan" };
     }).sort((a, b) => b.riskScore - a.riskScore);
@@ -20,14 +31,17 @@ export default function registerDefenseActions(registerLensAction) {
   });
   registerLensAction("defense", "readinessScore", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const personnel = parseInt(data.personnelReady) || 0;
-    const personnelTotal = parseInt(data.personnelTotal) || 1;
-    const equipment = parseInt(data.equipmentOperational) || 0;
-    const equipmentTotal = parseInt(data.equipmentTotal) || 1;
-    const training = parseFloat(data.trainingCompletionPercent) || 0;
-    const supplies = parseFloat(data.suppliesPercent) || 0;
-    const personnelReady = Math.round((personnel / personnelTotal) * 100);
-    const equipmentReady = Math.round((equipment / equipmentTotal) * 100);
+    // Fail-closed: every metric is finite-clamped. Totals floor at 1 so the
+    // ratio never divides by zero; counts/percents clamp into sane ranges so a
+    // poisoned Infinity/NaN can't leak into any rendered readiness number.
+    const personnel = finiteNum(data.personnelReady, 0, { min: 0 });
+    const personnelTotal = finiteNum(data.personnelTotal, 1, { min: 1 });
+    const equipment = finiteNum(data.equipmentOperational, 0, { min: 0 });
+    const equipmentTotal = finiteNum(data.equipmentTotal, 1, { min: 1 });
+    const training = finiteNum(data.trainingCompletionPercent, 0, { min: 0, max: 100 });
+    const supplies = finiteNum(data.suppliesPercent, 0, { min: 0, max: 100 });
+    const personnelReady = Math.min(100, Math.round((personnel / personnelTotal) * 100));
+    const equipmentReady = Math.min(100, Math.round((equipment / equipmentTotal) * 100));
     const overall = Math.round(personnelReady * 0.3 + equipmentReady * 0.3 + training * 0.2 + supplies * 0.2);
     return { ok: true, result: { personnelReadiness: personnelReady, equipmentReadiness: equipmentReady, trainingCompletion: training, supplyLevel: supplies, overallReadiness: overall, status: overall >= 80 ? "combat-ready" : overall >= 60 ? "operationally-ready" : overall >= 40 ? "limited-readiness" : "not-ready", gaps: [personnelReady < 80 ? "Personnel" : null, equipmentReady < 80 ? "Equipment" : null, training < 80 ? "Training" : null, supplies < 80 ? "Supplies" : null].filter(Boolean) } };
   });
@@ -39,11 +53,11 @@ export default function registerDefenseActions(registerLensAction) {
     return { ok: true, result: { incidentType: incident.type || "unspecified", severity, responseTime: protocol.responseTime, escalationLevel: protocol.escalation, immediateActions: protocol.actions, logEntry: { time: new Date().toISOString(), type: incident.type, severity, location: incident.location || "unspecified", reporter: incident.reporter || ctx?.userId || "system" } } };
   });
   registerLensAction("defense", "resourceAllocation", (ctx, artifact, _params) => {
-    const resources = artifact.data?.resources || [];
-    const missions = artifact.data?.missions || [];
+    const resources = Array.isArray(artifact.data?.resources) ? artifact.data.resources : [];
+    const missions = Array.isArray(artifact.data?.missions) ? artifact.data.missions : [];
     if (resources.length === 0) return { ok: true, result: { message: "Add resources and missions to optimize allocation." } };
-    const allocated = missions.map(m => {
-      const required = m.resourcesNeeded || 1;
+    const allocated = missions.filter(m => m && typeof m === "object").map(m => {
+      const required = finiteNum(m.resourcesNeeded, 1, { min: 1, max: 100000 });
       const priority = m.priority || "medium";
       return { mission: m.name, priority, resourcesNeeded: required, resourcesAssigned: 0, status: "unallocated" };
     }).sort((a, b) => { const p = { critical: 0, high: 1, medium: 2, low: 3 }; return (p[a.priority] ?? 2) - (p[b.priority] ?? 2); });

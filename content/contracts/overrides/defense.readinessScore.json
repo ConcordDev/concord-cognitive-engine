@@ -1,0 +1,33 @@
+{
+  "macro_id": "defense.readinessScore",
+  "domain": "defense",
+  "name": "readinessScore",
+  "inputs": {
+    "personnelReady": { "type": "number" },
+    "personnelTotal": { "type": "number" },
+    "equipmentOperational": { "type": "number" },
+    "equipmentTotal": { "type": "number" },
+    "trainingCompletionPercent": { "type": "number" },
+    "suppliesPercent": { "type": "number" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.personnelReadiness)",
+    "output.ok === false || Number.isFinite(output.result.equipmentReadiness)",
+    "output.ok === false || Number.isFinite(output.result.trainingCompletion)",
+    "output.ok === false || Number.isFinite(output.result.supplyLevel)",
+    "output.ok === false || Number.isFinite(output.result.overallReadiness)",
+    "output.ok === false || (output.result.overallReadiness >= 0 && output.result.overallReadiness <= 100)",
+    "output.ok === false || ['combat-ready','operationally-ready','limited-readiness','not-ready'].includes(output.result.status)",
+    "output.ok === false || Array.isArray(output.result.gaps)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "personnelReady": 85, "personnelTotal": 100, "equipmentOperational": 40, "equipmentTotal": 50, "trainingCompletionPercent": 70, "suppliesPercent": 90 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "personnelReady": 0, "personnelTotal": 100, "equipmentOperational": 0, "equipmentTotal": 100, "trainingCompletionPercent": 0, "suppliesPercent": 0 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "personnelReady": "Infinity", "personnelTotal": 0, "equipmentOperational": "NaN", "equipmentTotal": "abc", "trainingCompletionPercent": 9999, "suppliesPercent": -50 } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data (DefenseActionPanel.callMacro channel: runDomain → {input:{artifact:{data}}} peeled at dispatch). overall = personnelReady×0.3 + equipmentReady×0.3 + training×0.2 + supplies×0.2. Status bands: >=80 combat-ready, >=60 operationally-ready, >=40 limited-readiness, else not-ready. Fail-closed: every metric goes through finiteNum (rejects NaN/Infinity incl. parseFloat('Infinity'); totals floor at 1 so no divide-by-zero; percents clamp 0..100) so no NaN/Infinity can leak into a rendered number. Result card renders personnelReadiness/equipmentReadiness/trainingCompletion/supplyLevel/overallReadiness/status/gaps EXACTLY."
+}

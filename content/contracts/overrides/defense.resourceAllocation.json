@@ -1,0 +1,25 @@
+{
+  "macro_id": "defense.resourceAllocation",
+  "domain": "defense",
+  "name": "resourceAllocation",
+  "inputs": {
+    "resources": { "type": "array" },
+    "missions": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.allocations === undefined || Array.isArray(output.result.allocations)",
+    "output.ok === false || output.result.availableAfter === undefined || Number.isFinite(output.result.availableAfter)",
+    "output.ok === false || output.result.allocations === undefined || output.result.allocations.every(a => Number.isFinite(a.resourcesNeeded) && Number.isFinite(a.resourcesAssigned))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "resources": ["sqd-1", "sqd-2", "sqd-3"], "missions": [ { "name": "Hold ridge", "priority": "critical", "resourcesNeeded": 2 } ] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "resources": [], "missions": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "resources": ["sqd-1"], "missions": [ { "name": "x", "resourcesNeeded": "Infinity" }, null, 42 ] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data. Greedy priority-ordered allocation (critical→low) of the available resource pool against each mission's resourcesNeeded. Fail-closed: resourcesNeeded goes through finiteNum (clamped 1..100000) so an Infinity can't drain availableAfter to -Infinity; non-array inputs default to []; non-object missions filtered. Empty resources → honest CTA message. Result renders totalResources/totalMissions/availableAfter/allocations[]/fullyStaffed/understaffed."
+}
