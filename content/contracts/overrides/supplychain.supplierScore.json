@@ -1,0 +1,24 @@
+{
+  "macro_id": "supplychain.supplierScore",
+  "domain": "supplychain",
+  "name": "supplierScore",
+  "inputs": {
+    "suppliers": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result === 'object' && output.result !== null",
+    "output.result.message !== undefined || Array.isArray(output.result.suppliers)",
+    "output.result.message !== undefined || Number.isFinite(output.result.atRisk)",
+    "output.result.message !== undefined || output.result.suppliers.every(function(s){ return Number.isFinite(s.totalScore) && typeof s.supplier === 'string' && typeof s.tier === 'string'; })",
+    "output.result.message !== undefined || (output.result.suppliers.length === 0 || typeof output.result.topSupplier === 'string')"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "suppliers": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "suppliers": [{ "name": "Acme", "qualityScore": 90, "onTimePercent": 95, "priceCompetitiveness": 80, "responsiveness": 85 }, { "name": "Cheap", "qualityScore": 40, "onTimePercent": 50, "priceCompetitiveness": 60, "responsiveness": 45 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "suppliers": [{ "name": "Bad", "qualityScore": "NaN", "onTimePercent": "Infinity", "priceCompetitiveness": "x", "responsiveness": "1e999" }] } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler; reads artifact.data.suppliers. totalScore = round(quality*0.3 + delivery*0.3 + price*0.2 + responsiveness*0.2) with parseFloat||defaults, then tier (preferred>=85, approved>=70, conditional>=50, else at-risk) + sort desc. POISON: parseFloat collapses garbage to per-field defaults (70/80/70/70) so totalScore stays FINITE. Component: SupplyChainActionPanel.actSup renders suppliers[].supplier/totalScore/tier + topSupplier + atRisk. Not assassin-driven; pinned by server/tests/supplychain-lens-macros.test.js."
+}

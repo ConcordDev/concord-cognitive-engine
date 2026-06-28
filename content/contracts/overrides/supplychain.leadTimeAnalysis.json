@@ -1,0 +1,23 @@
+{
+  "macro_id": "supplychain.leadTimeAnalysis",
+  "domain": "supplychain",
+  "name": "leadTimeAnalysis",
+  "inputs": {
+    "orders": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result === 'object' && output.result !== null",
+    "output.result.message !== undefined || Number.isFinite(output.result.ordersAnalyzed)",
+    "output.result.message !== undefined || Number.isFinite(output.result.avgLeadTimeDays)",
+    "output.result.message !== undefined || typeof output.result.reliability === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "orders": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "orders": [{ "id": "o1", "orderDate": "2026-01-01", "receivedDate": "2026-01-06" }, { "id": "o2", "orderDate": "2026-01-01", "receivedDate": "2026-01-11" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "orders": [{ "id": "x", "orderDate": "garbage", "receivedDate": "also-garbage" }] } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler; reads artifact.data.orders. Computes per-order leadTimeDays from (receivedDate - orderDate)/86400000, then avg/min/max + reliability tier (excellent<=7, good<=14, acceptable<=30, else poor). Orders without receivedDate are filtered (pending). POISON: an unparseable date yields NaN leadTime which is filtered out, so avg stays finite. Component: SupplyChainActionPanel.actLead renders ordersAnalyzed/avgLeadTimeDays/minDays/maxDays/reliability. Not assassin-driven; pinned by server/tests/supplychain-lens-macros.test.js."
+}

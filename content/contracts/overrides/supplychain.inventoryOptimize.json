@@ -1,0 +1,26 @@
+{
+  "macro_id": "supplychain.inventoryOptimize",
+  "domain": "supplychain",
+  "name": "inventoryOptimize",
+  "inputs": {
+    "items": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === true",
+    "typeof output.result === 'object' && output.result !== null",
+    "output.result.message !== undefined || Array.isArray(output.result.items)",
+    "output.result.message !== undefined || Number.isFinite(output.result.totalItems)",
+    "output.result.message !== undefined || Number.isFinite(output.result.needsReorder)",
+    "output.result.message !== undefined || output.result.items.every(function(i){ return Number.isFinite(i.eoq) && Number.isFinite(i.reorderPoint) && Number.isFinite(i.safetyStock) && Number.isFinite(i.currentStock) && Number.isFinite(i.daysOfStock); })",
+    "output.result.message !== undefined || output.result.items.every(function(i){ return typeof i.needsReorder === 'boolean'; })"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "items": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "items": [{ "name": "Widget", "dailyDemand": 10, "leadTimeDays": 7, "currentStock": 5, "orderCost": 50, "holdingCost": 5 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "items": [{ "name": "Bad", "dailyDemand": "NaN", "leadTimeDays": "Infinity", "currentStock": "oops", "orderCost": "1e999", "holdingCost": "-Infinity" }] } } }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (dispatch key 'supplychain.inventoryOptimize'); reads artifact.data.items. EOQ = round(sqrt(2*dailyDemand*365*orderCost/holdingCost)) with parseFloat||defaults (50/5); safetyStock = ceil(demand*leadTime*0.5); reorderPoint = ceil(demand*leadTime + safetyStock). POISON: parseFloat/parseInt collapse garbage to defaults so every numeric stays FINITE (fail-CLOSED). Not assassin-driven (LENS_ACTIONS, not in MACROS); authored spec pinned by server/tests/supplychain-lens-macros.test.js. Component: SupplyChainActionPanel.actInv renders items[].item/currentStock/reorderPoint/eoq/daysOfStock/needsReorder + needsReorder/totalItems."
+}
