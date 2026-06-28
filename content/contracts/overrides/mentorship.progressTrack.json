@@ -1,0 +1,31 @@
+{
+  "macro_id": "mentorship.progressTrack",
+  "domain": "mentorship",
+  "name": "progressTrack",
+  "inputs": {
+    "goals": { "type": "array", "required": false },
+    "sessions": { "type": "array", "required": false },
+    "sessionsCompleted": { "type": "number", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.totalGoals)",
+    "output.ok === false || Number.isFinite(output.result.completed)",
+    "output.ok === false || Number.isFinite(output.result.completionRate)",
+    "output.ok === false || (output.result.completionRate >= 0 && output.result.completionRate <= 100)",
+    "output.ok === false || Number.isFinite(output.result.sessionsCompleted)",
+    "output.ok === false || Number.isFinite(output.result.totalHours)",
+    "output.ok === false || ['strong','building','early-stage'].includes(output.result.momentum)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "goals": [{ "completed": true }, { "status": "done" }, {}], "sessions": [{ "duration": 1 }, { "duration": 2 }] }, "expect": { "ok": true } },
+    { "input": { "goals": ["ship", "learn"], "sessionsCompleted": 5 }, "expect": { "ok": true } },
+    { "input": { "goals": [{ "completed": true }], "sessions": [{ "duration": "Infinity" }, { "duration": "1e999" }, { "duration": "NaN" }] }, "expect": { "ok": true } },
+    { "input": { "sessionsCompleted": "Infinity" }, "expect": { "ok": true } },
+    { "input": { "goals": "nope", "sessions": 7 }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'mentorship.progressTrack'. Deterministic pure compute. Accepts explicit goals:[{completed/status}] + sessions:[{duration}] (component) OR relation goals:string[] + sessionsCompleted:number (inline panel: totalHours derives 1h/session). POISON: finNum collapses non-finite duration/sessionsCompleted → finite; totalHours always FINITE. Authored spec pinned by server/tests/mentorship-lens-macros.test.js."
+}

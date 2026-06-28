@@ -1,0 +1,29 @@
+{
+  "macro_id": "mentorship.developmentPlan",
+  "domain": "mentorship",
+  "name": "developmentPlan",
+  "inputs": {
+    "currentSkills": { "type": "array", "required": false },
+    "targetRole": { "type": "string", "required": false, "maxLength": 120 },
+    "skillGaps": { "type": "array", "required": false },
+    "skills": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.currentSkillCount)",
+    "output.ok === false || typeof output.result.targetRole === 'string'",
+    "output.ok === false || Array.isArray(output.result.gaps)",
+    "output.ok === false || (Array.isArray(output.result.milestones) && output.result.milestones.length === 4)",
+    "output.ok === false || output.result.timelineWeeks === 26",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "currentSkills": ["js", "ts"], "targetRole": "Lead", "skillGaps": ["architecture"] }, "expect": { "ok": true } },
+    { "input": { "skills": ["react"], "targetRole": "Staff" }, "expect": { "ok": true } },
+    { "input": { "currentSkills": "Infinity", "targetRole": 42, "skillGaps": "1e999" }, "expect": { "ok": true } },
+    { "input": { "targetRole": "" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'mentorship.developmentPlan'. Deterministic pure compute. Accepts explicit currentSkills (component) OR relation skills[] (inline panel). Empty/blank targetRole → 'next level'. Empty skillGaps → guidance placeholder. Fixed 4-phase / 26-week milestone roadmap. POISON: non-array currentSkills/skillGaps coerce to []; currentSkillCount always FINITE. Authored spec pinned by server/tests/mentorship-lens-macros.test.js."
+}

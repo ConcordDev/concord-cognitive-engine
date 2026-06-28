@@ -9,11 +9,113 @@
 // Persistent per-user data lives in globalThis._concordSTATE Maps.
 
 export default function registerMentorshipActions(registerLensAction) {
-  // ─── Existing pure-compute analytics ──────────────────────────────────
-  registerLensAction("mentorship", "matchScore", (ctx, artifact, _params) => { const mentor = artifact.data?.mentor || {}; const mentee = artifact.data?.mentee || {}; const skillOverlap = (mentor.skills || []).filter(s => (mentee.goals || []).some(g => g.toLowerCase().includes(s.toLowerCase()))).length; const availMatch = mentor.availability === mentee.preferredSchedule ? 1 : 0.5; const score = Math.round((Math.min(skillOverlap/3,1)*50 + availMatch*30 + (mentor.experience ? 20 : 0))); return { ok: true, result: { mentor: mentor.name, mentee: mentee.name, matchScore: score, skillOverlap, compatibility: score >= 70 ? "excellent" : score >= 50 ? "good" : "fair" } }; });
-  registerLensAction("mentorship", "progressTrack", (ctx, artifact, _params) => { const goals = artifact.data?.goals || []; const sessions = artifact.data?.sessions || []; const completed = goals.filter(g => g.completed || g.status === "done").length; return { ok: true, result: { totalGoals: goals.length, completed, inProgress: goals.length - completed, completionRate: goals.length > 0 ? Math.round((completed/goals.length)*100) : 0, sessionsCompleted: sessions.length, totalHours: sessions.reduce((s,ses) => s + (parseFloat(ses.duration) || 1), 0), momentum: sessions.length >= 4 ? "strong" : sessions.length >= 2 ? "building" : "early-stage" } }; });
-  registerLensAction("mentorship", "feedbackSummary", (ctx, artifact, _params) => { const feedback = artifact.data?.feedback || []; if (feedback.length === 0) return { ok: true, result: { message: "Add session feedback to generate summary." } }; const avg = feedback.reduce((s,f) => s + (parseInt(f.rating) || 3), 0) / feedback.length; const themes = {}; for (const f of feedback) { for (const t of (f.tags || [])) themes[t] = (themes[t] || 0) + 1; } return { ok: true, result: { sessions: feedback.length, avgRating: Math.round(avg*10)/10, topThemes: Object.entries(themes).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([t,c])=>({theme:t,count:c})), satisfaction: avg >= 4 ? "high" : avg >= 3 ? "moderate" : "needs-attention" } }; });
-  registerLensAction("mentorship", "developmentPlan", (ctx, artifact, _params) => { const data = artifact.data || {}; const currentSkills = data.currentSkills || []; const targetRole = data.targetRole || "next level"; const gaps = data.skillGaps || []; return { ok: true, result: { currentSkillCount: currentSkills.length, targetRole, gaps: gaps.length > 0 ? gaps : ["Identify specific skill gaps to create plan"], milestones: [{ phase: "Foundation", weeks: "1-4", focus: "Assessment and goal setting" }, { phase: "Development", weeks: "5-12", focus: "Skill building and practice" }, { phase: "Application", weeks: "13-20", focus: "Real-world projects" }, { phase: "Mastery", weeks: "21-26", focus: "Teaching others and refinement" }], timelineWeeks: 26 } }; });
+  // ─── Pure-compute analytics ──────────────────────────────────────────
+  //
+  // These four calculators are driven from BOTH frontend surfaces:
+  //   1. MentorshipActionPanel (callMacro → /api/lens/run): the user pastes the
+  //      EXPLICIT object shape — mentor:{skills,availability,experience},
+  //      mentee:{goals,preferredSchedule}, feedback:[{rating,tags}],
+  //      currentSkills/targetRole/skillGaps. The dispatch peels the redundant
+  //      { artifact:{ data } } wrapper so artifact.data IS that object.
+  //   2. The inline page panel (useRunArtifact → /api/lens/:domain/:id/run):
+  //      runs against a STORED relation artifact whose data shape is
+  //      { mentorName, menteeName, skills[], goals:string[], sessionsCompleted,
+  //        rating, ... }. The explicit object keys are absent there.
+  //
+  // To keep BOTH surfaces honest (the inline panel previously rendered a dead
+  // "undefined ↔ undefined · 0%" card because the calculators only read the
+  // explicit shape), each calculator ALSO honors the stored-relation aliases.
+  // Component path inputs are byte-identical — the alias fallbacks only fire
+  // when the explicit field is absent.
+  //
+  // POISON HARDENING: numeric parsing is fail-CLOSED via finNum — a poisoned
+  // "Infinity"/"1e999"/"NaN" collapses to a finite default so no computed
+  // total (totalHours, avgRating) can emit Infinity/NaN.
+  const finNum = (v, d = 0) => { const n = typeof v === "number" ? v : parseFloat(v); return Number.isFinite(n) ? n : d; };
+  const lc = (v) => String(v == null ? "" : v).toLowerCase();
+
+  registerLensAction("mentorship", "matchScore", (ctx, artifact, _params) => {
+    const data = artifact?.data || {};
+    // explicit shape (component) OR relation aliases (inline panel)
+    const mentor = data.mentor && typeof data.mentor === "object"
+      ? data.mentor
+      : { name: data.mentorName, skills: data.skills, availability: data.meetingFrequency, experience: (data.sessionsCompleted || 0) > 0 };
+    const mentee = data.mentee && typeof data.mentee === "object"
+      ? data.mentee
+      : { name: data.menteeName, goals: data.goals, preferredSchedule: data.meetingFrequency };
+    const mSkills = Array.isArray(mentor.skills) ? mentor.skills : [];
+    const eGoals = Array.isArray(mentee.goals) ? mentee.goals : [];
+    const skillOverlap = mSkills.filter((s) => eGoals.some((g) => lc(g).includes(lc(s)))).length;
+    const availMatch = mentor.availability != null && mentor.availability === mentee.preferredSchedule ? 1 : 0.5;
+    const score = Math.round((Math.min(skillOverlap / 3, 1) * 50 + availMatch * 30 + (mentor.experience ? 20 : 0)));
+    return { ok: true, result: { mentor: mentor.name, mentee: mentee.name, matchScore: score, skillOverlap, compatibility: score >= 70 ? "excellent" : score >= 50 ? "good" : "fair" } };
+  });
+
+  registerLensAction("mentorship", "progressTrack", (ctx, artifact, _params) => {
+    const data = artifact?.data || {};
+    const goals = Array.isArray(data.goals) ? data.goals : [];
+    // explicit sessions[] (component) OR a sessionsCompleted count (relation)
+    const sessionsArr = Array.isArray(data.sessions) ? data.sessions : null;
+    const completed = goals.filter((g) => g && typeof g === "object" && (g.completed || g.status === "done")).length;
+    const sessionsCompleted = sessionsArr ? sessionsArr.length : Math.max(0, Math.round(finNum(data.sessionsCompleted)));
+    const totalHours = sessionsArr
+      ? sessionsArr.reduce((s, ses) => s + (finNum(ses && ses.duration, 1) || 1), 0)
+      : sessionsCompleted; // 1h per recorded session when only a count is known
+    return {
+      ok: true,
+      result: {
+        totalGoals: goals.length,
+        completed,
+        inProgress: goals.length - completed,
+        completionRate: goals.length > 0 ? Math.round((completed / goals.length) * 100) : 0,
+        sessionsCompleted,
+        totalHours,
+        momentum: sessionsCompleted >= 4 ? "strong" : sessionsCompleted >= 2 ? "building" : "early-stage",
+      },
+    };
+  });
+
+  registerLensAction("mentorship", "feedbackSummary", (ctx, artifact, _params) => {
+    const data = artifact?.data || {};
+    const feedback = Array.isArray(data.feedback) ? data.feedback : [];
+    if (feedback.length === 0) return { ok: true, result: { message: "Add session feedback to generate summary." } };
+    const avgRaw = feedback.reduce((s, f) => s + finNum(f && f.rating, 3), 0) / feedback.length;
+    const avg = Number.isFinite(avgRaw) ? avgRaw : 3;
+    const themes = {};
+    for (const f of feedback) { for (const t of ((f && f.tags) || [])) { const key = String(t); themes[key] = (themes[key] || 0) + 1; } }
+    return {
+      ok: true,
+      result: {
+        sessions: feedback.length,
+        avgRating: Math.round(avg * 10) / 10,
+        topThemes: Object.entries(themes).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([t, c]) => ({ theme: t, count: c })),
+        satisfaction: avg >= 4 ? "high" : avg >= 3 ? "moderate" : "needs-attention",
+      },
+    };
+  });
+
+  registerLensAction("mentorship", "developmentPlan", (ctx, artifact, _params) => {
+    const data = artifact?.data || {};
+    // explicit currentSkills (component) OR relation skills[]
+    const currentSkills = Array.isArray(data.currentSkills) ? data.currentSkills : (Array.isArray(data.skills) ? data.skills : []);
+    const targetRole = (data.targetRole != null && String(data.targetRole).trim()) ? String(data.targetRole) : "next level";
+    const gaps = Array.isArray(data.skillGaps) ? data.skillGaps : [];
+    return {
+      ok: true,
+      result: {
+        currentSkillCount: currentSkills.length,
+        targetRole,
+        gaps: gaps.length > 0 ? gaps : ["Identify specific skill gaps to create plan"],
+        milestones: [
+          { phase: "Foundation", weeks: "1-4", focus: "Assessment and goal setting" },
+          { phase: "Development", weeks: "5-12", focus: "Skill building and practice" },
+          { phase: "Application", weeks: "13-20", focus: "Real-world projects" },
+          { phase: "Mastery", weeks: "21-26", focus: "Teaching others and refinement" },
+        ],
+        timelineWeeks: 26,
+      },
+    };
+  });
 
   // ─── Shared state helpers ─────────────────────────────────────────────
   function getMentorshipState() {

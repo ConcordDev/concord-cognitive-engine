@@ -1,0 +1,30 @@
+{
+  "macro_id": "mentorship.matchScore",
+  "domain": "mentorship",
+  "name": "matchScore",
+  "inputs": {
+    "mentor": { "type": "object", "required": false },
+    "mentee": { "type": "object", "required": false },
+    "mentorName": { "type": "string", "required": false, "maxLength": 80 },
+    "menteeName": { "type": "string", "required": false, "maxLength": 80 },
+    "skills": { "type": "array", "required": false },
+    "goals": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.matchScore)",
+    "output.ok === false || (output.result.matchScore >= 0 && output.result.matchScore <= 100)",
+    "output.ok === false || Number.isFinite(output.result.skillOverlap)",
+    "output.ok === false || ['excellent','good','fair'].includes(output.result.compatibility)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "mentor": { "name": "M", "skills": ["react", "node"], "availability": "weekly", "experience": true }, "mentee": { "name": "E", "goals": ["learn react"], "preferredSchedule": "weekly" } }, "expect": { "ok": true } },
+    { "input": { "mentorName": "Ada", "menteeName": "Eve", "skills": ["rust"], "goals": ["learn rust"], "meetingFrequency": "weekly", "sessionsCompleted": 3 }, "expect": { "ok": true } },
+    { "input": { "mentor": { "skills": "Infinity", "experience": "1e999" }, "mentee": { "goals": "NaN" } }, "expect": { "ok": true } },
+    { "input": { "mentor": "nope", "mentee": 42 }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'mentorship.matchScore'. Deterministic pure compute. Accepts BOTH the explicit mentor/mentee object shape (MentorshipActionPanel pasted JSON) AND the stored-relation aliases mentorName/menteeName/skills/goals/meetingFrequency (inline page panel via useRunArtifact). matchScore bounded 0..100 by Math.min(skillOverlap/3,1)*50 + availMatch*30 + 20. POISON: non-array skills/goals coerce to [], experience truthiness only. Authored spec pinned by server/tests/mentorship-lens-macros.test.js."
+}
