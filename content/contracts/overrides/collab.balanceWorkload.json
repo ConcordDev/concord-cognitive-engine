@@ -1,0 +1,27 @@
+{
+  "macro_id": "collab.balanceWorkload",
+  "domain": "collab",
+  "name": "balanceWorkload",
+  "inputs": {
+    "members": { "type": "array" },
+    "tasks": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.message === 'string' || Array.isArray(output.result.members)",
+    "output.ok === false || output.result.members === undefined || output.result.members.every(m => Number.isFinite(m.utilization))",
+    "output.ok === false || output.result.members === undefined || output.result.members.every(m => Number.isFinite(m.totalHours))",
+    "output.ok === false || output.result.members === undefined || output.result.members.every(m => Number.isFinite(m.capacity))",
+    "output.ok === false || output.result.members === undefined || Number.isFinite(output.result.avgUtilization)",
+    "output.ok === false || output.result.members === undefined || Number.isFinite(output.result.overloadedMembers)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "members": [{ "name": "alice", "capacityHours": 40 }, { "name": "bob", "capacityHours": 40 }], "tasks": [{ "assignee": "alice", "hours": 50 }, { "assignee": "bob", "hours": 10 }, { "hours": 8 }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "members": [], "tasks": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "members": [{ "name": "a", "capacityHours": "Infinity" }, { "name": "b", "capacityHours": "12abc" }], "tasks": [{ "assignee": "a", "hours": "NaN" }, { "assignee": "b", "hours": "abc" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data (CollabActionPanel.actLoad channel: runDomain → {input:{artifact:{data}}} peeled at dispatch). Empty members → { message } empty-shape. Else per-member: assigned = tasks where t.assignee === m.name; totalHours = sum(finiteNum(t.hours ?? t.estimatedHours, 2) || 2); capacity = max(1, finiteNum(m.capacityHours,40) || 40); utilization = round(totalHours/capacity*100); status overloaded (>cap) / near-capacity (>0.8 cap) / available; unassignedTasks = tasks with no assignee; overloadedMembers = count overloaded; avgUtilization = round(mean(util)); suggestions = ['Move tasks from <overloaded> to <available>'] when both exist. Fail-CLOSED numerics: finiteNum() so 'Infinity'/'NaN'/'12abc' fall to the 40h/2h defaults (parseFloat would have leaked Infinity into utilization/capacity, or accepted '12abc' as 12). Result card renders avgUtilization/overloadedMembers/unassignedTasks/members[].{name,status,utilization,totalHours,capacity,assignedTasks}/suggestions EXACTLY (verified field-for-field against CollabActionPanel.tsx 2026-06-28)."
+}

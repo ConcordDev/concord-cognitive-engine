@@ -1,0 +1,29 @@
+{
+  "macro_id": "collab.sessionAnalytics",
+  "domain": "collab",
+  "name": "sessionAnalytics",
+  "inputs": {
+    "participants": { "type": "array" },
+    "messages": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.totalMessages)",
+    "output.ok === false || Number.isFinite(output.result.totalParticipants)",
+    "output.ok === false || Number.isFinite(output.result.messagesPerMinute)",
+    "output.ok === false || Number.isFinite(output.result.durationMinutes)",
+    "output.ok === false || Number.isFinite(output.result.participationBalance)",
+    "output.ok === false || typeof output.result.balanceRating === 'string'",
+    "output.ok === false || Array.isArray(output.result.participantStats)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "durationMinutes": 30, "participants": ["alice", "bob"], "messages": [{ "author": "alice", "content": "hello team" }, { "author": "alice", "content": "go" }, { "author": "bob", "content": "ready" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "durationMinutes": 10, "participants": [], "messages": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "durationMinutes": "Infinity", "participants": ["a"], "messages": [{ "sender": "a", "text": "x y z" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "durationMinutes": "12abc", "participants": ["a"], "messages": [{ "author": "a", "content": "x" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Pure compute, reads artifact.data (CollabActionPanel.actSession channel: runDomain → {input:{artifact:{data}}} peeled at dispatch). totalMessages = messages.length; per-participant messages filtered by m.author||m.sender, wordCount sums (m.content||m.text).split; sharePercent = round(pMsgs/total*100); messagesPerMinute = round(total/duration*10)/10 (0 when duration 0); participationBalance = gini over per-participant message counts (sorted asc), round to 2dp; balanceRating < 0.2 well-balanced / < 0.4 slightly-uneven / else dominated-by-few. Fail-CLOSED numerics: duration = Math.max(0, finiteNum(durationMinutes,0)) so 'Infinity'/'NaN'/'12abc' fall to 0 (parseFloat would have leaked Infinity into the durationMinutes field the card renders, or accepted '12abc' as 12). Result card renders totalMessages/balanceRating/participationBalance/messagesPerMinute/participantStats[].{name,sharePercent} EXACTLY (verified field-for-field against CollabActionPanel.tsx 2026-06-28; the page inline panel reads the same flat fields)."
+}
