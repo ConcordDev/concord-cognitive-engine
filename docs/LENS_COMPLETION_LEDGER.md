@@ -411,6 +411,31 @@ cooking, construction, automotive. A proactive grep sweep for this pattern acros
 one-layer-unwrap normalizer in the domain handler (peels {artifact:{data}}, tolerates flat input).
 41 lenses now through the non-score gate (batches 1–10). The loop continues.
 
+### SYSTEMIC FIX + field-alignment re-audit (2026-06-28, post-batch-10)
+The per-lens loop surfaced a systemic bug class AND a process gap; both fixed:
+- **Root-cause dispatch fix (`aae953f`):** `server/lib/lens-input-normalize.js#peelRedundantArtifactWrapper`
+  peels the redundant sole-key `{artifact:{data}}` wrapper at BOTH /api/lens/run dispatch sites. ~44
+  *ActionPanel components (built from a shared template) double-wrapped their payload on top of the
+  virtualArtifact the dispatch already builds, so every handler reading `artifact.data.X` saw undefined
+  and silently returned the empty result in PRODUCTION while single-wrap tests passed. One guarded,
+  idempotent fix cures the wrapper half for all of them. 10 unit tests + e2e 38/38 + HTTP dispatch 53/53.
+- **Field-name mismatch class (per-lens):** the dispatch fix can't cover components that send/render the
+  WRONG field names. astronomy (`e229edf`): celestialPosition sent `body`/read `result.alt` while the
+  handler read `rightAscension`/returned `altitude` — fixed both ways + a real JPL/Hipparcos ephemeris
+  for name→RA/Dec. Re-audit of the 5 batch-9/10 lenses (`18cb3fe`): **agriculture had 3 dead calculators**
+  (rotationPlan/waterSchedule/predict-yield, wrong input+output fields → blank), **chem's periodic-table
+  grid rendered blank** (handler didn't return symbol/atomicMass/group/period), **calendar had 3 blank
+  renders**; accounting + billing were clean bills (+ contract tests).
+- **PROCESS LESSON (folded into the standard prompt):** a behavioral test that drives the handler with
+  the IDEAL shape passes while the COMPONENT is dead. Every per-lens agent MUST trace the component's
+  EXACT call (wrapper + input field names + rendered output field names) and add a test driving that
+  exact shape — not the documented ideal. This is how astronomy/agriculture/chem/calendar slipped through
+  the first pass.
+- Latent/deferred: the chem server.js shadow (molecularAnalysis/balanceReaction/solutionChemistry
+  re-registered at server.js:41532 → page falls through to JSON render) needs a server.js shadow removal,
+  weighed against the chem-behavior depth test — deferred, flagged.
+41 lenses + the systemic dispatch fix. The loop continues.
+
 **NAMED PHASE-2 BACKLOG CLOSED (2026-06-27):** all 6 batches done (24 lenses through the non-score
 gate across batches 1–6). Real defects fixed across the run: 2 CC money bugs (sponsorship.create,
 inheritance value/open_listing) + 1 in-game-currency treasury fail-open (kingdoms) + ~6 numeric
