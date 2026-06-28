@@ -1,0 +1,29 @@
+{
+  "macro_id": "council.deliberate",
+  "domain": "council",
+  "name": "deliberate",
+  "inputs": {
+    "proposal": { "type": "string", "required": false, "maxLength": 4000 },
+    "description": { "type": "string", "required": false, "maxLength": 4000 },
+    "voices": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.evaluations)",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.weightedScore)",
+    "output.ok === false || output.result.message !== undefined || output.result.evaluations.every(function(e){ return Number.isFinite(e.score) && typeof e.voice === 'string' && ['support','neutral','oppose'].includes(e.position); })",
+    "output.ok === false || output.result.message !== undefined || ['Proceed','Revise and resubmit','Reject'].includes(output.result.recommendation)",
+    "output.ok === false || output.result.message !== undefined || ['unanimous','majority','no-consensus'].includes(output.result.consensus)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "proposal": "Adopt a fairness and risk review for the resource cost program" }, "expect": { "ok": true } },
+    { "input": { "proposal": "novelty growth", "voices": [{ "voice": "Innovator", "weight": 1, "lens": "novelty and growth potential" }] }, "expect": { "ok": true } },
+    { "input": { "proposal": "1e999" }, "expect": { "ok": true } },
+    { "input": { "proposal": "Infinity", "voices": "nope" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'council.deliberate'. Deterministic per-voice keyword heuristic (NOT LLM — the real LLM council is the inline /api/council/deliberate route + lib/council-world-bridge.js). CouncilActionPanel sends {proposal}; returns {proposal,evaluations:[{voice,weight,score,position,reasoning}],weightedScore,recommendation,consensus}. Empty proposal degrades to {message}. POISON: proposal String()-coerced at read so a non-string never reaches .slice() (was an uncaught throw, hardened 2026-06-28); voices Array-guarded; score/weightedScore always FINITE. Pinned by server/tests/council-lens-macros.test.js."
+}

@@ -1,0 +1,27 @@
+{
+  "macro_id": "council.conflictResolution",
+  "domain": "council",
+  "name": "conflictResolution",
+  "inputs": {
+    "issue": { "type": "string", "required": false, "maxLength": 4000 },
+    "description": { "type": "string", "required": false, "maxLength": 4000 },
+    "parties": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || Array.isArray(output.result.parties)",
+    "output.ok === false || ['shared-urgency','divergent-priorities'].includes(output.result.commonGround)",
+    "output.ok === false || typeof output.result.suggestedApproach === 'string'",
+    "output.ok === false || (Array.isArray(output.result.steps) && output.result.steps.length === 5)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "issue": "Budget dispute", "parties": [{ "name": "Eng", "priority": "high" }, { "name": "Sales", "priority": "high" }, { "name": "Ops", "priority": "low" }] }, "expect": { "ok": true } },
+    { "input": { "issue": "Roadmap", "parties": [{ "name": "A", "priority": "low" }, { "name": "B", "priority": "medium" }] }, "expect": { "ok": true } },
+    { "input": { "issue": 1e999, "parties": "nope" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'council.conflictResolution'. CouncilActionPanel sends {issue,parties}; returns {issue,parties:[{party,position,priority}],commonGround(shared-urgency|divergent-priorities),suggestedApproach,steps[5]}. shared-urgency when >half the parties are priority:high. POISON: parties Array-guarded, issue String()-coerced (was uncaught throw on parties.map / issue.slice, hardened 2026-06-28). Pinned by server/tests/council-lens-macros.test.js."
+}

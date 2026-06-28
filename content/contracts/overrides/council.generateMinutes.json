@@ -1,0 +1,32 @@
+{
+  "macro_id": "council.generateMinutes",
+  "domain": "council",
+  "name": "generateMinutes",
+  "inputs": {
+    "title": { "type": "string", "required": false, "maxLength": 256 },
+    "date": { "type": "string", "required": false, "maxLength": 64 },
+    "agenda": { "type": "array", "required": false },
+    "attendees": { "type": "array", "required": false },
+    "decisions": { "type": "array", "required": false },
+    "actionItems": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || typeof output.result.title === 'string'",
+    "output.ok === false || typeof output.result.date === 'string'",
+    "output.ok === false || Number.isFinite(output.result.attendees)",
+    "output.ok === false || Array.isArray(output.result.agendaItems)",
+    "output.ok === false || Array.isArray(output.result.decisions)",
+    "output.ok === false || Array.isArray(output.result.actionItems)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "title": "Q3 Session", "agenda": [{ "topic": "Budget", "status": "discussed" }], "attendees": ["Alice", "Bob"], "decisions": [{ "text": "Adopt policy", "votedBy": "council", "passed": true }], "actionItems": [{ "task": "Draft", "assignee": "Alice", "dueDate": "2026-07-01" }] }, "expect": { "ok": true } },
+    { "input": { "agenda": ["Plain string item"], "decisions": ["Plain decision"] }, "expect": { "ok": true } },
+    { "input": { "title": 1e999, "attendees": "nope" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'council.generateMinutes'. CouncilActionPanel sends {title,agenda,attendees,decisions}; returns {title,date,attendees(COUNT),agendaItems:[{item,topic,status}],decisions:[{decision,votedBy,passed}],actionItems:[{task,assignee,dueDate}]}. attendees in the RETURN is a count (.length), not a list. agenda/decisions entries tolerate plain strings or {topic}/{text} objects. Defaults title + today's date. Pinned by server/tests/council-lens-macros.test.js."
+}
