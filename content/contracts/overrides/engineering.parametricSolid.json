@@ -1,0 +1,25 @@
+{
+  "macro_id": "engineering.parametricSolid",
+  "domain": "engineering",
+  "name": "parametricSolid",
+  "inputs": {
+    "kind": { "type": "string", "maxLength": 24 },
+    "material": { "type": "string", "required": false, "maxLength": 40 },
+    "params": { "type": "object", "required": false }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (Number.isFinite(output.result.volume) && output.result.volume >= 0)",
+    "output.ok === false || (Number.isFinite(output.result.mass) && output.result.mass >= 0)",
+    "output.ok === false || (Number.isFinite(output.result.surfaceArea) && output.result.surfaceArea >= 0)",
+    "output.ok === false || (output.result.boundingBox && Number.isFinite(output.result.boundingBox.x) && Number.isFinite(output.result.boundingBox.y) && Number.isFinite(output.result.boundingBox.z))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "kind": "box", "material": "steel-a36", "params": { "width": 0.2, "height": 0.1, "length": 0.5 } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "kind": "i-beam", "material": "steel-a36", "params": { "flangeWidth": 0.1, "height": 0.2, "flangeThickness": 0.012, "webThickness": 0.008, "length": 1.0 } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "kind": "not-a-shape", "params": {} } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Parametric solid geometry (GeometryEditor.tsx). volume/mass/surfaceArea + boundingBox{x,y,z} + section{area,Ix,Iy} for beam-shaped primitives. mass = volume × material density (default 7850 kg/m³ for steel-a36). Unknown kind falls through to box. Missing/poisoned dims default to per-kind values. Reads from artifact.data. Pure compute, no STATE, deterministic."
+}

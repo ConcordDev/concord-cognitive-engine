@@ -1,0 +1,24 @@
+{
+  "macro_id": "engineering.toleranceChain",
+  "domain": "engineering",
+  "name": "toleranceChain",
+  "inputs": {
+    "links": { "type": "array", "required": false },
+    "targetGap": { "type": "number", "required": false }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || ('message' in output.result) || Array.isArray(output.result.chain)",
+    "output.ok === false || !('chain' in output.result) || output.result.chain.every(c => Number.isFinite(c.nominal) && Number.isFinite(c.tolerance) && Number.isFinite(c.cumulativeNominal))",
+    "output.ok === false || !('closingDimension' in output.result) || (Number.isFinite(output.result.closingDimension.nominal) && Number.isFinite(output.result.closingDimension.worstCaseTolerance) && Number.isFinite(output.result.closingDimension.rssTolerance))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "links": [{ "name": "bore", "nominal": 50, "tolerance": 0.025, "direction": 1 }, { "name": "shaft", "nominal": 49.95, "tolerance": 0.015, "direction": -1 }], "targetGap": 0.05 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "links": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "links": [{ "name": "x" }, {}] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "Directional 1-D tolerance chain (TolerancePanel.tsx). closingDimension.nominal = directional sum of nominals; worstCaseTolerance = sum of |tol| (default 0.01); rssTolerance = sqrt(sum tol²). fitVerdict present only when targetGap is finite; interferenceRisk uses ROUNDED minGap so it doesn't flicker on float dust at minGap=0. finiteOr() coerces poisoned NaN/Infinity nominal/tolerance/direction to finite defaults. Reads from artifact.data. Pure compute, no STATE, deterministic."
+}
