@@ -157,6 +157,74 @@ describe("astronomy.celestialPosition — alt/az from RA/Dec", () => {
   });
 });
 
+// ── Component-shape alignment (AstronomyActionPanel#actPos) ─────────────
+// The panel sends the BODY-NAME shape and renders result.body/alt/az/
+// constellation/visible (NOT ra/dec coords + object/altitude). These cases
+// drive the EXACT post-dispatch-normalization input the component sends —
+// the inner { body, observerLat, observerLng, date } object — and assert the
+// handler returns every field the panel renders, with real computed values.
+describe("astronomy.celestialPosition — body-NAME path (the live panel shape)", () => {
+  it("resolves a planet name (Mars) → real geocentric alt/az for the observer", () => {
+    // EXACT shape AstronomyActionPanel#actPos sends after the dispatch peel.
+    const r = call("celestialPosition", ctxA, {
+      body: "Mars", observerLat: 40.7, observerLng: -74.0, date: WHEN,
+    });
+    assert.equal(r.ok, true);
+    // Panel-rendered aliases are all present and real.
+    assert.equal(r.result.body, "Mars");
+    assert.equal(r.result.object, "Mars"); // canonical name too
+    assert.equal(r.result.kind, "planet");
+    assert.ok(Number.isFinite(r.result.alt) && r.result.alt >= -90 && r.result.alt <= 90, `alt ${r.result.alt}`);
+    assert.ok(Number.isFinite(r.result.az) && r.result.az >= 0 && r.result.az < 360, `az ${r.result.az}`);
+    // Short aliases mirror the canonical long names exactly.
+    assert.equal(r.result.alt, r.result.altitude);
+    assert.equal(r.result.az, r.result.azimuth);
+    assert.equal(r.result.visible, r.result.alt > 0);
+  });
+
+  it("resolves a bright-star name (Vega) → catalog RA/Dec + constellation", () => {
+    const r = call("celestialPosition", ctxA, {
+      body: "Vega", observerLat: 40.7, observerLng: -74.0, date: WHEN,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.body, "Vega");
+    assert.equal(r.result.kind, "star");
+    assert.equal(r.result.constellation, "Lyr");
+    // Vega from the J2000 catalog (RA 279.234° = 18.616h). The panel renders
+    // the formatted ra string; assert the hour value round-trips.
+    assert.match(r.result.ra, /18\.6/);
+    // Cross-check against the sky-chart's Vega alt/az for the same instant
+    // (same observer, same ephemeris path) — both must agree.
+    const sky = call("sky-chart", ctxA, { latitude: 40.7, longitude: -74.0, when: WHEN });
+    const vega = sky.result.stars.find((s) => s.name === "Vega");
+    assert.ok(Math.abs(r.result.alt - vega.altitude) < 0.2, `alt ${r.result.alt} vs ${vega.altitude}`);
+    assert.ok(Math.abs(r.result.az - vega.azimuth) < 0.2, `az ${r.result.az} vs ${vega.azimuth}`);
+  });
+
+  it("resolves Sun / Moon by name → finite alt/az (kind tagged)", () => {
+    const sun = call("celestialPosition", ctxA, { body: "Sun", observerLat: 40.7, observerLng: -74.0, date: WHEN });
+    assert.equal(sun.ok, true);
+    assert.equal(sun.result.kind, "sun");
+    assert.ok(Number.isFinite(sun.result.alt));
+    const moon = call("celestialPosition", ctxA, { body: "Moon", observerLat: 0, observerLng: 0, date: WHEN });
+    assert.equal(moon.ok, true);
+    assert.equal(moon.result.kind, "moon");
+    assert.ok(Number.isFinite(moon.result.alt));
+  });
+
+  it("an UNKNOWN body name fails honestly (no fake RA/Dec 0,0 result)", () => {
+    const r = call("celestialPosition", ctxA, { body: "Nibiru", observerLat: 40.7, observerLng: -74.0, date: WHEN });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /unknown body/i);
+  });
+
+  it("fail-CLOSED: poisoned observerLat (1e308) is rejected", () => {
+    const r = call("celestialPosition", ctxA, { body: "Mars", observerLat: "1e308", observerLng: -74.0, date: WHEN });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /finite/);
+  });
+});
+
 describe("astronomy.orbitalMechanics — Kepler's third law", () => {
   it("Earth (a=1 AU, M=1 Msun) ⇒ period ≈ 1 year, circular orbit", () => {
     const r = call("orbitalMechanics", ctxA, { semiMajorAxis: 1, eccentricity: 0.0167, centralMass: 1, name: "Earth" });

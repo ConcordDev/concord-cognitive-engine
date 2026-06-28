@@ -142,6 +142,105 @@ function moonPhaseName(ageDays) {
   const idx = Math.floor(((ageDays / 29.530588853) * 8 + 0.5)) % 8;
   return MOON_PHASE_NAMES[idx];
 }
+// ─── Planet ephemeris (real Keplerian elements) ───────────────────────
+// J2000 mean orbital elements + secular rates for the 8 planets, from
+// NASA JPL "Keplerian Elements for Approximate Positions of the Major
+// Planets" (E. M. Standish, ssd.jpl.nasa.gov/planets/approx_pos.html,
+// table 1, epoch J2000, valid 1800-2050). Columns: a (AU), e, I (deg),
+// L (mean longitude, deg), ϖ (longitude of perihelion, deg), Ω
+// (longitude of ascending node, deg); the second value of each pair is
+// the per-century rate. These are documented physical constants, NOT
+// synthetic/demo data — they identify the real planets' real orbits.
+const PLANET_ELEMENTS = {
+  Mercury: { a: [0.38709927, 0.00000037], e: [0.20563593, 0.00001906], I: [7.00497902, -0.00594749], L: [252.25032350, 149472.67411175], peri: [77.45779628, 0.16047689], node: [48.33076593, -0.12534081] },
+  Venus:   { a: [0.72333566, 0.00000390], e: [0.00677672, -0.00004107], I: [3.39467605, -0.00078890], L: [181.97909950, 58517.81538729], peri: [131.60246718, 0.00268329], node: [76.67984255, -0.27769418] },
+  Earth:   { a: [1.00000261, 0.00000562], e: [0.01671123, -0.00004392], I: [-0.00001531, -0.01294668], L: [100.46457166, 35999.37244981], peri: [102.93768193, 0.32327364], node: [0.0, 0.0] },
+  Mars:    { a: [1.52371034, 0.00001847], e: [0.09339410, 0.00007882], I: [1.84969142, -0.00813131], L: [-4.55343205, 19140.30268499], peri: [-23.94362959, 0.44441088], node: [49.55953891, -0.29257343] },
+  Jupiter: { a: [5.20288700, -0.00011607], e: [0.04838624, -0.00013253], I: [1.30439695, -0.00183714], L: [34.39644051, 3034.74612775], peri: [14.72847983, 0.21252668], node: [100.47390909, 0.20469106] },
+  Saturn:  { a: [9.53667594, -0.00125060], e: [0.05386179, -0.00050991], I: [2.48599187, 0.00193609], L: [49.95424423, 1222.49362201], peri: [92.59887831, -0.41897216], node: [113.66242448, -0.28867794] },
+  Uranus:  { a: [19.18916464, -0.00196176], e: [0.04725744, -0.00004397], I: [0.77263783, -0.00242939], L: [313.23810451, 428.48202785], peri: [170.95427630, 0.40805281], node: [74.01692503, 0.04240589] },
+  Neptune: { a: [30.06992276, 0.00026291], e: [0.00859048, 0.00005105], I: [1.77004347, 0.00035372], L: [-55.12002969, 218.45945325], peri: [44.96476227, -0.32241464], node: [131.78422574, -0.00508664] },
+};
+
+// Solve Kepler's equation M = E - e·sinE (radians) by Newton iteration.
+function solveKepler(Mrad, e) {
+  let E = Mrad;
+  for (let i = 0; i < 12; i++) {
+    const dE = (E - e * Math.sin(E) - Mrad) / (1 - e * Math.cos(E));
+    E -= dE;
+    if (Math.abs(dE) < 1e-9) break;
+  }
+  return E;
+}
+
+// Heliocentric ecliptic rectangular coords (AU, J2000 frame) of a planet
+// from its Keplerian elements at the given date. Standard two-body math.
+function planetHelio(name, date) {
+  const el = PLANET_ELEMENTS[name];
+  if (!el) return null;
+  const jd = julianDate(date);
+  const T = (jd - 2451545.0) / 36525.0; // Julian centuries past J2000
+  const a = el.a[0] + el.a[1] * T;
+  const e = el.e[0] + el.e[1] * T;
+  const I = (el.I[0] + el.I[1] * T) * DEG;
+  const L = el.L[0] + el.L[1] * T;
+  const peri = el.peri[0] + el.peri[1] * T;
+  const node = (el.node[0] + el.node[1] * T) * DEG;
+  const w = (peri - el.node[0] - el.node[1] * T) * DEG; // argument of perihelion
+  let M = (L - peri) % 360; // mean anomaly (deg)
+  M = ((M + 180) % 360 + 360) % 360 - 180; // wrap to [-180,180]
+  const E = solveKepler(M * DEG, e);
+  // Position in orbital plane.
+  const xv = a * (Math.cos(E) - e);
+  const yv = a * Math.sqrt(1 - e * e) * Math.sin(E);
+  // Rotate orbital plane → J2000 ecliptic (by ω, I, Ω).
+  const cosw = Math.cos(w), sinw = Math.sin(w);
+  const cosO = Math.cos(node), sinO = Math.sin(node);
+  const cosI = Math.cos(I), sinI = Math.sin(I);
+  const x = (cosw * cosO - sinw * sinO * cosI) * xv + (-sinw * cosO - cosw * sinO * cosI) * yv;
+  const y = (cosw * sinO + sinw * cosO * cosI) * xv + (-sinw * sinO + cosw * cosO * cosI) * yv;
+  const z = (sinw * sinI) * xv + (cosw * sinI) * yv;
+  return { x, y, z };
+}
+
+// Geocentric equatorial RA (deg) / Dec (deg) of a planet at the date.
+function planetEquatorial(name, date) {
+  const p = planetHelio(name, date);
+  const earth = planetHelio("Earth", date);
+  if (!p || !earth) return null;
+  // Geocentric ecliptic vector = planet - Earth.
+  const xe = p.x - earth.x, ye = p.y - earth.y, ze = p.z - earth.z;
+  // Ecliptic → equatorial rotation by the obliquity ε.
+  const eps = 23.43928 * DEG;
+  const xq = xe;
+  const yq = ye * Math.cos(eps) - ze * Math.sin(eps);
+  const zq = ye * Math.sin(eps) + ze * Math.cos(eps);
+  let ra = Math.atan2(yq, xq) * RAD;
+  ra = ((ra % 360) + 360) % 360;
+  const dec = Math.atan2(zq, Math.hypot(xq, yq)) * RAD;
+  return { ra, dec };
+}
+
+// Resolve a body NAME → geocentric equatorial { ra(deg), dec(deg) } at the
+// given date. Planets are computed live (Standish elements above); the Sun
+// and Moon via the existing low-precision ephemeris; bright stars from the
+// real J2000 BRIGHT_STARS catalog. Returns null for an unknown name.
+function resolveBodyEquatorial(name, date) {
+  if (!name) return null;
+  const key = String(name).trim().toLowerCase();
+  if (!key) return null;
+  if (key === "sun") { const s = sunEquatorial(date); return { ra: s.ra, dec: s.dec, kind: "sun" }; }
+  if (key === "moon") { const m = moonState(date); return { ra: m.ra, dec: m.dec, kind: "moon" }; }
+  const planetName = Object.keys(PLANET_ELEMENTS).find((p) => p.toLowerCase() === key);
+  if (planetName && planetName !== "Earth") {
+    const eq = planetEquatorial(planetName, date);
+    if (eq) return { ra: eq.ra, dec: eq.dec, kind: "planet" };
+  }
+  const star = BRIGHT_STARS.find((s) => s.name.toLowerCase() === key);
+  if (star) return { ra: star.ra, dec: star.dec, kind: "star", constellation: star.con, magnitude: star.mag };
+  return null;
+}
+
 // Rise/set time (UTC ms) for given equatorial coords by sampling altitude.
 function riseSetTimes(raFn, latDeg, lonDeg, baseDate, horizonDeg = 0) {
   let rise = null, set = null, prevAlt = null;
@@ -160,23 +259,91 @@ function riseSetTimes(raFn, latDeg, lonDeg, baseDate, horizonDeg = 0) {
 }
 
 export default function registerAstronomyActions(registerLensAction) {
+  // celestialPosition — "where is this object in my sky right now?"
+  //
+  // TWO input shapes, both real:
+  //   (1) BODY NAME path (what the AstronomyActionPanel sends):
+  //       { body | name, observerLat | latitude, observerLng | longitude, date? }
+  //       The name is resolved to RA/Dec via resolveBodyEquatorial — planets
+  //       from live Standish/JPL Keplerian elements, Sun/Moon from the
+  //       ephemeris, bright stars from the real J2000 catalog.
+  //   (2) RA/DEC COORDINATE path (still supported, unchanged contract):
+  //       { rightAscension (hours), declination (deg), latitude, longitude }
+  //
+  // Output carries BOTH the canonical long field names (object/altitude/
+  // azimuth) AND the panel's short aliases (body/alt/az) so the rendering
+  // side resolves whichever it reads.
   registerLensAction("astronomy", "celestialPosition", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const ra = finiteOr(data.rightAscension, 0); // hours
-    const dec = finiteOr(data.declination, 0); // degrees
-    const lat = finiteOr(data.latitude, 40.7); // observer latitude
-    const lon = finiteOr(data.longitude, -74.0);
-    if (ra === null || dec === null || lat === null || lon === null) {
-      return { ok: false, error: "rightAscension/declination/latitude/longitude must be finite numbers" };
+    // Observer accepts either {observerLat,observerLng} (panel) or
+    // {latitude,longitude} (coordinate path); both default to NYC.
+    const lat = finiteOr(data.observerLat ?? data.latitude, 40.7);
+    const lon = finiteOr(data.observerLng ?? data.longitude, -74.0);
+    if (lat === null || lon === null) {
+      return { ok: false, error: "observerLat/observerLng (latitude/longitude) must be finite numbers" };
     }
-    const now = new Date();
-    // Simplified altitude calculation
-    const lst = (now.getUTCHours() + now.getUTCMinutes() / 60 + lon / 15) % 24; // Local Sidereal Time approx
-    const hourAngle = (lst - ra) * 15; // degrees
-    const latRad = lat * Math.PI / 180, decRad = dec * Math.PI / 180, haRad = hourAngle * Math.PI / 180;
-    const altitude = Math.asin(Math.sin(latRad) * Math.sin(decRad) + Math.cos(latRad) * Math.cos(decRad) * Math.cos(haRad)) * 180 / Math.PI;
-    const azimuth = Math.atan2(-Math.sin(haRad), Math.cos(latRad) * Math.tan(decRad) - Math.sin(latRad) * Math.cos(haRad)) * 180 / Math.PI;
-    return { ok: true, result: { object: data.name || artifact.title, ra: `${ra}h`, dec: `${dec}°`, altitude: Math.round(altitude * 10) / 10, azimuth: Math.round(((azimuth + 360) % 360) * 10) / 10, visible: altitude > 0, bestViewing: altitude > 30 ? "excellent" : altitude > 15 ? "good" : altitude > 0 ? "low-on-horizon" : "below-horizon", observerLocation: { lat, lon } } };
+    // Resolve the observing instant: the panel sends an ISO `date`.
+    let when = new Date();
+    if (data.date != null) {
+      const d = new Date(String(data.date));
+      if (!Number.isNaN(d.getTime())) when = d;
+    }
+
+    // Determine RA(deg)/Dec(deg) — by NAME if given, else from raw coords.
+    const bodyName = data.body ?? data.name ?? artifact.title;
+    let raDeg, decDeg, raHours, resolvedName, kind = null, constellation = null, magnitude = null;
+    const resolved = bodyName ? resolveBodyEquatorial(bodyName, when) : null;
+    if (resolved) {
+      raDeg = resolved.ra;
+      decDeg = resolved.dec;
+      raHours = raDeg / 15;
+      resolvedName = String(bodyName);
+      kind = resolved.kind;
+      constellation = resolved.constellation ?? null;
+      magnitude = resolved.magnitude ?? null;
+    } else {
+      // Coordinate path: rightAscension is in HOURS, declination in degrees.
+      const raH = finiteOr(data.rightAscension, 0);
+      const dec = finiteOr(data.declination, 0);
+      if (raH === null || dec === null) {
+        return { ok: false, error: "rightAscension/declination must be finite numbers (or pass a known body name)" };
+      }
+      // A name was supplied but unknown ⇒ fail honestly, don't silently
+      // pretend it's at RA/Dec 0,0.
+      if (bodyName && data.rightAscension == null && data.declination == null) {
+        return { ok: false, error: `unknown body "${bodyName}" — pass a known planet/star/Sun/Moon or rightAscension+declination` };
+      }
+      raHours = raH;
+      raDeg = ((raH * 15) % 360 + 360) % 360;
+      decDeg = dec;
+      resolvedName = bodyName ? String(bodyName) : null;
+    }
+
+    // Real horizontal coords via the Meeus equatorial→horizontal transform
+    // (degrees in, alt/az out) at the resolved instant for the observer.
+    const h = equatorialToHorizontal(raDeg, decDeg, lat, lon, when);
+    const altitude = Math.round(h.altitude * 10) / 10;
+    const azimuth = Math.round(((h.azimuth % 360) + 360) % 360 * 10) / 10;
+    const bestViewing = altitude > 30 ? "excellent" : altitude > 15 ? "good" : altitude > 0 ? "low-on-horizon" : "below-horizon";
+    return {
+      ok: true,
+      result: {
+        // Canonical long names (coordinate-path callers + tests).
+        object: resolvedName,
+        ra: `${Math.round(raHours * 1000) / 1000}h`,
+        dec: `${Math.round(decDeg * 100) / 100}°`,
+        altitude, azimuth,
+        // Panel-facing short aliases (AstronomyActionPanel renders these).
+        body: resolvedName,
+        alt: altitude,
+        az: azimuth,
+        kind, constellation, magnitude,
+        visible: altitude > 0,
+        bestViewing,
+        when: when.toISOString(),
+        observerLocation: { lat, lon },
+      },
+    };
   });
 
   registerLensAction("astronomy", "planObservation", (ctx, artifact, _params) => {
