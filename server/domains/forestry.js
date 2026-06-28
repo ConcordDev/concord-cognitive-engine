@@ -8,48 +8,178 @@
 const INCIWEB_BASE = "https://inciweb.wildfire.gov/api/v1";
 const NIFC_FIRE_API = "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services";
 
+// Fail-closed finite coercion: parseFloat/Number admit Infinity & NaN silently,
+// which would poison every downstream board-feet / risk / carbon number and
+// render blank (NaN) or impossible (Infinity) tiles in the workbench. Coerce to
+// a finite number, falling back to `fallback` for anything non-finite.
+function frFinite(v, fallback = 0) {
+  if (typeof v === "number") return Number.isFinite(v) ? v : fallback;
+  if (v == null || v === "") return fallback;
+  const n = Number(String(v).trim());
+  return Number.isFinite(n) ? n : fallback;
+}
+// Per-species board-foot density factor (≈ taper/form relative to a generic
+// mixed stand at 1.0) so timberVolume reflects the chosen species, not just a
+// flat formula. Conifers yield more usable sawtimber per cubic foot than the
+// hardwoods at the same age/acre.
+const VOLUME_SPECIES_FACTOR = {
+  "douglas-fir": 1.25, douglas_fir: 1.25,
+  "ponderosa-pine": 1.1, ponderosa_pine: 1.1,
+  "loblolly-pine": 1.15, loblolly_pine: 1.15,
+  redwood: 1.4, hemlock: 1.05, cedar: 1.0, spruce: 1.1,
+  oak: 0.85, maple: 0.8, aspen: 0.7, mixed: 1.0, other: 0.9,
+};
+
 export default function registerForestryActions(registerLensAction) {
-  registerLensAction("forestry", "timberVolume", (ctx, artifact, _params) => {
-    const trees = artifact.data?.trees || [];
-    if (trees.length === 0) return { ok: true, result: { message: "Add tree measurements (DBH, height) to estimate timber volume." } };
-    const estimated = trees.map(t => { const dbh = parseFloat(t.dbhInches || t.diameter) || 12; const height = parseFloat(t.heightFeet || t.height) || 60; const species = t.species || "mixed"; const bf = 0.00545415 * Math.pow(dbh, 2) * height * 0.5; return { species, dbhInches: dbh, heightFeet: height, boardFeet: Math.round(bf), logs: Math.floor(height / 16) }; });
-    const totalBF = estimated.reduce((s, t) => s + t.boardFeet, 0);
-    const pricePerMBF = parseFloat(artifact.data?.pricePerMBF) || 400;
-    return { ok: true, result: { trees: estimated, totalTrees: trees.length, totalBoardFeet: totalBF, totalMBF: Math.round(totalBF / 1000 * 10) / 10, estimatedValue: Math.round(totalBF / 1000 * pricePerMBF), avgBFPerTree: Math.round(totalBF / trees.length), pricePerMBF } };
+  // timberVolume — the ForestryActionPanel sends { species, acres, avgAgeYears,
+  // treeCount } (NOT a `trees` array). Estimate per-tree board feet from a
+  // species×age yield model, scale by tree count, and return the fields the
+  // panel renders: boardFeet, cubicFeet, valuation. Fail-closed on poison input.
+  registerLensAction("forestry", "timberVolume", (ctx, artifact, params = {}) => {
+    try {
+      const src = (params && Object.keys(params).length ? params : artifact?.data) || {};
+      const species = String(src.species || "mixed");
+      const acres = Math.max(0, frFinite(src.acres, 0));
+      const ageYears = Math.max(0, frFinite(src.avgAgeYears ?? src.ageYears, 0));
+      const treeCount = Math.max(0, Math.round(frFinite(src.treeCount, 0)));
+      if (treeCount <= 0 || acres <= 0) {
+        return { ok: true, result: { message: "Enter species + acres + average age + tree count to estimate timber volume." } };
+      }
+      const factor = VOLUME_SPECIES_FACTOR[species] ?? 1.0;
+      // Mean board feet per tree rises with stand age toward a ~mature plateau.
+      // (deterministic, monotone, finite for any finite age)
+      const ageMaturity = 1 - Math.exp(-ageYears / 35); // 0..~1
+      const bfPerTree = Math.round(220 * factor * (0.15 + 0.85 * ageMaturity));
+      const boardFeet = Math.round(bfPerTree * treeCount);
+      const cubicFeet = Math.round(boardFeet / 6); // ≈6 bf per cubic foot (Int'l ¼")
+      const pricePerMBF = Math.max(0, frFinite(src.pricePerMBF, 400));
+      const valuation = Math.round((boardFeet / 1000) * pricePerMBF);
+      return {
+        ok: true,
+        result: {
+          species, acres, avgAgeYears: ageYears, treeCount,
+          boardFeetPerTree: bfPerTree,
+          boardFeet, cubicFeet, valuation, pricePerMBF,
+          mbf: Math.round((boardFeet / 1000) * 10) / 10,
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
-  registerLensAction("forestry", "fireRisk", (ctx, artifact, _params) => {
-    const data = artifact.data || {};
-    const temp = parseFloat(data.temperatureF) || 80;
-    const humidity = parseFloat(data.humidityPercent) || 30;
-    const wind = parseFloat(data.windSpeedMph) || 10;
-    const drought = parseInt(data.droughtIndex) || 3;
-    const fuelMoisture = parseFloat(data.fuelMoisturePercent) || 15;
-    let risk = 0;
-    risk += temp > 95 ? 25 : temp > 85 ? 15 : temp > 75 ? 8 : 3;
-    risk += humidity < 15 ? 25 : humidity < 25 ? 18 : humidity < 40 ? 10 : 3;
-    risk += wind > 25 ? 20 : wind > 15 ? 12 : wind > 8 ? 6 : 2;
-    risk += drought * 5;
-    risk += fuelMoisture < 10 ? 15 : fuelMoisture < 20 ? 8 : 2;
-    return { ok: true, result: { conditions: { temperature: `${temp}°F`, humidity: `${humidity}%`, wind: `${wind} mph`, droughtIndex: drought, fuelMoisture: `${fuelMoisture}%` }, riskScore: Math.min(100, risk), riskLevel: risk >= 75 ? "extreme" : risk >= 50 ? "high" : risk >= 30 ? "moderate" : "low", actions: risk >= 75 ? ["Red flag warning", "Close forest to public", "Pre-position fire crews"] : risk >= 50 ? ["Fire watch", "Restrict campfires", "Alert fire crews"] : ["Normal operations"] } };
+  // fireRisk — panel sends { tempF, humidity, windMph }. Returns riskLevel +
+  // score (the panel reads result.riskLevel and result.score) + factors.
+  registerLensAction("forestry", "fireRisk", (ctx, artifact, params = {}) => {
+    try {
+      const src = (params && Object.keys(params).length ? params : artifact?.data) || {};
+      // Accept both the panel's (tempF/humidity/windMph) names AND the legacy
+      // (temperatureF/humidityPercent/windSpeedMph) names; fail-closed to a sane
+      // default for anything non-finite so the score never goes NaN.
+      const temp = frFinite(src.tempF ?? src.temperatureF, 80);
+      const humidity = frFinite(src.humidity ?? src.humidityPercent, 30);
+      const wind = frFinite(src.windMph ?? src.windSpeedMph, 10);
+      const drought = Math.max(0, Math.min(5, Math.round(frFinite(src.droughtIndex, 3))));
+      const fuelMoisture = frFinite(src.fuelMoisturePercent, 15);
+      let risk = 0;
+      risk += temp > 95 ? 25 : temp > 85 ? 15 : temp > 75 ? 8 : 3;
+      risk += humidity < 15 ? 25 : humidity < 25 ? 18 : humidity < 40 ? 10 : 3;
+      risk += wind > 25 ? 20 : wind > 15 ? 12 : wind > 8 ? 6 : 2;
+      risk += drought * 5;
+      risk += fuelMoisture < 10 ? 15 : fuelMoisture < 20 ? 8 : 2;
+      const score = Math.min(100, Math.max(0, Math.round(risk)));
+      const riskLevel = score >= 75 ? "extreme" : score >= 50 ? "high" : score >= 30 ? "moderate" : "low";
+      const factors = [];
+      if (temp > 85) factors.push(`high temp ${Math.round(temp)}°F`);
+      if (humidity < 25) factors.push(`low humidity ${Math.round(humidity)}%`);
+      if (wind > 15) factors.push(`high wind ${Math.round(wind)} mph`);
+      if (drought >= 4) factors.push("severe drought");
+      if (fuelMoisture < 10) factors.push("critically dry fuel");
+      return {
+        ok: true,
+        result: {
+          conditions: { temperature: `${Math.round(temp)}°F`, humidity: `${Math.round(humidity)}%`, wind: `${Math.round(wind)} mph`, droughtIndex: drought, fuelMoisture: `${Math.round(fuelMoisture)}%` },
+          score, riskScore: score, riskLevel, factors,
+          actions: score >= 75 ? ["Red flag warning", "Close forest to public", "Pre-position fire crews"] : score >= 50 ? ["Fire watch", "Restrict campfires", "Alert fire crews"] : ["Normal operations"],
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
-  registerLensAction("forestry", "harvestPlan", (ctx, artifact, _params) => {
-    const data = artifact.data || {};
-    const acreage = parseFloat(data.acreage) || 100;
-    const method = (data.method || "selective").toLowerCase();
-    const methods = { clearcut: { removal: 100, regen: "replant", impactLevel: "high", cyclYears: 60 }, shelterwood: { removal: 70, regen: "natural + plant", impactLevel: "moderate", cyclYears: 80 }, selective: { removal: 30, regen: "natural", impactLevel: "low", cyclYears: 20 }, salvage: { removal: 50, regen: "replant", impactLevel: "moderate", cyclYears: 40 } };
-    const plan = methods[method] || methods.selective;
-    return { ok: true, result: { acreage, method, removalPercent: plan.removal, regeneration: plan.regen, impactLevel: plan.impactLevel, rotationYears: plan.cyclYears, estimatedHarvestAcres: Math.round(acreage * plan.removal / 100), roadRequired: acreage > 50 ? "Yes — logging road needed" : "Existing access may suffice", bestSeason: "Fall/Winter (dry, dormant season)", permits: ["Timber Harvest Plan (THP)", "Environmental review", "Watershed protection plan"] } };
+  // harvestPlan — panel sends { species, acres, currentAge }; renders
+  // result.schedule[] (a multi-year rotation removal schedule) + result.rotation.
+  // Builds a real staged-cut schedule keyed off the species rotation age.
+  registerLensAction("forestry", "harvestPlan", (ctx, artifact, params = {}) => {
+    try {
+      const src = (params && Object.keys(params).length ? params : artifact?.data) || {};
+      const speciesRaw = String(src.species || "mixed");
+      const acres = Math.max(0, frFinite(src.acreage ?? src.acres, 0));
+      const currentAge = Math.max(0, frFinite(src.currentAge ?? src.ageYears, 0));
+      const method = String(src.method || "selective").toLowerCase();
+      if (acres <= 0) return { ok: true, result: { message: "Enter acres (and species + current age) to build a harvest schedule." } };
+      const methods = {
+        clearcut: { removal: 100, regen: "replant", impactLevel: "high", cyclYears: 60 },
+        shelterwood: { removal: 70, regen: "natural + plant", impactLevel: "moderate", cyclYears: 80 },
+        selective: { removal: 30, regen: "natural", impactLevel: "low", cyclYears: 20 },
+        salvage: { removal: 50, regen: "replant", impactLevel: "moderate", cyclYears: 40 },
+      };
+      const plan = methods[method] || methods.selective;
+      // Rotation comes from the species growth table (years from seed to mature
+      // harvest); the schedule stages the cut from the stand's current age.
+      const speciesKey = speciesRaw.replace(/-/g, "_");
+      const g = SPECIES_GROWTH[speciesKey] || SPECIES_GROWTH.mixed;
+      const rotation = g.rotation;
+      const yearsToMaturity = Math.max(0, rotation - currentAge);
+      // Stage the removal over up to 3 entries (selective/salvage) or a single
+      // final harvest (clearcut). Each entry: { year, acres, volume }.
+      const entries = method === "clearcut" || method === "salvage" ? 1 : 3;
+      const harvestAcres = Math.round((acres * plan.removal) / 100);
+      const perEntryAcres = Math.max(1, Math.round(harvestAcres / entries));
+      // approximate volume per acre at maturity from the species peak MAI.
+      const volPerAcre = Math.round(g.maiPeak * Math.min(rotation, g.peakAge) / g.peakAge);
+      const schedule = [];
+      for (let i = 0; i < entries; i++) {
+        const year = Math.round((yearsToMaturity * (i + 1)) / entries);
+        const a = i === entries - 1 ? Math.max(0, harvestAcres - perEntryAcres * (entries - 1)) : perEntryAcres;
+        schedule.push({ year, acres: a, volume: Math.round(volPerAcre * a) });
+      }
+      return {
+        ok: true,
+        result: {
+          species: speciesRaw, acres, currentAge, method,
+          rotation, rotationYears: rotation,
+          removalPercent: plan.removal, regeneration: plan.regen,
+          impactLevel: plan.impactLevel,
+          estimatedHarvestAcres: harvestAcres,
+          schedule,
+          roadRequired: acres > 50 ? "Yes — logging road needed" : "Existing access may suffice",
+          bestSeason: "Fall/Winter (dry, dormant season)",
+          permits: ["Timber Harvest Plan (THP)", "Environmental review", "Watershed protection plan"],
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
-  registerLensAction("forestry", "carbonSequestration", (ctx, artifact, _params) => {
-    const acreage = parseFloat(artifact.data?.acreage) || 100;
-    const ageYears = parseInt(artifact.data?.standAge) || 30;
-    const density = parseInt(artifact.data?.treesPerAcre) || 200;
-    const tonsPerAcrePerYear = ageYears < 20 ? 2.5 : ageYears < 50 ? 1.8 : 1.0;
-    const annualSequestration = acreage * tonsPerAcrePerYear;
-    const totalStored = acreage * density * 0.015 * ageYears;
-    const carbonCredits = annualSequestration; // ~1 credit per ton
-    const creditValue = Math.round(carbonCredits * 25);
-    return { ok: true, result: { acreage, standAge: ageYears, treesPerAcre: density, annualSequestration: `${Math.round(annualSequestration)} tons CO2/year`, totalCarbonStored: `${Math.round(totalStored)} tons CO2`, carbonCreditsPerYear: Math.round(carbonCredits), estimatedCreditValue: `$${creditValue}/year`, equivalentCars: Math.round(annualSequestration / 4.6) } };
+  // carbonSequestration — panel sends { species, acres, ageYears }; renders
+  // result.tonsPerYear, result.lifetimeTons, result.equivalentCars.
+  registerLensAction("forestry", "carbonSequestration", (ctx, artifact, params = {}) => {
+    try {
+      const src = (params && Object.keys(params).length ? params : artifact?.data) || {};
+      const acres = Math.max(0, frFinite(src.acreage ?? src.acres, 0));
+      const ageYears = Math.max(0, frFinite(src.standAge ?? src.ageYears, 0));
+      const density = Math.max(0, Math.round(frFinite(src.treesPerAcre, 200)));
+      if (acres <= 0) return { ok: true, result: { message: "Enter acres (and age) to estimate carbon sequestration." } };
+      const tonsPerAcrePerYear = ageYears < 20 ? 2.5 : ageYears < 50 ? 1.8 : 1.0;
+      const tonsPerYear = Math.round(acres * tonsPerAcrePerYear);
+      const lifetimeTons = Math.round(acres * density * 0.015 * Math.max(1, ageYears));
+      const creditValue = Math.round(tonsPerYear * 25);
+      return {
+        ok: true,
+        result: {
+          species: String(src.species || "mixed"), acres, standAge: ageYears, treesPerAcre: density,
+          tonsPerYear, lifetimeTons,
+          totalCarbonStored: lifetimeTons,
+          carbonCreditsPerYear: tonsPerYear,
+          estimatedCreditValue: creditValue,
+          equivalentCars: Math.round(tonsPerYear / 4.6),
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 
   /**

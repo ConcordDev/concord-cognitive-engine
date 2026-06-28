@@ -1,0 +1,28 @@
+{
+  "macro_id": "forestry.growth-projection",
+  "domain": "forestry",
+  "name": "growth-projection",
+  "inputs": {
+    "species": { "type": "string", "required": false },
+    "acres": { "type": "number", "required": true },
+    "currentAge": { "type": "number", "required": false },
+    "siteIndex": { "type": "number", "required": false },
+    "currentVolumePerAcre": { "type": "number", "required": false },
+    "rotationYears": { "type": "number", "required": false }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || Array.isArray(output.result.projection)",
+    "output.ok === false || output.result.projection.every(r => Number.isFinite(r.volumePerAcre) && Number.isFinite(r.totalVolume) && Number.isFinite(r.mai) && Number.isFinite(r.cai))",
+    "output.ok === false || (Number.isFinite(output.result.biologicalRotationAge) && Number.isFinite(output.result.peakMai))"
+  ],
+  "fuzz_cases": [
+    { "input": { "species": "douglas_fir", "acres": 40, "currentAge": 20, "siteIndex": 100 }, "expect": { "ok": true } },
+    { "input": { "species": "oak", "acres": 0 }, "expect": { "ok": false } },
+    { "input": { "species": "mixed", "acres": "1e999" }, "expect": { "ok": false } }
+  ],
+  "_note": "LENS_ACTIONS handler; dispatch key 'forestry.growth-projection'. GrowthProjectionPanel posts { species, acres, currentAge, siteIndex, currentVolumePerAcre } (flat, params === artifact.data); renders result.projection[] (volumePerAcre/mai chart), result.biologicalRotationAge, result.peakMai, result.finalVolumePerAcre. Real Chapman-Richards-style sigmoid anchored to per-species peak MAI (SPECIES_GROWTH) with site-index scaling. VALIDATION: acres <= 0 → { ok:false, error:'acres must be > 0' }. POISON: frNum() coerces non-finite to 0 → 1e999 acres → 0 → acres<=0 → rejected (never an Infinity-volume projection row); the loop bound is min(rotation-currentAge, 120) so it can't run away. Pinned by server/tests/forestry-lens-macros.test.js."
+}

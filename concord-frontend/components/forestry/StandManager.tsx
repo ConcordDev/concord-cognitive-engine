@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Trees, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Trees, Plus, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 
@@ -24,17 +24,31 @@ export function StandManager() {
   const [dash, setDash] = useState<Dash | null>(null);
   const [active, setActive] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', species: 'mixed', acres: '', treesPerAcre: '' });
   const [actForm, setActForm] = useState({ kind: 'survey', notes: '' });
 
   const refresh = useCallback(async () => {
-    const [sl, d] = await Promise.all([
-      lensRun('forestry', 'stand-list', {}),
-      lensRun('forestry', 'forestry-dashboard', {}),
-    ]);
-    setStands((sl.data?.result?.stands as Stand[]) || []);
-    setDash((d.data?.result as Dash) || null);
-    setLoading(false);
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const [sl, d] = await Promise.all([
+        lensRun('forestry', 'stand-list', {}),
+        lensRun('forestry', 'forestry-dashboard', {}),
+      ]);
+      // Distinguish a backend failure ({ ok:false } OR a thrown/empty response)
+      // from a genuinely-empty stand list — the swallowed-fetch silent-empty bug.
+      if (sl.data?.ok === false || !sl.data) {
+        setLoadError(sl.data?.error || 'Could not reach the forestry service.');
+        return;
+      }
+      setStands((sl.data?.result?.stands as Stand[]) || []);
+      setDash((d.data?.ok ? (d.data.result as Dash) : null) || null);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Could not reach the forestry service.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -58,7 +72,22 @@ export function StandManager() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return (
+    <div role="status" aria-busy="true" className="flex items-center justify-center gap-2 py-6 text-zinc-400">
+      <Loader2 className="w-4 h-4 animate-spin" /> <span className="text-xs">Loading stands…</span>
+    </div>
+  );
+
+  if (loadError) return (
+    <div role="alert" className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-4 text-center">
+      <AlertTriangle className="w-5 h-5 mx-auto mb-2 text-rose-400" />
+      <p className="text-xs text-rose-300 mb-3">Could not reach the forestry service. {loadError}</p>
+      <button onClick={() => void refresh()}
+        className="px-3 py-1.5 text-xs rounded bg-rose-600 hover:bg-rose-500 text-white font-semibold">
+        Try again
+      </button>
+    </div>
+  );
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
