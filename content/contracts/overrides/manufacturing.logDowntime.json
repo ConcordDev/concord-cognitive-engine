@@ -1,0 +1,26 @@
+{
+  "macro_id": "manufacturing.logDowntime",
+  "domain": "manufacturing",
+  "name": "logDowntime",
+  "reads_artifact_data": true,
+  "inputs": {
+    "machine": { "type": "string", "maxLength": 80 },
+    "reason": { "type": "string", "maxLength": 200 },
+    "durationMinutes": { "type": "number" },
+    "plannedTime": { "type": "number" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "output.ok === true",
+    "typeof output.result.downtimeId === 'string' && output.result.downtimeId.startsWith('DT-')",
+    "Number.isFinite(output.result.durationMinutes) && output.result.durationMinutes >= 0",
+    "Number.isFinite(output.result.availabilityImpactPct) && output.result.availabilityImpactPct >= 0",
+    "['maintenance','setup','unplanned'].includes(output.result.category)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "machine": "CNC-01", "plannedTime": 480 } }, "reason": "tool change setup", "durationMinutes": 48 }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "plannedTime": 480 } }, "reason": "bearing repair", "durationMinutes": 60 }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "plannedTime": 480 } }, "reason": "x", "durationMinutes": "lots" }, "expect": { "ok": true } }
+  ],
+  "_note": "page.tsx handleAction('logDowntime'); handler reads machine/plannedTime from artifact.data and reason/durationMinutes from params. availabilityImpactPct = duration/plannedTime×100. duration/plannedTime coerce to finite numbers (poisoned string → 0 / 480) so the impact is never NaN. category derives from the reason keyword (maint/repair/break → maintenance, setup/changeover → setup, else unplanned)."
+}

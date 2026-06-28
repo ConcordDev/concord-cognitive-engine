@@ -12,13 +12,19 @@ export default function registerManufacturingActions(registerLensAction) {
 
   registerLensAction("manufacturing", "bomCost", (ctx, artifact, _params) => {
     const components = artifact.data?.components || [];
+    // Fail CLOSED: coerce quantity/unitCost to finite numbers so a poisoned
+    // string field (e.g. "lots") can never poison the total with NaN.
+    const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
     let totalCost = 0;
     const breakdown = components.map(c => {
-      const lineCost = (c.quantity || 0) * (c.unitCost || 0);
+      const quantity = num(c.quantity);
+      const unitCost = num(c.unitCost);
+      const lineCost = Math.round(quantity * unitCost * 100) / 100;
       totalCost += lineCost;
-      return { part: c.name || c.partRef, quantity: c.quantity, unitCost: c.unitCost, lineCost };
+      return { part: c.name || c.partRef, quantity, unitCost, lineCost };
     });
-    return { ok: true, result: { product: artifact.title, components: breakdown, totalCost: Math.round(totalCost * 100) / 100, componentCount: components.length } };
+    const product = artifact.title || artifact.data?.product || null;
+    return { ok: true, result: { product, components: breakdown, totalCost: Math.round(totalCost * 100) / 100, componentCount: components.length } };
   });
 
   registerLensAction("manufacturing", "oeeCalculate", (ctx, artifact, params) => {
@@ -48,7 +54,9 @@ export default function registerManufacturingActions(registerLensAction) {
   registerLensAction("manufacturing", "safetyRate", (ctx, artifact, params) => {
     const incidents = artifact.data?.incidents || [];
     const hoursWorked = artifact.data?.hoursWorked || params.hoursWorked || 200000;
-    const recordable = incidents.filter(i => i.oshaRecordable).length;
+    // OSHA-recordable flag — accept either `oshaRecordable` or the `recordable`
+    // alias (both are explicit per-incident flags, never inferred from severity).
+    const recordable = incidents.filter(i => i.oshaRecordable || i.recordable).length;
     const rate = hoursWorked > 0 ? (recordable * 200000) / hoursWorked : 0;
     return { ok: true, result: { incidentRate: Math.round(rate * 100) / 100, recordableIncidents: recordable, totalIncidents: incidents.length, hoursWorked, benchmark: rate <= 3 ? 'below_average' : rate <= 5 ? 'average' : 'above_average' } };
   });
@@ -778,8 +786,11 @@ export default function registerManufacturingActions(registerLensAction) {
   registerLensAction("manufacturing", "logDowntime", (ctx, artifact, params = {}) => {
     const machine = artifact.data?.machine || artifact.title || params.machine || "machine";
     const reason = String(params.reason || artifact.data?.reason || "unplanned");
-    const durationMinutes = Math.max(0, Number(params.durationMinutes ?? artifact.data?.durationMinutes ?? 0));
-    const plannedTime = Math.max(1, Number(artifact.data?.plannedTime ?? params.plannedTime ?? 480));
+    // Fail CLOSED: a poisoned duration/plannedTime string must coerce to a safe
+    // numeric, never NaN (which would poison availabilityImpactPct).
+    const safeNum = (v, fallback) => { const n = Number(v); return Number.isFinite(n) ? n : fallback; };
+    const durationMinutes = Math.max(0, safeNum(params.durationMinutes ?? artifact.data?.durationMinutes ?? 0, 0));
+    const plannedTime = Math.max(1, safeNum(artifact.data?.plannedTime ?? params.plannedTime ?? 480, 480));
     const availabilityImpactPct = Math.round((durationMinutes / plannedTime) * 10000) / 100;
     const downtimeId = `DT-${Date.now().toString(36).toUpperCase()}`;
     return {
