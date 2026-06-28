@@ -1,0 +1,27 @@
+{
+  "macro_id": "linguistics.morphologyBreakdown",
+  "domain": "linguistics",
+  "name": "morphologyBreakdown",
+  "inputs": {
+    "word": { "type": "string", "required": false, "maxLength": 120 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.prefix === 'string'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.root === 'string'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.suffix === 'string'",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.morphemeCount)",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.wordClass === 'string'",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "word": "" }, "expect": { "ok": true } },
+    { "input": { "word": "unhappiness" }, "expect": { "ok": true } },
+    { "input": { "word": "cat" }, "expect": { "ok": true } },
+    { "input": { "word": 4242 }, "expect": { "ok": true } },
+    { "input": { "word": { "n": 1 } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler. Dispatch key 'linguistics.morphologyBreakdown'. Reads artifact.data.word (String-coerced — hardened). Returns {word,prefix,root,suffix,morphemeCount,wordClass}; morphemeCount = (prefix?1:0)+1+(suffix?1:0). FINITE morphemeCount on poisoned input, never throws. Pinned by server/tests/linguistics-lens-macros.test.js."
+}
