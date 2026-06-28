@@ -36,10 +36,18 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface DeadlineResult { upcoming?: Array<{ name: string; daysUntil: number; severity: string }>; overdue?: number }
-interface RenewalResult { renewals?: Array<{ contract: string; renewsOn: string; daysLeft: number }>; criticalCount?: number }
-interface ConflictResult { hasConflict?: boolean; parties?: string[]; explanation?: string }
-interface AuditResult { findings?: Array<{ control: string; status: string; gap?: string }>; complianceScore?: number }
+// Field shapes below mirror the EXACT contract of server/domains/legal.js.
+// deadlineCheck reads artifact.data.items[] (each with a `deadline`) and returns
+// { upcoming: [...item, daysUntil], count }. conflictCheck reads
+// artifact.data.{parties,client,opposingParty} + params.checkAgainst and returns
+// { conflicts, hasConflict, checkedAt }. complianceAudit reads
+// artifact.data.requirements[] and returns { score, rating, findings, ... }.
+// contractRenewal reads artifact.data.{expiryDate,renewalType} (single contract).
+interface DeadlineResult { upcoming?: Array<{ name?: string; deadline: string; daysUntil: number; severity?: string }>; count?: number }
+interface RenewalRow { name: string; daysUntilExpiry: number; urgency: string; autoRenewal: boolean; actionRequired: boolean }
+interface RenewalResult { renewals: RenewalRow[]; criticalCount: number }
+interface ConflictResult { hasConflict?: boolean; conflicts?: Array<{ name: string; conflictType: string }>; checkedAt?: string }
+interface AuditResult { findings?: Array<{ requirement: string; reason?: string; severity?: string }>; score?: number; rating?: string; passed?: number; failed?: number }
 
 export function LegalActionPanel() {
   const [caseName, setCaseName] = useState('');
@@ -78,28 +86,49 @@ export function LegalActionPanel() {
   });
 
   async function actDeadline() {
-    const parsed = deadlines.split('\n').map(l => { const m = l.trim().match(/^(.+?)\s+(\d{4}-\d{2}-\d{2})\s+(\S+)$/); return m ? { name: m[1], dueDate: m[2], severity: m[3] } : null; }).filter(Boolean);
-    if (!parsed.length) { err('Add deadlines (name YYYY-MM-DD severity).'); return; }
+    // deadlineCheck reads artifact.data.items[] with each item's `deadline` field.
+    const items = deadlines.split('\n').map(l => { const m = l.trim().match(/^(.+?)\s+(\d{4}-\d{2}-\d{2})\s+(\S+)$/); return m ? { name: m[1], deadline: m[2], severity: m[3] } : null; }).filter(Boolean);
+    if (!items.length) { err('Add deadlines (name YYYY-MM-DD severity).'); return; }
     setBusy('deadline'); setFeedback(null);
-    try { const r = await callMacro<DeadlineResult>('deadlineCheck', { deadlines: parsed }); if (r.ok && r.result) { setDeadlineResult(r.result); pipe.publish('legal.deadlines', r.result, { label: `${r.result.upcoming?.length ?? 0} upcoming` }); ok(`${r.result.upcoming?.length ?? 0} upcoming.`); } else err(r.error ?? 'deadline failed'); }
+    try { const r = await callMacro<DeadlineResult>('deadlineCheck', { items, daysAhead: 3650 }); if (r.ok && r.result) { setDeadlineResult(r.result); pipe.publish('legal.deadlines', r.result, { label: `${r.result.count ?? 0} upcoming` }); ok(`${r.result.count ?? 0} upcoming.`); } else err(r.error ?? 'deadline failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actRenewal() {
-    const parsed = contracts.split('\n').map(l => { const m = l.trim().match(/^(.+?)\s+(\d{4}-\d{2}-\d{2})$/); return m ? { name: m[1], expiresOn: m[2] } : null; }).filter(Boolean);
+    // contractRenewal scores ONE contract (artifact.data.expiryDate / renewalType).
+    // The textarea is multi-line, so call the handler once per contract row and
+    // assemble the real per-contract outputs into a renewals[] for the panel.
+    const parsed = contracts.split('\n').map(l => { const m = l.trim().match(/^(.+?)\s+(\d{4}-\d{2}-\d{2})$/); return m ? { name: m[1].trim(), expiryDate: m[2] } : null; }).filter(Boolean) as Array<{ name: string; expiryDate: string }>;
     if (!parsed.length) { err('Add contracts (name YYYY-MM-DD).'); return; }
     setBusy('renewal'); setFeedback(null);
-    try { const r = await callMacro<RenewalResult>('contractRenewal', { contracts: parsed }); if (r.ok && r.result) { setRenewalResult(r.result); pipe.publish('legal.renewals', r.result, { label: `${r.result.criticalCount ?? 0} critical` }); ok(`${r.result.renewals?.length ?? 0} renewals.`); } else err(r.error ?? 'renewal failed'); }
+    try {
+      const rows: RenewalRow[] = [];
+      for (const c of parsed) {
+        const r = await callMacro<{ daysUntilExpiry: number; urgency: string; autoRenewal: boolean; actionRequired: boolean }>('contractRenewal', { expiryDate: c.expiryDate, renewalType: 'manual', title: c.name });
+        if (r.ok && r.result && typeof r.result.daysUntilExpiry === 'number') {
+          rows.push({ name: c.name, daysUntilExpiry: r.result.daysUntilExpiry, urgency: String(r.result.urgency), autoRenewal: !!r.result.autoRenewal, actionRequired: !!r.result.actionRequired });
+        }
+      }
+      const criticalCount = rows.filter(x => x.urgency === 'critical').length;
+      const result: RenewalResult = { renewals: rows, criticalCount };
+      setRenewalResult(result);
+      pipe.publish('legal.renewals', result, { label: `${criticalCount} critical` });
+      ok(`${rows.length} renewals.`);
+    }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actConflict() {
     if (!partyA.trim() || !partyB.trim()) { err('Both parties required.'); return; }
     setBusy('conflict'); setFeedback(null);
-    try { const r = await callMacro<ConflictResult>('conflictCheck', { partyA: partyA.trim(), partyB: partyB.trim() }); if (r.ok && r.result) { setConflictResult(r.result); pipe.publish('legal.conflict', r.result, { label: r.result.hasConflict ? 'CONFLICT' : 'clear' }); ok(r.result.hasConflict ? 'CONFLICT detected.' : 'No conflict.'); } else err(r.error ?? 'conflict failed'); }
+    // conflictCheck reads artifact.data.{client,opposingParty,parties} and
+    // params.checkAgainst[] — partyA is the client, partyB the name to screen.
+    try { const r = await callMacro<ConflictResult>('conflictCheck', { client: partyA.trim(), parties: [partyA.trim()], checkAgainst: [partyB.trim()] }); if (r.ok && r.result) { setConflictResult(r.result); pipe.publish('legal.conflict', r.result, { label: r.result.hasConflict ? 'CONFLICT' : 'clear' }); ok(r.result.hasConflict ? 'CONFLICT detected.' : 'No conflict.'); } else err(r.error ?? 'conflict failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAudit() {
     setBusy('audit'); setFeedback(null);
-    try { const r = await callMacro<AuditResult>('complianceAudit', { caseName: caseName.trim() }); if (r.ok && r.result) { setAuditResult(r.result); pipe.publish('legal.audit', r.result, { label: `score ${r.result.complianceScore ?? '—'}` }); ok(`Score: ${r.result.complianceScore ?? '—'}.`); } else err(r.error ?? 'audit failed'); }
+    // complianceAudit scores artifact.data.requirements[] → { score, rating, findings }.
+    const requirements = deadlines.split('\n').map(l => { const m = l.trim().match(/^(.+?)\s+(\d{4}-\d{2}-\d{2})\s+(\S+)$/); return m ? { name: m[1], deadline: m[2], status: m[3] } : null; }).filter(Boolean);
+    try { const r = await callMacro<AuditResult>('complianceAudit', { requirements }); if (r.ok && r.result) { setAuditResult(r.result); pipe.publish('legal.audit', r.result, { label: `score ${r.result.score ?? '—'}` }); ok(`Score: ${r.result.score ?? '—'}.`); } else err(r.error ?? 'audit failed'); }
     catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -113,7 +142,7 @@ export function LegalActionPanel() {
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
-    const body = [`⚖ Legal brief: ${caseName || 'matter'}`, '', deadlineResult ? `Upcoming deadlines: ${deadlineResult.upcoming?.length ?? 0}` : '', renewalResult ? `Renewals: ${renewalResult.criticalCount ?? 0} critical` : '', conflictResult?.hasConflict ? `⚠ CONFLICT: ${conflictResult.explanation}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
+    const body = [`⚖ Legal brief: ${caseName || 'matter'}`, '', deadlineResult ? `Upcoming deadlines: ${deadlineResult.count ?? 0}` : '', renewalResult ? `Renewals: ${renewalResult.criticalCount ?? 0} critical` : '', conflictResult?.hasConflict ? `⚠ CONFLICT: ${(conflictResult.conflicts ?? []).map(c => c.name).join(', ')}` : '', mintedDtuId ? `\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
     try {
       const messageId = await dmRecall.run(async () => {
         const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
@@ -127,7 +156,7 @@ export function LegalActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Public legal note — ${caseName.trim()}`, tags: ['legal', 'public', 'note'], source: 'legal:note:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, note: { case: caseName, complianceScore: auditResult?.complianceScore } } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Public legal note — ${caseName.trim()}`, tags: ['legal', 'public', 'note'], source: 'legal:note:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, note: { case: caseName, complianceScore: auditResult?.score } } } });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
@@ -140,7 +169,7 @@ export function LegalActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Legal matter: "${caseName || 'matter'}". ${deadlineResult ? `${deadlineResult.upcoming?.length ?? 0} upcoming deadlines.` : ''} ${conflictResult?.hasConflict ? `Conflict: ${conflictResult.explanation}` : ''} ${auditResult ? `Compliance score: ${auditResult.complianceScore}.` : ''} Identify the single highest-risk action item to address this week. Plain text.`;
+      const task = `Legal matter: "${caseName || 'matter'}". ${deadlineResult ? `${deadlineResult.count ?? 0} upcoming deadlines.` : ''} ${conflictResult?.hasConflict ? `Conflict: ${(conflictResult.conflicts ?? []).map(c => c.name).join(', ')}` : ''} ${auditResult ? `Compliance score: ${auditResult.score}.` : ''} Identify the single highest-risk action item to address this week. Plain text.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Risk brief ready.'); } else err('Agent returned empty.');
@@ -201,26 +230,26 @@ export function LegalActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {deadlineResult?.upcoming && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 max-h-40 overflow-y-auto">
-            <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Deadlines ({deadlineResult.upcoming.length})</div>
-            {deadlineResult.upcoming.slice(0, 8).map((d, i) => <div key={i} className="text-[11px] text-zinc-300 flex justify-between"><span>{d.name}</span><span className={cn('font-mono', d.severity === 'high' ? 'text-rose-300' : d.severity === 'medium' ? 'text-amber-300' : 'text-zinc-400')}>{d.daysUntil}d</span></div>)}
+            <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Deadlines ({deadlineResult.count ?? deadlineResult.upcoming.length})</div>
+            {deadlineResult.upcoming.slice(0, 8).map((d, i) => <div key={i} className="text-[11px] text-zinc-300 flex justify-between"><span>{d.name ?? d.deadline}</span><span className={cn('font-mono', d.severity === 'high' ? 'text-rose-300' : d.severity === 'medium' ? 'text-amber-300' : 'text-zinc-400')}>{d.daysUntil}d</span></div>)}
           </div>
         )}
         {renewalResult?.renewals && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-40 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Renewals ({renewalResult.criticalCount} critical)</div>
-            {renewalResult.renewals.slice(0, 8).map((r, i) => <div key={i} className="text-[11px] text-zinc-300 flex justify-between"><span>{r.contract}</span><span className={cn('font-mono', r.daysLeft < 30 ? 'text-rose-300' : 'text-zinc-400')}>{r.daysLeft}d</span></div>)}
+            {renewalResult.renewals.slice(0, 8).map((r, i) => <div key={i} className="text-[11px] text-zinc-300 flex justify-between"><span>{r.name}</span><span className={cn('font-mono', r.daysUntilExpiry < 30 ? 'text-rose-300' : 'text-zinc-400')}>{r.daysUntilExpiry}d</span></div>)}
           </div>
         )}
         {conflictResult && (
           <div className={cn('rounded-md border p-2.5', conflictResult.hasConflict ? 'border-rose-500/40 bg-rose-500/5' : 'border-emerald-500/40 bg-emerald-500/5')}>
             <div className={cn('text-[10px] uppercase tracking-wider font-semibold', conflictResult.hasConflict ? 'text-rose-300' : 'text-emerald-300')}>Conflict {conflictResult.hasConflict ? 'DETECTED' : 'clear'}</div>
-            {conflictResult.explanation && <p className="text-[11px] text-zinc-300 mt-1">{conflictResult.explanation}</p>}
+            {conflictResult.conflicts?.length ? <p className="text-[11px] text-zinc-300 mt-1">{conflictResult.conflicts.map(c => `${c.name} (${c.conflictType.replace(/_/g, ' ')})`).join('; ')}</p> : null}
           </div>
         )}
         {auditResult && (
-          <div className={cn('rounded-md border p-2.5', (auditResult.complianceScore ?? 0) >= 80 ? 'border-emerald-500/40 bg-emerald-500/5' : (auditResult.complianceScore ?? 0) >= 50 ? 'border-amber-500/40 bg-amber-500/5' : 'border-rose-500/40 bg-rose-500/5')}>
-            <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-semibold">Compliance</div>
-            <div className="text-2xl font-bold text-zinc-100">{auditResult.complianceScore}<span className="text-xs text-zinc-400">/100</span></div>
+          <div className={cn('rounded-md border p-2.5', (auditResult.score ?? 0) >= 80 ? 'border-emerald-500/40 bg-emerald-500/5' : (auditResult.score ?? 0) >= 50 ? 'border-amber-500/40 bg-amber-500/5' : 'border-rose-500/40 bg-rose-500/5')}>
+            <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-semibold">Compliance{auditResult.rating ? ` · ${auditResult.rating}` : ''}</div>
+            <div className="text-2xl font-bold text-zinc-100">{auditResult.score}<span className="text-xs text-zinc-400">/100</span></div>
             {auditResult.findings?.length ? <div className="text-[10px] text-zinc-400">{auditResult.findings.length} findings</div> : null}
           </div>
         )}

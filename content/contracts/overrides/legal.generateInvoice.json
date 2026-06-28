@@ -1,0 +1,29 @@
+{
+  "macro_id": "legal.generateInvoice",
+  "domain": "legal",
+  "name": "generateInvoice",
+  "inputs": {
+    "timeEntries": { "type": "array" },
+    "expenses": { "type": "array" },
+    "taxRate": { "type": "number" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.laborSubtotal)",
+    "output.ok === false || Number.isFinite(output.result.expenseSubtotal)",
+    "output.ok === false || Number.isFinite(output.result.subtotal)",
+    "output.ok === false || Number.isFinite(output.result.taxAmount)",
+    "output.ok === false || Number.isFinite(output.result.total)",
+    "output.ok === false || Number.isFinite(output.result.totalHours)",
+    "output.ok === false || output.result.total >= 0"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "client": "Acme", "timeEntries": [{ "description": "Drafting", "hours": 2, "rate": 300 }], "expenses": [{ "description": "Filing fee", "amount": 50 }] } }, "taxRate": 0.1 }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "timeEntries": [{ "description": "x", "hours": "Infinity", "rate": "1e999" }], "expenses": [{ "description": "y", "amount": "Infinity" }] }, "taxRate": "Infinity" } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "timeEntries": [{ "hours": "NaN", "rate": "abc" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "page.tsx handleAction('generateInvoice') channel: /api/lens/:domain/:id/run loads a stored matter artifact whose data carries timeEntries/expenses; taxRate is the action param. Returns laborSubtotal + expenseSubtotal + subtotal + taxAmount + total. Fail-CLOSED: every numeric goes through finiteNum() which rejects NaN/±Infinity (incl. parseFloat('Infinity')===Infinity and Number('1e999')===Infinity) back to 0, so no non-finite value can reach a rendered total. Note the 2-key body { artifact:{data}, taxRate } is NOT peeled by the sole-key rule — taxRate stays a sibling param, exactly as the route delivers it."
+}

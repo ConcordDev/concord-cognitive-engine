@@ -1,0 +1,25 @@
+{
+  "macro_id": "legal.deadlineCalculator",
+  "domain": "legal",
+  "name": "deadlineCalculator",
+  "inputs": {
+    "filingDate": { "type": "string" },
+    "jurisdiction": { "type": "string" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.error === 'string' || Array.isArray(output.result.deadlines)",
+    "output.ok === false || typeof output.result.error === 'string' || output.result.deadlines.every(d => Number.isFinite(d.daysFromFiling))",
+    "output.ok === false || typeof output.result.error === 'string' || output.result.deadlines.every(d => Number.isFinite(d.daysRemaining))",
+    "output.ok === false || typeof output.result.error === 'string' || output.result.deadlines.every(d => ['past','urgent','upcoming','future'].includes(d.status))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "filingDate": "2099-01-01", "jurisdiction": "federal" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "filingDate": "2099-01-01", "jurisdiction": "state" } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "filingDate": "Infinity" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "page.tsx handleAction('deadlineCalculator') channel. Reads artifact.data.filingDate (or params.filingDate) + jurisdiction. Computes 5 court-rule deadlines (federal/state/default day tables) with daysRemaining + status band per row. Validation: missing filing date → { error:'No filing date provided' }. Fail-CLOSED: an unparseable filingDate yields an Invalid Date whose .toISOString() throws RangeError inside addDays — guarded up-front with Number.isNaN(base.getTime()) → { error:'Invalid filing date' }, so the macro never throws."
+}

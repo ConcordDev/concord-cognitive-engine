@@ -1011,7 +1011,7 @@ export default function LegalLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8" role="status" aria-busy="true">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm text-gray-400">Loading case files...</p>
@@ -1024,7 +1024,7 @@ export default function LegalLensPage() {
 
   if (isError) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8" role="alert">
         <ErrorState error={error?.message} onRetry={refetch} />
       </div>
     );

@@ -1,0 +1,25 @@
+{
+  "macro_id": "legal.deadlineCheck",
+  "domain": "legal",
+  "name": "deadlineCheck",
+  "inputs": {
+    "items": { "type": "array" },
+    "daysAhead": { "type": "number" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.upcoming)",
+    "output.ok === false || Number.isFinite(output.result.count)",
+    "output.ok === false || output.result.count === output.result.upcoming.length",
+    "output.ok === false || output.result.upcoming.every(u => Number.isFinite(u.daysUntil))"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "items": [{ "name": "Answer due", "deadline": "2099-01-10", "severity": "high" }], "daysAhead": 36500 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "items": [], "daysAhead": 30 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "items": [{ "name": "bad", "deadline": "Infinity", "severity": "high" }], "daysAhead": 36500 } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } }
+  ],
+  "_note": "LegalActionPanel.actDeadline channel: callMacro('deadlineCheck', { items, daysAhead }) → runDomain peels nothing (sibling keys) so handler reads artifact.data.items[] (each item's `deadline`) AND params.daysAhead. Returns { upcoming:[...item, daysUntil], count } sorted ascending by daysUntil, filtered to daysUntil in [0, daysAhead]. Panel renders upcoming[].name/.daysUntil/.severity + count EXACTLY. Fail-CLOSED: a non-date `deadline` yields NaN daysUntil which fails the `>= 0` filter and is dropped, so count stays finite."
+}

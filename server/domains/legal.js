@@ -1,4 +1,13 @@
 export default function registerLegalActions(registerLensAction) {
+  // Fail-CLOSED numeric coercion. parseFloat("Infinity") === Infinity and
+  // Number("1e999") === Infinity both slip past a bare `|| 0`, leaking a
+  // non-finite value into a rendered total. finiteNum rejects NaN/±Infinity and
+  // any non-finite coercion back to the supplied fallback (default 0).
+  const finiteNum = (v, fallback = 0) => {
+    const n = typeof v === "number" ? v : parseFloat(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
   registerLensAction("legal", "deadlineCheck", (ctx, artifact, params) => {
     const now = new Date();
     const items = artifact.data?.items || [];
@@ -17,6 +26,9 @@ export default function registerLegalActions(registerLensAction) {
   registerLensAction("legal", "contractRenewal", (ctx, artifact, _params) => {
     const expiryDate = artifact.data?.expiryDate ? new Date(artifact.data.expiryDate) : null;
     if (!expiryDate) return { ok: true, result: { status: "no_expiry", message: "No expiry date set" } };
+    // Fail-CLOSED: an unparseable expiry date would yield a NaN daysUntilExpiry
+    // that leaks into the rendered urgency band — reject it as no_expiry.
+    if (Number.isNaN(expiryDate.getTime())) return { ok: true, result: { status: "no_expiry", message: "Invalid expiry date" } };
     const now = new Date();
     const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
     const autoRenewal = artifact.data?.renewalType === 'auto';
@@ -59,8 +71,8 @@ export default function registerLegalActions(registerLensAction) {
     const documents = artifact.data?.documents || [];
     const timeEntries = artifact.data?.timeEntries || [];
     const billingTotal = Math.round(timeEntries.reduce((sum, e) => {
-      const hours = parseFloat(e.hours) || 0;
-      const rate = parseFloat(e.rate) || 0;
+      const hours = finiteNum(e.hours);
+      const rate = finiteNum(e.rate);
       return sum + hours * rate;
     }, 0) * 100) / 100;
     const keyDates = [];
@@ -130,6 +142,9 @@ export default function registerLegalActions(registerLensAction) {
     const filingDate = artifact.data?.filingDate || params.filingDate;
     if (!filingDate) return { ok: true, result: { error: 'No filing date provided' } };
     const base = new Date(filingDate);
+    // Fail-CLOSED: an unparseable filing date yields an Invalid Date whose
+    // .toISOString() throws RangeError inside addDays — reject before computing.
+    if (Number.isNaN(base.getTime())) return { ok: true, result: { error: 'Invalid filing date' } };
     const jurisdiction = artifact.data?.jurisdiction || params.jurisdiction || 'default';
     const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r.toISOString().split('T')[0]; };
 
@@ -162,12 +177,12 @@ export default function registerLegalActions(registerLensAction) {
   try {
     const timeEntries = artifact.data?.timeEntries || [];
     const expenses = artifact.data?.expenses || [];
-    const taxRate = params.taxRate != null ? params.taxRate : 0;
+    const taxRate = finiteNum(params.taxRate, 0);
 
     let totalHours = 0;
     const lineItems = timeEntries.map((entry, idx) => {
-      const hours = parseFloat(entry.hours) || 0;
-      const rate = parseFloat(entry.rate) || 0;
+      const hours = finiteNum(entry.hours);
+      const rate = finiteNum(entry.rate);
       const amount = Math.round(hours * rate * 100) / 100;
       totalHours += hours;
       return {
@@ -185,7 +200,7 @@ export default function registerLegalActions(registerLensAction) {
     const expenseItems = expenses.map((e, idx) => ({
       line: idx + 1,
       description: e.description || e.name || '',
-      amount: Math.round((parseFloat(e.amount) || 0) * 100) / 100,
+      amount: Math.round(finiteNum(e.amount) * 100) / 100,
     }));
     const expenseSubtotal = Math.round(expenseItems.reduce((s, e) => s + e.amount, 0) * 100) / 100;
     const subtotal = Math.round((laborSubtotal + expenseSubtotal) * 100) / 100;

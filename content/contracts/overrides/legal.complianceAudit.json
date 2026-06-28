@@ -1,0 +1,28 @@
+{
+  "macro_id": "legal.complianceAudit",
+  "domain": "legal",
+  "name": "complianceAudit",
+  "inputs": {
+    "requirements": { "type": "array" }
+  },
+  "reads_artifact_data": true,
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.score)",
+    "output.ok === false || (output.result.score >= 0 && output.result.score <= 100)",
+    "output.ok === false || Number.isFinite(output.result.passed)",
+    "output.ok === false || Number.isFinite(output.result.failed)",
+    "output.ok === false || output.result.passed + output.result.failed === output.result.totalRequirements",
+    "output.ok === false || ['excellent','good','fair','poor'].includes(output.result.rating)",
+    "output.ok === false || Array.isArray(output.result.findings)",
+    "output.ok === false || Array.isArray(output.result.checklist)"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "requirements": [{ "name": "CLE credits", "deadline": "2099-01-30", "status": "compliant" }, { "name": "Trust recon", "deadline": "2000-01-01", "status": "pending" }] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "requirements": [] } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "requirements": [{ "name": "x", "status": "compliant" }] } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LegalActionPanel.actAudit channel: callMacro('complianceAudit', { requirements:[{name,deadline,status}] }). Handler reads artifact.data.requirements[]; passed = status==='compliant' && !overdue. score = passCount/length*100 (100 when empty). rating bands >=90 excellent, >=70 good, >=50 fair, else poor. findings list the failures (severity high when overdue, else medium). Panel renders score + rating + findings.length EXACTLY. Score is bounded 0..100 by construction so no non-finite leak."
+}
