@@ -1,0 +1,26 @@
+{
+  "macro_id": "artistry.colorPaletteAnalysis",
+  "domain": "artistry",
+  "name": "colorPaletteAnalysis",
+  "inputs": {
+    "palette": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.colors)",
+    "output.ok === false || Number.isFinite(output.result.harmonyScore)",
+    "output.ok === false || output.result.dominantHue === null || Number.isFinite(output.result.dominantHue)",
+    "output.ok === false || Number.isFinite(output.result.contrastRange)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "palette": [] }, "expect": { "ok": true } },
+    { "input": { "palette": ["#ff0000", "#00ff00", "#0000ff"] }, "expect": { "ok": true } },
+    { "input": { "palette": [{ "color": "#ff0000", "weight": "Infinity" }, { "color": "#0000ff", "weight": "1e999" }] }, "expect": { "ok": true } },
+    { "input": { "palette": [{ "color": "#abc123", "weight": "NaN" }] }, "expect": { "ok": true } },
+    { "input": { "palette": "not-an-array" }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/artistry.js, registerLensAction('artistry','colorPaletteAnalysis',...)) — reached only via /api/lens/run + /api/lens/artistry/:id/run, dispatched on the EXACT key 'artistry.colorPaletteAnalysis' (3-arg handler(ctx, virtualArtifact, input) with virtualArtifact.data === input). The /lenses/artistry page drives it through useRunArtifact('artistry') → POST /api/lens/artistry/:id/run with the artifact's stored .data.palette. DETERMINISTIC pure compute (no LLM, no network). POISON: a per-color weight is coerced via finNum — non-finite (Infinity/NaN from 'Infinity'/'1e999') OR beyond-1e15 magnitude collapse to 1, so the weighted dominant-hue / harmony / saturation totals stay FINITE. Empty/absent/non-array palette degrades graceful (ok:true with the page-rendered message + colors:[], or a caught handler_error), never throws. Lives in LENS_ACTIONS (not MACROS) so the macro-assassin's enumerateMacros(MACROS) pipeline does NOT drive this contract — authored behavioral spec pinned by server/tests/artistry-lens-macros.test.js."
+}

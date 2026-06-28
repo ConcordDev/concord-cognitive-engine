@@ -1,0 +1,31 @@
+{
+  "macro_id": "artistry.projectCreate",
+  "domain": "artistry",
+  "name": "projectCreate",
+  "inputs": {
+    "title": { "type": "string", "required": false, "maxLength": 160 },
+    "description": { "type": "string", "required": false, "maxLength": 4000 },
+    "discipline": { "type": "string", "required": false, "maxLength": 60 },
+    "tools": { "type": "array", "required": false },
+    "tags": { "type": "array", "required": false },
+    "images": { "type": "array", "required": false },
+    "processSteps": { "type": "array", "required": false },
+    "coverUrl": { "type": "string", "required": false, "maxLength": 600 },
+    "published": { "type": "boolean", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result.project && typeof output.result.project.id === 'string' && output.result.project.id.length > 0)",
+    "output.ok === false || (Array.isArray(output.result.project.images) && Array.isArray(output.result.project.tags))",
+    "output.ok === false || output.result.project.views === 0",
+    "output.ok === true || typeof output.error === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "title": "Dune Concepts", "discipline": "concept-art", "tags": ["scifi"], "images": [{ "url": "https://x/1.png", "caption": "wide", "order": 0 }] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "title": "X", "images": ["https://x/a.png", { "url": "https://x/b.png", "order": "Infinity" }] }, "expect": { "ok": true } },
+    { "input": { "title": "X", "tags": "boom", "tools": "boom" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/artistry.js). 3-arg dispatch via /api/lens/run on key 'artistry.projectCreate' (the SOCIAL surface reads the 3rd `params` arg). The /lenses/artistry ProjectStudio.submit() sends these exact field names; it reads back r.data.result.project. Persistent per-user state on globalThis._concordSTATE.artistryLens.projects (a Map keyed by userId). Empty title defaults to 'Untitled Project' (never blank). A non-array tags/tools/images is normalized to [] via artArr (no throw). image.order is gated by Number.isFinite(Number(order)) — a poisoned 'Infinity' falls back to the array index. When STATE is absent the handler returns {ok:false, state_unavailable} and NEVER throws. Not driven by macro-assassin (LENS_ACTIONS, not MACROS); authored spec pinned by server/tests/artistry-lens-macros.test.js. NOTE: the assassin harness has no STATE, so a bare drive returns {ok:false, state_unavailable} — which is itself an honest, fail-closed terminal shape (the invariants admit ok:false)."
+}

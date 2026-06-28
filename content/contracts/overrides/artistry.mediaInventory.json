@@ -1,0 +1,25 @@
+{
+  "macro_id": "artistry.mediaInventory",
+  "domain": "artistry",
+  "name": "mediaInventory",
+  "inputs": {
+    "supplies": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (typeof output.result.totalItems === 'number' && Number.isFinite(output.result.totalItems))",
+    "output.ok === false || Number.isFinite(output.result.totalInventoryValue === undefined ? 0 : output.result.totalInventoryValue)",
+    "output.ok === false || Array.isArray(output.result.reorderAlerts)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "supplies": [] }, "expect": { "ok": true } },
+    { "input": { "supplies": [{ "name": "Cadmium Red", "category": "paint", "quantity": 3, "unit": "tube", "unitCost": 12, "reorderThreshold": 5 }] }, "expect": { "ok": true } },
+    { "input": { "supplies": [{ "name": "Poison", "category": "paint", "quantity": "Infinity", "unitCost": "1e999" }] }, "expect": { "ok": true } },
+    { "input": { "supplies": [{ "name": "NaNish", "category": "paint", "quantity": "NaN", "unitCost": 5 }] }, "expect": { "ok": true } },
+    { "input": { "supplies": "not-an-array" }, "expect": {} }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/artistry.js). 3-arg dispatch via /api/lens/run on key 'artistry.mediaInventory' (virtualArtifact.data === input). The /lenses/artistry page reads result.totalItems + result.categoryBreakdown[].category/itemCount. DETERMINISTIC pure compute (no wallet, no minting — a calculator, not a ledger). POISON: per-item quantity/unitCost/reorderThreshold are coerced via finNum — non-finite (Infinity/NaN/1e999) or beyond-1e15 collapse to 0, so totalInventoryValue / totalQuantity / estimatedReorderCost stay FINITE (a poisoned magnitude can never emit an Infinity inventory report). Empty/absent supplies degrade graceful (ok:true with the page message + totalItems:0, reorderAlerts:[]), never throws. Not driven by macro-assassin (LENS_ACTIONS, not MACROS); authored spec pinned by server/tests/artistry-lens-macros.test.js."
+}

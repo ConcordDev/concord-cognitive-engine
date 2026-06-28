@@ -120,10 +120,15 @@ export default function ArtistryLensPage() {
   const [uploadType, setUploadType] = useState('illustration');
   const [uploadTags, setUploadTags] = useState('');
 
-  // Assets from API
+  // Assets from API — the primary list channel wired to ErrorState/refetch.
+  // Do NOT swallow the failure into an empty resolve: catching → `return []`
+  // makes the promise resolve, so `isError` stays permanently false and the
+  // ErrorState (and its working Retry) below is dead — a load failure would
+  // read as an honest-but-wrong "No assets found." Re-throw so React Query
+  // surfaces `isError`, while `initialData` keeps the first render populated-safe.
   const { data: assets, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['artistry', 'assets', searchQuery],
-    queryFn: () => apiHelpers.artistry.assets.list({ search: searchQuery || undefined }).then(r => r.data?.assets || []).catch((e) => { console.warn('[Artistry] Query failed:', e?.message); return []; }),
+    queryFn: () => apiHelpers.artistry.assets.list({ search: searchQuery || undefined }).then(r => r.data?.assets || []),
     initialData: [],
   });
 
