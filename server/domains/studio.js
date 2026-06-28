@@ -60,6 +60,37 @@ function ensureRouteArtifactsTableStudio(db) {
   `);
 }
 
+// Persist a client-rendered audio buffer (decoded from a data: URL) into
+// route_artifacts so /api/artifacts/:id/download serves the REAL bytes. Inline
+// base64 ≤1 MB, else written to disk. Returns the artifact descriptor; throws on
+// write/DB failure (caller catches and reports an honest failure). This is the
+// shared producer for `bounce` + `export-stems` — neither fabricates a URL.
+async function persistStudioRenderArtifact(db, { decoded, userId, fileName, description, tags }) {
+  ensureRouteArtifactsTableStudio(db);
+  const artifactId = crypto.randomUUID();
+  const dtuId = `dtu_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  const inline = decoded.buf.length <= 1024 * 1024;
+  const contentB64 = inline ? decoded.buf.toString("base64") : null;
+  let storagePath = null;
+  if (!inline) {
+    const dir = path.join(STUDIO_DATA_DIR, "lens-assets", "studio-renders", userId);
+    await fsp.mkdir(dir, { recursive: true });
+    storagePath = path.join(dir, fileName);
+    await fsp.writeFile(storagePath, decoded.buf);
+  }
+  db.prepare(`
+    INSERT INTO route_artifacts (
+      artifact_id, dtu_id, name, mime_type, size_bytes,
+      storage_mode, content_b64, storage_path, created_by, description, tags
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    artifactId, dtuId, fileName, decoded.mimeType, decoded.buf.length,
+    inline ? "inline" : "disk", contentB64, storagePath, userId,
+    description || "Studio render", JSON.stringify(tags || []),
+  );
+  return { artifactId, sizeBytes: decoded.buf.length, mimeType: decoded.mimeType, downloadUrl: `/api/artifacts/${artifactId}/download` };
+}
+
 export default function registerStudioActions(registerLensAction) {
   registerLensAction("studio", "projectTimeline", (ctx, artifact, _params) => {
     const tasks = artifact.data?.tasks || [];
@@ -540,7 +571,7 @@ export default function registerStudioActions(registerLensAction) {
     return { ok: true, result: { renders: renders.slice().reverse() } };
   });
 
-  registerLensAction("studio", "bounce", (ctx, _a, params = {}) => {
+  registerLensAction("studio", "bounce", async (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
@@ -556,16 +587,45 @@ export default function registerStudioActions(registerLensAction) {
       format, sampleRate, stems,
       kind: trackId ? "stem" : (stems ? "stems" : "stereo_mix"),
       durationSec: Math.max(0, Number(params.durationSec) || 180),
-      status: "queued",
-      outputUrl: `/renders/${project.name.replace(/\s+/g, '_')}_${Date.now()}.${format.split('_')[0]}`,
       bouncedAt: new Date().toISOString(),
     };
-    // Simulate completion immediately (server-side bounce would queue + render)
-    render.status = "completed";
-    render.completedAt = new Date().toISOString();
+    // HONEST artifact production. The mixdown is rendered CLIENT-SIDE via Web
+    // Audio OfflineAudioContext (concord-frontend/lib/music/player.ts); when the
+    // client POSTs the resulting `audioDataUrl` we persist the REAL bytes to
+    // route_artifacts and return a working /api/artifacts/:id/download. With no
+    // audioDataUrl the server cannot encode audio headless, so we report
+    // status:"pending" with NO download URL — never a fabricated success.
+    // (Was: status hard-set to "completed" + a /renders/*.wav URL that 404'd.)
+    const db = ctx?.db;
+    const decoded = params.audioDataUrl ? decodeStudioAudioDataUrl(params.audioDataUrl) : null;
+    if (params.audioDataUrl && !decoded) {
+      return { ok: false, error: `audioDataUrl must be a base64 audio data: URL (wav/mpeg/ogg/flac, ≤${STUDIO_AUDIO_MAX_BYTES / (1024 * 1024)} MB)` };
+    }
+    if (decoded && db) {
+      try {
+        const fileName = `${project.name.replace(/\s+/g, "_")}_${render.kind}_${Date.now()}.${decoded.ext}`;
+        const art = await persistStudioRenderArtifact(db, {
+          decoded, userId, fileName,
+          description: `Studio bounce — ${project.name} (${render.kind})`,
+          tags: ["studio_bounce", `project:${projectId}`, `format:${format}`, `creator:${userId}`],
+        });
+        render.status = "completed";
+        render.completedAt = new Date().toISOString();
+        render.artifactId = art.artifactId;
+        render.sizeBytes = art.sizeBytes;
+        render.mimeType = art.mimeType;
+        render.downloadUrl = art.downloadUrl;
+      } catch (err) {
+        render.status = "failed";
+        render.error = String(err?.message || err);
+      }
+    } else {
+      render.status = "pending";
+      render.reason = "needs_client_render";
+    }
     ensureStuBucket(s, "renders", userId).push(render);
     saveStudioState();
-    return { ok: true, result: { render } };
+    return { ok: render.status === "completed", result: { render } };
   });
 
   // ── Markers (timeline) ────────────────────────────────────────
@@ -1230,7 +1290,7 @@ export default function registerStudioActions(registerLensAction) {
 
   // ── Stem / multi-track export + project import/export ─────────────
 
-  registerLensAction("studio", "export-stems", (ctx, _a, params = {}) => {
+  registerLensAction("studio", "export-stems", async (ctx, _a, params = {}) => {
   try {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = studioActor(ctx);
@@ -1240,30 +1300,64 @@ export default function registerStudioActions(registerLensAction) {
     if (!project.tracks || project.tracks.length === 0) return { ok: false, error: "project has no tracks to export" };
     const format = ["wav_24", "wav_32f", "aiff_24", "flac"].includes(params.format) ? params.format : "wav_24";
     const sampleRate = [44100, 48000, 88200, 96000].includes(Number(params.sampleRate)) ? Number(params.sampleRate) : 48000;
-    const ext = format.split("_")[0];
+    const db = ctx?.db;
+    // HONEST stem export. The client renders each track buffer (OfflineAudioContext)
+    // and POSTs `params.stems = [{ trackId, audioDataUrl }]`. We persist each to
+    // route_artifacts and return REAL per-stem /api/artifacts/:id/download URLs.
+    // Tracks with no supplied buffer are reported status:"pending" (no fabricated
+    // URL); the job is "completed" only if EVERY track produced a real artifact.
+    // (Was: every stem got a string-built /renders/... URL pointing at nothing.)
+    const supplied = new Map();
+    if (Array.isArray(params.stems)) {
+      for (const sIn of params.stems) {
+        if (sIn && typeof sIn === "object" && sIn.trackId && typeof sIn.audioDataUrl === "string") {
+          supplied.set(String(sIn.trackId), sIn.audioDataUrl);
+        }
+      }
+    }
     const ts = Date.now();
-    const stems = project.tracks.map((t, i) => ({
-      trackId: t.id,
-      trackName: t.name,
-      index: i,
-      outputUrl: `/renders/stems/${project.name.replace(/\s+/g, "_")}_${ts}/${String(i + 1).padStart(2, "0")}_${t.name.replace(/\s+/g, "_")}.${ext}`,
-    }));
+    const stems = [];
+    let producedCount = 0;
+    for (let i = 0; i < project.tracks.length; i++) {
+      const t = project.tracks[i];
+      const dataUrl = supplied.get(String(t.id));
+      const decoded = dataUrl ? decodeStudioAudioDataUrl(dataUrl) : null;
+      if (decoded && db) {
+        try {
+          const fileName = `${project.name.replace(/\s+/g, "_")}_${ts}_${String(i + 1).padStart(2, "0")}_${t.name.replace(/\s+/g, "_")}.${decoded.ext}`;
+          const art = await persistStudioRenderArtifact(db, {
+            decoded, userId, fileName,
+            description: `Studio stem — ${project.name} / ${t.name}`,
+            tags: ["studio_stem", `project:${projectId}`, `track:${t.id}`, `creator:${userId}`],
+          });
+          stems.push({ trackId: t.id, trackName: t.name, index: i, status: "completed", artifactId: art.artifactId, sizeBytes: art.sizeBytes, downloadUrl: art.downloadUrl });
+          producedCount++;
+        } catch (err) {
+          stems.push({ trackId: t.id, trackName: t.name, index: i, status: "failed", error: String(err?.message || err) });
+        }
+      } else if (dataUrl && !decoded) {
+        stems.push({ trackId: t.id, trackName: t.name, index: i, status: "failed", error: "invalid audioDataUrl" });
+      } else {
+        stems.push({ trackId: t.id, trackName: t.name, index: i, status: "pending", reason: "needs_client_render" });
+      }
+    }
+    const allProduced = producedCount === project.tracks.length;
     const job = {
       id: uidStu("stemexp"), projectId, projectName: project.name,
-      format, sampleRate, stemCount: stems.length, stems,
-      status: "completed",
+      format, sampleRate, stemCount: stems.length, producedCount, stems,
+      status: allProduced ? "completed" : "pending",
       exportedAt: new Date().toISOString(),
     };
     ensureStuBucket(s, "renders", userId).push({
       id: job.id, projectId, projectName: project.name, trackId: null,
       format, sampleRate, stems: true, kind: "stems",
-      durationSec: 0, status: "completed",
-      outputUrl: `/renders/stems/${project.name.replace(/\s+/g, "_")}_${ts}/`,
-      stemCount: stems.length,
-      bouncedAt: job.exportedAt, completedAt: job.exportedAt,
+      durationSec: 0, status: job.status,
+      stemCount: stems.length, producedCount,
+      bouncedAt: job.exportedAt,
+      ...(allProduced ? { completedAt: job.exportedAt } : { reason: "needs_client_render" }),
     });
     saveStudioState();
-    return { ok: true, result: { job } };
+    return { ok: allProduced, result: { job } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 

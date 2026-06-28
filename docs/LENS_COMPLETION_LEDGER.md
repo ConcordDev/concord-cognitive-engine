@@ -714,3 +714,29 @@ cross-substrate macros, app-maker wrong-domain) + the swallowed-fetch→silent-e
 fixed in ~12 lenses. Ratchet GREEN every batch. The remaining ~230 lenses are the long tail of the
 "all 258" loop — each already WIRED + smoke-covered; this pass hardened the highest-signal subset
 (the failing queue + the named passing-but-thin/economy lenses).
+
+---
+
+## Honesty audit — D1: simulated expensive last mile (2026-06-28)
+
+New dimension layered on the lens loop: hunt macros that CLAIM to produce an artifact but encode/write
+nothing (return `status:"completed"` + a fabricated URL). Two Explore agents read every flagship
+artifact producer's function body. Result: the codebase is overwhelmingly honest already — `voice-tts`,
+`video_gen`, `chat.image-generate` (Pollinations), `exportdomain.pdf-generate`, `accounting.efile-w2-export`,
+`forge.generate`, `music.publish-as-stem`, `studio.publish-as-adaptive-music`, `animation.export-record`
++ `fractal.recordRender` (client WebCodecs/compute), `government.representatives-find` are all REAL or
+legitimately client-offloaded. **Exactly two genuine fakes found, both fixed:**
+
+- **studio.bounce** (`server/domains/studio.js`): was `status:"completed"` + a string-built
+  `/renders/<name>.wav` URL that 404'd (confession: `// Simulate completion immediately`). Now HONEST:
+  when the client POSTs a rendered `audioDataUrl`, the real bytes persist to `route_artifacts` (the
+  existing `publish-as-adaptive-music` pattern) and it returns a working `/api/artifacts/:id/download`;
+  with no client audio it returns `ok:false` + `status:"pending"` (`needs_client_render`), NO URL.
+- **studio.export-stems**: same fix per-stem — one `route_artifacts` row per client-rendered track;
+  job is `completed` only if EVERY track produced a real artifact, else honest `pending`.
+- **Frontend** `BouncePanel.tsx`: shows a real download link only when a completed artifact exists;
+  pending/failed render an honest note (no dead button). No real project→audio renderer exists
+  (`player.ts` is playback-only), so the not-produced path is the correct honest fix — stated plainly.
+- Pinned: `server/tests/studio-bounce-honest.test.js` (6 — asserts real bytes in `route_artifacts`
+  OR honest not-produced with no URL), `concord-frontend/tests/studio-bounce-panel-states.test.tsx` (2),
+  `studio-domain-parity.test.js` updated off the old fake contract (71/71 studio green).

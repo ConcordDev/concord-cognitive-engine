@@ -188,22 +188,24 @@ describe("studio.automation-* (parameter envelopes)", () => {
 });
 
 describe("studio.bounce + renders-list", () => {
-  it("bounce creates completed render entry", () => {
+  it("records an honest pending render when no client audio is supplied (not produced)", async () => {
     const proj = call("project-create", ctxA, { name: "Mix", bpm: 120 });
-    const r = call("bounce", ctxA, { projectId: proj.result.project.id, format: "wav_32f", sampleRate: 96000 });
-    assert.equal(r.ok, true);
-    assert.equal(r.result.render.status, "completed");
+    const r = await call("bounce", ctxA, { projectId: proj.result.project.id, format: "wav_32f", sampleRate: 96000 });
+    assert.equal(r.ok, false, "no audio encoded → must not claim success");
+    assert.equal(r.result.render.status, "pending");
+    assert.equal(r.result.render.reason, "needs_client_render");
+    assert.equal(r.result.render.downloadUrl, undefined);
     assert.equal(r.result.render.format, "wav_32f");
     assert.equal(r.result.render.sampleRate, 96000);
     assert.equal(call("renders-list", ctxA, {}).result.renders.length, 1);
   });
-  it("stems flag changes render kind", () => {
+  it("stems flag changes render kind", async () => {
     const proj = call("project-create", ctxA, { name: "Mix", bpm: 120 });
-    const r = call("bounce", ctxA, { projectId: proj.result.project.id, stems: true });
+    const r = await call("bounce", ctxA, { projectId: proj.result.project.id, stems: true });
     assert.equal(r.result.render.kind, "stems");
   });
-  it("rejects unknown project", () => {
-    assert.equal(call("bounce", ctxA, { projectId: "nope" }).ok, false);
+  it("rejects unknown project", async () => {
+    assert.equal((await call("bounce", ctxA, { projectId: "nope" })).ok, false);
   });
 });
 
@@ -410,17 +412,19 @@ describe("studio.record-config-* + takes-* (metronome / count-in / comping)", ()
 });
 
 describe("studio.export-stems + project-import/export", () => {
-  it("export-stems produces one stem per track", () => {
+  it("records one honest pending stem per track when no client audio is supplied", async () => {
     const { projectId } = newProjAndTrack(ctxA);
     call("track-add", ctxA, { projectId, kind: "audio" });
-    const r = call("export-stems", ctxA, { projectId, format: "wav_24" });
-    assert.equal(r.ok, true);
+    const r = await call("export-stems", ctxA, { projectId, format: "wav_24" });
+    assert.equal(r.ok, false, "no stems encoded → must not claim success");
+    assert.equal(r.result.job.status, "pending");
     assert.equal(r.result.job.stemCount, 2);
     assert.equal(r.result.job.stems.length, 2);
+    assert.ok(r.result.job.stems.every((s) => s.status === "pending" && s.downloadUrl === undefined));
   });
-  it("export-stems rejects a project with no tracks", () => {
+  it("export-stems rejects a project with no tracks", async () => {
     const proj = call("project-create", ctxA, { name: "Empty" });
-    assert.equal(call("export-stems", ctxA, { projectId: proj.result.project.id }).ok, false);
+    assert.equal((await call("export-stems", ctxA, { projectId: proj.result.project.id })).ok, false);
   });
   it("project-export then project-import round-trips", () => {
     const { projectId, trackId } = newProjAndTrack(ctxA);
@@ -481,13 +485,13 @@ describe("studio.collab-* (real-time collaboration)", () => {
 });
 
 describe("studio.dashboard-summary", () => {
-  it("aggregates projects + clips + renders + presets", () => {
+  it("aggregates projects + clips + renders + presets", async () => {
     const ctxC = { actor: { userId: "user_dash_stu" }, userId: "user_dash_stu" };
     const proj = call("project-create", ctxC, { name: "P1", bpm: 120 });
     const trk = call("track-add", ctxC, { projectId: proj.result.project.id, kind: "audio" });
     call("clips-create", ctxC, { projectId: proj.result.project.id, trackId: trk.result.track.id, kind: "audio" });
     call("clips-create", ctxC, { projectId: proj.result.project.id, trackId: trk.result.track.id, kind: "midi" });
-    call("bounce", ctxC, { projectId: proj.result.project.id });
+    await call("bounce", ctxC, { projectId: proj.result.project.id }); // honest pending (no client audio) → NOT counted completed
     call("presets-save", ctxC, { name: "X", pluginName: "Y" });
     const d = call("dashboard-summary", ctxC, {});
     assert.equal(d.result.projectCount, 1);
@@ -495,7 +499,7 @@ describe("studio.dashboard-summary", () => {
     assert.equal(d.result.totalClips, 2);
     assert.equal(d.result.audioClips, 1);
     assert.equal(d.result.midiClips, 1);
-    assert.equal(d.result.rendersCompleted, 1);
+    assert.equal(d.result.rendersCompleted, 0); // a pending render is not "completed" — honest
     assert.equal(d.result.presetsCount, 1);
   });
 });
