@@ -244,6 +244,13 @@ export default function registerInsuranceActions(register) {
   });
 
   registerLensAction("insurance", "riskScore", (ctx, artifact, params) => {
+    // Fail-CLOSED: reject a poisoned numeric (NaN/Infinity/1e308/negative)
+    // BEFORE the score multiply, rather than emitting a null/Infinity score the
+    // panel would render as a blank or "Infinity%" risk card. Probability/impact
+    // arrive in either `artifact.data` (peeled body) or `params` (flat body).
+    const badNum = badNumericField(artifact.data || {}, ["probability", "impact"])
+      || badNumericField(params, ["probability", "impact"]);
+    if (badNum) return { ok: false, error: `invalid_${badNum}` };
     const probability = artifact.data?.probability || params.probability || 3;
     const impact = artifact.data?.impact || params.impact || 3;
     const score = probability * impact;
@@ -251,10 +258,16 @@ export default function registerInsuranceActions(register) {
     const normalizedScore = Math.round((score / maxScore) * 100);
     const mitigations = artifact.data?.mitigations || [];
     const mitigatedScore = Math.max(1, score - mitigations.length);
+    // The risk's human label. `artifact.title` is the legacy source, but the
+    // dispatch peel collapses a sole-key `{ artifact: { title, data } }` body to
+    // `artifact.data`, dropping the title — so the InsuranceActionPanel's risk
+    // card rendered a blank `risk`. Read it from `data.risk`/`params.risk`
+    // (which survive the peel) first, falling back to the legacy title.
+    const risk = artifact.data?.risk || params.risk || artifact.title || "Unnamed risk";
     return {
       ok: true,
       result: {
-        risk: artifact.title,
+        risk,
         probability,
         impact,
         rawScore: score,

@@ -1,0 +1,26 @@
+{
+  "macro_id": "insurance.lossRatioReport",
+  "domain": "insurance",
+  "name": "lossRatioReport",
+  "inputs": {
+    "policies": { "type": "array" },
+    "claims": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.lossRatio)",
+    "output.ok === false || output.result.lossRatio >= 0",
+    "output.ok === false || Number.isFinite(output.result.premiumsCollected)",
+    "output.ok === false || Number.isFinite(output.result.claimsPaid)",
+    "output.ok === false || Number.isFinite(output.result.claimFrequency)",
+    "output.ok === false || Number.isFinite(output.result.averageSeverity)",
+    "output.ok === false || ['profitable','acceptable','marginal','unprofitable'].includes(output.result.assessment)"
+  ],
+  "fuzz_cases": [
+    { "input": { "policies": [{ "premium": 1000 }, { "premium": 1000 }], "claims": [{ "status": "paid", "amount": 800 }, { "status": "closed", "amount": 400 }] }, "expect": { "ok": true } },
+    { "input": { "policies": [], "claims": [] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "insurance.lossRatioReport (read-only actuarial calculator for the InsuranceActionPanel) computes lossRatio = paidClaims/premiums×100, claimFrequency = claims/policies, averageSeverity = paidClaims/totalClaims, and an assessment band (profitable ≤60 / acceptable ≤75 / marginal ≤100 / unprofitable >100). Only status paid|closed claims count toward claimsPaid. Every rendered money/ratio field is finite even on an empty book (lossRatio 0, no divide-by-zero). Component wrapper { artifact: { data: { policies, claims } } } is peeled to artifact.data by the dispatch."
+}

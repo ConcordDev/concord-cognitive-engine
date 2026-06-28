@@ -1,0 +1,25 @@
+{
+  "macro_id": "insurance.coverageGap",
+  "domain": "insurance",
+  "name": "coverageGap",
+  "inputs": {
+    "policies": { "type": "array" },
+    "claims": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || (output.result && Array.isArray(output.result.gaps))",
+    "output.ok === false || Number.isFinite(output.result.gapCount)",
+    "output.ok === false || output.result.gapCount === output.result.gaps.length",
+    "output.ok === false || Number.isFinite(output.result.totalPolicies)",
+    "output.ok === false || Array.isArray(output.result.coveredTypes)",
+    "output.ok === false || Array.isArray(output.result.expiringSoon)"
+  ],
+  "fuzz_cases": [
+    { "input": { "policies": [{ "type": "auto" }, { "type": "home" }], "claims": [] }, "expect": { "ok": true } },
+    { "input": { "policies": [], "claims": [] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "insurance.coverageGap (read-only calculator for the InsuranceActionPanel) diffs the held policy 'type' set against the 6-type coverage catalog (health/auto/home/life/liability/umbrella) and flags policies expiring within 30 days. The component sends { artifact: { title, data: { policies, claims } } }; the dispatch peels the sole-key wrapper to artifact.data, and the handler reads artifact.data.policies — coveredTypes/gaps/gapCount/expiringSoon/totalPolicies are exactly the fields the panel renders. Degrade-graceful: an empty/absent book returns ok:true with all 6 gaps, never throws."
+}

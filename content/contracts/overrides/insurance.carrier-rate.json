@@ -1,0 +1,25 @@
+{
+  "macro_id": "insurance.carrier-rate",
+  "domain": "insurance",
+  "name": "carrier-rate",
+  "inputs": {
+    "line": { "type": "string", "maxLength": 30 },
+    "basePremium": { "type": "number", "min": 0, "max": 1000000000 },
+    "riskFactor": { "type": "number", "min": 0, "max": 1000000000 }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.quotes)",
+    "output.ok === false || Number.isFinite(output.result.cheapest)",
+    "output.ok === false || Number.isFinite(output.result.spread)",
+    "output.ok === false || output.result.spread >= 0",
+    "output.ok === false || output.result.quotes.every(q => Number.isFinite(q.annualPremium) && Number.isFinite(q.commission) && Number.isFinite(q.fitScore))"
+  ],
+  "fuzz_cases": [
+    { "input": { "basePremium": 1000 }, "expect": { "ok": false, "error": "line required (auto, home, life…)" } },
+    { "input": { "line": "auto", "basePremium": 0 }, "expect": { "ok": false, "error": "basePremium must be > 0 — your underwriting estimate" } },
+    { "input": { "line": "auto", "basePremium": 1e308 }, "expect": { "ok": false, "error": "invalid_basePremium" } }
+  ],
+  "_note": "insurance.carrier-rate (AmsWorkbench comparative rate run) scores every appointed carrier on the user's roster that writes the requested line against their own underwriting basePremium estimate: annualPremium = basePremium×rateIndex×riskFactor, commission = annualPremium×baseCommissionPct, and a composite fitScore (price 0.6 / service 0.25 / rating 0.15). Returns cheapest/spread/bestPrice/bestFit — exactly what the panel renders. line + a positive basePremium are required; with no appointed carrier for the line it returns a real reason, never an empty quote list. Fail-CLOSED on poisoned basePremium/riskFactor."
+}

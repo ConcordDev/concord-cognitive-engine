@@ -1,0 +1,25 @@
+{
+  "macro_id": "insurance.renewalAlert",
+  "domain": "insurance",
+  "name": "renewalAlert",
+  "inputs": {
+    "policies": { "type": "array" }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.urgentCount)",
+    "output.ok === false || Number.isFinite(output.result.premiumAtRisk)",
+    "output.ok === false || output.result.premiumAtRisk >= 0",
+    "output.ok === false || Number.isFinite(output.result.totalUpcomingRenewals)",
+    "output.ok === false || Array.isArray(output.result.within30Days)",
+    "output.ok === false || Array.isArray(output.result.within60Days)",
+    "output.ok === false || output.result.urgentCount === output.result.within30Days.length"
+  ],
+  "fuzz_cases": [
+    { "input": { "policies": [{ "policyNumber": "P1", "premium": 500, "expiryDate": "2999-01-01" }] }, "expect": { "ok": true } },
+    { "input": { "policies": [] }, "expect": { "ok": true } },
+    { "input": {}, "expect": { "ok": true } }
+  ],
+  "_note": "insurance.renewalAlert (read-only calculator for the InsuranceActionPanel) buckets each policy by days-until-expiry into 30/60/90-day windows, sums premiumAtRisk across all upcoming buckets, and exposes urgentCount = the ≤30-day bucket size. Already-expired policies are skipped. The component renders urgentCount/premiumAtRisk/totalUpcomingRenewals/within30Days/within60Days from the peeled artifact.data.policies. Degrade-graceful on an empty/absent book (all counts 0, premiumAtRisk 0)."
+}
