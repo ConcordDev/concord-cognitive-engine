@@ -1,0 +1,31 @@
+{
+  "macro_id": "creative.distributionChecklist",
+  "domain": "creative",
+  "name": "distributionChecklist",
+  "inputs": {
+    "type": { "type": "string", "required": false, "maxLength": 64 },
+    "platform": { "type": "string", "required": false, "maxLength": 160 },
+    "deliveryDate": { "type": "string", "required": false, "maxLength": 64 },
+    "checklist": { "type": "array", "required": false },
+    "items": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result.platform === 'string'",
+    "output.ok === false || Array.isArray(output.result.checklist)",
+    "output.ok === false || Number.isFinite(output.result.total)",
+    "output.ok === false || Number.isFinite(output.result.readyCount)",
+    "output.ok === false || (Number.isFinite(output.result.percent) && output.result.percent >= 0 && output.result.percent <= 100)",
+    "output.ok === false || output.result.checklist.every(function(c){ return typeof c.item === 'string' && typeof c.ready === 'boolean'; })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "type": "podcast", "platform": "Spotify" }, "expect": { "ok": true } },
+    { "input": { "platform": "YouTube", "deliveryDate": "2026-07-01", "checklist": [{ "item": "Render 4K master", "ready": true }, { "item": "Upload caption file", "ready": false }] }, "expect": { "ok": true } },
+    { "input": { "items": [{ "name": "x", "done": true }, "garbage", null] }, "expect": { "ok": true } },
+    { "input": { "checklist": "nope" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler backing CreativeActionPanel.tsx 'Delivery JSON' → Delivery. Component renders r.result.{platform, percent, readyCount, total, deliveryDate, checklist[].{item,ready}}; field-aligned 2026-06. percent guards total===0 → 0 (no NaN divide). Panel was previously double-wrapped ({artifact:{data},platform}) which defeated the dispatch peel — fixed to single-wrap so the handler reads d.platform. Deterministic pure compute. Pinned by server/tests/creative-lens-macros.test.js."
+}

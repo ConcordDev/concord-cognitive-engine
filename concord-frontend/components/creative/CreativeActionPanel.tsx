@@ -84,7 +84,7 @@ export function CreativeActionPanel() {
   async function actDist() {
     if (!distText.trim()) { err('Paste delivery JSON first.'); return; }
     try { const parsed = JSON.parse(distText); setBusy('dist'); setFeedback(null);
-      const r = await callMacro<DistResult>('distributionChecklist', { artifact: { data: parsed }, platform: parsed.platform });
+      const r = await callMacro<DistResult>('distributionChecklist', { artifact: { data: parsed } });
       if (r.ok && r.result) { setDistResult(r.result); pipe.publish('creative.dist', r.result, { label: `${r.result.platform}: ${r.result.percent}%` }); ok(`${r.result.readyCount}/${r.result.total} ready (${r.result.percent}%).`); } else err(r.error ?? 'dist failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid dist JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }

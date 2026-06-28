@@ -1,0 +1,26 @@
+{
+  "macro_id": "creative.assetOrganize",
+  "domain": "creative",
+  "name": "assetOrganize",
+  "inputs": {
+    "assets": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isFinite(output.result.totalAssets)",
+    "output.ok === false || Number.isFinite(output.result.ready)",
+    "output.ok === false || (typeof output.result.byType === 'object' && output.result.byType !== null)",
+    "output.ok === false || Array.isArray(output.result.missing)",
+    "output.ok === false || output.result.missing.every(function(m){ return typeof m.name === 'string'; })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "assets": [] }, "expect": { "ok": true } },
+    { "input": { "assets": [{ "name": "hero.psd", "type": "graphic", "status": "ready" }, { "name": "promo.mp4", "type": "video", "status": "pending" }] }, "expect": { "ok": true } },
+    { "input": { "assets": [{ "type": "x" }, "garbage", null] }, "expect": { "ok": true } },
+    { "input": { "assets": "nope" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler backing CreativeActionPanel.tsx 'Assets JSON' → Assets. Component renders r.result.{ready, totalAssets, byType (Record), missing[].name}; field-aligned 2026-06. ready counts ready/delivered/final; everything else surfaces in missing[]. Deterministic pure compute, never throws (non-object assets coalesced to {}). Pinned by server/tests/creative-lens-macros.test.js."
+}

@@ -1,67 +1,149 @@
 export default function registerCreativeActions(registerLensAction) {
+  // Fail-CLOSED numeric coercion: poisoned ("1e999"/"Infinity"/"NaN"/objects)
+  // collapse to the default so every computed field stays Number.isFinite.
+  const cvNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+
+  // ── Producer bench: shot list ──────────────────────────────────────
+  // CreativeActionPanel "Scenes JSON" → shotListGenerate. The panel renders
+  // r.result.{totalShots, estimatedRuntime, equipmentList} and each shot's
+  // {shotNumber, type, duration}. Drive from a `scenes[]` array when present
+  // (each scene → one or more shots), else fall back to a type-based template.
   registerLensAction("creative", "shotListGenerate", (_ctx, artifact, _params) => {
-    const type = artifact.data?.type || 'photo';
+    const d = (artifact && artifact.data) || {};
+    const projType = String(d.type || 'photo');
+    const scenes = Array.isArray(d.scenes) ? d.scenes : [];
     const shots = [];
-    const defaultShots = type === 'video'
-      ? ['Wide establishing shot', 'Medium two-shot', 'Close-up detail', 'Over-the-shoulder', 'B-roll cutaway', 'Tracking shot']
-      : ['Hero shot', 'Detail close-up', 'Environmental wide', 'Portrait', 'Action shot', 'Flat lay'];
-    defaultShots.forEach((desc, i) => {
-      shots.push({ number: i + 1, description: desc, setup: 'TBD', lens: 'TBD', notes: '', status: 'planned' });
-    });
-    artifact.data = { ...artifact.data, shotList: shots };
-    artifact.updatedAt = new Date().toISOString();
-    return { ok: true, result: { shots, count: shots.length } };
-  });
-
-  registerLensAction("creative", "assetOrganize", (_ctx, artifact, _params) => {
-    const assets = artifact.data?.assets || [];
-    const organized = {};
-    for (const asset of assets) {
-      const cat = asset.type || 'uncategorized';
-      if (!organized[cat]) organized[cat] = [];
-      organized[cat].push(asset);
-    }
-    const summary = Object.entries(organized).map(([type, items]) => ({ type, count: items.length }));
-    return { ok: true, result: { categories: summary, totalAssets: assets.length } };
-  });
-
-  registerLensAction("creative", "budgetTrack", (_ctx, artifact, _params) => {
-    const budget = artifact.data?.budget || 0;
-    const expenses = artifact.data?.expenses || [];
-    const totalSpent = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-    const remaining = budget - totalSpent;
-    const percentUsed = budget > 0 ? Math.round((totalSpent / budget) * 100) : 0;
-    const byCategory = {};
-    expenses.forEach(e => {
-      const cat = e.category || 'Other';
-      byCategory[cat] = (byCategory[cat] || 0) + (e.amount || 0);
-    });
-    return { ok: true, result: { budget, totalSpent, remaining, percentUsed, byCategory, overBudget: remaining < 0 } };
-  });
-
-  registerLensAction("creative", "distributionChecklist", (ctx, artifact, params) => {
-    const type = artifact.data?.type || params.type || 'general';
-    let checklist;
-    if (type === 'podcast') {
-      checklist = [
-        { platform: 'Apple Podcasts', status: 'pending' }, { platform: 'Spotify', status: 'pending' },
-        { platform: 'Google Podcasts', status: 'pending' }, { platform: 'Amazon Music', status: 'pending' },
-        { platform: 'RSS Feed', status: 'pending' }, { platform: 'Show Notes Published', status: 'pending' },
-        { platform: 'Social Media Promo', status: 'pending' },
-      ];
-    } else if (type === 'fashion') {
-      checklist = [
-        { platform: 'Lookbook Published', status: 'pending' }, { platform: 'Buyer Outreach', status: 'pending' },
-        { platform: 'Press Release', status: 'pending' }, { platform: 'Social Media', status: 'pending' },
-        { platform: 'E-commerce Upload', status: 'pending' },
-      ];
+    if (scenes.length) {
+      scenes.forEach((scene, i) => {
+        const sObj = (scene && typeof scene === 'object') ? scene : {};
+        shots.push({
+          shotNumber: i + 1,
+          type: String(sObj.type || sObj.shotType || (projType === 'video' ? 'medium' : 'hero')),
+          duration: Math.max(0, Math.round(cvNum(sObj.duration ?? sObj.durationSec, projType === 'video' ? 8 : 3))),
+          description: String(sObj.description || sObj.name || `Scene ${i + 1}`),
+          equipment: String(sObj.equipment || 'standard'),
+          status: 'planned',
+        });
+      });
     } else {
-      checklist = [
-        { platform: 'Client Delivery', status: 'pending' }, { platform: 'Portfolio Update', status: 'pending' },
-        { platform: 'Social Media', status: 'pending' }, { platform: 'Website Gallery', status: 'pending' },
-      ];
+      const defaults = projType === 'video'
+        ? [['wide', 12, 'Wide establishing shot', 'tripod'], ['medium', 8, 'Medium two-shot', 'tripod'], ['close', 5, 'Close-up detail', 'gimbal'], ['ots', 6, 'Over-the-shoulder', 'gimbal'], ['broll', 10, 'B-roll cutaway', 'gimbal'], ['tracking', 9, 'Tracking shot', 'dolly']]
+        : [['hero', 3, 'Hero shot', 'prime lens'], ['detail', 3, 'Detail close-up', 'macro'], ['wide', 3, 'Environmental wide', 'wide lens'], ['portrait', 3, 'Portrait', 'prime lens'], ['action', 3, 'Action shot', 'zoom'], ['flatlay', 3, 'Flat lay', 'overhead rig']];
+      defaults.forEach(([type, duration, description, equipment], i) => {
+        shots.push({ shotNumber: i + 1, type, duration, description, equipment, status: 'planned' });
+      });
     }
-    return { ok: true, result: { checklist, type, total: checklist.length } };
+    const estimatedRuntime = Math.round(shots.reduce((s, sh) => s + cvNum(sh.duration), 0) / 60);
+    const equipmentList = [...new Set(shots.map((s) => s.equipment).filter(Boolean))];
+    return {
+      ok: true,
+      result: { shots, totalShots: shots.length, estimatedRuntime, equipmentList },
+    };
+  });
+
+  // ── Producer bench: asset organizer ────────────────────────────────
+  // Panel renders r.result.{ready, totalAssets, byType (Record), missing[].name}.
+  registerLensAction("creative", "assetOrganize", (_ctx, artifact, _params) => {
+    const d = (artifact && artifact.data) || {};
+    const assets = Array.isArray(d.assets) ? d.assets : [];
+    const byType = {};
+    const byStatus = {};
+    const missing = [];
+    let ready = 0;
+    for (const raw of assets) {
+      const a = (raw && typeof raw === 'object') ? raw : {};
+      const t = String(a.type || 'uncategorized');
+      byType[t] = (byType[t] || 0) + 1;
+      const st = String(a.status || 'pending');
+      byStatus[st] = (byStatus[st] || 0) + 1;
+      if (st === 'ready' || st === 'delivered' || st === 'final') ready += 1;
+      else missing.push({ name: String(a.name || a.id || 'unnamed'), type: t, status: st });
+    }
+    return {
+      ok: true,
+      result: { totalAssets: assets.length, ready, byType, byStatus, missing },
+    };
+  });
+
+  // ── Producer bench: budget tracker ─────────────────────────────────
+  // Panel renders r.result.{totalBudgeted, totalActual, totalVariance, overBudget,
+  // lines[].{category, budgeted, actual, variance, status}}. Accepts either a
+  // line-item `lines[]` array (each with budgeted/actual) or a top-level
+  // `budget` + `expenses[]` (amount/category) shape.
+  registerLensAction("creative", "budgetTrack", (_ctx, artifact, _params) => {
+    const d = (artifact && artifact.data) || {};
+    let lines = [];
+    if (Array.isArray(d.lines)) {
+      lines = d.lines.map((raw) => {
+        const l = (raw && typeof raw === 'object') ? raw : {};
+        const budgeted = cvNum(l.budgeted ?? l.estimated ?? l.planned);
+        const actual = cvNum(l.actual ?? l.spent ?? l.amount);
+        const variance = budgeted - actual;
+        return { category: String(l.category || 'Other'), budgeted, actual, variance, status: variance < 0 ? 'over' : 'ok' };
+      });
+    } else {
+      // budget + expenses[] → roll up per-category lines.
+      const totalBudget = cvNum(d.budget);
+      const expenses = Array.isArray(d.expenses) ? d.expenses : [];
+      const byCat = {};
+      for (const raw of expenses) {
+        const e = (raw && typeof raw === 'object') ? raw : {};
+        const cat = String(e.category || 'Other');
+        byCat[cat] = (byCat[cat] || 0) + cvNum(e.amount);
+      }
+      const cats = Object.keys(byCat);
+      const perCatBudget = cats.length ? totalBudget / cats.length : 0;
+      lines = cats.map((cat) => {
+        const actual = byCat[cat];
+        const budgeted = perCatBudget;
+        const variance = budgeted - actual;
+        return { category: cat, budgeted, actual, variance, status: variance < 0 ? 'over' : 'ok' };
+      });
+      if (!lines.length && totalBudget > 0) {
+        lines = [{ category: 'Total', budgeted: totalBudget, actual: 0, variance: totalBudget, status: 'ok' }];
+      }
+    }
+    const totalBudgeted = lines.reduce((s, l) => s + l.budgeted, 0);
+    const totalActual = lines.reduce((s, l) => s + l.actual, 0);
+    const totalVariance = totalBudgeted - totalActual;
+    return {
+      ok: true,
+      result: { totalBudgeted, totalActual, totalVariance, overBudget: totalVariance < 0, lines },
+    };
+  });
+
+  // ── Producer bench: distribution checklist ─────────────────────────
+  // Panel renders r.result.{platform, percent, readyCount, total, deliveryDate,
+  // checklist[].{item, ready, notes}}. Accepts a `checklist`/`items` array
+  // (each item with a `ready` flag) or derives a default checklist by `type`.
+  registerLensAction("creative", "distributionChecklist", (_ctx, artifact, params = {}) => {
+    const d = (artifact && artifact.data) || {};
+    const platform = String(d.platform || params.platform || 'General');
+    const deliveryDate = String(d.deliveryDate || d.deadline || 'TBD');
+    let checklist;
+    const provided = Array.isArray(d.checklist) ? d.checklist : Array.isArray(d.items) ? d.items : null;
+    if (provided) {
+      checklist = provided.map((raw) => {
+        const c = (raw && typeof raw === 'object') ? raw : {};
+        return { item: String(c.item || c.name || c.label || 'item'), ready: !!(c.ready ?? c.done ?? c.completed), notes: String(c.notes || '') };
+      });
+    } else {
+      const type = String(d.type || params.type || 'general');
+      const labelsByType = {
+        podcast: ['Apple Podcasts', 'Spotify', 'RSS Feed', 'Show Notes Published', 'Social Media Promo'],
+        fashion: ['Lookbook Published', 'Buyer Outreach', 'Press Release', 'Social Media', 'E-commerce Upload'],
+        general: ['Client Delivery', 'Portfolio Update', 'Social Media', 'Website Gallery'],
+      };
+      const labels = labelsByType[type] || labelsByType.general;
+      checklist = labels.map((item) => ({ item, ready: false, notes: '' }));
+    }
+    const total = checklist.length;
+    const readyCount = checklist.filter((c) => c.ready).length;
+    const percent = total > 0 ? Math.round((readyCount / total) * 100) : 0;
+    return {
+      ok: true,
+      result: { platform, checklist, readyCount, total, percent, deliveryDate },
+    };
   });
 
   // ─── Milanote 2026 parity — visual boards for creative work ─────────

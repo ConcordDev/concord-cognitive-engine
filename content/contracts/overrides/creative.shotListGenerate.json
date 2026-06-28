@@ -1,0 +1,27 @@
+{
+  "macro_id": "creative.shotListGenerate",
+  "domain": "creative",
+  "name": "shotListGenerate",
+  "inputs": {
+    "type": { "type": "string", "required": false, "maxLength": 64 },
+    "scenes": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Array.isArray(output.result.shots)",
+    "output.ok === false || Number.isFinite(output.result.totalShots)",
+    "output.ok === false || Number.isFinite(output.result.estimatedRuntime)",
+    "output.ok === false || Array.isArray(output.result.equipmentList)",
+    "output.ok === false || output.result.shots.every(function(s){ return Number.isFinite(s.shotNumber) && typeof s.type === 'string' && Number.isFinite(s.duration); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": {}, "expect": { "ok": true } },
+    { "input": { "type": "photo" }, "expect": { "ok": true } },
+    { "input": { "type": "video", "scenes": [{ "type": "wide", "duration": 90 }, { "type": "close", "duration": 30 }] }, "expect": { "ok": true } },
+    { "input": { "type": "video", "scenes": [{ "type": "x", "duration": "1e999" }, { "type": "y", "duration": "NaN" }] }, "expect": { "ok": true } },
+    { "input": { "scenes": "nope" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler backing CreativeActionPanel.tsx 'Scenes JSON' → Shots. Component renders r.result.{totalShots, estimatedRuntime, equipmentList} + shots[].{shotNumber,type,duration}; field-aligned 2026-06. POISON: durations via cvNum (Number coercion + Number.isFinite gate) so '1e999'/'NaN' collapse to a finite default; estimatedRuntime stays finite. Deterministic pure compute. Pinned by server/tests/creative-lens-macros.test.js."
+}
