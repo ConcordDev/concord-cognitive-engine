@@ -1,0 +1,28 @@
+{
+  "macro_id": "retail.slaStatus",
+  "domain": "retail",
+  "name": "slaStatus",
+  "inputs": {
+    "incidents": { "type": "array", "required": false },
+    "tickets": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || output.result.complianceRate === undefined || Number.isFinite(output.result.complianceRate)",
+    "output.ok === false || output.result.slaComplianceRate === undefined || Number.isFinite(output.result.slaComplianceRate)",
+    "output.ok === false || output.result.avgResponseMinutes === undefined || Number.isFinite(output.result.avgResponseMinutes)",
+    "output.ok === false || output.result.withinSLA === undefined || Number.isInteger(output.result.withinSLA)",
+    "output.ok === false || output.result.breaches === undefined || Number.isInteger(output.result.breaches)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "incidents": [{ "responseMinutes": 30, "slaMinutes": 60, "priority": "high" }, { "responseMinutes": 120, "slaMinutes": 60 }, { "responseMinutes": 50 }] }, "expect": { "ok": true } },
+    { "input": { "incidents": [{ "responseMinutes": 10, "slaMinutes": 60 }, { "responseMinutes": 20, "slaMinutes": 60 }] }, "expect": { "ok": true } },
+    { "input": { "incidents": [{ "responseHours": 0.5, "slaHours": 1 }, { "priority": "high" }] }, "expect": { "ok": true } },
+    { "input": { "incidents": [{ "responseMinutes": "abc", "slaMinutes": "NaN" }, { "responseMinutes": "Infinity", "slaMinutes": "x" }, { "responseMinutes": 30, "slaMinutes": 60 }] }, "expect": { "ok": true } },
+    { "input": { "incidents": [] }, "expect": { "ok": true } },
+    { "input": { "incidents": "boom" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/retail.js). 3-arg dispatch via /api/lens/run on key 'retail.slaStatus'. Drives the RetailActionPanel SLA card: incidents branch reads { incidents:[{responseMinutes|responseHours|responseTime, slaMinutes|slaHours|targetMinutes, priority}] } and returns { totalIncidents, withinSLA, breaches, complianceRate, avgResponseMinutes, tier }. An incident with no/invalid response time counts as an open breach. FAIL-CLOSED: every numeric coerced via a finite guard so complianceRate/avgResponseMinutes never go NaN. Legacy tickets[]-array deadline branch (met/breached/at-risk by createdAt+slaHours) preserved for back-compat. Authored spec pinned by server/tests/retail-lens-macros.test.js."
+}

@@ -1,0 +1,30 @@
+{
+  "macro_id": "retail.pipelineValue",
+  "domain": "retail",
+  "name": "pipelineValue",
+  "inputs": {
+    "deals": { "type": "array", "required": false },
+    "opportunities": { "type": "array", "required": false },
+    "includeClosed": { "type": "boolean", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isInteger(output.result.totalDeals)",
+    "output.ok === false || Number.isFinite(output.result.totalUnweighted)",
+    "output.ok === false || Number.isFinite(output.result.totalWeighted)",
+    "output.ok === false || Number.isFinite(output.result.expectedRevenue)",
+    "output.ok === false || Number.isFinite(output.result.conversionRate)",
+    "output.ok === false || (typeof output.result.byStage === 'object' && output.result.byStage !== null)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "deals": [] }, "expect": { "ok": true } },
+    { "input": { "deals": [{ "name": "d1", "value": 1000, "probability": 50, "stage": "qualified" }, { "name": "d2", "value": 2000, "probability": 25, "stage": "proposal" }] }, "expect": { "ok": true } },
+    { "input": { "deals": [{ "name": "won", "value": 5000, "probability": 100, "stage": "closed-won" }, { "name": "open", "value": 1000, "probability": 40, "stage": "negotiation" }] }, "expect": { "ok": true } },
+    { "input": { "deals": [{ "value": "1e999", "probability": "Infinity", "stage": "x" }, { "value": 1000, "probability": 1000000000, "stage": "z" }] }, "expect": { "ok": true } },
+    { "input": { "deals": [{ "value": "NaN", "probability": "abc", "stage": "y" }] }, "expect": { "ok": true } },
+    { "input": { "deals": { "boom": true } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/retail.js). 3-arg dispatch via /api/lens/run on key 'retail.pipelineValue'. Deterministic pure compute — drives the RetailActionPanel pipeline card (totalDeals/totalUnweighted/totalWeighted/expectedRevenue/conversionRate/byStage[*].{count,weighted}). Closed-won/closed-lost/won/lost excluded by default. POISON: value/probability coerced via a finite guard, probability clamped to [0,100], so a poisoned '1e999'/Infinity/NaN deal collapses to 0 weighted — no money field renders Infinity/NaN. conversionRate = weighted/unweighted×100, guarded against divide-by-zero. Authored spec pinned by server/tests/retail-lens-macros.test.js."
+}

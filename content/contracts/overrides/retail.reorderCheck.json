@@ -1,0 +1,30 @@
+{
+  "macro_id": "retail.reorderCheck",
+  "domain": "retail",
+  "name": "reorderCheck",
+  "inputs": {
+    "products": { "type": "array", "required": false },
+    "inventory": { "type": "array", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || Number.isInteger(output.result.totalProducts)",
+    "output.ok === false || Number.isInteger(output.result.criticalCount)",
+    "output.ok === false || Number.isInteger(output.result.reorderCount)",
+    "output.ok === false || Number.isInteger(output.result.sufficientCount)",
+    "output.ok === false || Array.isArray(output.result.critical)",
+    "output.ok === false || Array.isArray(output.result.needsReorder)",
+    "output.ok === false || output.result.critical.every(function(p){ return Number.isFinite(p.onHand) && Number.isFinite(p.reorderPoint); })",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "products": [] }, "expect": { "ok": true } },
+    { "input": { "products": [{ "sku": "A", "name": "Alpha", "onHand": 2, "reorderPoint": 10, "dailyUsage": 1, "leadTimeDays": 7 }, { "sku": "B", "onHand": 0, "reorderPoint": 5 }, { "sku": "D", "onHand": 100, "reorderPoint": 5, "dailyUsage": 1 }] }, "expect": { "ok": true } },
+    { "input": { "products": [{ "sku": "X", "onHand": "1e999", "reorderPoint": 10 }] }, "expect": { "ok": true } },
+    { "input": { "products": [{ "sku": "X", "onHand": "Infinity", "reorderPoint": "NaN", "dailyUsage": "abc" }] }, "expect": { "ok": true } },
+    { "input": { "products": [null, "junk", 42, { "sku": "OK", "onHand": 0, "reorderPoint": 5 }] }, "expect": { "ok": true } },
+    { "input": { "products": "boom" }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (server/domains/retail.js). 3-arg dispatch via /api/lens/run on key 'retail.reorderCheck'. Deterministic pure compute — drives the RetailActionPanel reorder card (totalProducts/criticalCount/reorderCount/sufficientCount/critical[]/needsReorder[]). POISON: onHand/reorderPoint/dailyUsage coerced via a finite guard (Number.isFinite, not parseFloat) so a poisoned '1e999'/Infinity/NaN collapses to a finite default — no non-finite onHand/daysOfStock ever renders. Non-array products → []; junk entries dropped. Not driven by macro-assassin's fuzzer if name-skipped; authored spec pinned by server/tests/retail-lens-macros.test.js."
+}
