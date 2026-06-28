@@ -19,6 +19,9 @@ export function EnergyDevicesPanel({ onChange }: { onChange: () => void }) {
   const [consumers, setConsumers] = useState<Consumer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Distinct from `error` (form-action errors): a load FAILURE must read as a
+  // real error with a working Retry, never as a silent-empty device list.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', category: 'appliance', wattage: '' });
   const [readingFor, setReadingFor] = useState<string | null>(null);
@@ -26,14 +29,28 @@ export function EnergyDevicesPanel({ onChange }: { onChange: () => void }) {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [d, t] = await Promise.all([
-      lensRun('energy', 'device-list', {}),
-      lensRun('energy', 'top-consumers', { days: 30 }),
-    ]);
-    setDevices(d.data?.result?.devices || []);
-    setConsumers(t.data?.result?.devices || []);
-    setLoading(false);
-    onChange();
+    try {
+      const [d, t] = await Promise.all([
+        lensRun('energy', 'device-list', {}),
+        lensRun('energy', 'top-consumers', { days: 30 }),
+      ]);
+      // /api/lens/run unwraps one {ok,result} layer, so a handler rejection
+      // surfaces at d.data.ok===false (lensRun normalizes both transport and
+      // handler-reject into this flag). Treat either as a real load error so
+      // the panel never renders an empty device list that masks a failure.
+      if (d.data?.ok === false) {
+        setLoadError(d.data?.error || 'Failed to load devices.');
+        return;
+      }
+      setDevices(d.data?.result?.devices || []);
+      setConsumers(t.data?.result?.devices || []);
+      setLoadError(null);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Failed to load devices.');
+    } finally {
+      setLoading(false);
+      onChange();
+    }
   }, [onChange]);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -57,7 +74,24 @@ export function EnergyDevicesPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return (
+      <div role="status" aria-busy="true" aria-live="polite"
+        className="flex items-center justify-center gap-2 py-10 text-zinc-400">
+        <Loader2 className="w-5 h-5 animate-spin" /> <span className="text-xs">Loading devices…</span>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div role="alert" className="flex flex-col items-center gap-3 py-10 text-center">
+        <p className="text-sm text-rose-300">{loadError}</p>
+        <button type="button" onClick={() => { void refresh(); }}
+          className="px-3 py-1.5 text-xs font-medium bg-rose-600/80 hover:bg-rose-500 text-white rounded-lg">
+          Retry
+        </button>
+      </div>
+    );
   }
 
   return (
