@@ -530,6 +530,34 @@ The calculator-family sweep is now essentially complete. Remaining queue: the no
 many are CRUD/visualization surfaces rather than compute panels, so lower dead-calculator risk.
 ~92 lenses through the non-score gate. The loop continues.
 
+### Phase-2 batch 20 DONE (2026-06-28): atlas, board, classroom, council, debate
+First batch of the non-calculator long tail. 147 server + 23 UX-state tests; assassin 0 violations across
+all 5 domains; 258 WIRED; tsc 0. The dead-surface (`*ActionPanel` field-mismatch) + fail-open numeric
+class still recurs even in knowledge/governance lenses:
+- **atlas**: 4 dead calculator surfaces — `AtlasActionPanel.distanceMatrix` read `result.matrix` as
+  objects (handler returned `number[][]`) + `lng` vs `lon` mismatch zeroed every distance;
+  `DistanceMatrixPanel` route/stats panels + `MapsDirections` legs all rendered handler fields that
+  never existed → blank. Fixed via real handler aliases (`pairs`/`nearest`/`route`/`legs`/`stats.*`) +
+  `lon ?? lng` coercion; 4 fail-closed (Infinity/NaN coords → reject, not `null`-poison the matrix).
+  25 server + 4 vitest + 6 overrides.
+- **board**: all 3 AI calculators (workflowAnalysis/cardPrioritization/burndownForecast) DEAD — the page
+  persisted each task as a single-task artifact while handlers read board-wide arrays → `buildBoardActionParams`
+  derives real arrays from live tasks + `params.X ?? artifact.data.X` fallback + finNum/finInt guards +
+  a silent-empty fix in BoardWorkspace. 26 server + 5 vitest + 4 overrides.
+- **classroom**: behavioral macro tests (assignment/grade/gradebook/quiz/ol-isbn/todo) + swallowed-fetch
+  → distinguishable error/empty (the silent-empty defect). 32 server + 6 vitest + 6 overrides.
+- **council**: dead `CouncilActionPanel` surface (sent `motion`/`members`/`positions`/`conflict`, rendered
+  `positions`/`yes/no/abstain`/`summary`/`resolution` the handler never returns → blank in prod) aligned
+  to the real contract; 4 fail-open/uncaught-throw fixes (deliberate `.slice` on non-string, voteCount
+  `.toLowerCase` on numeric, generateMinutes/conflictResolution `.map` on non-array → 500). MeetingsWorkspace
+  4-UX-state test authored by the coordinator after the agent stalled before writing it. 30 server + 4 vitest + 6 overrides.
+- **debate**: 4 AI actions (evaluateArgument/fallacyCheck/steelmanPosition/scoreDebate) double-dead —
+  page sent no params + DebateActionPanel sent params the handlers ignored AND rendered fabricated field
+  names → handlers now derive inputs from the real debate shape (topic + pro/con args + votes) and the
+  panel aligns to the real contract; try/catch + string/array poison guards. 34 server + 4 vitest + 6 overrides.
+**102 lenses now carry the UX-states gate marker** (batches 1–20). The loop continues into the rest of the
+non-calculator tail (bridge, forum, household, crypto, code, chat, knowledge/research/social families).
+
 ### Phase-2 batch 19 DONE (2026-06-28): bio, consulting, affect, art, artistry
 145 server + 28 UX-state tests — the first non-calculator/feature-lens batch (twice-launched; the first
 run was cut off by the shared session limit and cleanly reverted, then redone from a clean checkpoint).
