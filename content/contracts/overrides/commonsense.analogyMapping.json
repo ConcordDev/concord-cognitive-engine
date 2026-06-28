@@ -1,0 +1,29 @@
+{
+  "macro_id": "commonsense.analogyMapping",
+  "domain": "commonsense",
+  "name": "analogyMapping",
+  "inputs": {
+    "source": { "type": "object", "required": false },
+    "target": { "type": "object", "required": false }
+  },
+  "invariants": [
+    "typeof output === 'object' && output !== null",
+    "typeof output.ok === 'boolean'",
+    "output.ok === false || typeof output.result === 'object'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.sourceDomain === 'string'",
+    "output.ok === false || output.result.message !== undefined || typeof output.result.targetDomain === 'string'",
+    "output.ok === false || output.result.message !== undefined || (Array.isArray(output.result.entityMapping) && output.result.entityMapping.every(function(m){ return Number.isFinite(m.similarity); }))",
+    "output.ok === false || output.result.message !== undefined || Number.isFinite(output.result.systematicityScore)",
+    "output.ok === false || output.result.message !== undefined || (output.result.systematicityScore >= 0 && output.result.systematicityScore <= 100)",
+    "output.ok === false || output.result.message !== undefined || Array.isArray(output.result.candidateInferences)",
+    "output.ok === true || typeof (output.error || output.message) === 'string'"
+  ],
+  "fuzz_cases": [
+    { "input": { "artifact": { "data": { "source": { "entities": [] }, "target": { "entities": [] } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "source": { "domain": "solar system", "entities": [{ "name": "sun", "type": "object" }, { "name": "planet", "type": "object" }], "relations": [{ "type": "attracts", "from": "sun", "to": "planet" }, { "type": "heavier", "from": "sun", "to": "planet" }] }, "target": { "domain": "atom", "entities": [{ "name": "nucleus", "type": "object" }, { "name": "electron", "type": "object" }], "relations": [{ "type": "attracts", "from": "nucleus", "to": "electron" }] } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "source": { "domain": "heart", "entities": [{ "name": "heart", "type": "entity" }] }, "target": { "domain": "pump", "entities": [{ "name": "pump", "type": "entity" }] } } } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
+    { "input": { "artifact": { "data": { "source": "nope", "target": "nope" } } }, "expect": { "ok": true } }
+  ],
+  "_note": "LENS_ACTIONS handler (registerLensAction). Dispatch key 'commonsense.analogyMapping'. CommonsenseActionPanel.tsx now parses each domain field as JSON {domain,entities:[{name,type}],relations:[{type,from,to}]} (free-text degrades to one entity) — it was wrongly sending bare STRINGS → source.entities=[] → 'must have entities' message; FIXED. Returns {sourceDomain,targetDomain,entityMapping:[{source,target,similarity}],relationMappings,systematicityScore,systematicityLabel,candidateInferences:[{predictedRelation,from,to,confidence}],coverage} — the EXACT fields the card reads (was reading {source,target,mappings:[{sourceConcept,targetConcept}],coherence} which the handler never returns → dead card; FIXED). Structure-mapping theory: greedy 1:1 entity alignment by type similarity, systematicity = relCoverage*0.6 + chainDensity*0.4, candidate inference from unmapped source relations. All scores bounded/FINITE (string inputs, no numeric poison). Not assassin-driven (no derived contract for this LENS_ACTION); authored spec pinned by server/tests/commonsense-lens-macros.test.js."
+}
