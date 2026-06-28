@@ -530,6 +530,28 @@ The calculator-family sweep is now essentially complete. Remaining queue: the no
 many are CRUD/visualization surfaces rather than compute panels, so lower dead-calculator risk.
 ~92 lenses through the non-score gate. The loop continues.
 
+### Phase-2 batch 22 (2026-06-28): energy, eco, fitness DONE — ethics DEFERRED (reverted)
+3 of 4 banked; ethics reverted (honest). 109 server + 29 UX-state tests across the 3 done lenses; tsc 0.
+- **energy**: largely aligned already; 4 fail-OPEN calculators (consumptionAnalysis/solarEstimate/
+  carbonFootprint/gridStatus — `parseFloat(x)||N` let `"1e999"`/`"Infinity"` through → JSON `null` blanks,
+  `gridStatus` even rendered `"Infinity MW"`) → `finiteNum` clamps; EnergyDevicesPanel silent-empty →
+  distinguishable load-error+retry. 31 server + 8 vitest + 5 overrides. (path-3-only → assassin drives 0; node:test is enforcement.)
+- **eco**: REAL fake-data defect killed — `aqi-current` returned a FABRICATED fallback AQI (a fake "good"/42
+  reading) on network failure; now fails honestly `{ok:false,error:'unreachable'}` and the AQIPanel renders
+  the error branch (the pre-existing eco-domain-parity test was updated to assert the honest behavior — a
+  legitimate fix, not gaming). + fail-closed footprint/biodiversity numerics + distinguishable error states
+  across 6 panels. 36 server + 11 vitest + 4 overrides.
+- **fitness**: ~69 macros, all path-3. Fail-closed BMR/body-fat/HR-zone/VDOT(vo2max,race-predictor)/
+  progression numerics (`ffnum`/`fclampN`/finite guards — a lying calorie/1RM/HR number is a real harm);
+  ActivityRings+SleepRecovery honest loading/error states. 42 server + 10 vitest + 5 overrides (authored by
+  the coordinator after the agent was session-limited before writing them). (path-3-only → node:test is enforcement.)
+- **ethics**: REVERTED. The agent added `LoadGate`+`readEnvelope` helpers but NEVER wired them (0 render
+  sites, 0 calls — dead scaffolding), the list panels still silent-empty, and no states test / no overrides
+  were written (session-limited mid-pass). Per the no-scaffolding rule + "don't bank partial work," the
+  whole ethics change (domain + DecisionToolkit + server test) was reverted to clean HEAD and re-queued for
+  a fresh pass. Its backend numeric work was real but is not bankable without the wired frontend + states test.
+**109 lenses now carry the UX-states gate marker** (batches 1–22; ethics re-queued). The loop continues.
+
 ### Phase-2 batch 21 DONE (2026-06-28): forum, household, geology, forestry
 143 server + 24 UX-state tests; per-domain assassin clean; 258 WIRED; tsc 0. The dead-`*ActionPanel`-surface
 + fail-open-numeric class persists into the knowledge/utility tail, plus two new systemic findings:
