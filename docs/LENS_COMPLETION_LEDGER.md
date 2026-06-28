@@ -505,6 +505,31 @@ an inverted security sort, a renderer-corrupting geometry, 2 crashes, a triage-e
 and a long tail of Infinity/NaN fail-opens — every one in a lens that "looked wired." 2 lenses were clean.
 56 lenses now through the non-score gate (batches 1–13). The loop continues.
 
+### Phase-2 batches 14–18 DONE (2026-06-28): the calculator-family completion sweep
+**92 lenses now carry the UX-states gate marker** (`ls concord-frontend/tests/*-lens-states.test.tsx | wc -l`).
+Batches 14–18 swept the rest of the `*ActionPanel`/`*Calc` calculator family (marketing, analytics, retail,
+audit, supplychain, voice — redone after a session-limit interruption — then creative, education, collab,
+commonsense, telecommunications, landscaping, linguistics, mentorship, services, robotics, physics, hr,
+aviation, insurance, legal, +more). The field-mismatch + fail-closed + crash class stayed the dominant
+finding right to the end:
+- **Entirely-dead surfaces:** creative (4), education (4), audit (4 — redo), hr (4, both directions, handlers
+  rewritten), aviation (🔴 safety: W&B calc returned gross 0 / CG 0 for every input).
+- **Partial dead / field mismatch:** retail (3/4), commonsense, mentorship (inline panel), services (the 2-key
+  {artifact:{data},period} trap — moved period into data), creative's distributionChecklist (2-key trap),
+  insurance (peel dropped artifact.title → blank risk card).
+- **Crashes:** analytics (.map throw + guidance-result render crash), linguistics (text.split on non-string →
+  500), legal (RangeError in addDays on an invalid date), aviation (blank render blocks).
+- **Clean bills (no defect, coverage added):** supplychain, telecommunications, landscaping, physics,
+  plus earlier plumbing + law-enforcement — the honest counterweight (~6 of ~50 calculator lenses were fine).
+- A long tail of `Number.isFinite` fail-closed guards on Infinity/NaN money/percentage leaks across nearly
+  every lens.
+Assassin ratchet GREEN throughout (the flaky system.history-snapshot timeout recurs under load, always
+clean on a lone re-run); 258 WIRED; tsc 0; per-lens parity tests intact.
+The calculator-family sweep is now essentially complete. Remaining queue: the non-calculator long tail
+(atlas, board, bridge, collab-class, forum, household, robotics-class, art/artistry, consulting, etc.) —
+many are CRUD/visualization surfaces rather than compute panels, so lower dead-calculator risk.
+~92 lenses through the non-score gate. The loop continues.
+
 ### Phase-2 batch 14+15 (2026-06-28): marketing, analytics, retail, audit, supplychain, voice
 Batch 14's subagents were cut off mid-work by the shared session limit; only **marketing** was complete
 + verified (fail-open Infinity-leak fix; committed), the rest reverted for a clean resume. Batch 15
