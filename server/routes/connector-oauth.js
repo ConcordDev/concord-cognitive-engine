@@ -40,6 +40,7 @@ export const CONNECTOR_TOKEN_KEY = {
   "gmail": "google_gmail",
   "github": "github",
   "slack": "slack",
+  "notion": "notion",
 };
 
 // Per-provider adapter: endpoints, secret resolution, scope delimiter, and the
@@ -83,6 +84,51 @@ export const PROVIDERS = {
       };
     },
   },
+  github: {
+    authUrl: "https://github.com/login/oauth/authorize",
+    tokenUrl: "https://github.com/login/oauth/access_token",
+    clientId: () => process.env.GITHUB_CLIENT_ID,
+    clientSecret: () => process.env.GITHUB_CLIENT_SECRET,
+    scopeJoin: " ",
+    authParams: {},
+    // GitHub OAuth App tokens (classic) don't expire and carry no refresh token.
+    // exchangeCodeForToken sends Accept: application/json so GitHub returns JSON
+    // rather than its default form-encoded body.
+    parseToken: (j) => ({
+      access_token: j.access_token,
+      refresh_token: j.refresh_token || null,
+      expires_in: j.expires_in,
+      scope: j.scope,
+      token_type: j.token_type || "Bearer",
+    }),
+  },
+  notion: {
+    authUrl: "https://api.notion.com/v1/oauth/authorize",
+    tokenUrl: "https://api.notion.com/v1/oauth/token",
+    clientId: () => process.env.NOTION_CLIENT_ID,
+    clientSecret: () => process.env.NOTION_CLIENT_SECRET,
+    scopeJoin: " ",
+    // Notion capabilities are configured on the integration, not requested
+    // per-call; owner=user is required for the user-token flow.
+    authParams: { owner: "user" },
+    // Notion's token exchange is non-standard: HTTP Basic auth
+    // (client_id:client_secret) + a JSON body, not the OAuth2 form-encoded POST.
+    buildTokenRequest: ({ code, redirectUri, clientId, clientSecret }) => ({
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: "Basic " + Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
+      },
+      body: JSON.stringify({ grant_type: "authorization_code", code, redirect_uri: redirectUri }),
+    }),
+    parseToken: (j) => ({
+      access_token: j.access_token,
+      refresh_token: j.refresh_token || null,
+      expires_in: j.expires_in,
+      scope: Array.isArray(j.scopes) ? j.scopes.join(" ") : j.scope,
+      token_type: j.token_type || "Bearer",
+    }),
+  },
 };
 
 /** Build a provider consent URL (pure — unit-tested). */
@@ -107,18 +153,26 @@ export async function exchangeCodeForToken(provider, { code, redirectUri, fetchI
   const clientId = p.clientId();
   const clientSecret = p.clientSecret();
   if (!clientId || !clientSecret) return { ok: false, reason: "connector_not_configured" };
+  // Provider-specific token request (Notion uses Basic auth + JSON body); the
+  // default is the OAuth2 form-encoded POST with credentials in the body.
+  const reqSpec = typeof p.buildTokenRequest === "function"
+    ? p.buildTokenRequest({ code, redirectUri, clientId, clientSecret })
+    : {
+        headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: "authorization_code",
+        }).toString(),
+      };
   let res;
   try {
     res = await fetchImpl(p.tokenUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-      body: new URLSearchParams({
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
-        grant_type: "authorization_code",
-      }).toString(),
+      headers: reqSpec.headers,
+      body: reqSpec.body,
     });
   } catch (e) {
     return { ok: false, reason: "token_request_failed", detail: String(e?.message || e) };
