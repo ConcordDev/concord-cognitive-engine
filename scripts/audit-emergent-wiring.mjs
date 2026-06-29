@@ -123,5 +123,15 @@ try { mkdirSync(outDir, { recursive: true }); } catch { /* exists */ }
 writeFileSync(path.join(outDir, "emergent-wiring-audit.json"), JSON.stringify(results, null, 2));
 console.log(`\nWrote reports/emergent-wiring-audit.json`);
 
-// Advisory: exit 0 even with orphans (T2.4 wires them in the same sprint).
+// CI gate (--ci): the baseline is ZERO orphaned cycle handlers (every run/tick/
+// sweep export in server/emergent/ is reachable from the scheduling corpus). A
+// NEW orphan — a handler nothing schedules — is a dead game-loop: it looks wired
+// but never fires. Fail the build so the regression is caught at PR time. Wire
+// the handler (a registerHeartbeat call or an orchestrator) or mark it
+// entity-inline. Default (no --ci) stays advisory for local exploration.
+const ciGate = process.argv.includes("--ci");
+if (ciGate && results.orphan.length > 0) {
+  console.error(`\n✗ CI gate: ${results.orphan.length} orphaned emergent cycle handler(s) — baseline is 0. Schedule them or make them entity-inline.`);
+  process.exit(1);
+}
 process.exit(0);

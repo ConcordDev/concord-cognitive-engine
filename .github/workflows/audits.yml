@@ -122,6 +122,15 @@ jobs:
           # fails CI. Fix the wire or allowlist with a reason.
           node scripts/check-orphaned-events.mjs
 
+      - name: Emergent-wiring gate (no dead game-loop handler)
+        run: |
+          # The server side of the same legibility class: fails if an
+          # server/emergent/*.js module exports a run/tick/sweep cycle handler
+          # that NOTHING schedules (a dead game-loop that looks wired but never
+          # fires). Baseline is 0 orphans. Wire it (registerHeartbeat /
+          # orchestrator) or make it entity-inline.
+          node scripts/audit-emergent-wiring.mjs --ci
+
       - name: Surface-coverage gate (every player verb fires ≥FLOOR/4 channels)
         run: |
           # WAVE SCAN — the closed-set polish manifest. Enumerates every player
