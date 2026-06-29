@@ -58,10 +58,26 @@ function badNumericField(input, keys) {
 export default function registerDxPlatformActions(register) {
   // Legacy-convention shim: adapt canonical register(ctx, input) → the
   // verified (ctx, _artifact, params) handler bodies below, unchanged.
+  //
+  // Robust to BOTH calling conventions so the handlers' `params` (arg3) always
+  // carries the real flat body: the canonical `register` path calls
+  // (ctx, flatInput); the lens.run dispatcher calls (ctx, virtualArtifact, rest);
+  // the legacy contract-test harness calls (ctx, artifact, params). We detect the
+  // shape, fold arg2's `.data` + arg3 into one flat body, and pass it through as
+  // both artifact.data AND params so a handler reading either is correct. (Same
+  // fix applied to system.js + the saved-class domains; this file was missed,
+  // which silently failed the 3-arg dx-platform contract test.)
   const registerLensAction = (domain, action, handler) =>
-    register(domain, action, (ctx, input = {}) => {
+    register(domain, action, (ctx, input = {}, params) => {
       const inp = input && typeof input === "object" ? input : {};
-      return handler(ctx, { id: null, domain, type: "domain_action", data: inp, meta: {} }, inp);
+      const base = inp.artifact && typeof inp.artifact === "object"
+        ? inp.artifact
+        : (inp.data && typeof inp.data === "object"
+            ? inp
+            : { id: null, domain, type: "domain_action", data: inp, meta: {} });
+      const p = params && typeof params === "object" ? params : {};
+      const data = { ...(base.data && typeof base.data === "object" ? base.data : {}), ...p };
+      return handler(ctx, { ...base, data }, data);
     });
 
   // ── State plumbing ──────────────────────────────────────────────────
