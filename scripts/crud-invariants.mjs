@@ -134,4 +134,4 @@ for (const [dom, label, cAct, cParams, idPath, lAct, lArr, idField, dAct, dParam
 }
 console.log(`\nround-trip ${C.g}${rtP}✓${C.rst}/${rtF ? C.r : C.dim}${rtF}✗${C.rst}   isolation ${C.g}${isoP}✓${C.rst}/${isoF ? C.r : C.dim}${isoF}✗${C.rst}   delete ${C.g}${delP}✓${C.rst}/${delF ? C.r : C.dim}${delF}✗${C.rst}   errors ${errs ? C.y : C.dim}${errs}${C.rst}`);
 if (issues.length) { console.log(`\n${C.r}Triage:${C.rst}`); for (const [k, v] of issues) console.log(`  • ${k}  ${C.dim}${v}${C.rst}`); }
-process.exit((rtF + isoF + delF + errs) > 0 ? 1 : 0);
+setImmediate(() => process.exit((rtF + isoF + delF + errs) > 0 ? 1 : 0)); // defer past V8 async-module fulfillment (exit-133 race)

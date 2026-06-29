@@ -288,4 +288,8 @@ for (const bn of batchNames) {
 }
 console.log(`\n${C.g}${pass} pass${C.rst}  ${fail ? C.r : C.dim}${fail} fail${C.rst}  ${err ? C.y : C.dim}${err} err${C.rst}`);
 if (failures.length) { console.log(`\n${C.r}Triage:${C.rst}`); for (const [k, v] of failures) console.log(`  • ${k}  ${C.dim}${v}${C.rst}`); }
-process.exit((fail > 0 || err > 0) ? 1 : 0);
+// Defer exit one tick past V8's async-module fulfillment: this harness imports
+// server.js (top-level await), and a synchronous process.exit() here can race
+// V8's module-fulfillment callback → the intermittent `AsyncModuleExecutionFulfilled`
+// fatal (exit 133, all assertions already passing) that beats audits.yml's retry.
+setImmediate(() => process.exit((fail > 0 || err > 0) ? 1 : 0));

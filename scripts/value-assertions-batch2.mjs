@@ -448,4 +448,4 @@ for (const bn of batchNames) {
 
 console.log(`\n${C.g}${pass} pass${C.rst}  ${fail ? C.r : C.dim}${fail} fail${C.rst}  ${err ? C.y : C.dim}${err} err${C.rst}`);
 if (failures.length) { console.log(`\n${C.r}Failures / errors to triage:${C.rst}`); for (const [k, v] of failures) console.log(`  • ${k}  ${C.dim}${v}${C.rst}`); }
-process.exit((fail > 0 || err > 0) ? 1 : 0);
+setImmediate(() => process.exit((fail > 0 || err > 0) ? 1 : 0)); // defer past V8 async-module fulfillment (exit-133 race)
