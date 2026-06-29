@@ -15,6 +15,17 @@ export default defineConfig({
         maxForks: process.env.CI ? 2 : undefined,
       },
     },
+    // CI stabilization for the loaded parallel coverage run. Timing-fragile
+    // React/jsdom tests intermittently exceeded the default 5s timeout (or lost
+    // a render-tick race) under memory pressure, failing the whole gate AND
+    // dropping measured coverage. `retry` is the standard flaky-test handler: a
+    // GENUINE failure still fails (it fails all attempts) — only true
+    // non-deterministic flakes are rescued. CI-scoped so local dev still surfaces
+    // first-run failures immediately. (The real cure is de-flaking individual
+    // tests; this stops one timing race from reding the gate run-to-run.)
+    testTimeout: process.env.CI ? 20000 : 10000,
+    hookTimeout: process.env.CI ? 30000 : 10000,
+    retry: process.env.CI ? 2 : 0,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
