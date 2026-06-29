@@ -487,7 +487,7 @@ describe("hvac — energyAudit grade & issue logic (wave 11 top-up)", () => {
     assert.equal(r.result.grade, "A");
     assert.equal(r.result.issues.length, 1);
     assert.match(r.result.issues[0], /no major efficiency red flags/i);
-    assert.ok(!r.result.issues.some((i) => /replacement|Refrigerant|above average/.test(i)));
+    assert.ok(!r.result.issues.some((s) => s.includes("replacement") || s.includes("Refrigerant") || s.includes("above average")));
   });
 });
 
