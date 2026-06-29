@@ -135,7 +135,7 @@ export default function CodexLensPage() {
 
   return (
     <LensShell lensId="codex">
-    <div style={{ maxWidth: 980, margin: '0 auto', padding: '24px 16px', color: COLORS.fg }}>
+    <div className="w-full max-w-[980px] mx-auto px-4 sm:px-6 py-6" style={{ color: COLORS.fg }}>
       <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>The Codex</h1>
       <p style={{ opacity: 0.7, marginBottom: 20 }}>
         The canon of Concordia — {facets?.count ?? '…'} recorded truths across {facets?.worlds.length ?? '…'} worlds.
@@ -158,7 +158,7 @@ export default function CodexLensPage() {
       )}
 
       {/* Filters */}
-      <div role="search" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+      <div role="search" className="flex flex-col sm:flex-row sm:flex-wrap gap-2 mb-4">
         <input aria-label="Search the canon" placeholder="Search the canon…" value={q} onChange={e => setQ(e.target.value)}
           style={{ flex: 1, minWidth: 200, padding: '8px 12px', borderRadius: 8, background: COLORS.input, border: `1px solid ${COLORS.inputBorder}`, color: COLORS.fg }} />
         <select aria-label="Filter by world" value={world} onChange={e => setWorld(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, background: COLORS.input, border: `1px solid ${COLORS.inputBorder}`, color: COLORS.fg }}>
