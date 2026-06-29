@@ -8,14 +8,17 @@
  * (server/domains/photos.js → server/lib/photo-gallery.js) and the
  * /api/photos/* REST surface that delegates to the same lib.
  *
- * Four UX states are explicit: loading (role=status), error (role=alert +
- * Retry), empty, and populated.
+ * Four UX states are explicit: loading (role=status + spinner), error
+ * (role=alert + Retry), empty, and populated (reduced-motion-aware
+ * entrance animation). Share/delete fire success/error toasts.
+ * Pinned by tests/photos-lens-states.test.tsx.
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Camera, Share2, Trash2, RefreshCcw, Globe2 } from 'lucide-react';
+import { Camera, Share2, Trash2, RefreshCcw, Globe2, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { useUIStore } from '@/store/ui';
 
 interface PhotoRow {
   id: string;
@@ -44,6 +47,7 @@ export default function PhotosLensPage() {
   const [worldId, setWorldId] = useState('tunya');
   const [state, setState] = useState<LoadState>('loading');
   const [error, setError] = useState<string | null>(null);
+  const addToast = useUIStore((s) => s.addToast);
 
   const refreshMine = useCallback(async () => {
     setState('loading');
@@ -86,19 +90,27 @@ export default function PhotosLensPage() {
 
   const share = useCallback(async (id: string) => {
     try {
-      await fetch(`/api/photos/${id}/share`, { method: 'POST', credentials: 'include' });
+      const r = await fetch(`/api/photos/${id}/share`, { method: 'POST', credentials: 'include' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      addToast({ type: 'success', message: 'Photo shared — DTU minted', duration: 2500 });
+    } catch {
+      addToast({ type: 'error', message: 'Could not share photo' });
     } finally {
       void refreshMine();
     }
-  }, [refreshMine]);
+  }, [refreshMine, addToast]);
 
   const remove = useCallback(async (id: string) => {
     try {
-      await fetch(`/api/photos/${id}/delete`, { method: 'POST', credentials: 'include' });
+      const r = await fetch(`/api/photos/${id}/delete`, { method: 'POST', credentials: 'include' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      addToast({ type: 'success', message: 'Photo deleted', duration: 2500 });
+    } catch {
+      addToast({ type: 'error', message: 'Could not delete photo' });
     } finally {
       void refreshMine();
     }
-  }, [refreshMine]);
+  }, [refreshMine, addToast]);
 
   const rows = tab === 'mine' ? mine : worldFeed;
 
@@ -144,11 +156,18 @@ export default function PhotosLensPage() {
           )}
 
           {state === 'loading' ? (
-            <p role="status" aria-live="polite" className="py-12 text-center text-[12px] text-slate-400">
+            <div
+              data-testid="photos-loading"
+              role="status"
+              aria-busy="true"
+              aria-live="polite"
+              className="flex items-center justify-center gap-2 py-12 text-center text-[12px] text-slate-400"
+            >
+              <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
               Loading photos…
-            </p>
+            </div>
           ) : state === 'error' ? (
-            <div role="alert" className="mx-auto max-w-md rounded-xl border border-rose-500/30 bg-rose-500/10 p-5 text-center">
+            <div data-testid="photos-error" role="alert" className="mx-auto max-w-md rounded-xl border border-rose-500/30 bg-rose-500/10 p-5 text-center">
               <p className="text-[13px] font-medium text-rose-100">Could not load photos.</p>
               {error && <p className="mt-1 text-[11px] text-rose-300/80">{error}</p>}
               <button onClick={() => void refresh()}
@@ -157,11 +176,11 @@ export default function PhotosLensPage() {
               </button>
             </div>
           ) : rows.length === 0 ? (
-            <p className="py-12 text-center text-[12px] text-slate-500">
+            <p data-testid="photos-empty" className="py-12 text-center text-[12px] text-slate-500">
               {tab === 'mine' ? 'No photos yet. Press P in the world to open Photo Mode.' : 'No public photos in this world yet.'}
             </p>
           ) : (
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <ul data-testid="photos-list" className="grid grid-cols-1 gap-3 animate-in fade-in duration-200 motion-reduce:animate-none sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {rows.map((p) => (
                 <li key={p.id} className="rounded-xl border border-sky-500/20 bg-zinc-950/60 p-3">
                   <h3 className="truncate text-[12px] font-medium text-sky-100">{p.caption || 'Untitled'}</h3>
@@ -172,15 +191,16 @@ export default function PhotosLensPage() {
                     <div className="mt-2 flex gap-1">
                       {!p.dtu_id && (
                         <button onClick={() => void share(p.id)}
+                          aria-label={`Share photo ${p.caption || 'Untitled'}`}
                           className="flex-1 rounded bg-emerald-500/20 px-2 py-1 text-[11px] text-emerald-100 hover:bg-emerald-500/30">
-                          <Share2 className="inline h-3 w-3 mr-1" /> Share
+                          <Share2 className="inline h-3 w-3 mr-1" aria-hidden="true" /> Share
                         </button>
                       )}
                       <button onClick={() => void remove(p.id)}
                         className="rounded bg-rose-500/20 px-2 py-1 text-[11px] text-rose-200 hover:bg-rose-500/30"
-                        aria-label="Delete"
+                        aria-label={`Delete photo ${p.caption || 'Untitled'}`}
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-3 w-3" aria-hidden="true" />
                       </button>
                     </div>
                   )}
