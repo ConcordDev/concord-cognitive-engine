@@ -14,8 +14,10 @@ import { LensShell } from '@/components/lens/LensShell';
 // a11y: every select + textarea + button carries an accessible name.
 
 import { useCallback, useEffect, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useUIStore } from '@/store/ui';
 
 const DOMAIN = 'translation';
 
@@ -44,6 +46,7 @@ export default function TranslationLens() {
   const [detected, setDetected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const addToast = useUIStore((s) => s.addToast);
 
   // Saved translations — the generic per-user, server-LOCAL lens artifact store
   // (sovereignty intact: text still never leaves your server). Lets a user keep
@@ -83,15 +86,18 @@ export default function TranslationLens() {
       });
       if (res.data?.ok && res.data.result?.translated) {
         setOutput(res.data.result.translated);
+        addToast({ type: 'success', message: 'Translation ready', duration: 2500 });
       } else {
         setError(res.data?.error || 'translation_unavailable');
+        addToast({ type: 'error', message: 'Translation engine unavailable' });
       }
     } catch (e) {
       setError(String((e as Error)?.message || e));
+      addToast({ type: 'error', message: 'Translation request failed' });
     } finally {
       setBusy(false);
     }
-  }, [text, source, target, formality]);
+  }, [text, source, target, formality, addToast]);
 
   const handleDetect = useCallback(async () => {
     if (!text.trim()) return;
@@ -122,7 +128,7 @@ export default function TranslationLens() {
 
   return (
     <LensShell lensId="translation">
-      <div style={{ maxWidth: 880, margin: '0 auto', padding: 24 }}>
+      <div className="w-full max-w-[880px] mx-auto px-4 sm:px-6 py-6">
         <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 4 }}>Translation</h1>
         <p style={{ opacity: 0.7, marginBottom: 20, fontSize: 14 }}>
           Machine translation on your own hardware — powered by the local LLM. Text never leaves your server.
@@ -135,15 +141,16 @@ export default function TranslationLens() {
             role="status"
             aria-busy="true"
             aria-live="polite"
-            style={{ padding: 16, opacity: 0.7, fontSize: 14, marginBottom: 16 }}
+            className="flex items-center gap-2 py-4 text-sm opacity-70"
           >
+            <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
             Loading language catalog…
           </div>
         )}
 
         {!catalogLoading && (
           <>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-3">
               <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12 }}>
                 From
                 <select aria-label="Translate from" value={source} onChange={(e) => setSource(e.target.value)} style={selStyle}>
@@ -208,7 +215,7 @@ export default function TranslationLens() {
 
             {/* READY */}
             {output && (
-              <div data-testid="translation-output" style={{ marginBottom: 16 }}>
+              <div data-testid="translation-output" className="mb-4 animate-in fade-in duration-200 motion-reduce:animate-none">
                 <div style={{ padding: 16, borderRadius: 8, border: '1px solid #444', whiteSpace: 'pre-wrap', fontSize: 15 }}>
                   {output}
                 </div>
